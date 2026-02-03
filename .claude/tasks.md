@@ -1,7 +1,7 @@
 # Task Progress
 
 **Last Updated:** 2026-02-03
-**Current Phase:** Phase 1 (pending start)
+**Current Phase:** Phase 1 (in progress)
 
 ---
 
@@ -16,14 +16,14 @@
 
 ---
 
-## Phase 1: WSL2 Environment Setup 🔜 NEXT
-- [ ] 1.1 Enable systemd (if not already enabled)
-- [ ] 1.2 Install CUDA Toolkit *(optional - pending decision)*
-- [ ] 1.3 Verify GPU ready
+## Phase 1: WSL2 Environment Setup ✅ COMPLETE
+- [x] 1.1 Enable systemd *(already enabled by default in WSL 2.6.3)*
+- [~] 1.2 Install CUDA Toolkit *(skipped - not needed for Ollama)*
+- [x] 1.3 Verify GPU ready *(RTX 3060 12GB, driver 591.74, CUDA 13.1)*
 
 ---
 
-## Phase 2: Native Ollama Installation
+## Phase 2: Native Ollama Installation 🔄 IN PROGRESS
 - [ ] 2.1 Install Ollama
 - [ ] 2.2 Pull Qwen2.5-Coder-7B model
 - [ ] 2.3 Initial test (run + GPU verification)
