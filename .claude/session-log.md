@@ -80,6 +80,35 @@ WSL2 environment is ready for Ollama installation.
 
 ---
 
+## Phase 2: Native Ollama Installation
+
+**Started:** 2026-02-03 ~20:30
+**Status:** ✅ Complete
+
+### Step 2.1: Install Ollama
+- Command: `curl -fsSL https://ollama.com/install.sh | sh`
+- Ran interactively in WSL terminal (requires sudo)
+- Version installed: 0.15.4
+- GPU detected: NVIDIA GeForce RTX 3060
+- Service: enabled and running
+
+### Step 2.2: Pull Model
+- Command: `ollama pull qwen2.5-coder:7b`
+- Size: 4.7 GB
+- Model ID: dae161e27b0e
+
+### Step 2.3: Initial Test
+- GPU allocation: 100% GPU ✅
+- VRAM usage: 4.9 GB
+- Generation speed: 67-69 tok/s (exceeds 40-60 target!)
+- First load: ~41s (model loading into VRAM)
+- Subsequent loads: ~78ms (model cached)
+
+### Outcome
+Ollama running with Qwen2.5-Coder-7B on GPU. Ready for Phase 3 configuration.
+
+---
+
 ## 2026-02-02/03 - Session 1: Initial Verification (Phase 0)
 
 ### Summary
