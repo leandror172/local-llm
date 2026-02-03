@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ WORKFLOW RULES (HARD REQUIREMENTS)
+
+1. **DO NOT proceed to the next phase automatically** - Always wait for explicit user permission before moving to a new phase
+2. **Step-by-step configuration** - When creating configuration files, do NOT create full files at once. Instead, build incrementally, explaining each setting as it's added
+3. **Learning mode preferred** - User prefers "Learning" output style for configuration tasks to understand each step
+
 ## Repository Purpose
 
 Research, documentation, and **portable configuration artifacts** for running local LLMs on an RTX 3060 12GB GPU. Contains both setup guides and executable scripts/configs for deploying Ollama with Qwen2.5-Coder.
