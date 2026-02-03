@@ -1,0 +1,17 @@
+# Local/sensitive data (not tracked in git)
+.claude/local/
+
+# Local Claude Code settings (machine-specific preferences)
+.claude/settings.local.json
+
+# Session logs may contain sensitive paths or system details
+# Keep current session log tracked, archive older ones to local/ if sensitive
+# .claude/session-log-*.md  # Uncomment if you want to exclude archived logs
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak

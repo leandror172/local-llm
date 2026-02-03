@@ -1,0 +1,74 @@
+# Session Log
+
+**Current Session:** 2026-02-03
+**Phase:** Completing Phase 0, preparing for Phase 1
+
+---
+
+## 2026-02-03 - Session 2: Phase 0 Completion & Tracking System Setup
+
+### Context
+Resumed after system restart. Previous session identified WSL2 conversion blocker (`hypervisorlaunchtype=Off`) and applied fix.
+
+### Verified
+- ✅ `wsl -d Ubuntu-22.04 -e nvidia-smi` now works
+- ✅ Ubuntu-22.04 confirmed as WSL version 2 (`wsl -l -v`)
+- ✅ GPU passthrough functional
+
+### Decisions Made
+
+1. **Session tracking system created**
+   - `.claude/tasks.md` - simple progress checklist
+   - `.claude/session-log.md` - detailed history (this file)
+   - `.claude/session-context.md` - agent handoff instructions
+   - `.claude/local/` - gitignored folder for sensitive data
+
+2. **Log rotation policy:** By phase (rename logs when phase completes)
+
+3. **Sensitive data handling:** Hardware specs moved to `.claude/local/hardware-inventory.md`
+
+4. **Output style:** Explanatory (not Learning) - interactive tutorial approach
+
+5. **Pending decisions for Phase 1:**
+   - CUDA Toolkit: install or skip? (user unsure, needs recommendation)
+   - Docker phase: do after native install (Phases 1-3 first)
+
+### Files Created/Modified
+| File | Action |
+|------|--------|
+| `.gitignore` | Created - excludes `.claude/local/`, `settings.local.json` |
+| `.claude/local/hardware-inventory.md` | Created - sensitive hardware details |
+| `.claude/session-context.md` | Created - agent handoff instructions |
+| `.claude/tasks.md` | Created - progress checklist |
+| `.claude/session-log.md` | Created - this file |
+| `CLAUDE.md` | Updated - added session tracking docs, fixed output style |
+| `.claude/progress.md` | Renamed → `wsl2-setup-history.md` |
+| `verification-report.md` | Updated - marked Phase 0 complete |
+
+### Next Steps
+- User will commit files to git
+- User will say "Begin Phase 1" to start
+- Phase 1.1: Enable systemd in WSL2
+
+---
+
+## 2026-02-02/03 - Session 1: Initial Verification (Phase 0)
+
+### Summary
+Ran Phase 0 verification checks. Identified blocker preventing WSL2 conversion.
+
+### Blocker Found
+- **Symptom:** `wsl --set-version Ubuntu-22.04 2` failed with `HCS_E_HYPERV_NOT_INSTALLED`
+- **Root cause:** `bcdedit` showed `hypervisorlaunchtype Off`
+- **Resolution:** `bcdedit /set hypervisorlaunchtype auto` + restart
+
+### Verification Results
+- GPU: RTX 3060 12GB, driver 591.74 ✅
+- VT-x: Enabled in BIOS ✅
+- WSL: Version 2.6.3.0 ✅
+- Ubuntu-22.04: Installed (was WSL1, needed conversion)
+- Disk: I: drive designated for LLM storage (562GB free)
+
+### Artifacts Created
+- `verification-report.md` - detailed findings
+- `.claude/progress.md` - troubleshooting log (now `wsl2-setup-history.md`)

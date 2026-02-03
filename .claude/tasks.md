@@ -1,0 +1,71 @@
+# Task Progress
+
+**Last Updated:** 2026-02-03
+**Current Phase:** Phase 1 (pending start)
+
+---
+
+## Phase 0: Verification ✅ COMPLETE
+- [x] 0.1 Hardware verification (GPU, RAM, disk)
+- [x] 0.2 WSL2 verification (version, distro)
+- [x] 0.3 GPU visibility in WSL2 (nvidia-smi)
+- [x] 0.4 Existing software check
+- [x] 0.5 Create verification report
+
+**Blocker resolved:** `hypervisorlaunchtype=Off` → fixed with `bcdedit /set hypervisorlaunchtype auto`
+
+---
+
+## Phase 1: WSL2 Environment Setup 🔜 NEXT
+- [ ] 1.1 Enable systemd (if not already enabled)
+- [ ] 1.2 Install CUDA Toolkit *(optional - pending decision)*
+- [ ] 1.3 Verify GPU ready
+
+---
+
+## Phase 2: Native Ollama Installation
+- [ ] 2.1 Install Ollama
+- [ ] 2.2 Pull Qwen2.5-Coder-7B model
+- [ ] 2.3 Initial test (run + GPU verification)
+
+---
+
+## Phase 3: Configuration & Optimization
+- [ ] 3.1 Create project directory structure
+- [ ] 3.2 Create Modelfile for coding assistant
+- [ ] 3.3 Create custom model (`my-coder`)
+- [ ] 3.4 Configure Ollama service (systemd override)
+- [ ] 3.5 Create setup script (portable)
+
+---
+
+## Phase 4: Docker Portable Setup
+- [ ] 4.1 Install Docker prerequisites
+- [ ] 4.2 Create Docker Compose configuration
+- [ ] 4.3 Create Docker initialization script
+
+---
+
+## Phase 5: Verification & Testing
+- [ ] 5.1 Service verification
+- [ ] 5.2 Model verification
+- [ ] 5.3 Performance verification (40-60 tok/s target)
+- [ ] 5.4 API verification
+- [ ] 5.5 Create verification script
+
+---
+
+## Phase 6: Documentation & Artifacts
+- [ ] 6.1 Update CLAUDE.md
+- [ ] 6.2 Verify final directory structure
+
+---
+
+## Success Criteria
+- [ ] `nvidia-smi` shows RTX 3060 in WSL2
+- [ ] `ollama ps` shows "100% GPU"
+- [ ] Generation speed is 40-60 tok/s
+- [ ] API responds at `http://localhost:11434`
+- [ ] Custom model `my-coder` created and working
+- [ ] Docker setup runs independently
+- [ ] All artifacts are version-controlled and portable
