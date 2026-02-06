@@ -1,8 +1,8 @@
 # Task Progress
 
 **Last Updated:** 2026-02-06
-**Current Phase:** Phase 5 (pending start)
-**Session Status:** ⏸️ PAUSED - Phase 4 complete, ready for Phase 5
+**Current Phase:** Phase 6 (pending start)
+**Session Status:** ⏸️ PAUSED - Phase 5 complete, ready for Phase 6
 
 ---
 
@@ -49,12 +49,12 @@
 
 ---
 
-## Phase 5: Verification & Testing
-- [ ] 5.1 Service verification
-- [ ] 5.2 Model verification
-- [ ] 5.3 Performance verification (40-60 tok/s target)
-- [ ] 5.4 API verification
-- [ ] 5.5 Create verification script
+## Phase 5: Verification & Testing ✅ COMPLETE
+- [x] 5.1 Service verification *(active, enabled, override loaded, Flash Attention on)*
+- [x] 5.2 Model verification *(both models present, 100% GPU, 16K context, 30m keep-alive)*
+- [x] 5.3 Performance verification *(63.1-63.3 tok/s — exceeds 40-60 target)*
+- [x] 5.4 API verification *(root, /api/tags, /api/generate, /api/chat — all pass)*
+- [x] 5.5 Create verification script *(scripts/verify-installation.sh — 14/14 pass)*
 
 ---
 
