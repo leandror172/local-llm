@@ -71,8 +71,11 @@ Install and configure a local LLM on Windows with WSL2:
 
 ### Current Status
 - **Phase 0:** ✅ Complete (WSL2 + GPU passthrough verified)
-- **Phase 1:** 🔜 Next (WSL2 environment setup)
-- **Last checkpoint:** 2026-02-03 - Ready to begin Phase 1
+- **Phase 1:** ✅ Complete (systemd ready, GPU verified)
+- **Phase 2:** ✅ Complete (Ollama installed, model pulled, 67 tok/s verified)
+- **Phase 3:** ✅ Complete (Modelfile, my-coder model, systemd override, setup script)
+- **Phase 4:** 🔜 Next (Docker Portable Setup)
+- **Last checkpoint:** 2026-02-06 - Paused after Phase 3
 
 ---
 
@@ -87,13 +90,52 @@ When starting a new session:
 
 ---
 
-## Pending Decisions (for Phase 1)
+## Decisions Made
 
-These were discussed but not finalized - ask user before proceeding:
+### Phase 1 (resolved)
+- **CUDA Toolkit:** Skipped — not needed for Ollama
 
-1. **CUDA Toolkit (Phase 1.2):** Skip or install?
-   - Install if: User wants to develop CUDA code, or use tools requiring nvcc
-   - Skip if: Just running Ollama (works fine with Windows driver's libcuda)
+### Phase 3 (resolved 2026-02-06)
+- **Config storage:** I: drive repo (version-controlled, portable)
+- **Custom model name:** `my-coder`
+- **System prompt focus:** Java/Go backend — user wants to add more personas later (frontend, architect, etc.)
+- **Additional personas:** User understands the multi-Modelfile pattern and plans to create more
 
-2. **Docker phase (Phase 4):** Do now or defer?
-   - Recommendation: Complete Phases 1-3 first (native install), then add Docker as portable option
+---
+
+## Technical Learnings (from this session)
+
+### What Works
+- WSL 2.6.3 has systemd enabled by default (no wsl.conf needed)
+- CUDA Toolkit not needed for Ollama (it bundles its own runtime)
+- GPU passthrough uses `/usr/lib/wsl/lib/libcuda.so` from Windows driver
+
+### Performance Achieved
+- Generation: 67-69 tok/s (exceeds 40-60 target)
+- First load: ~41s (model → VRAM)
+- Warm load: ~78ms (cached in VRAM)
+- VRAM usage: 4.9 GB for 7B model
+
+### Gotchas Discovered
+1. Commands requiring sudo must be run in WSL terminal directly (Claude Code can't handle password prompts)
+2. Ollama's "low vram mode" message is informational, not an error
+3. Terminal escape codes appear in piped output (harmless)
+4. Git Bash mangles Linux paths (e.g., `/mnt/i/` → `C:/Program Files/Git/mnt/i/`) — use `wsl -- bash -c "..."` to avoid this
+5. `ollama create` can't read Modelfiles from `/mnt/` directly — copy to WSL home first, or use `wsl -- bash -c` with native paths
+
+---
+
+## Session Handoff Files
+
+For detailed context on any session, check the handoff files:
+- `session-handoff-2026-02-03.md` - Phase 0-2 completion, ready for Phase 3
+
+## Artifacts Created (Phase 3, 2026-02-06)
+
+| File | Purpose |
+|------|---------|
+| `modelfiles/coding-assistant.Modelfile` | Custom model config: temp 0.3, 16K ctx, Java/Go system prompt |
+| `scripts/setup-ollama.sh` | Idempotent setup script (install + configure + pull + create) |
+| `docs/modelfile-reference.md` | Configuration rationale for all Modelfile settings |
+| `docs/sampling-parameters.md` | Educational: temperature & top-p explained |
+| `docs/sampling-temperature-top-p.png` | Visual chart of sampling distributions |

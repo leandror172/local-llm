@@ -20,6 +20,7 @@ Research, documentation, and **portable configuration artifacts** for running lo
 │   ├── tasks.md                     # Current progress checklist
 │   ├── session-context.md           # Agent handoff instructions
 │   ├── session-log.md               # Detailed session history
+│   ├── session-handoff-*.md         # Detailed handoff docs per session
 │   └── local/                       # Sensitive data (gitignored)
 │       └── hardware-inventory.md    # Hardware specs
 ├── local-llm_and_open-claw.md      # Research: LLM engines, OpenClaw, WSL2 setup
