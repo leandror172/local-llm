@@ -74,8 +74,9 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 1:** ✅ Complete (systemd ready, GPU verified)
 - **Phase 2:** ✅ Complete (Ollama installed, model pulled, 67 tok/s verified)
 - **Phase 3:** ✅ Complete (Modelfile, my-coder model, systemd override, setup script)
-- **Phase 4:** 🔜 Next (Docker Portable Setup)
-- **Last checkpoint:** 2026-02-06 - Paused after Phase 3
+- **Phase 4:** ✅ Complete (Docker CE + NVIDIA Container Toolkit, Compose, init script, tested at 64 tok/s)
+- **Phase 5:** 🔜 Next (Verification & Testing)
+- **Last checkpoint:** 2026-02-06 - Paused after Phase 4
 
 ---
 
@@ -122,6 +123,8 @@ When starting a new session:
 3. Terminal escape codes appear in piped output (harmless)
 4. Git Bash mangles Linux paths (e.g., `/mnt/i/` → `C:/Program Files/Git/mnt/i/`) — use `wsl -- bash -c "..."` to avoid this
 5. `ollama create` can't read Modelfiles from `/mnt/` directly — copy to WSL home first, or use `wsl -- bash -c` with native paths
+6. `ollama run --verbose` through `wsl` pipes emits raw ANSI escape codes — use the API (`/api/chat` with `stream: false`) for clean programmatic output
+7. Docker + native Ollama conflict on port 11434 — stop one before starting the other
 
 ---
 
@@ -139,3 +142,14 @@ For detailed context on any session, check the handoff files:
 | `docs/modelfile-reference.md` | Configuration rationale for all Modelfile settings |
 | `docs/sampling-parameters.md` | Educational: temperature & top-p explained |
 | `docs/sampling-temperature-top-p.png` | Visual chart of sampling distributions |
+
+## Artifacts Created (Phase 4, 2026-02-06)
+
+| File | Purpose |
+|------|---------|
+| `docker/docker-compose.yml` | GPU-enabled Ollama: ports, volumes, env, healthcheck, NVIDIA reservation |
+| `docker/init-docker.sh` | Idempotent: starts container, waits for API, pulls model, creates my-coder |
+| `docker/test-output.json` | API test output from Docker run (clean JSON, no escape codes) |
+| `docker/hello-world.go` | Extracted Go code from my-coder's Docker test |
+| `docs/model-comparison-hello-world.md` | Side-by-side: Qwen 7B vs Claude Opus on same prompt |
+| `docs/closing-the-gap.md` | 7 techniques to minimize quality gap, priority matrix, sources |

@@ -1,0 +1,54 @@
+# =============================================================================
+# Ollama Docker Compose — RTX 3060 12GB
+# =============================================================================
+# Portable GPU-accelerated Ollama setup.
+# Usage:
+#   docker compose up -d          # Start the service
+#   ./init-docker.sh              # Pull models + create custom model
+#   docker compose down           # Stop the service
+# =============================================================================
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+
+    # Expose Ollama API on the same port as native install
+    ports:
+      - "11434:11434"
+
+    # Persist model data across container restarts;
+    # mount our Modelfiles read-only so init-docker.sh can reference them
+    volumes:
+      - ollama_data:/root/.ollama
+      - ../modelfiles:/modelfiles:ro
+
+    # Same environment as our native systemd override
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KEEP_ALIVE=30m
+
+    # Reserve the GPU — requires NVIDIA Container Toolkit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # Auto-restart unless explicitly stopped
+    restart: unless-stopped
+
+    # Health monitoring — Compose marks the service "healthy" when this passes
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  ollama_data:
