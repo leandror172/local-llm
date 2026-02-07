@@ -75,8 +75,9 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 2:** ✅ Complete (Ollama installed, model pulled, 67 tok/s verified)
 - **Phase 3:** ✅ Complete (Modelfile, my-coder model, systemd override, setup script)
 - **Phase 4:** ✅ Complete (Docker CE + NVIDIA Container Toolkit, Compose, init script, tested at 64 tok/s)
-- **Phase 5:** 🔜 Next (Verification & Testing)
-- **Last checkpoint:** 2026-02-06 - Paused after Phase 4
+- **Phase 5:** ✅ Complete (14/14 checks pass, verify-installation.sh created)
+- **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
+- **Last checkpoint:** 2026-02-06 - All phases complete
 
 ---
 
@@ -128,10 +129,18 @@ When starting a new session:
 
 ---
 
+### Performance (Docker)
+- Generation: 64.26 tok/s (near-identical to native)
+- GPU allocation: 100% GPU
+- VRAM: 6.3 GB (weights + 16K context)
+
+---
+
 ## Session Handoff Files
 
 For detailed context on any session, check the handoff files:
 - `session-handoff-2026-02-03.md` - Phase 0-2 completion, ready for Phase 3
+- `session-handoff-2026-02-06.md` - Phase 3-5 completion, ready for Phase 6
 
 ## Artifacts Created (Phase 3, 2026-02-06)
 
@@ -153,3 +162,10 @@ For detailed context on any session, check the handoff files:
 | `docker/hello-world.go` | Extracted Go code from my-coder's Docker test |
 | `docs/model-comparison-hello-world.md` | Side-by-side: Qwen 7B vs Claude Opus on same prompt |
 | `docs/closing-the-gap.md` | 7 techniques to minimize quality gap, priority matrix, sources |
+
+## Artifacts Created (Phase 5, 2026-02-06)
+
+| File | Purpose |
+|------|---------|
+| `scripts/verify-installation.sh` | 14-check verification: GPU, service, models, API, benchmark (63.3 tok/s) |
+| `docker/benchmark-output.json` | LRU cache benchmark output (1191 tokens, 63.14 tok/s) |

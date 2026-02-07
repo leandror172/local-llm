@@ -23,17 +23,23 @@ Research, documentation, and **portable configuration artifacts** for running lo
 │   ├── session-handoff-*.md         # Detailed handoff docs per session
 │   └── local/                       # Sensitive data (gitignored)
 │       └── hardware-inventory.md    # Hardware specs
-├── local-llm_and_open-claw.md      # Research: LLM engines, OpenClaw, WSL2 setup
-├── llm-configuration-research.md    # Research: Ollama config, Docker, portability
-├── verification-report.md           # Hardware/software verification results
 ├── modelfiles/
-│   └── coding-assistant.Modelfile   # Custom model configuration
+│   └── coding-assistant.Modelfile   # Custom model: my-coder (Java/Go backend)
 ├── scripts/
 │   ├── setup-ollama.sh              # Idempotent native installation
-│   └── verify-installation.sh       # Verification checklist
-└── docker/
-    ├── docker-compose.yml           # Portable Docker GPU config
-    └── init-docker.sh               # Docker initialization
+│   └── verify-installation.sh       # 14-check verification suite
+├── docker/
+│   ├── docker-compose.yml           # Portable Docker GPU config
+│   └── init-docker.sh               # Docker initialization
+├── docs/
+│   ├── closing-the-gap.md           # Guide: local 7B vs frontier model quality
+│   ├── model-comparison-hello-world.md  # Benchmark: Qwen 7B vs Claude Opus
+│   ├── modelfile-reference.md       # Configuration rationale for all settings
+│   ├── sampling-parameters.md       # Educational: temperature & top-p
+│   └── sampling-temperature-top-p.png   # Visual sampling distribution chart
+├── local-llm_and_open-claw.md      # Research: LLM engines, OpenClaw, WSL2 setup
+├── llm-configuration-research.md    # Research: Ollama config, Docker, portability
+└── verification-report.md           # Hardware/software verification results
 ```
 
 ## Quick Start
@@ -54,25 +60,53 @@ cd docker && ./init-docker.sh
 ## Key Technical Decisions
 
 - **Inference Engine**: Ollama (CLI-first, OpenAI-compatible API)
-- **Primary Model**: Qwen2.5-Coder-7B Q4_K_M (~6-7GB VRAM, 40-60 t/s)
-- **Custom Model**: `my-coder` - optimized for Java/Go backend development
+- **Primary Model**: Qwen2.5-Coder-7B Q4_K_M (~4.7GB on disk, ~6.3GB VRAM with 16K ctx)
+- **Custom Model**: `my-coder` — Java/Go backend expert (temp 0.3, 16K context)
 - **Environment**: WSL2 primary, Docker Compose for portability
-- **Expected Performance**: 40-60 tokens/second on RTX 3060 12GB
+- **Measured Performance**: 63-67 tok/s native, 64 tok/s Docker (target was 40-60)
 
 ## Important Constraints
 
-- 12GB VRAM = use 7B models for optimal context window; 14B fits but reduces context
-- **Never install Linux NVIDIA drivers in WSL2** - uses Windows driver's libcuda.so
+- 12GB VRAM = use 7B models for optimal context window; 14B fits but limits context to ~4K
+- **Never install Linux NVIDIA drivers in WSL2** — uses Windows driver's `libcuda.so`
 - Flash Attention enabled (`OLLAMA_FLASH_ATTENTION=1`) saves ~30% VRAM
 - Port 11434 must be available; check with `ss -tlnp | grep 11434`
+- Native Ollama and Docker Ollama **cannot run simultaneously** (port conflict)
+- Git Bash mangles Linux paths — use `wsl -- bash -c "..."` to avoid `/mnt/` rewriting
+- Use API (`/api/chat`, `stream: false`) not CLI (`ollama run`) for programmatic access
 
 ## Verification Commands
 
 ```bash
-nvidia-smi                    # GPU visible? Need driver 545+
-ollama ps                     # Shows "100% GPU"? Good
-ollama run my-coder --verbose # Check eval_rate: 40-60 tok/s expected
+# Automated (recommended)
+./scripts/verify-installation.sh    # 14 checks: GPU, service, models, API, benchmark
+
+# Manual spot checks
+nvidia-smi                          # GPU visible? Need driver 545+
+ollama ps                           # Shows "100% GPU"? Good
+curl -s http://localhost:11434/     # "Ollama is running"
+
+# Performance check (use API, not CLI, for clean output)
+curl -s http://localhost:11434/api/chat -d '{
+  "model": "my-coder",
+  "messages": [{"role": "user", "content": "Hello"}],
+  "stream": false
+}' | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'{d[\"eval_count\"]/d[\"eval_duration\"]*1e9:.1f} tok/s')"
 ```
+
+## Project Status
+
+All 6 phases complete:
+
+| Phase | Status | Highlights |
+|-------|--------|------------|
+| 0. Verification | Done | GPU passthrough, WSL2 kernel, driver 591.74 |
+| 1. WSL2 Setup | Done | systemd enabled by default, CUDA toolkit skipped |
+| 2. Ollama Install | Done | v0.15.4, 67 tok/s on first test |
+| 3. Configuration | Done | Modelfile, my-coder, systemd override, setup script |
+| 4. Docker | Done | Docker CE 29.2.1, NVIDIA Container Toolkit, 64 tok/s |
+| 5. Verification | Done | 14/14 automated checks pass |
+| 6. Documentation | Done | This file, final directory structure verified |
 
 ## Resuming Multi-Session Work
 

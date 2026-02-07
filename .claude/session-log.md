@@ -1,7 +1,7 @@
 # Session Log
 
-**Current Session:** 2026-02-03
-**Phase:** Completing Phase 0, preparing for Phase 1
+**Current Session:** 2026-02-06
+**Phase:** All phases complete
 
 ---
 
@@ -125,6 +125,60 @@ Ollama running with Qwen2.5-Coder-7B on GPU. Ready for Phase 3 configuration.
 1. Read `session-handoff-2026-02-03.md`
 2. Confirm with user
 3. Begin Phase 3.1 (directory structure)
+
+---
+
+## 2026-02-06 - Session 3: Phase 3 Configuration, Phase 4 Docker, Phase 5 Verification
+
+### Context
+Resumed from Phase 2 complete. This session covered three full phases across two context windows (compacted mid-Phase 4).
+
+### Phase 3: Configuration & Optimization ✅
+- **3.1** Created directory structure: `modelfiles/`, `scripts/`, `docker/`, `docs/`
+- **3.2** Built `modelfiles/coding-assistant.Modelfile` incrementally (7 settings)
+  - Created sampling visualization (`docs/sampling-temperature-top-p.png`)
+  - Created educational docs (`docs/sampling-parameters.md`, `docs/modelfile-reference.md`)
+- **3.3** Created custom model `my-coder` via `ollama create`
+  - Gotcha: Git Bash path mangling required `wsl -- bash -c` pattern
+- **3.4** Configured systemd override (OLLAMA_HOST, CORS, Flash Attention, Keep Alive)
+- **3.5** Created `scripts/setup-ollama.sh` (idempotent setup script)
+
+### Phase 4: Docker Portable Setup ✅
+- **4.1** Installed Docker CE 29.2.1 + Compose 5.0.2 + NVIDIA Container Toolkit
+  - User ran sudo commands manually in WSL terminal
+  - GPU verified inside Docker container via `docker run --gpus all ubuntu nvidia-smi`
+- **4.2** Built `docker/docker-compose.yml` incrementally (4 steps)
+  - GPU reservation, named volume, healthcheck, env parity with native
+- **4.3** Created `docker/init-docker.sh` (self-starting, timeout guard, idempotent)
+- **4.4** End-to-end Docker test: 64.26 tok/s, 100% GPU
+  - ANSI escape codes in CLI output — used API (`stream: false`) for clean output
+- **4.5** Model quality comparison: Qwen 7B vs Claude Opus on same prompt
+  - User requested sub-agent comparison with same persona
+  - Saved to `docs/model-comparison-hello-world.md`
+  - Created gap analysis report: `docs/closing-the-gap.md` (7 categories, 14 techniques)
+
+### Phase 5: Verification & Testing ✅
+- **5.1** Service verification: active, enabled, override loaded, all env vars confirmed
+- **5.2** Model verification: both models present, 100% GPU, 16K context
+- **5.3** Performance: 63.1-63.3 tok/s sustained (1191 tokens LRU cache benchmark)
+- **5.4** API: `/`, `/api/tags`, `/api/generate`, `/api/chat` — all pass
+- **5.5** Created `scripts/verify-installation.sh` — 14/14 PASS, 0 FAIL, 0 WARN
+
+### Decisions Made
+- Docker Engine (not Docker Desktop) — free, lighter, more portable
+- Test output via API not CLI — avoids ANSI escape code garbling
+- Port conflict strategy: stop one service before starting the other
+
+### Gotchas Added
+6. `ollama run --verbose` through WSL pipes emits raw ANSI escape codes — use API
+7. Docker + native Ollama conflict on port 11434 — stop one first
+
+### Phase 6: Documentation & Artifacts ✅
+- **6.1** Updated CLAUDE.md: directory tree (added docs/), actual perf numbers, constraints, project status table
+- **6.2** Verified directory structure: 19/19 core files match, all paths correct
+
+### Outcome
+All 6 phases complete. All 7 success criteria met.
 
 ---
 
