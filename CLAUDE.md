@@ -108,6 +108,16 @@ All 6 phases complete:
 | 5. Verification | Done | 14/14 automated checks pass |
 | 6. Documentation | Done | This file, final directory structure verified |
 
+## Next Steps (Plan v2)
+
+A 10-layer plan for building local AI infrastructure has been drafted. See:
+- **Vision & goals:** `docs/vision-and-intent.md`
+- **Execution plan:** `.claude/plan-v2.md` (layers, tasks, dependencies)
+- **Model strategy:** `docs/model-strategy.md` (multi-model inventory, VRAM budgets)
+- **Quality techniques:** `docs/closing-the-gap.md` (principles + tasks, integrated into plan)
+
+Start with Layer 0 (foundation upgrades: Qwen3-8B, structured prompts, benchmarks).
+
 ## Resuming Multi-Session Work
 
 This project uses a session tracking system for continuity across Claude Code sessions.
@@ -116,5 +126,6 @@ This project uses a session tracking system for continuity across Claude Code se
 1. Read `.claude/session-context.md` for user preferences and current status
 2. Check `.claude/tasks.md` for progress
 3. Review `.claude/session-log.md` for recent decisions
+4. Review `.claude/plan-v2.md` for the current execution roadmap
 
 **Sensitive data:** Hardware details and local paths are stored in `.claude/local/` (gitignored). Reference these when needed but don't commit them.

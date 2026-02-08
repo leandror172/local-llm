@@ -180,6 +180,25 @@ Resumed from Phase 2 complete. This session covered three full phases across two
 ### Outcome
 All 6 phases complete. All 7 success criteria met.
 
+### Planning Discussion (post-Phase 6)
+User initiated next-steps discussion covering four directions:
+1. **OpenClaw** — autonomous agent framework, useful for non-coding (Telegram, chat), needs security project
+2. **Closing the gap** — techniques from `docs/closing-the-gap.md`, mix of principles (ongoing) and tasks (build once)
+3. **AirLLM** — runs 70B models on 4GB via layer decomposition. Assessment: too slow for interactive use (~0.5-2 tok/s), useful only for offline quality benchmarking. Last commit Aug 2024, maintenance uncertain. Not a priority.
+4. **Personas & agents** — user's richest idea. Conversational persona creation, codebase-aware agent recruitment, multi-agent collaboration, PT-BR translator pattern, memory/learning, idle-time self-improvement
+
+Key refinements from user:
+- **Routing is three patterns, not one:** (A) local-first escalate up, (B) frontier delegates down to local via MCP, (C) chat interface routes both ways
+- **MCP server** for Ollama is highest-value routing implementation — enhances ClaudeCode directly
+- **Multiple models** needed: not just best coder, but right model per role (14B for reasoning, 3-4B for classification, separate for writing/translation)
+- **Closing-the-gap techniques** are both principles (applied everywhere) and tasks (built once, reused)
+- **OpenClaw** deferred until security planning is done; expense classifier can work without it first
+
+Documents created:
+- `docs/vision-and-intent.md` — goals, 8 design principles, 5 use cases, risks
+- `.claude/plan-v2.md` — 10 layers, 70+ tasks, dependency graph, CTG integration
+- `docs/model-strategy.md` — multi-model inventory, VRAM budgets, persona-to-model mapping
+
 ---
 
 ## 2026-02-02/03 - Session 1: Initial Verification (Phase 0)

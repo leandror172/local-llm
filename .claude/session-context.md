@@ -77,7 +77,8 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 4:** ✅ Complete (Docker CE + NVIDIA Container Toolkit, Compose, init script, tested at 64 tok/s)
 - **Phase 5:** ✅ Complete (14/14 checks pass, verify-installation.sh created)
 - **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
-- **Last checkpoint:** 2026-02-06 - All phases complete
+- **Plan v2:** Drafted — 10 layers of next-steps work (see `.claude/plan-v2.md`)
+- **Last checkpoint:** 2026-02-07 - Phases 0-6 complete, plan v2 drafted, ready for Layer 0
 
 ---
 
@@ -102,6 +103,16 @@ When starting a new session:
 - **Custom model name:** `my-coder`
 - **System prompt focus:** Java/Go backend — user wants to add more personas later (frontend, architect, etc.)
 - **Additional personas:** User understands the multi-Modelfile pattern and plans to create more
+
+### Plan v2 (decided 2026-02-07)
+- **Scope:** 10-layer plan for local AI infrastructure (coding, finance, career, writing, research)
+- **Routing architecture:** Three patterns — (A) local-first escalate, (B) frontier delegates via MCP, (C) chat routes both ways
+- **MCP server** is highest-priority routing implementation (enhances ClaudeCode)
+- **Multiple models:** Right model per role, not just best coder (see `docs/model-strategy.md`)
+- **Closing-the-gap:** Mix of ongoing principles + one-time tasks. Integrated into every layer.
+- **OpenClaw:** Deferred until security planning complete. Expense classifier works without it.
+- **AirLLM:** Assessed as research/benchmarking tool only (~0.5-2 tok/s). Not a priority.
+- **Full vision:** See `docs/vision-and-intent.md` for goals, principles, use cases
 
 ---
 
