@@ -165,6 +165,7 @@ Build a local AI infrastructure on RTX 3060 12GB that:
 | 4.3 | Integrate frontier model as evaluator (strongest available judge) | 1 day |
 | 4.4 | Create benchmark prompt sets per domain (coding, writing, classification) | 1 day |
 | 4.5 | Output: comparison reports (like model-comparison-hello-world.md, automated) | 1 day |
+| 4.6 | Conversation insights pipeline: analyze exported Claude Desktop data (career project + general usage) — classify messages, extract friction patterns, generate insights report. First real-world evaluator use case. Data: `.claude/local/exports/` | 1-2 days |
 
 ### Closing-the-gap integration
 - Best-of-N sampling (#10) is a direct application
@@ -175,6 +176,7 @@ Build a local AI infrastructure on RTX 3060 12GB that:
 - Data-driven persona selection ("which persona is best for Go concurrency questions?")
 - Quality gates: reject output below threshold, escalate to frontier
 - Training data generation: high-scoring outputs become few-shot examples
+- Cross-platform usage insights: analyze Claude Desktop + Claude Code interaction patterns together, track improvements over time
 
 ---
 
