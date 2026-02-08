@@ -78,8 +78,8 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 5:** ✅ Complete (14/14 checks pass, verify-installation.sh created)
 - **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
 - **Plan v2:** Drafted — 10 layers of next-steps work (see `.claude/plan-v2.md`)
-- **Pre-Layer 0 prep:** Done — CLAUDE.md hardened, agent principles doc created, git housekeeping complete
-- **Last checkpoint:** 2026-02-08 - Pre-Layer 0 prep complete, ready for Layer 0
+- **Pre-Layer 0 prep:** Done — CLAUDE.md hardened, agent principles doc, /session-handoff skill, git housekeeping
+- **Last checkpoint:** 2026-02-08 - All pre-Layer 0 prep complete, ready for Layer 0
 
 ---
 

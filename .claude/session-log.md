@@ -24,11 +24,27 @@ New session after conversation export. Recontextualized from session tracking fi
 - Git worktrees identified as the right pattern for multi-agent parallel work
 - Agent interaction principles are a reusable reference for persona creation (Layer 3) — not just Claude Code rules
 - Closing-the-gap techniques integrate with agent principles (structured output, decomposition, few-shot)
-- Custom skills and hooks deferred — to be discussed after item 4
+- `/session-handoff` custom skill created (available from next session onward)
+- Hooks (post-edit validation) deferred until Go/YAML coding begins
+- Claude Desktop data export: do it now, analyze in Layer 4.6 as first evaluator use case
+- Plan v2 updated: Task 4.6 added (conversation insights pipeline)
+
+### Artifacts Created
+| File | Purpose |
+|------|---------|
+| `docs/agent-interaction-principles.md` | 7 behavioral standards for any agent in the stack |
+| `.claude/skills/session-handoff/SKILL.md` | Custom skill for end-of-session workflow |
+
+### Commits (4)
+- `e4faae1` — Phase 0 verification report, test artifacts, WSL2 troubleshooting history
+- `6bfa97d` — CLAUDE.md hardening + agent interaction principles
+- `bfc16ab` — /session-handoff custom skill
+- `878ffa4` — Layer 4.6 conversation insights pipeline task
 
 ### Next
-- Discuss item 5 (custom skills / hooks): do now or defer?
-- Begin Layer 0 (foundation upgrades)
+- Begin Layer 0 (foundation upgrades: Qwen3-8B, structured prompts, benchmarks)
+- Export Claude Desktop data to `.claude/local/exports/` for future analysis
+- `/session-handoff` skill available for first use
 
 ---
 
