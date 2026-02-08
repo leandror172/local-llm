@@ -12,6 +12,9 @@
 .DS_Store
 Thumbs.db
 
+# Conversation exports (large, raw session data — useful content is in session handoffs)
+2026-*.txt
+
 # Temporary files
 *.tmp
 *.bak
