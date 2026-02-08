@@ -8,6 +8,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **Step-by-step configuration** - When creating configuration files, do NOT create full files at once. Instead, build incrementally, explaining each setting as it's added
 3. **Explanatory mode active** - Use "Explanatory" output style. Explain each step like a practical tutorial.
 
+## Troubleshooting Approach
+
+When diagnosing issues:
+1. **Ask what's been tried** before suggesting solutions — do not repeat basic steps the user may have already completed
+2. **Check prior context** — read session logs and handoff files for previous diagnostic work on the same issue
+3. **Propose before executing** — for diagnostic commands that might have side effects, explain the intent first
+
+## Environment Context
+
+This project runs across a **Windows + WSL2 + Git Bash (MINGW)** stack:
+
+- **Claude Code runs in:** Git Bash (MINGW64) on Windows
+- **Ollama/Docker run in:** WSL2 (Ubuntu-22.04)
+- **Linux commands must use:** `wsl -d Ubuntu-22.04 -- bash -c "..."` — direct `bash` invocations hit MINGW, not WSL
+- **Path mangling:** Git Bash rewrites Linux-style paths (e.g., `/mnt/i/` → `C:/Program Files/Git/mnt/i/`). Always wrap in `wsl -- bash -c` to avoid this.
+- **sudo commands:** Cannot run through Claude Code (no password prompt support). Ask the user to run them in their WSL terminal.
+- **Shell confirmation:** When uncertain which shell a command targets, ask before executing.
+
 ## Repository Purpose
 
 Research, documentation, and **portable configuration artifacts** for running local LLMs on an RTX 3060 12GB GPU. Contains both setup guides and executable scripts/configs for deploying Ollama with Qwen2.5-Coder.
@@ -74,6 +92,26 @@ cd docker && ./init-docker.sh
 - Native Ollama and Docker Ollama **cannot run simultaneously** (port conflict)
 - Git Bash mangles Linux paths — use `wsl -- bash -c "..."` to avoid `/mnt/` rewriting
 - Use API (`/api/chat`, `stream: false`) not CLI (`ollama run`) for programmatic access
+
+## Git Operations
+
+### Safety Protocol
+For any destructive git operation (deleting `.git` files, rewriting history, force pushing):
+1. **Explain** what the command will do and get explicit user approval BEFORE running
+2. **Backup first** — create a safety branch: `git branch safety-backup-$(date +%s)`
+3. **Dry-run** when available (e.g., `--dry-run`, `--no-act`) and show output before executing
+4. **Verify** after each operation: `git fsck --full` and `git log --oneline -5`
+5. **If verification fails** — stop and restore from backup, do not attempt to fix forward
+
+Double-check remote URLs before any push. Never delete `.git` directory contents without a backup.
+
+### Worktrees for Parallel Work
+When multiple agents or tasks need to work on different branches simultaneously, use `git worktree` instead of switching branches:
+```bash
+git worktree add ../llm-feature-branch feature-branch
+git worktree add ../llm-experiment experiment-branch
+```
+Each worktree is an isolated checkout sharing the same `.git` object store. Prefer worktrees over branch switching when doing parallel agent work, evaluation comparisons, or any workflow where multiple branches need to be checked out at once.
 
 ## Verification Commands
 

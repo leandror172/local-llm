@@ -1,7 +1,34 @@
 # Session Log
 
-**Current Session:** 2026-02-06
-**Phase:** All phases complete
+**Current Session:** 2026-02-08
+**Phase:** Pre-Layer 0 (foundation prep)
+
+---
+
+## 2026-02-08 - Session 5: Insights Review & Pre-Layer 0 Prep
+
+### Context
+New session after conversation export. Recontextualized from session tracking files and last session transcript (749a6baf).
+
+### What Was Done
+- Reviewed insights report (`/insights` from last session): friction analysis, feature suggestions, CLAUDE.md recommendations
+- **Git housekeeping:** Committed test artifacts and Phase 0 files; moved redundant research (`bios.md`, `enable-wsl2.md`) to `.claude/local/`; added `.gitignore` pattern for conversation exports
+- **CLAUDE.md hardening:** Added 3 new sections from insights analysis:
+  - Troubleshooting Approach (ask before suggesting, check prior context)
+  - Environment Context (Windows/WSL2/MINGW stack, path mangling, sudo limitations)
+  - Git Operations (safety protocol: explain → backup → dry-run → verify; worktree pattern for parallel work)
+- **Agent interaction principles:** Created `docs/agent-interaction-principles.md` — 7 behavioral standards for any agent in the stack (verification gates, explain-then-execute, scope discipline, isolation, structured communication)
+- Session tracking updated
+
+### Decisions Made
+- Git worktrees identified as the right pattern for multi-agent parallel work
+- Agent interaction principles are a reusable reference for persona creation (Layer 3) — not just Claude Code rules
+- Closing-the-gap techniques integrate with agent principles (structured output, decomposition, few-shot)
+- Custom skills and hooks deferred — to be discussed after item 4
+
+### Next
+- Discuss item 5 (custom skills / hooks): do now or defer?
+- Begin Layer 0 (foundation upgrades)
 
 ---
 
