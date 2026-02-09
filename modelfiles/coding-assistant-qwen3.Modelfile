@@ -1,0 +1,37 @@
+FROM qwen3:8b
+
+# Context window: how many tokens the model can process at once
+# Qwen3:8b supports up to 40K context. We use 16K as a practical sweet spot:
+# large enough for multi-file work, conservative enough on VRAM (~6.5 GB total).
+PARAMETER num_ctx 16384
+
+# Temperature: controls randomness (0.0 = deterministic, 1.0 = creative)
+# 0.3 is ideal for code: precise enough for correct syntax,
+# with just enough variation to suggest alternative approaches.
+PARAMETER temperature 0.3
+
+# Top-p (nucleus sampling): only consider tokens within the top P probability mass.
+# 0.9 means "pick from tokens that together cover 90% probability."
+# Combined with low temperature, this cuts off unlikely/garbage completions
+# while still allowing the model to choose between reasonable alternatives.
+PARAMETER top_p 0.9
+
+# Repeat penalty: penalizes tokens that already appeared in the output.
+# 1.0 = no penalty, >1.0 = discourage repetition.
+# 1.1 is gentle enough to allow natural code patterns (e.g., repeated keywords)
+# while preventing degenerate loops where the model gets stuck.
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: special tokens that signal "end of response."
+# Qwen3 uses ChatML format internally, same as Qwen2.5.
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# System prompt: identical to the Qwen2.5 version for fair benchmarking.
+# Task 0.3 will rewrite this in skeleton format (ROLE/CONSTRAINTS/FORMAT).
+SYSTEM """You are an expert backend software engineer specializing in Java and Go.
+You write clean, well-documented, production-ready code.
+Follow SOLID principles and idiomatic language conventions.
+When asked to write code, provide complete implementations with proper error handling.
+Explain your reasoning when relevant.
+Format all code in markdown code blocks with language tags."""
