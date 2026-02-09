@@ -79,7 +79,8 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
 - **Plan v2:** Drafted — 10 layers of next-steps work (see `.claude/plan-v2.md`)
 - **Pre-Layer 0 prep:** Done — CLAUDE.md hardened, agent principles doc, /session-handoff skill, git housekeeping
-- **Last checkpoint:** 2026-02-08 - All pre-Layer 0 prep complete, ready for Layer 0
+- **Last checkpoint:** 2026-02-09 - Layer 0 tasks 0.1b + 0.2 complete. Benchmark ran (4 personas × 6 prompts). Three new tasks added (0.8–0.10) from benchmark findings. Next: 0.3 (skeleton prompts) or 0.8 (thinking mode management).
+- **Environment change:** Claude Code now runs from WSL2 natively (not Git Bash). All commands are direct Linux — no `wsl -- bash -c` wrapper needed.
 
 ---
 
@@ -123,6 +124,7 @@ When starting a new session:
 - WSL 2.6.3 has systemd enabled by default (no wsl.conf needed)
 - CUDA Toolkit not needed for Ollama (it bundles its own runtime)
 - GPU passthrough uses `/usr/lib/wsl/lib/libcuda.so` from Windows driver
+- Claude Code runs from WSL2 natively (Node.js via nvm, npm global install)
 
 ### Performance Achieved
 - Generation: 67-69 tok/s (exceeds 40-60 target)

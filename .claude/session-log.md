@@ -1,7 +1,88 @@
 # Session Log
 
-**Current Session:** 2026-02-08
-**Phase:** Pre-Layer 0 (foundation prep)
+**Current Session:** 2026-02-09
+**Phase:** Layer 0 — Foundation Upgrades
+
+---
+
+## 2026-02-09 - Session 6: Benchmark Qwen3-8B vs Qwen2.5-Coder-7B (Task 0.2)
+
+### Context
+Layer 0 tasks 0.1a and 0.6 (model downloads) were complete from previous session. This session created benchmark personas, built the full benchmark framework, ran the benchmark, and analyzed results with frontier review.
+
+### What Was Done
+
+**Research phase:**
+- Investigated Harbor Bench (LLM-as-judge with YAML tasks, OpenAI-compatible API)
+- Found LocalLLM Visual Code Test (7-prompt automated benchmark, KoboldCpp backend)
+- Analyzed viral animation coding challenges (Reddit bouncing balls in heptagon, Towards AI rotating box)
+- Collected the exact Reddit prompt (20 balls, 20 specific hex colors, spinning heptagon, Python/tkinter)
+
+**Persona creation (task 0.1b):**
+- Created `my-creative-coder` (Qwen2.5-Coder:7b) and `my-creative-coder-q3` (Qwen3:8b)
+- Same sampling params as my-coder for fair comparison (temp 0.3, top_p 0.9, repeat_penalty 1.1, 16K context)
+- HTML/CSS/JS creative coding system prompt (Canvas API, physics, single-file output)
+- Also created `my-coder-q3` (Qwen3:8b with my-coder's Java/Go prompt)
+
+**Benchmark framework (task 0.2):**
+- Built `benchmarks/run-benchmark.sh` (~350 lines): CLI with --models, --prompts, --dry-run, --no-skip, --open
+- Created 6 prompt files: 3 backend (Go LRU cache, Java CSV parser, Merge intervals) + 3 visual (bouncing ball, heptagon, aquarium)
+- Python helpers: `extract-html.py` (4 extraction strategies), `extract-code.py` (language inference), `generate-report.py`
+- Prompt metadata format with YAML frontmatter (id, category, models, timeout, description, source)
+
+**Benchmark execution:**
+- Dry-run: verified 4 models × 6 prompts = 24 combinations (12 eligible per model-category match)
+- Full run 1: 10 PASS, 2 FAIL (Qwen3 backend timeouts at 120s)
+- Re-run with 300s timeouts: Go LRU cache succeeded (9372 tokens, 183s), Java CSV still timed out
+
+**Analysis — key discovery: hidden thinking tokens:**
+- Qwen3's `<think>` blocks are stripped by Ollama from `message.content` but counted in `eval_count`
+- 75–88% of Qwen3's tokens are invisible reasoning
+- Chars/token diagnostic: Qwen2.5 ~3.5 chars/tok (normal for code), Qwen3 0.42–1.75 chars/tok (inflated)
+- Effective visible throughput: Qwen3 ~8 tok/s equivalent vs Qwen2.5 ~66 tok/s
+
+**Frontier model review:**
+- All 6 visual outputs rated poor (both models)
+- Root causes: incorrect rotation transforms, broken collision math, variable shadowing crashes, ugly procedural shapes
+- Qwen3 aquarium crashes on frame 1: `for (let fish of fish)` shadowing bug
+- Best backend output: merge intervals from both models (A-)
+- Go LRU cache: use-after-delete bug (Qwen2.5), overcomplicated struct (Qwen3)
+
+**Three new tasks identified:**
+- 0.8: Qwen3 thinking mode management (`/no_think` testing, per-task strategy)
+- 0.9: Prompt decomposition for visual tasks (closing-the-gap #3 applied)
+- 0.10: Runtime validation (headless browser smoke test for console errors)
+
+### Known Issues
+- `explorer.exe` returns exit 126 from WSL background processes — Chrome path identified (`/mnt/c/Program Files/Google/Chrome/Application/chrome.exe`) but not yet integrated
+- Java CSV parser timed out even at 300s with Qwen3 (excessive thinking)
+
+### Decisions Made
+- Visual benchmarks need separate personas (not my-coder which targets Java/Go)
+- Persona name: `my-creative-coder` (combination of user's options 3 and 4)
+- Keep `my-coder` name for now (rename deferred)
+- Timeouts: backend 300s, visual 180s (visual extended to 300 for heptagon)
+
+### Artifacts Created
+| File | Purpose |
+|------|---------|
+| `modelfiles/creative-coder-qwen3.Modelfile` | Visual benchmark persona on Qwen3:8b |
+| `modelfiles/creative-coder-qwen25.Modelfile` | Visual benchmark persona on Qwen2.5-Coder:7b |
+| `modelfiles/coding-assistant-qwen3.Modelfile` | my-coder-q3 on Qwen3:8b |
+| `benchmarks/run-benchmark.sh` | Main benchmark driver (~350 lines) |
+| `benchmarks/lib/extract-html.py` | HTML extraction from model responses |
+| `benchmarks/lib/extract-code.py` | Code block extraction for backend prompts |
+| `benchmarks/lib/generate-report.py` | Markdown report from summary.json |
+| `benchmarks/prompts/backend/*.md` (3 files) | Go LRU cache, Java CSV parser, Merge intervals |
+| `benchmarks/prompts/visual/*.md` (3 files) | Bouncing ball, Heptagon, Aquarium |
+| `benchmarks/results/2026-02-09T082340/` | Full benchmark run (gitignored) |
+| `benchmarks/results/2026-02-09T090642/` | Qwen3 re-run with 300s timeouts (gitignored) |
+
+### Next
+- Task 0.8: Test Qwen3 `/no_think` — measure thinking overhead, decide when to enable/disable
+- Task 0.3: Rewrite my-coder system prompt in skeleton format
+- Task 0.9: Design decomposed visual prompts (draw → physics → animate → combine)
+- Fix Chrome integration for `--open` flag in benchmark script
 
 ---
 

@@ -18,3 +18,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# Ephemeral logs and scratch data (downloads, benchmarks, test runs)
+tmp/
+
+# Benchmark results (large JSON + generated HTML, regenerated on each run)
+benchmarks/results/

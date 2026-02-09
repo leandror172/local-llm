@@ -33,25 +33,27 @@
 
 | Role | Model | Quant | VRAM | Context | Why this model |
 |------|-------|-------|------|---------|---------------|
-| **Coding** | Qwen3-8B | Q5_K_M | ~6.3 GB | 16K | Outperforms Qwen2.5-14B on coding benchmarks. Direct upgrade from current Qwen2.5-Coder-7B |
-| **Heavy reasoning** | Qwen3-14B | Q4_K_M | ~8.9 GB | 4K | Architecture decisions, complex analysis. Short context is fine for reasoning tasks |
-| **Classification / routing** | Qwen3-4B or Phi-4-mini | Q8_0 | ~3 GB | 4K | Fast, cheap. Good enough for "is this a coding question or a general question?" |
+| **Coding** | Qwen3-8B | Q4_K_M | ~5.2 GB | 16K | Outperforms Qwen2.5-14B on coding benchmarks. Direct upgrade from current Qwen2.5-Coder-7B |
+| **Heavy reasoning** | Qwen3-14B | Q4_K_M | ~9.3 GB | 4K | Architecture decisions, complex analysis. Short context is fine for reasoning tasks |
+| **Classification / routing** | Qwen3-4B | Q8_0 | ~4.4 GB | 4K | Fast, cheap. Good enough for "is this a coding question or a general question?" |
+
+> **Note (2026-02-08):** Ollama's library doesn't offer Q5_K_M for Qwen3. Available quantizations are Q4_K_M, Q8_0, and FP16. Q4_K_M is the practical choice for 8B (comfortable VRAM with 16K ctx). For Q5_K_M, you'd need to import a GGUF from HuggingFace manually — marginal benefit doesn't justify the complexity.
 
 ### Tier 2: Specialized (pull when building specific layers)
 
-| Role | Model | Quant | VRAM | When needed | Notes |
-|------|-------|-------|------|-------------|-------|
-| **General / writing** | Llama-3.1-8B-Instruct | Q5_K_M | ~6.3 GB | Layer 3 (personas) | Broader training than code-focused models. Better for career coaching, general writing |
-| **Embeddings (RAG)** | nomic-embed-text | native | ~275 MB | Layer 7 (memory) | Runs alongside main model. Required for vector search |
-| **Translation (PT-BR)** | Needs research | TBD | TBD | Layer 3/8 | Quality critical. May need frontier for nuanced PT-BR. Research during Layer 3 |
+| Role | Model | Ollama tag | Quant | Size | When needed | Notes |
+|------|-------|-----------|-------|------|-------------|-------|
+| **General / writing** | Llama-3.1-8B-Instruct | `llama3.1:8b-instruct-q5_K_M` | Q5_K_M | 5.7 GB | Layer 3 (personas) | Broader training than code-focused models. Better for career coaching, general writing |
+| **Embeddings (RAG)** | nomic-embed-text | `nomic-embed-text` | native | 274 MB | Layer 7 (memory) | Runs alongside main model. Required for vector search |
+| **Translation (PT-BR)** | Needs research | TBD | TBD | TBD | Layer 3/8 | Quality critical. May need frontier for nuanced PT-BR. Research during Layer 3 |
 
 ### Tier 3: Experimental (test when exploring)
 
-| Role | Model | Quant | VRAM | Notes |
-|------|-------|-------|------|-------|
-| **Alternative coder** | DeepSeek-Coder-V2-Lite (MoE) | Q4_K_M | ~4 GB | 16B total, 2.4B active. Fast, good quality |
-| **Reasoning specialist** | DeepSeek-R1-Distill-Qwen-14B | Q4_K_M | ~8.9 GB | Chain-of-thought reasoning. Good for evaluator role |
-| **Fast code** | Mamba-Codestral-7B | Q5_K_M | ~4.8 GB | SSM architecture, 1.5-2x faster than transformer. Good for autocomplete |
+| Role | Model | Ollama tag | Quant | Size | Notes |
+|------|-------|-----------|-------|------|-------|
+| **Reasoning specialist** | DeepSeek-R1-Distill-Qwen-14B | `deepseek-r1:14b` | Q4_K_M | 9.0 GB | Chain-of-thought reasoning. Good for evaluator role |
+| **Alternative coder** | DeepSeek-Coder-V2 (MoE) | `deepseek-coder-v2:16b` | default | 8.9 GB | 16B total params, 2.4B active per token. MoE stores all experts — VRAM ~8.9 GB, not ~4 GB as originally estimated |
+| **Fast code** | Mamba-Codestral-7B | *not on Ollama* | — | — | SSM architecture, 1.5-2x faster. Would need HuggingFace GGUF import |
 
 ---
 
@@ -75,15 +77,16 @@
 
 Models stored at `~/.ollama/models/` in WSL2.
 
-| Model | On-disk size | Cumulative |
-|-------|-------------|------------|
-| Qwen2.5-Coder-7B (existing) | 4.7 GB | 4.7 GB |
-| Qwen3-8B Q5_K_M | ~5.5 GB | 10.2 GB |
-| Qwen3-14B Q4_K_M | ~8.5 GB | 18.7 GB |
-| Qwen3-4B Q8_0 | ~4.0 GB | 22.7 GB |
-| Llama-3.1-8B Q5_K_M | ~5.5 GB | 28.2 GB |
-| nomic-embed-text | ~275 MB | 28.5 GB |
-| DeepSeek-R1-Distill-14B Q4_K_M | ~8.5 GB | 37.0 GB |
+| Model | Ollama tag | On-disk size | Cumulative |
+|-------|-----------|-------------|------------|
+| Qwen2.5-Coder-7B (existing) | `qwen2.5-coder:7b` | 4.7 GB | 4.7 GB |
+| Qwen3-8B Q4_K_M | `qwen3:8b` | 5.2 GB | 9.9 GB |
+| Qwen3-14B Q4_K_M | `qwen3:14b` | 9.3 GB | 19.2 GB |
+| Qwen3-4B Q8_0 | `qwen3:4b-q8_0` | 4.4 GB | 23.6 GB |
+| Llama-3.1-8B Q5_K_M | `llama3.1:8b-instruct-q5_K_M` | 5.7 GB | 29.3 GB |
+| nomic-embed-text | `nomic-embed-text` | 274 MB | 29.6 GB |
+| DeepSeek-R1-Distill-14B Q4_K_M | `deepseek-r1:14b` | 9.0 GB | 38.6 GB |
+| DeepSeek-Coder-V2 16B MoE | `deepseek-coder-v2:16b` | 8.9 GB | 47.5 GB |
 
 **Available:** I: drive has 562 GB free. Disk is not a constraint.
 
@@ -91,22 +94,27 @@ Models stored at `~/.ollama/models/` in WSL2.
 
 ## Upgrade Path
 
-### Immediate (Layer 0)
+### All tiers (automated)
 ```bash
-ollama pull qwen3:8b        # ~5.5 GB download
-ollama pull qwen3:14b       # ~8.5 GB download
-ollama pull qwen3:4b        # ~4.0 GB download (or phi4-mini when available)
+# Downloads all 7 models (~43.8 GB) in priority order.
+# Tier 1 finishes first so Layer 0 work can begin immediately.
+./scripts/pull-layer0-models.sh
 ```
 
-### When building Layer 7 (Memory)
+### Manual (individual pulls)
 ```bash
-ollama pull nomic-embed-text
-```
+# Tier 1 — Daily Drivers
+ollama pull qwen3:8b                        # Q4_K_M, ~5.2 GB
+ollama pull qwen3:14b                       # Q4_K_M, ~9.3 GB
+ollama pull qwen3:4b-q8_0                  # Q8_0,   ~4.4 GB
 
-### When building Layer 3 (Personas)
-```bash
-ollama pull llama3.1:8b
-# Research and pull best PT-BR translation model
+# Tier 2 — Specialized
+ollama pull llama3.1:8b-instruct-q5_K_M    # Q5_K_M, ~5.7 GB
+ollama pull nomic-embed-text                # native,  ~274 MB
+
+# Tier 3 — Experimental
+ollama pull deepseek-r1:14b                 # Q4_K_M, ~9.0 GB
+ollama pull deepseek-coder-v2:16b           # MoE,    ~8.9 GB
 ```
 
 ---
@@ -116,7 +124,9 @@ ollama pull llama3.1:8b
 When choosing quantization for a new model:
 
 1. **Is it a 14B+ model?** → Q4_K_M (only option that fits 12GB)
-2. **Is it a 7-8B model and you need max context (16K)?** → Q5_K_M
-3. **Is it a 7-8B model and 8K context is enough?** → Q6_K (better quality)
+2. **Is it a 7-8B model?** → Q4_K_M (default on Ollama) or Q5_K_M if available. Check `ollama.com/library/<model>/tags` for exact options
+3. **Is it a 7-8B model and 8K context is enough?** → Q6_K (better quality, if available)
 4. **Is it a 3-4B model?** → Q8_0 (why not? It fits easily)
 5. **Is speed critical (autocomplete, classification)?** → Smaller model + higher quant > larger model + lower quant
+
+> **Note:** Not all quantizations are available for every model on Ollama. Qwen3 only offers Q4_K_M, Q8_0, and FP16. Llama 3.1 offers the full range including Q5_K_M. Always check the model's tags page before assuming a quant exists.

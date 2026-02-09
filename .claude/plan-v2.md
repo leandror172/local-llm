@@ -33,6 +33,29 @@ Build a local AI infrastructure on RTX 3060 12GB that:
 | 0.5 | Test Qwen3-14B Q4_K_M for heavy reasoning tasks | 30 min | closing-the-gap #11 |
 | 0.6 | Pull additional models per model strategy (see `docs/model-strategy.md`) | 30 min | new |
 | 0.7 | Test structured output (JSON schema) with Ollama | 1 hr | closing-the-gap #6 |
+| 0.8 | Qwen3 thinking mode management: test `/no_think`, measure overhead, decide default | 1 hr | benchmark 0.2 finding |
+| 0.9 | Prompt decomposition for visual tasks: break monolithic prompts into staged calls | 1-2 hrs | benchmark 0.2 finding, closing-the-gap #3 |
+| 0.10 | Runtime validation: headless browser smoke test for generated HTML/JS | 1-2 hrs | benchmark 0.2 finding |
+
+### Benchmark 0.2 Findings
+
+**Run date:** 2026-02-09 | **Models:** 4 personas × 6 prompts (3 backend, 3 visual)
+
+Key discoveries that informed tasks 0.8–0.10:
+
+1. **Hidden thinking tokens (→ task 0.8):** Qwen3's `<think>` blocks are stripped from `message.content` by Ollama but counted in `eval_count`. Result: 75–88% of generated tokens are invisible reasoning. Effective visible tok/s drops from ~51 to ~8 tok/s equivalent. This caused 2/3 backend prompts to time out at 120s. Fix: either disable thinking with `/no_think` for simple tasks, or budget 5–17× more time. Need a per-task strategy.
+
+2. **Visual quality gap (→ task 0.9):** All 6 visual outputs (both models) were rated poor by frontier review. Common failures: incorrect coordinate transforms for rotation, broken collision math, variable shadowing crashes (`for (let fish of fish)`), ugly procedural shapes. Root cause: monolithic "create complete physics simulation" prompts exceed what 7–8B models handle in a single shot. Closing-the-gap technique #3 (decomposition) applies directly: break into shape drawing → physics math → animation loop → integration.
+
+3. **Silent JS crashes (→ task 0.10):** Qwen3's aquarium output crashed on frame 1 due to a trivial variable shadowing bug. No way to detect this without opening the file. A headless browser (Puppeteer/Playwright) smoke test catching console errors would flag obvious failures automatically.
+
+**Backend quality:** Merge intervals was the only near-passing output (A- from both models). Go LRU cache had a use-after-delete bug (Qwen2.5) and an overcomplicated struct (Qwen3). Java CSV parser from Qwen3 timed out even at 300s.
+
+**Performance comparison (backend, visible output only):**
+| Model | Avg tok/s | Avg tokens | Thinking overhead |
+|-------|-----------|------------|-------------------|
+| Qwen2.5-Coder-7B | 66 tok/s | 500–800 | None |
+| Qwen3-8B | 51 tok/s (raw) | 3000–9400 | 75–88% hidden |
 
 ### Closing-the-gap integration
 - Techniques #1-7 are applied here directly

@@ -1,8 +1,8 @@
 # Task Progress
 
-**Last Updated:** 2026-02-06
-**Current Phase:** All phases complete
-**Session Status:** ✅ PROJECT COMPLETE
+**Last Updated:** 2026-02-08
+**Current Phase:** Layer 0 — Foundation Upgrades
+**Session Status:** 🔧 IN PROGRESS
 
 ---
 
@@ -64,7 +64,28 @@
 
 ---
 
-## Success Criteria ✅ ALL MET
+## Layer 0: Foundation Upgrades 🔧 IN PROGRESS
+
+- [x] 0.1a Pull Tier 1 models *(qwen3:8b 5.2GB, qwen3:14b 9.3GB, qwen3:4b-q8_0 4.4GB — all in 4m 50s)*
+- [x] 0.6  Pull Tier 2+3 models *(llama3.1, nomic-embed, deepseek-r1, deepseek-coder-v2 — 7/7 in 11m 3s)*
+- [x] 0.1b Create updated my-coder on qwen3:8b *(my-coder-q3 + my-creative-coder + my-creative-coder-q3 created)*
+- [x] 0.2  Benchmark qwen3:8b vs qwen2.5-coder:7b *(4 personas × 6 prompts, 10 PASS / 2 timeout; see plan-v2.md "Benchmark 0.2 Findings")*
+- [ ] 0.3  Rewrite my-coder system prompt in skeleton format (ROLE/CONSTRAINTS/FORMAT)
+- [ ] 0.5  Test qwen3:14b for heavy reasoning tasks
+- [ ] 0.4  Create few-shot example library for common coding tasks
+- [ ] 0.7  Test structured output (JSON schema) with Ollama
+- [ ] 0.8  Qwen3 thinking mode management — test `/no_think`, measure overhead, decide default strategy
+- [ ] 0.9  Prompt decomposition for visual tasks — break monolithic prompts into staged calls
+- [ ] 0.10 Runtime validation — headless browser smoke test for generated HTML/JS
+
+**Artifacts:** `scripts/pull-layer0-models.sh` (tiered downloader), `docs/concepts-local-llm-ecosystem.md`
+**Benchmark artifacts:** `benchmarks/run-benchmark.sh`, `benchmarks/lib/`, `benchmarks/prompts/`, `benchmarks/results/` (gitignored)
+**Personas created:** `modelfiles/creative-coder-qwen3.Modelfile`, `modelfiles/creative-coder-qwen25.Modelfile`, `modelfiles/coding-assistant-qwen3.Modelfile`
+**Docs updated:** `docs/model-strategy.md` (verified Ollama tags, corrected sizes, DeepSeek MoE VRAM fix)
+
+---
+
+## Success Criteria (Phases 0-6) ✅ ALL MET
 - [x] `nvidia-smi` shows RTX 3060 in WSL2 *(12288 MiB, driver 591.74)*
 - [x] `ollama ps` shows "100% GPU" *(confirmed in Phase 5)*
 - [x] Generation speed is 40-60 tok/s *(actual: 63-67 tok/s — exceeds target)*
