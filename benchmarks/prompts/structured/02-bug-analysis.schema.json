@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "properties": {
+    "bugs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          }
+        },
+        "required": ["description", "severity"]
+      }
+    },
+    "has_bugs": {
+      "type": "boolean"
+    },
+    "fix_suggestion": {
+      "type": "string"
+    }
+  },
+  "required": ["bugs", "has_bugs", "fix_suggestion"]
+}

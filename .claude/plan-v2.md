@@ -117,6 +117,53 @@ Key discoveries that informed tasks 0.8–0.10:
 | Retry after 8B failure | 14B think:true |
 | Classification / routing | 8B or 4B |
 
+### Task 0.7 Findings: Structured Output (JSON Schema)
+
+**Run date:** 2026-02-10 | **Tool:** `benchmarks/lib/ollama-probe.py` + `benchmarks/lib/run-structured-tests.sh`
+
+**Test matrix:** 5 prompts × 2 models × 2 variants (format=on vs format=off) = 20 API calls.
+Prompts map to real use cases: expense classification (L5), bug analysis (L4), model routing (L1), function metadata (L3), number describe (baseline).
+
+**Headline: grammar-constrained decoding works flawlessly.**
+
+| | format=on (constrained) | format=off (instructed) |
+|--|------------------------|------------------------|
+| Valid JSON | **10/10 (100%)** | **0/10 (0%)** |
+| Schema-compliant | 10/10 | N/A |
+| Enum adherence | 10/10 | N/A |
+
+**Without `format`, coding personas never produce JSON.** In 8/10 free-form runs, both models wrote code (Java classes, Go functions) instead of answering the analytical question. The `format` parameter doesn't just format output — it shifts the model from code-generation mode to analysis/classification mode.
+
+**Speed impact:**
+| Model | format=on tok/s | format=off tok/s | Per-token overhead |
+|-------|----------------|-----------------|-------------------|
+| Qwen3-8B | 56.7 | 57.1 | ~0% (negligible) |
+| Qwen2.5-Coder-7B | 63.4 | 65.4 | ~3% |
+
+Per-token speed is unaffected. Qwen2.5 shows a wall-time startup overhead (5-7s on some runs, likely grammar compilation) that Qwen3 does not exhibit.
+
+**Content quality (all format=on responses correct):**
+- Both models correctly classified subway fare as "transport", extracted $2.75
+- Both identified division-by-zero bug (Qwen3: "critical", Qwen2.5: "high")
+- Both selected qwen2.5-coder-7b for Go unit test routing
+- Both produced valid Java function signatures
+- Both correctly identified 42 as even, not prime, with Hitchhiker's Guide reference
+- No hallucinations detected in any constrained response
+
+**Qwen3 vs Qwen2.5 quality difference:** Qwen3 showed slightly better reasoning — more accurate severity ratings, more internally consistent routing decisions (medium complexity + think:false vs Qwen2.5's contradictory simple + think:true).
+
+**Token efficiency:** Constrained responses are compact (43-107 tokens). Free-form responses range 11-232 tokens producing wrong output type.
+
+**Minor quirk:** Constrained decoding occasionally inserts extra whitespace/tabs before JSON commas. Valid JSON but cosmetically unusual.
+
+**Implementation rules for downstream layers:**
+1. Always use `format` for structured tasks — it is not optional for coding personas
+2. No speed penalty — safe to use in hot paths (MCP server responses, classification)
+3. Enum enforcement is reliable — define allowed values in schema, model cannot violate them
+4. Combine with `think: false` for fastest structured responses
+
+**Artifacts:** `benchmarks/prompts/structured/` (5 prompt + 5 schema files), `benchmarks/results/structured/` (10 result JSONs, gitignored), `benchmarks/lib/run-structured-tests.sh` (test runner)
+
 ### Closing-the-gap integration
 - Techniques #1-7 are applied here directly
 - Techniques #3 (decomposition), #4 (few-shot), #5 (temperature) become standard practices documented as agent-building guidelines

@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "integer"
+    },
+    "is_even": {
+      "type": "boolean"
+    },
+    "is_prime": {
+      "type": "boolean"
+    },
+    "fun_fact": {
+      "type": "string"
+    }
+  },
+  "required": ["value", "is_even", "is_prime", "fun_fact"]
+}

@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-02-10 - Session 8: Structured Output Testing (Task 0.7)
+
+### Context
+Continued Layer 0 from Session 7. Previous session (from Git Bash) designed the test suite but failed at execution due to `wsl -- bash -c` glob mangling. This session ran from WSL2 natively, picking up where the run failed.
+
+### What Was Done
+
+**Task 0.7 — Structured output (JSON schema) with Ollama:**
+- Verified all 10 files from previous session landed correctly (5 prompts + 5 schemas in `prompts/structured/`)
+- Verified probe tool extensions (`--format-file`, `--no-think`, JSON validation column)
+- Created `lib/run-structured-tests.sh` — thin wrapper for whitelisting without authorizing all Python
+- Ran full test matrix: 5 prompts × 2 models × 2 variants = 20 API calls
+- All 10 format=on responses: valid JSON, schema-compliant, correct enum values
+- All 10 format=off responses: zero JSON produced — coding personas wrote code instead
+- Key insight: `format` parameter changes model behavior qualitatively, not just formatting
+- No speed penalty: per-token throughput identical with/without constrained decoding
+- No hallucinations in any constrained response across both models
+
+### Decisions Made
+- Structured output is mandatory (not optional) for any task requiring JSON from coding personas
+- Safe to use in hot paths — no meaningful throughput impact
+- Combine with `think: false` for fastest structured responses
+
+### Artifacts Created/Modified
+| File | Action |
+|------|--------|
+| `benchmarks/lib/run-structured-tests.sh` | Created — test runner wrapper |
+| `benchmarks/results/structured/*.json` | Created — 10 result files (gitignored) |
+| `.claude/plan-v2.md` | Updated — Task 0.7 findings section |
+| `.claude/tasks.md` | Updated — 0.7 marked complete |
+| `.claude/session-context.md` | Updated — checkpoint |
+
+### Next
+- Task 0.4: Create few-shot example library for common coding tasks
+- Task 0.9: Prompt decomposition for visual tasks
+- Task 0.10: Runtime validation (headless browser smoke test)
+- 3 tasks remain to complete Layer 0
+
+---
+
 ## 2026-02-09 - Session 7: Thinking Mode, Skeleton Prompts, 14B Testing (Tasks 0.8, 0.3, 0.5)
 
 ### Context

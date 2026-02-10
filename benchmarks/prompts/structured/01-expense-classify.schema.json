@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": ["food", "transport", "housing", "entertainment", "utilities", "other"]
+    },
+    "amount": {
+      "type": "number"
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "reasoning": {
+      "type": "string"
+    }
+  },
+  "required": ["category", "amount", "confidence", "reasoning"]
+}

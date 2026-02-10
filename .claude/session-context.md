@@ -79,7 +79,7 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
 - **Plan v2:** Drafted — 10 layers of next-steps work (see `.claude/plan-v2.md`)
 - **Pre-Layer 0 prep:** Done — CLAUDE.md hardened, agent principles doc, /session-handoff skill, git housekeeping
-- **Last checkpoint:** 2026-02-09 - Layer 0 tasks 0.3, 0.5, 0.8 complete. Skeleton prompts applied to all 4 Modelfiles. Thinking mode strategy decided (default `think: false`). 14B tested (32 tok/s, ~4K context). Next: 0.7 (structured output) or 0.4 (few-shot library).
+- **Last checkpoint:** 2026-02-10 - Layer 0 task 0.7 complete (structured output). 8/11 Layer 0 tasks done. `format` param works flawlessly (10/10 valid JSON, 0 speed penalty). Coding personas require `format` — without it they write code instead of JSON. Next: 0.4 (few-shot library), 0.9 (decomposition), 0.10 (runtime validation).
 - **Environment change:** Claude Code now runs from WSL2 natively (not Git Bash). All commands are direct Linux — no `wsl -- bash -c` wrapper needed.
 
 ---
