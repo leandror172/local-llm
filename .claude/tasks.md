@@ -70,11 +70,11 @@
 - [x] 0.6  Pull Tier 2+3 models *(llama3.1, nomic-embed, deepseek-r1, deepseek-coder-v2 — 7/7 in 11m 3s)*
 - [x] 0.1b Create updated my-coder on qwen3:8b *(my-coder-q3 + my-creative-coder + my-creative-coder-q3 created)*
 - [x] 0.2  Benchmark qwen3:8b vs qwen2.5-coder:7b *(4 personas × 6 prompts, 10 PASS / 2 timeout; see plan-v2.md "Benchmark 0.2 Findings")*
-- [ ] 0.3  Rewrite my-coder system prompt in skeleton format (ROLE/CONSTRAINTS/FORMAT)
-- [ ] 0.5  Test qwen3:14b for heavy reasoning tasks
+- [x] 0.3  Rewrite system prompts in skeleton format (ROLE/CONSTRAINTS/FORMAT) — all 4 Modelfiles updated, models recreated in Ollama
+- [x] 0.5  Test qwen3:14b for heavy reasoning — 32 tok/s, more concise than 8B, ~4K context limit. Best for complex single-question tasks. See plan-v2.md "Task 0.5 Findings"
 - [ ] 0.4  Create few-shot example library for common coding tasks
 - [ ] 0.7  Test structured output (JSON schema) with Ollama
-- [ ] 0.8  Qwen3 thinking mode management — test `/no_think`, measure overhead, decide default strategy
+- [x] 0.8  Qwen3 thinking mode management — `/no_think` doesn't work, API `think: false` does. Default: off, escalate to `think: true` for complex reasoning or retries. See plan-v2.md "Task 0.8 Findings"
 - [ ] 0.9  Prompt decomposition for visual tasks — break monolithic prompts into staged calls
 - [ ] 0.10 Runtime validation — headless browser smoke test for generated HTML/JS
 

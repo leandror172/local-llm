@@ -57,6 +57,66 @@ Key discoveries that informed tasks 0.8–0.10:
 | Qwen2.5-Coder-7B | 66 tok/s | 500–800 | None |
 | Qwen3-8B | 51 tok/s (raw) | 3000–9400 | 75–88% hidden |
 
+### Task 0.8 Findings: Thinking Mode Strategy
+
+**Run date:** 2026-02-09 | **Tool:** `benchmarks/lib/ollama-probe.py`
+
+**Key discovery: `/no_think` in message content does NOT disable thinking.** Only the API-level `think: false` parameter works. `/no_think` is a soft hint the model can (and does) ignore — it still produced 247-1856 chars of hidden reasoning.
+
+**Overhead measurements (my-coder-q3, same prompt, think vs no-think):**
+| Prompt complexity | think:true tokens | think:false tokens | Speedup | Thinking % |
+|-------------------|-------------------|--------------------|---------|-----------:|
+| Simple (add two ints) | 1,152 | 425 | 3.2x | 67% |
+| Medium (merge intervals) | 6,867 | 1,201 | 6.0x | 77% |
+| Complex (LRU cache) | 12,206 | 2,006 | 6.9x | 84% |
+
+**Default strategy — `think: false` unless reasoning-critical:**
+| Task type | Mode | Rationale |
+|-----------|------|-----------|
+| Simple code gen | `think: false` | 3x faster, near-identical output |
+| Medium algorithms | `think: false` | 6x faster, adequate first-pass quality |
+| Complex architecture | `think: true` | Correctness-critical; thinking helps plan structure |
+| Classification / routing | `think: false` | Speed matters, reasoning overkill |
+| Creative / visual | `think: false` | Thinking didn't improve quality in benchmarks |
+| Retry after failure | `think: true` | Escalate with reasoning if first attempt has bugs |
+
+**One-line rule:** Default `think: false`, escalate to `think: true` for complex reasoning or retries. This aligns with the cascade pattern (closing-the-gap #14): try fast, escalate on failure.
+
+**Implementation notes:**
+- `think` is an API parameter, not a Modelfile setting — callers (MCP server, scripts) must set it
+- Two calls with `think: false` is still faster than one call with `think: true` on complex prompts
+- Qwen2.5-Coder has no thinking mode — this strategy only applies to Qwen3 models
+
+### Task 0.5 Findings: Qwen3-14B Performance
+
+**Run date:** 2026-02-09 | **Tool:** `benchmarks/lib/ollama-probe.py`
+
+**VRAM:** 10.4 GB / 12 GB with 14B loaded — context limited to ~4K tokens.
+
+**14B vs 8B on complex prompt (LRU cache):**
+| Model | Mode | Tokens | Wall time | tok/s | Content chars |
+|-------|------|--------|-----------|-------|---------------|
+| Qwen3-8B | think:false | 2,006 | 36s | 56 | 6,807 |
+| Qwen3-8B | think:true | 12,206 | 252s | 49 | 8,003 |
+| Qwen3-14B | think:false | 1,726 | 54s | 32 | 5,614 |
+| Qwen3-14B | think:true | 7,616 | 257s | 30 | 5,252 |
+
+**Key findings:**
+- 14B is more concise (14% fewer tokens, tighter code)
+- 14B reasons more efficiently (26K vs 43K chars of thinking — 40% less)
+- Speed: 32 tok/s (1.7x slower than 8B) — manageable for single-question use
+- VRAM constraint: ~4K context max, unsuitable for multi-file or long conversations
+
+**Model selection rule:**
+| Scenario | Model |
+|----------|-------|
+| Quick code gen, boilerplate | 8B think:false |
+| Medium algorithms | 8B think:false |
+| Complex architecture | 14B think:false |
+| Multi-file / long context | 8B (14B can't fit) |
+| Retry after 8B failure | 14B think:true |
+| Classification / routing | 8B or 4B |
+
 ### Closing-the-gap integration
 - Techniques #1-7 are applied here directly
 - Techniques #3 (decomposition), #4 (few-shot), #5 (temperature) become standard practices documented as agent-building guidelines

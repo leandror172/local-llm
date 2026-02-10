@@ -5,6 +5,62 @@
 
 ---
 
+## 2026-02-09 - Session 7: Thinking Mode, Skeleton Prompts, 14B Testing (Tasks 0.8, 0.3, 0.5)
+
+### Context
+Continued Layer 0 from Session 6 (benchmark complete). Picked up at task 0.8 (thinking mode management), which was the highest-impact finding from the benchmark.
+
+### What Was Done
+
+**Task 0.8 — Qwen3 thinking mode management:**
+- Discovered `/no_think` in user messages does NOT disable thinking (soft hint only, model ignores it)
+- Only the API-level `think: false` parameter truly suppresses reasoning
+- Measured overhead: 3.2x (simple) to 6.9x (complex) speedup with `think: false`
+- Decided default strategy: `think: false` everywhere, escalate to `think: true` for complex reasoning or retries
+- Trivial example: 674 tokens / 11.8s with thinking vs 3 tokens / 0.04s without — 225x difference
+
+**Task 0.3 — Skeleton prompt rewrite:**
+- Rewrote all 4 Modelfiles (my-coder, my-coder-q3, my-creative-coder, my-creative-coder-q3) from soft-language prose to ROLE/CONSTRAINTS/FORMAT skeleton format
+- Each MUST/MUST NOT constraint targets a real failure from benchmark 0.2 (hallucinated imports, over-engineering, variable shadowing, incomplete code)
+- ~95 tokens per prompt (under 200-token ceiling from closing-the-gap spec)
+- Recreated all 4 models in Ollama, smoke-tested
+
+**Task 0.5 — Qwen3-14B testing:**
+- 14B loads on 12GB VRAM (10.4 GB used), but context limited to ~4K tokens
+- 32 tok/s (1.7x slower than 8B's 56 tok/s)
+- 14B is more concise: 14% fewer tokens on same prompt, 40% less thinking
+- Best for: complex single-question tasks. Not for multi-file/long context work
+
+**Tooling:**
+- Saved `benchmarks/lib/ollama-probe.py` — reusable A/B test tool for Ollama API parameters
+- Addresses security concern: saved scripts are safe to "don't ask again" vs inline `python3 -c` which whitelists all Python
+
+### Decisions Made
+- Default thinking mode: `think: false` for all tasks, escalate to `think: true` for complex or retries
+- 14B role: escalation model for complex single questions, not general-purpose (VRAM limit)
+- Tooling pattern: save scripts to `benchmarks/lib/` instead of inline Python for security and reuse
+
+### Known Issues
+- Probe tool only varies one parameter at a time — can't cross model × think in single run
+
+### Artifacts Created/Modified
+| File | Action |
+|------|--------|
+| `benchmarks/lib/ollama-probe.py` | Created — A/B test tool |
+| `modelfiles/coding-assistant.Modelfile` | Rewritten — skeleton format |
+| `modelfiles/coding-assistant-qwen3.Modelfile` | Rewritten — skeleton format |
+| `modelfiles/creative-coder-qwen25.Modelfile` | Rewritten — skeleton format |
+| `modelfiles/creative-coder-qwen3.Modelfile` | Rewritten — skeleton format |
+| `.claude/plan-v2.md` | Updated — 0.8 + 0.5 findings sections |
+| `.claude/tasks.md` | Updated — 0.3, 0.5, 0.8 marked complete |
+
+### Next
+- Task 0.7: Test structured output (JSON schema) with Ollama — foundational for MCP server (Layer 1)
+- Task 0.4: Create few-shot example library
+- Tasks 0.9, 0.10: Visual decomposition and runtime validation
+
+---
+
 ## 2026-02-09 - Session 6: Benchmark Qwen3-8B vs Qwen2.5-Coder-7B (Task 0.2)
 
 ### Context
