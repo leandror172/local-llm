@@ -79,7 +79,7 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
 - **Plan v2:** Drafted — 10 layers of next-steps work (see `.claude/plan-v2.md`)
 - **Pre-Layer 0 prep:** Done — CLAUDE.md hardened, agent principles doc, /session-handoff skill, git housekeeping
-- **Last checkpoint:** 2026-02-10 - Layer 0 task 0.7 complete (structured output). 8/11 Layer 0 tasks done. `format` param works flawlessly (10/10 valid JSON, 0 speed penalty). Coding personas require `format` — without it they write code instead of JSON. Next: 0.4 (few-shot library), 0.9 (decomposition), 0.10 (runtime validation).
+- **Last checkpoint:** 2026-02-10 - Layer 0 tasks 0.7 + 0.9 complete. 9/11 Layer 0 tasks done. Decomposition improves feature completeness but const-vs-let bugs dominate (4/6 runs). Runtime validation (0.10) is the clear next step. Remaining: 0.4 (few-shot library), 0.10 (runtime validation).
 - **Environment change:** Claude Code now runs from WSL2 natively (not Git Bash). All commands are direct Linux — no `wsl -- bash -c` wrapper needed.
 
 ---

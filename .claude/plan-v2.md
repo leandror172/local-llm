@@ -164,6 +164,52 @@ Per-token speed is unaffected. Qwen2.5 shows a wall-time startup overhead (5-7s 
 
 **Artifacts:** `benchmarks/prompts/structured/` (5 prompt + 5 schema files), `benchmarks/results/structured/` (10 result JSONs, gitignored), `benchmarks/lib/run-structured-tests.sh` (test runner)
 
+### Task 0.9 Findings: Prompt Decomposition for Visual Tasks
+
+**Run date:** 2026-02-10 | **Tool:** `benchmarks/lib/decomposed-run.py` + `benchmarks/lib/run-decomposed.sh`
+
+**Approach:** Incremental build — each stage produces a complete runnable HTML file, adding one feature. Previous stage's output becomes context for the next. Tested two variants: v1 (prose instructions) and v2 (explicit math formulas with step-by-step algorithms).
+
+**Test matrix:** 3 visual prompts (bouncing ball 3 stages, heptagon 3 stages, aquarium 3 stages) × 2 models × v1/v2 variants for bouncing ball.
+
+**Results summary (decomposed grade vs monolithic grade):**
+
+| Prompt | Model | Monolithic | Decomposed | Change |
+|--------|-------|-----------|------------|--------|
+| Bouncing Ball v2 | Qwen3-8B | C+ | D | ↓ (const crash, sign errors) |
+| Bouncing Ball v2 | Qwen2.5-7B | D+ | C- | ↑ (follows 7-step structure) |
+| Heptagon | Qwen3-8B | C+ | B+ | ↑↑ (edge-normal works, balls work) |
+| Heptagon | Qwen2.5-7B | D | C | ↑ (algorithm correct, const crash) |
+| Aquarium | Qwen3-8B | C+ | C | ~ (fish=ellipse, scope bugs) |
+| Aquarium | Qwen2.5-7B | D+ | C- | ↑ (fish+tail+eye, bubbles spawn) |
+
+**What decomposition consistently fixes:**
+1. Feature completeness — missing elements (heptagon drawing, bubble spawning, ball numbers) now appear
+2. Persistent state — pebbles, light rays no longer re-randomized per frame
+3. Shape quality — fish upgraded from triangles to ellipse bodies with fins and eyes
+4. Algorithm structure — explicit formulas get followed as a sequence
+
+**What decomposition doesn't fix:**
+1. `const` vs `let` — systematic pattern: models default to `const` for formula variables, crash when prompt shows mutation (`/=`). Appears in 4/6 formula-heavy runs
+2. Coordinate-space confusion — bouncing ball collision response still wrong in both v1 and v2
+3. Variable scoping — shadowing, undefined references in complex multi-stage outputs
+
+**Key insight: decomposition reduces bug severity.** Monolithic bugs were fundamental design errors (wrong algorithm, missing features). Decomposed bugs are implementation/transcription errors (const vs let, sign errors, scope). The latter are detectable by runtime validation — strongly motivating task 0.10.
+
+**Model behavior difference with explicit formulas:**
+- Qwen3 "optimizes" formulas (creates new variables like `nX = normalX / len` — avoids const crash but may corrupt signs)
+- Qwen2.5 copies literally (const + /= = crash, but formulas themselves are correct)
+- Neither approach is universally better — depends on whether the formula uses mutation
+
+**Practical rules for prompt decomposition:**
+1. 3 stages is the sweet spot for 7-8B models (more stages = more context growth)
+2. Explicit formulas help with algorithm structure but use `let` in examples, never show `/=` on declared variables
+3. Each stage prompt should say "modify the file above" to prevent rewrites from scratch
+4. `--start N --inject file.html` allows retrying individual stages without rerunning the whole pipeline
+5. Runtime validation (headless browser) would catch the #1 remaining bug pattern (const crash) instantly
+
+**Artifacts:** `benchmarks/prompts/decomposed/` (3 pipelines, 9 stage prompts + v2 variant), `benchmarks/lib/decomposed-run.py` (pipeline runner), `benchmarks/lib/run-decomposed.sh` (wrapper), `benchmarks/results/decomposed/` (6 pipeline runs, gitignored)
+
 ### Closing-the-gap integration
 - Techniques #1-7 are applied here directly
 - Techniques #3 (decomposition), #4 (few-shot), #5 (temperature) become standard practices documented as agent-building guidelines

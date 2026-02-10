@@ -5,6 +5,57 @@
 
 ---
 
+## 2026-02-10 - Session 8 (cont.): Prompt Decomposition (Task 0.9)
+
+### Context
+Continued from task 0.7 completion. Designed and tested incremental-build decomposition for all 3 visual prompts from benchmark 0.2.
+
+### What Was Done
+
+**Task 0.9 — Prompt decomposition for visual tasks:**
+- Designed 3 decomposed pipelines (bouncing ball, heptagon, aquarium), each 3 stages
+- Built `lib/decomposed-run.py` — sequential pipeline runner with `{{PREVIOUS_OUTPUT}}` injection
+- Built `lib/run-decomposed.sh` — whitelistable wrapper
+- Ran bouncing ball v1 (prose) + v2 (explicit math) × 2 models = 4 pipeline runs
+- Ran heptagon + aquarium × 2 models = 4 pipeline runs
+- Total: 8 pipeline runs, 24 stage executions, ~30 Ollama API calls
+
+**Key findings:**
+- Decomposition fixes feature completeness: heptagon drawn, bubbles spawn, fish have body+tail+eye
+- Decomposition fixes persistent state: pebbles/light rays no longer re-randomize per frame
+- Bug severity reduces: from "wrong algorithm" to "const vs let" and "sign errors"
+- `const` reassignment crash is the #1 remaining pattern (4/6 formula-heavy runs)
+- Qwen3 "optimizes" formulas (avoids const crash but may corrupt signs)
+- Qwen2.5 copies literally (formulas correct but const+/= = crash)
+- Best result: Qwen3 heptagon D→B+ (edge-normal collision works, 20 balls with numbers)
+- Runtime validation (task 0.10) would catch the dominant remaining bug pattern instantly
+
+### Decisions Made
+- 3 stages per visual prompt is the sweet spot for 7-8B models
+- Explicit formulas should use `let` in examples, never show mutation patterns on declared variables
+- Task 0.10 (runtime validation) is the clear next priority — closes the loop on const crashes
+
+### Artifacts Created/Modified
+| File | Action |
+|------|--------|
+| `benchmarks/lib/decomposed-run.py` | Created — pipeline runner |
+| `benchmarks/lib/run-decomposed.sh` | Created — whitelistable wrapper |
+| `benchmarks/prompts/decomposed/01-bouncing-ball/` | Created — 3 stages + v2 variant |
+| `benchmarks/prompts/decomposed/01-bouncing-ball-v2/` | Created — explicit math variant |
+| `benchmarks/prompts/decomposed/02-heptagon-balls/` | Created — 3 stages |
+| `benchmarks/prompts/decomposed/03-aquarium/` | Created — 3 stages |
+| `benchmarks/results/decomposed/` | Created — 8 pipeline runs (gitignored) |
+| `.claude/plan-v2.md` | Updated — Task 0.9 findings |
+| `.claude/tasks.md` | Updated — 0.9 marked complete |
+| `.claude/session-context.md` | Updated — checkpoint |
+
+### Next
+- Task 0.10: Runtime validation (headless browser smoke test) — catches const crashes, undefined vars
+- Task 0.4: Few-shot example library
+- 2 tasks remain to complete Layer 0
+
+---
+
 ## 2026-02-10 - Session 8: Structured Output Testing (Task 0.7)
 
 ### Context
