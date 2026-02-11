@@ -81,6 +81,22 @@ def validate_html(html_path):
         return None
 
 
+def validate_code(code_path):
+    """Run compiler/linter validation on a code file. Returns dict or None."""
+    script = os.path.join(os.path.dirname(__file__), 'validate-code.py')
+    if not os.path.exists(script):
+        return None
+    try:
+        result = subprocess.run(
+            ['python3', script, '--quiet', code_path],
+            capture_output=True, text=True, timeout=60
+        )
+        data = json.loads(result.stdout)
+        return data[0] if data else None
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        return None
+
+
 def main():
     p = argparse.ArgumentParser(description='Run decomposed visual prompt pipeline')
     p.add_argument('--model', required=True, help='Ollama model name')
@@ -166,10 +182,13 @@ def main():
             with open(raw_path, 'w') as f:
                 f.write(result['content'])
 
-            # Optional validation
+            # Optional validation (dispatch by file extension)
             validation = None
             if args.validate:
-                validation = validate_html(html_path)
+                if html_path.endswith('.go'):
+                    validation = validate_code(html_path)
+                else:
+                    validation = validate_html(html_path)
                 if validation:
                     vstatus = validation['status'].upper()
                     verrs = validation['error_count']

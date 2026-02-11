@@ -564,6 +564,27 @@ main() {
                     IFS='|' read -r extracted_lines detected_lang ext <<< "$extract_result"
                     extracted_file="code/${model}--${PROMPT_ID}${ext}"
                     log "  Extracted: ${extracted_file} (${extracted_lines} lines, ${detected_lang})"
+
+                    # Runtime validation for Go files
+                    local code_out="${RESULTS_DIR}/${extracted_file}"
+                    if [ "$VALIDATE" = true ] && [ "$ext" = ".go" ] && [ -f "$code_out" ]; then
+                        local val_json
+                        val_json=$(python3 "${LIB_DIR}/validate-code.py" --quiet "$code_out" 2>/dev/null) || true
+                        if [ -n "$val_json" ]; then
+                            validation_status=$(echo "$val_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['status'])" 2>/dev/null) || true
+                            local val_errors
+                            val_errors=$(echo "$val_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['error_count'])" 2>/dev/null) || true
+                            local val_out="${RESULTS_DIR}/code/${model}--${PROMPT_ID}-validation.json"
+                            echo "$val_json" | python3 -c "import json,sys; json.dump(json.load(sys.stdin),open('${val_out}','w'),indent=2)" 2>/dev/null
+                            if [ "$validation_status" = "pass" ]; then
+                                log "  Validation: PASS"
+                            else
+                                log "  Validation: FAIL (${val_errors} error(s))"
+                            fi
+                        else
+                            log "  Validation: SKIPPED (validator unavailable)"
+                        fi
+                    fi
                 else
                     log "  [WARN] No code block extracted"
                 fi
