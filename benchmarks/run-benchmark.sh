@@ -60,6 +60,7 @@ DRY_RUN=false
 SKIP_EXISTING=true
 AUTO_OPEN=false
 WARMUP=true
+VALIDATE=false
 
 show_help() {
     echo "Usage: $(basename "$0") [OPTIONS]"
@@ -71,6 +72,7 @@ show_help() {
     echo "  --no-skip                Re-run even if results exist"
     echo "  --open                   Auto-open HTML results in browser"
     echo "  --no-warmup              Skip model warmup (use if model already loaded)"
+    echo "  --validate               Run headless browser validation on extracted HTML"
     echo "  -h, --help               Show this help"
 }
 
@@ -82,6 +84,7 @@ while [[ $# -gt 0 ]]; do
         --no-skip)    SKIP_EXISTING=false; shift ;;
         --open)       AUTO_OPEN=true; shift ;;
         --no-warmup)  WARMUP=false; shift ;;
+        --validate)   VALIDATE=true; shift ;;
         -h|--help)    show_help; exit 0 ;;
         *)            echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -519,6 +522,7 @@ main() {
             local extracted_lines=0
             local html_valid=""
 
+            local validation_status=""
             if [ "$category" = "visual" ]; then
                 local html_out="${RESULTS_DIR}/html/${model}--${PROMPT_ID}.html"
                 local extract_result
@@ -528,6 +532,26 @@ main() {
                     IFS='|' read -r extracted_lines html_valid <<< "$extract_result"
                     extracted_file="html/${model}--${PROMPT_ID}.html"
                     log "  Extracted: ${extracted_file} (${extracted_lines} lines)"
+
+                    # Runtime validation
+                    if [ "$VALIDATE" = true ] && [ -f "$html_out" ]; then
+                        local val_json
+                        val_json=$(node "${LIB_DIR}/validate-html.js" --quiet "$html_out" 2>/dev/null) || true
+                        if [ -n "$val_json" ]; then
+                            validation_status=$(echo "$val_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['status'])" 2>/dev/null) || true
+                            local val_errors
+                            val_errors=$(echo "$val_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['error_count'])" 2>/dev/null) || true
+                            local val_out="${RESULTS_DIR}/html/${model}--${PROMPT_ID}-validation.json"
+                            echo "$val_json" | python3 -c "import json,sys; json.dump(json.load(sys.stdin),open('${val_out}','w'),indent=2)" 2>/dev/null
+                            if [ "$validation_status" = "pass" ]; then
+                                log "  Validation: PASS"
+                            else
+                                log "  Validation: FAIL (${val_errors} error(s))"
+                            fi
+                        else
+                            log "  Validation: SKIPPED (validator unavailable)"
+                        fi
+                    fi
                 else
                     log "  [WARN] No valid HTML extracted"
                 fi
@@ -552,7 +576,9 @@ main() {
             local status="success"
             [ -z "$extracted_file" ] && status="success_no_extract"
 
-            add_summary_entry "{\"model\":\"${model}\",\"prompt_id\":\"${PROMPT_ID}\",\"category\":\"${category}\",\"description\":\"${PROMPT_DESC}\",\"status\":\"${status}\",\"eval_count\":${ec},\"tok_s\":${toks},\"prompt_eval_count\":${pec},\"total_seconds\":${total},\"load_seconds\":${load},\"think_tokens\":${think_chars},\"extracted_file\":\"${extracted_file}\",\"extracted_lines\":${extracted_lines:-0}}"
+            local val_field=""
+            [ -n "$validation_status" ] && val_field=",\"validation_status\":\"${validation_status}\""
+            add_summary_entry "{\"model\":\"${model}\",\"prompt_id\":\"${PROMPT_ID}\",\"category\":\"${category}\",\"description\":\"${PROMPT_DESC}\",\"status\":\"${status}\",\"eval_count\":${ec},\"tok_s\":${toks},\"prompt_eval_count\":${pec},\"total_seconds\":${total},\"load_seconds\":${load},\"think_tokens\":${think_chars},\"extracted_file\":\"${extracted_file}\",\"extracted_lines\":${extracted_lines:-0}${val_field}}"
         done
 
         # Model summary

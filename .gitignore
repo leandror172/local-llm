@@ -24,3 +24,6 @@ tmp/
 
 # Benchmark results (large JSON + generated HTML, regenerated on each run)
 benchmarks/results/
+
+# Node.js dependencies (Puppeteer for HTML validation)
+benchmarks/node_modules/

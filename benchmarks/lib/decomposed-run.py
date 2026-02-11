@@ -8,7 +8,7 @@ Usage:
   decomposed-run.py --model my-creative-coder-q3 --stages prompts/decomposed/01-bouncing-ball/ --no-think
 """
 
-import argparse, json, urllib.request, time, re, sys, os, glob
+import argparse, json, urllib.request, time, re, sys, os, glob, subprocess
 
 
 def call_ollama(base_url, model, prompt, timeout, think):
@@ -65,6 +65,22 @@ def extract_html(content):
     return content.strip()
 
 
+def validate_html(html_path):
+    """Run headless browser validation on an HTML file. Returns dict or None."""
+    script = os.path.join(os.path.dirname(__file__), 'validate-html.js')
+    if not os.path.exists(script):
+        return None
+    try:
+        result = subprocess.run(
+            ['node', script, '--quiet', html_path],
+            capture_output=True, text=True, timeout=30
+        )
+        data = json.loads(result.stdout)
+        return data[0] if data else None
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        return None
+
+
 def main():
     p = argparse.ArgumentParser(description='Run decomposed visual prompt pipeline')
     p.add_argument('--model', required=True, help='Ollama model name')
@@ -75,6 +91,8 @@ def main():
     p.add_argument('--url', default='http://localhost:11434', help='Ollama API URL')
     p.add_argument('--output-dir', help='Output directory (default: results/decomposed/<timestamp>)')
     p.add_argument('--no-think', action='store_true', help='Disable thinking mode')
+    p.add_argument('--validate', action='store_true',
+                   help='Run headless browser validation on each stage HTML')
     args = p.parse_args()
 
     # Find stage files
@@ -148,27 +166,50 @@ def main():
             with open(raw_path, 'w') as f:
                 f.write(result['content'])
 
+            # Optional validation
+            validation = None
+            if args.validate:
+                validation = validate_html(html_path)
+                if validation:
+                    vstatus = validation['status'].upper()
+                    verrs = validation['error_count']
+                    print(f'    Validation: {vstatus}' +
+                          (f' ({verrs} error(s): {validation["errors"][0]["text"]})' if verrs else ''))
+                else:
+                    print(f'    Validation: SKIPPED (validator unavailable)')
+
+            # Include validation in metadata
+            meta = {
+                'stage': stage_num,
+                'model': args.model,
+                'prompt_file': stage_file,
+                'prompt_chars': len(prompt),
+                'injected_chars': len(previous_html),
+                **{k: v for k, v in result.items() if k != 'content'},
+                'html_chars': len(html),
+            }
+            if validation is not None:
+                meta['validation_status'] = validation['status']
+                meta['validation_errors'] = validation['errors']
+                meta['validation_warnings'] = validation['warnings']
+
             json_path = os.path.join(out_dir, f'stage-{stage_num}-meta.json')
             with open(json_path, 'w') as f:
-                json.dump({
-                    'stage': stage_num,
-                    'model': args.model,
-                    'prompt_file': stage_file,
-                    'prompt_chars': len(prompt),
-                    'injected_chars': len(previous_html),
-                    **{k: v for k, v in result.items() if k != 'content'},
-                    'html_chars': len(html),
-                }, f, indent=2)
+                json.dump(meta, f, indent=2)
 
             previous_html = html
-            summary.append({
+            stage_summary = {
                 'stage': stage_num,
                 'status': 'OK',
                 'tokens': result['eval_count'],
                 'wall_time': result['wall_time'],
                 'tok_per_sec': result['tok_per_sec'],
                 'html_chars': len(html),
-            })
+            }
+            if validation is not None:
+                stage_summary['validation_status'] = validation['status']
+                stage_summary['validation_error_count'] = validation['error_count']
+            summary.append(stage_summary)
             print(f'    Saved: {html_path}')
 
         except Exception as e:
@@ -183,12 +224,21 @@ def main():
         print()
 
     # Summary
-    print(f'\n{"Stage":<8} {"Status":<8} {"Tokens":>8} {"Wall(s)":>8} {"tok/s":>7} {"HTML":>8}')
-    print('-' * 55)
+    has_validation = any('validation_status' in s for s in summary)
+    if has_validation:
+        print(f'\n{"Stage":<8} {"Status":<8} {"Tokens":>8} {"Wall(s)":>8} {"tok/s":>7} {"HTML":>8} {"Valid":>6}')
+        print('-' * 63)
+    else:
+        print(f'\n{"Stage":<8} {"Status":<8} {"Tokens":>8} {"Wall(s)":>8} {"tok/s":>7} {"HTML":>8}')
+        print('-' * 55)
     for s in summary:
         if s['status'] == 'OK':
-            print(f'{s["stage"]:<8} {"OK":<8} {s["tokens"]:>8} {s["wall_time"]:>8} '
-                  f'{s["tok_per_sec"]:>7} {s["html_chars"]:>8}')
+            line = (f'{s["stage"]:<8} {"OK":<8} {s["tokens"]:>8} {s["wall_time"]:>8} '
+                    f'{s["tok_per_sec"]:>7} {s["html_chars"]:>8}')
+            if has_validation:
+                vs = s.get('validation_status', '?')
+                line += f' {vs:>6}'
+            print(line)
         else:
             print(f'{s["stage"]:<8} {"FAIL":<8} {s.get("error", "")[:40]}')
 
