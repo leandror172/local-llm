@@ -79,7 +79,7 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
 - **Plan v2:** Drafted — 10 layers of next-steps work (see `.claude/plan-v2.md`)
 - **Pre-Layer 0 prep:** Done — CLAUDE.md hardened, agent principles doc, /session-handoff skill, git housekeeping
-- **Last checkpoint:** 2026-02-10 - Layer 0 tasks 0.7 + 0.9 complete. 9/11 Layer 0 tasks done. Decomposition improves feature completeness but const-vs-let bugs dominate (4/6 runs). Runtime validation (0.10) is the clear next step. Remaining: 0.4 (few-shot library), 0.10 (runtime validation).
+- **Last checkpoint:** 2026-02-11 - Task 0.10a (frontend validation) complete. 10/12 Layer 0 tasks done. Remaining: 0.4 (few-shot library), 0.10b (Go/Java compile + static analysis — needs toolchain setup). Uncommitted changes ready for commit.
 - **Environment change:** Claude Code now runs from WSL2 natively (not Git Bash). All commands are direct Linux — no `wsl -- bash -c` wrapper needed.
 
 ---
@@ -140,6 +140,8 @@ When starting a new session:
 5. `ollama create` can't read Modelfiles from `/mnt/` directly — copy to WSL home first, or use `wsl -- bash -c` with native paths
 6. `ollama run --verbose` through `wsl` pipes emits raw ANSI escape codes — use the API (`/api/chat` with `stream: false`) for clean programmatic output
 7. Docker + native Ollama conflict on port 11434 — stop one before starting the other
+8. Puppeteer's bundled Chromium needs ~12 system libs (libnspr4, libnss3, etc.) — installed in WSL2. Windows Chrome cannot be driven across WSL2 boundary.
+9. Always invoke benchmark Python scripts via bash wrappers (`lib/run-*.sh`), not `python3 lib/*.py` directly — wrappers are safe to whitelist
 
 ---
 
@@ -155,6 +157,7 @@ When starting a new session:
 For detailed context on any session, check the handoff files:
 - `session-handoff-2026-02-03.md` - Phase 0-2 completion, ready for Phase 3
 - `session-handoff-2026-02-06.md` - Phase 3-5 completion, ready for Phase 6
+- `session-handoff-2026-02-11.md` - Task 0.10a (frontend validation) complete
 
 ## Artifacts Created (Phase 3, 2026-02-06)
 

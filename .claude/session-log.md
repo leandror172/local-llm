@@ -1,7 +1,110 @@
 # Session Log
 
-**Current Session:** 2026-02-09
+**Current Session:** 2026-02-11
 **Phase:** Layer 0 — Foundation Upgrades
+
+---
+
+## 2026-02-11 - Session 10: Frontend Runtime Validation (Task 0.10a)
+
+### Context
+Resumed from Session 9 (planning session). Executed the approved plan for Task 0.10a — headless browser smoke test for LLM-generated HTML/JS outputs.
+
+### What Was Done
+
+**Task 0.10a — Frontend runtime validation (Puppeteer):**
+- Created `benchmarks/lib/validate-html.js` (~180 lines) — headless Chromium validation
+  - Opens HTML files via `file://`, listens for `console.error`, `pageerror`, `requestfailed`
+  - Waits configurable duration (default 2s), outputs JSON array to stdout
+  - Supports `--wait`, `--quiet`, `--chrome-path` flags
+  - Exit codes: 0=all pass, 1=any fail, 2=tool error (missing file, Chromium launch failure)
+- Created `benchmarks/lib/run-validate-html.sh` — whitelistable bash wrapper (follows existing pattern)
+- Created `benchmarks/package.json` with Puppeteer dependency (scoped to benchmarks/)
+- Added `benchmarks/node_modules/` to `.gitignore`
+- Installed Puppeteer system deps in WSL2 (libnspr4, libnss3, etc.) via user's sudo
+- Integrated `--validate` flag into `benchmarks/lib/decomposed-run.py`:
+  - Calls validation after saving each stage HTML
+  - Includes `validation_status`, `validation_errors` in stage-N-meta.json and summary.json
+  - Summary table shows validation column when `--validate` active
+- Integrated `--validate` flag into `benchmarks/run-benchmark.sh`:
+  - Calls validation after HTML extraction for visual category
+  - Saves `{model}--{prompt}-validation.json` alongside HTML
+  - Includes `validation_status` in summary entry
+
+**Batch test results (30 HTML files):**
+- 22 pass, 8 fail
+- All exit codes verified: 0 (pass), 1 (fail), 2 (tool error)
+- Bug types caught:
+  - `Assignment to constant variable.` — const reassignment (#1 bug from Task 0.9)
+  - `Cannot access 'fish' before initialization` — variable shadowing
+  - `dt is not defined` / `fish is not defined` — undefined references
+- Pattern: stage-1 files 100% pass (simple scaffolding); bugs cluster in stage-2+ (animation logic)
+
+### Decisions Made
+- Puppeteer over Playwright (lighter for our narrow use case: open page, listen, close)
+- `--validate` is opt-in, not default (adds ~2s per file, requires Node.js deps)
+- Windows Chrome cannot be driven by Puppeteer across WSL2 boundary — must use bundled Chromium
+- Always invoke Python scripts via bash wrappers (user preference for whitelisting safety)
+
+### Artifacts Created/Modified
+| File | Action |
+|------|--------|
+| `benchmarks/lib/validate-html.js` | Created — core validation script |
+| `benchmarks/lib/run-validate-html.sh` | Created — whitelistable wrapper |
+| `benchmarks/package.json` | Created — Puppeteer dependency |
+| `benchmarks/package-lock.json` | Created — npm lock file |
+| `.gitignore` | Modified — added `benchmarks/node_modules/` |
+| `benchmarks/lib/decomposed-run.py` | Modified — `--validate` flag + validation integration |
+| `benchmarks/run-benchmark.sh` | Modified — `--validate` flag + validation integration |
+
+### Next
+- Commit Task 0.10a changes
+- Task 0.10b: Backend validation (Go/Java toolchain setup + compilation gate)
+- Task 0.4: Few-shot example library
+- 2 tasks remain to complete Layer 0
+
+---
+
+## 2026-02-11 - Session 9: Planning & Token Economics
+
+### Context
+Resumed from Session 8 completion. Layer 0 at 9/11 tasks. Discussed Claude Pro usage economics and expanded Task 0.10 scope.
+
+### What Was Done
+
+**Token usage analysis:**
+- Evaluated Claude Pro plan usage patterns (36% weekly, resets Monday)
+- Analyzed Anthropic's R$275 extra usage promo (must claim by Feb 16, 60-day expiration from claim date)
+- Recommendation: activate immediately — credits only consumed on overage, no downside to early activation
+
+**Task 0.10 expansion — backend validation:**
+- Discussed equivalent of headless browser testing for backend code (Go/Java)
+- Identified validation hierarchy: compilation → static analysis → lint → runtime tests
+- Split Task 0.10 into:
+  - **0.10a** — Frontend: headless browser smoke test for HTML/JS (original scope)
+  - **0.10b** — Backend: `go build` + `go vet` / `javac` gate for generated code
+- Key insight: for compiled languages, the compiler IS the first-tier runtime validator — catches the exact `const` crash pattern from Task 0.9
+- Challenge: LLM output is snippets, not projects — validation wrapper must scaffold into compilable units
+- Prerequisite: Go and Java toolchains need setup in WSL2
+
+### Decisions Made
+- Task 0.10 split into 0.10a (frontend) + 0.10b (backend)
+- Go toolchain is the priority target for 0.10b (self-contained, fast, structured errors)
+- Layer 0 task count: 9/12 complete (was 9/11 before split)
+
+### Artifacts Created/Modified
+| File | Action |
+|------|--------|
+| `.claude/plan-v2.md` | Updated — 0.10 split, backend validation rationale added |
+| `.claude/tasks.md` | Updated — 0.10a/0.10b checklist items |
+| `.claude/session-context.md` | Updated — checkpoint |
+| `.claude/session-log.md` | Updated — this entry |
+
+### Next
+- Task 0.10a: Headless browser smoke test (Puppeteer/Playwright)
+- Task 0.10b: Go/Java toolchain setup + compilation gate
+- Task 0.4: Few-shot example library
+- 3 tasks remain to complete Layer 0
 
 ---
 

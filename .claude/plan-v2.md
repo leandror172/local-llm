@@ -35,7 +35,8 @@ Build a local AI infrastructure on RTX 3060 12GB that:
 | 0.7 | Test structured output (JSON schema) with Ollama | 1 hr | closing-the-gap #6 |
 | 0.8 | Qwen3 thinking mode management: test `/no_think`, measure overhead, decide default | 1 hr | benchmark 0.2 finding |
 | 0.9 | Prompt decomposition for visual tasks: break monolithic prompts into staged calls | 1-2 hrs | benchmark 0.2 finding, closing-the-gap #3 |
-| 0.10 | Runtime validation: headless browser smoke test for generated HTML/JS | 1-2 hrs | benchmark 0.2 finding |
+| 0.10a | Runtime validation (frontend): headless browser smoke test for generated HTML/JS | 1-2 hrs | benchmark 0.2 finding |
+| 0.10b | Runtime validation (backend): compilation + static analysis gate for generated Go/Java | 1-2 hrs | task 0.9 finding |
 
 ### Benchmark 0.2 Findings
 
@@ -47,7 +48,9 @@ Key discoveries that informed tasks 0.8–0.10:
 
 2. **Visual quality gap (→ task 0.9):** All 6 visual outputs (both models) were rated poor by frontier review. Common failures: incorrect coordinate transforms for rotation, broken collision math, variable shadowing crashes (`for (let fish of fish)`), ugly procedural shapes. Root cause: monolithic "create complete physics simulation" prompts exceed what 7–8B models handle in a single shot. Closing-the-gap technique #3 (decomposition) applies directly: break into shape drawing → physics math → animation loop → integration.
 
-3. **Silent JS crashes (→ task 0.10):** Qwen3's aquarium output crashed on frame 1 due to a trivial variable shadowing bug. No way to detect this without opening the file. A headless browser (Puppeteer/Playwright) smoke test catching console errors would flag obvious failures automatically.
+3. **Silent JS crashes (→ task 0.10a):** Qwen3's aquarium output crashed on frame 1 due to a trivial variable shadowing bug. No way to detect this without opening the file. A headless browser (Puppeteer/Playwright) smoke test catching console errors would flag obvious failures automatically.
+
+4. **Backend code validation (→ task 0.10b):** The same class of bugs (const reassignment, undefined variables, type errors) that crash JS at runtime would be caught at compile time in Go/Java. Since `my-coder`'s primary output is backend code, a compilation + static analysis gate (`go build`, `go vet`, `javac`) provides equivalent safety for generated Go/Java snippets. Requires scaffolding: wrap snippet in compilable unit (package declaration, imports, main if needed).
 
 **Backend quality:** Merge intervals was the only near-passing output (A- from both models). Go LRU cache had a use-after-delete bug (Qwen2.5) and an overcomplicated struct (Qwen3). Java CSV parser from Qwen3 timed out even at 300s.
 
@@ -206,7 +209,7 @@ Per-token speed is unaffected. Qwen2.5 shows a wall-time startup overhead (5-7s 
 2. Explicit formulas help with algorithm structure but use `let` in examples, never show `/=` on declared variables
 3. Each stage prompt should say "modify the file above" to prevent rewrites from scratch
 4. `--start N --inject file.html` allows retrying individual stages without rerunning the whole pipeline
-5. Runtime validation (headless browser) would catch the #1 remaining bug pattern (const crash) instantly
+5. Runtime validation would catch the #1 remaining bug pattern (const crash) instantly — headless browser for JS (0.10a), compiler for Go/Java (0.10b)
 
 **Artifacts:** `benchmarks/prompts/decomposed/` (3 pipelines, 9 stage prompts + v2 variant), `benchmarks/lib/decomposed-run.py` (pipeline runner), `benchmarks/lib/run-decomposed.sh` (wrapper), `benchmarks/results/decomposed/` (6 pipeline runs, gitignored)
 
