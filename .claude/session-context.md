@@ -46,6 +46,7 @@
 - **Phases 0-6:** Complete → `.claude/archive/phases-0-6.md`
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Active:** Layer 1 — MCP Server (Ollama as Claude Code tool)
+- **Last completed:** Task 1.2 (MCP server built + verified) → `mcp-server/`
 - **Last checkpoint:** 2026-02-12
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 

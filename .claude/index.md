@@ -140,6 +140,11 @@ Other infrastructure:
 > **RULE: Never invoke Python scripts directly.** Always use the bash wrapper (`run-*.sh`).
 > Direct `python3` invocations make "don't ask again" unsafe (whitelists all Python).
 
+### MCP Server
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `mcp-server/run-server.sh` | Launch Ollama MCP server (stdio transport) | Claude Code MCP config, testing |
+
 ### Setup & Infrastructure Scripts
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
@@ -194,6 +199,18 @@ Other infrastructure:
 | Session 9 (Benchmarks) | `.claude/session-handoff-2026-02-09b.md` | Benchmark framework, Qwen3 findings |
 | Sessions 10-12 (Layer 0) | `.claude/session-handoff-2026-02-11.md` | Decomposition, validation, few-shot, Layer 0 complete |
 | Layer 0 full session log | `.claude/archive/session-log-layer0.md` | 717 lines, Sessions 8-12 detailed history |
+
+---
+
+## Layer 1 Implementation
+
+| Topic | File | Key Content |
+|-------|------|-------------|
+| MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, 2 tools |
+| Server config (defaults, env vars) | `mcp-server/src/ollama_mcp/config.py` | OLLAMA_URL, model, timeout, think, temps |
+| Ollama async client | `mcp-server/src/ollama_mcp/client.py` | httpx connection pooling, ChatResponse, error types |
+| MCP tools (ask_ollama, list_models) | `mcp-server/src/ollama_mcp/server.py` | FastMCP server + lifespan |
+| Bash wrapper | `mcp-server/run-server.sh` | `uv run` launcher (project convention) |
 
 ---
 

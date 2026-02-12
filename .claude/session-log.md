@@ -5,6 +5,50 @@
 
 ---
 
+## 2026-02-12 - Session 14: Task 1.2 — MCP Server Built and Verified
+
+### Context
+Resuming from Session 13 which completed Task 1.1 (MCP research + language decision). This session implements the MCP server itself.
+
+### What Was Done
+
+**Task 1.2 Complete: Built MCP server wrapping Ollama `/api/chat`**
+
+Created `mcp-server/` directory with full Python project:
+
+| File | Purpose |
+|------|---------|
+| `pyproject.toml` | uv project config — deps: `mcp[cli]>=1.0.0`, `httpx>=0.27.0` |
+| `src/ollama_mcp/config.py` | Defaults + env var overrides (URL, model, timeout, think, temps) |
+| `src/ollama_mcp/client.py` | Async `OllamaClient` — httpx connection pooling, structured `ChatResponse` dataclass, 3 custom exception types |
+| `src/ollama_mcp/server.py` | FastMCP server with `ask_ollama` and `list_models` tools, lifespan for client lifecycle |
+| `src/ollama_mcp/__main__.py` | Entry point for `python -m ollama_mcp` (stdio transport) |
+| `run-server.sh` | Bash wrapper (project convention) |
+
+**Tooling installed:**
+- `uv` 0.10.2 — Python package manager (installed to `~/.local/bin`, no sudo)
+- `mcp` SDK 1.26.0 — FastMCP server framework (38 packages total in venv)
+
+**Verification results — all passed:**
+- Server starts and responds to MCP `initialize` handshake
+- Tool discovery: `ask_ollama` + `list_models` visible via `tools/list`
+- Live Ollama integration: "What is 2+2?" → "four" (via my-coder-q3)
+- Error handling: clean message when Ollama unreachable (no stack trace)
+- Bash wrapper: works correctly, resolves own directory
+
+### Decisions Made
+- **Package name:** `ollama-mcp` (pyproject.toml) / `ollama_mcp` (Python package)
+- **Architecture:** Module-level client with lifespan management (simple, appropriate for stdio single-process server)
+- **Error strategy in tools:** Return error strings instead of raising exceptions — lets Claude read and handle errors gracefully
+- **Default model:** `my-coder-q3` (Qwen3-8B) — good all-rounder for delegated tasks
+
+### Next
+- Task 1.3: Define specialized tool capabilities (generate_code, classify_text, summarize, translate)
+- Task 1.4: Configure Claude Code to use the MCP server (`claude mcp add`)
+- Task 1.5: End-to-end test — Claude Code delegates to local model
+
+---
+
 ## 2026-02-12 - Session 13: Layer 1 Kickoff + Context Optimization
 
 ### What Was Done
