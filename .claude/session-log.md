@@ -41,4 +41,42 @@ Estimated savings: ~38 KB at session start, ~6 KB per turn (CLAUDE.md reduction)
 - **Knowledge management tools for AI context:** User has seen news about tools/techniques for indexing and connecting project knowledge. Investigate during Layer 1 research (MCP servers for knowledge management are a growing category) or tie into Layer 7 (Memory System, RAG, knowledge graphs).
 
 ### Next
-- Task 1.1: Research MCP server specification and Claude Code integration
+- ~~Task 1.1: Research MCP server specification and Claude Code integration~~
+- Task 1.2: Build MCP server (Python / FastMCP)
+
+---
+
+## 2026-02-12 - Session 13 (continued): MCP Research + Language Decision
+
+### Task 1.1 Completed — MCP Research
+
+Full findings archived → `.claude/archive/layer-1-research.md`
+
+**MCP Protocol:**
+- JSON-RPC 2.0, spec v2025-06-18, stdio transport for Claude Code
+- Tools = primary primitive; declare name + description + inputSchema
+- Claude sees all tool descriptions, autonomously decides when to call
+- Config: `claude mcp add --transport stdio <name> -- <command>` → stored in `~/.claude.json` (NOT settings.json)
+- Limits: 10s timeout (`MCP_TIMEOUT`), 25K token output (`MAX_MCP_OUTPUT_TOKENS`)
+
+**Language Decision: Python (FastMCP)**
+- Evaluated: Python, Go, Java, Kotlin, TypeScript
+- Python wins on: tool friction (~8 lines/tool), ecosystem (PDF/scraping/NLP), community docs
+- Go was strong runner-up (fast startup, single binary) — may use for perf-critical components later
+- Java/Kotlin: JVM startup too slow for stdio subprocess
+- TypeScript: user preference against JS
+
+**Existing Tools Landscape:**
+- No existing project is a drop-in for our "frontier-delegates-to-local" pattern
+- Patterns worth borrowing: learned routing (llm-use), cognitive memory (ultimate_mcp_server), cost analysis (locallama-mcp), modular services (MCP-ollama_server)
+- Inverse-direction tools (tools FOR Ollama) still valuable for later layers
+- Discovery registries catalogued: mcp.so, mcpservers.org, awesome-mcp-servers, mcp-awesome.com, mcpmarket.com
+
+### Decisions Made
+- **Language:** Python with FastMCP (official SDK)
+- **Scope expanded:** MCP server is general-purpose gateway, not coding-only
+- **Licensing rule added:** Always check + honor licenses; track attributions in `docs/ATTRIBUTIONS.md`
+- **Reference existing work:** Borrow patterns from llm-use, ultimate_mcp_server, others (with attribution)
+
+### Next
+- Task 1.2: Plan and build the MCP server architecture

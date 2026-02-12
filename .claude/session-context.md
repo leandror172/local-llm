@@ -70,5 +70,12 @@
 - **OpenClaw:** Deferred until security planning (Layer 6)
 - **Full vision:** `docs/vision-and-intent.md`
 
+### Layer 1 Decisions (decided 2026-02-12)
+- **MCP server language:** Python (FastMCP) — lowest tool friction, best ecosystem for general-purpose
+- **Scope:** General-purpose LLM gateway (coding, scraping, PDF, research, conversation)
+- **Licensing rule (STRONG):** Always check + honor external project licenses. If attribution required, add to `docs/ATTRIBUTIONS.md`. Never skip this.
+- **Reference existing work:** Borrow architectural patterns with attribution from llm-use, ultimate_mcp_server, locallama-mcp, MCP-ollama_server
+- **Research archive:** `.claude/archive/layer-1-research.md`
+
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)

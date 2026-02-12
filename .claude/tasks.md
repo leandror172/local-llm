@@ -17,9 +17,9 @@
 
 **Goal:** Let ClaudeCode delegate simple tasks to local Ollama (Pattern B: frontier-first, delegates down).
 
-- [ ] 1.1 Research MCP server specification and ClaudeCode integration
-- [ ] 1.2 Build MCP server wrapping Ollama `/api/chat`
-- [ ] 1.3 Define tool capabilities: generate_code, classify_text, summarize, translate
+- [x] 1.1 Research MCP server specification and ClaudeCode integration → `.claude/archive/layer-1-research.md`
+- [ ] 1.2 Build MCP server wrapping Ollama `/api/chat` **(Python / FastMCP)**
+- [ ] 1.3 Define tool capabilities: generate_code, classify_text, summarize, translate (+ general-purpose: scraping, PDF, research, conversation)
 - [ ] 1.4 Configure ClaudeCode to use the MCP server
 - [ ] 1.5 Test: ClaudeCode delegates a boilerplate function to local model
 - [ ] 1.6 Document usage patterns and limitations

@@ -12,6 +12,7 @@ Rules in this file may include `[ref:KEY]` tags pointing to detailed reference m
 1. **DO NOT proceed to the next phase automatically** - Always wait for explicit user permission
 2. **Step-by-step configuration** - Build config files incrementally, explaining each setting
 3. **Explanatory mode active** - Use "Explanatory" output style with Insight boxes
+4. **Licensing compliance** - When using or referencing external code/projects, always check and honor their license. If a license requires attribution, add it. Track attributions in `docs/ATTRIBUTIONS.md`.
 
 ## Troubleshooting Approach
 

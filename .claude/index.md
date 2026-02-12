@@ -1,7 +1,16 @@
 # Knowledge Index
 
 **Purpose:** Map of where all project information lives. Read this to find anything.
-**Convention:** Sections marked with `<!-- ref:KEY -->` are cross-referenced from CLAUDE.md rules via `[ref:KEY]`.
+
+### Indexing Conventions (Two-Tier System)
+
+| Tier | Notation | When to Use | Lookup Method |
+|------|----------|-------------|---------------|
+| **Active reference** | `<!-- ref:KEY -->` + `[ref:KEY]` | Agent needs this during work; CLAUDE.md rules point here | `.claude/tools/ref-lookup.sh KEY` (machine-lookupable) |
+| **Navigation pointer** | `§ "Heading"` | Index/docs pointing to sections for background reading | Open file, find heading (human/agent reads) |
+
+**Active refs** are for high-frequency, runtime lookups (model selection rules, bash wrapper lists, MCP config).
+**§ pointers** are for low-frequency, "read when needed" navigation (research findings, decision rationale, historical context).
 
 ---
 
@@ -185,6 +194,29 @@ Other infrastructure:
 | Session 9 (Benchmarks) | `.claude/session-handoff-2026-02-09b.md` | Benchmark framework, Qwen3 findings |
 | Sessions 10-12 (Layer 0) | `.claude/session-handoff-2026-02-11.md` | Decomposition, validation, few-shot, Layer 0 complete |
 | Layer 0 full session log | `.claude/archive/session-log-layer0.md` | 717 lines, Sessions 8-12 detailed history |
+
+---
+
+## Layer 1 Research (Reference)
+
+<!-- ref:mcp-integration -->
+### MCP Integration Quick Reference
+Full research → `.claude/archive/layer-1-research.md`
+
+- **Transport:** stdio (subprocess, JSON-RPC over stdin/stdout)
+- **Config:** `claude mcp add --transport stdio <name> -- <command>` → `~/.claude.json` (NOT settings.json!)
+- **Limits:** 10s timeout (`MCP_TIMEOUT`), 25K token output (`MAX_MCP_OUTPUT_TOKENS`)
+- **Language:** Python (FastMCP) — chosen for tool friction, ecosystem, community docs
+- **SDK:** `mcp[cli]` (official Python SDK, v1.x stable)
+<!-- /ref:mcp-integration -->
+
+| Topic | File | Key Takeaway |
+|-------|------|-------------|
+| MCP protocol, transports, Claude Code integration | `.claude/archive/layer-1-research.md` | stdio transport, tool descriptions are routing |
+| Language comparison (Python/Go/Java/Kotlin/TS) | `.claude/archive/layer-1-research.md` § "Language Decision" | Python: lowest friction, best ecosystem |
+| Existing tools landscape | `.claude/archive/layer-1-research.md` § "Existing Tools Landscape" | No drop-in; patterns to borrow from 4 projects |
+| MCP server discovery registries | `.claude/archive/layer-1-research.md` § "MCP Server Discovery Resources" | mcp.so, mcpservers.org, awesome-mcp-servers, etc. |
+| All 10 official SDK repos | `.claude/archive/layer-1-research.md` § "SDK Quick Reference" | TS, Python, Go, Java, Kotlin, C#, Swift, Ruby, Rust, PHP |
 
 ---
 

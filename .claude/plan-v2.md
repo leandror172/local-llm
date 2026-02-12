@@ -50,21 +50,31 @@ Key outcomes applied to all subsequent layers:
 **Depends on:** Layer 0 (models installed and tested)
 **Pattern:** Frontier-first, delegates down (Pattern B from routing discussion)
 
+### Research Findings
+Full research archived → `.claude/archive/layer-1-research.md`
+
+Key decisions:
+- **Language:** Python (FastMCP) — lowest tool friction, richest ecosystem for general-purpose tasks
+- **Transport:** stdio (Claude Code spawns as subprocess)
+- **Scope:** General-purpose gateway (coding, scraping, PDF, research, conversation — not coding-only)
+- **No existing drop-in** — building custom, borrowing patterns from llm-use, ultimate_mcp_server, others
+
 ### Tasks
 
-| ID | Task | Effort |
-|----|------|--------|
-| 1.1 | Research MCP server specification and ClaudeCode integration | 2-3 hrs |
-| 1.2 | Build MCP server wrapping Ollama /api/chat | 1 day |
-| 1.3 | Define tool capabilities: generate_code, classify_text, summarize, translate | 1 day |
-| 1.4 | Configure ClaudeCode to use the MCP server | 1 hr |
-| 1.5 | Test: ClaudeCode delegates a boilerplate function to local model | 1 hr |
-| 1.6 | Document usage patterns and limitations | 2 hrs |
+| ID | Task | Effort | Status |
+|----|------|--------|--------|
+| 1.1 | Research MCP server specification and ClaudeCode integration | 2-3 hrs | **Done** |
+| 1.2 | Build MCP server wrapping Ollama /api/chat (Python/FastMCP) | 1 day | |
+| 1.3 | Define tool capabilities: generate_code, classify_text, summarize, translate + general-purpose | 1 day | |
+| 1.4 | Configure ClaudeCode to use the MCP server | 1 hr | |
+| 1.5 | Test: ClaudeCode delegates a boilerplate function to local model | 1 hr | |
+| 1.6 | Document usage patterns and limitations | 2 hrs | |
 
 ### Closing-the-gap integration
 - The MCP server should apply structured prompts (skeleton format) when calling Ollama
 - Temperature presets per tool capability (0.1 for code, 0.3 for general, 0.7 for creative)
 - Structured output (JSON schema) for classification and structured responses
+- `think: false` default, escalate to `think: true` for complex reasoning or retries
 
 ### Unlocks
 - Reduced Claude token consumption for simple tasks
