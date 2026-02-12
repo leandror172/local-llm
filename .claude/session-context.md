@@ -53,10 +53,12 @@
 
 ## Quick Resume
 
-1. Read this file (preferences + status)
-2. Check `.claude/tasks.md` (current progress)
-3. Optionally check `.claude/session-log.md` (recent decisions)
-4. See `.claude/index.md` to find anything else
+The tracking files ARE the handoff — no separate handoff files needed.
+
+1. Read this file (preferences + active decisions)
+2. Check `.claude/tasks.md` (what's done, what's next)
+3. Check `.claude/session-log.md` — the **"Next" pointer** at the bottom tells you where to start
+4. See `.claude/index.md` to find anything else (archives, research, references)
 
 ---
 

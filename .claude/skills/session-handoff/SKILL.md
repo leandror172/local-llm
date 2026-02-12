@@ -64,18 +64,17 @@ Read `.claude/session-context.md`. Update:
 - The **Decisions Made** section if new decisions were recorded
 - The **Technical Learnings** section if new gotchas were discovered
 
-### 4. Create or update session handoff file
+### 4. Verify tracking files ARE the handoff
 
-Check if `.claude/session-handoff-YYYY-MM-DD.md` exists for today's date.
-- If not, create it with the standard handoff format (see existing handoff files for the template)
-- If it exists (multiple sessions same day), append to it
+The tracking files (session-log.md, tasks.md, session-context.md) serve as the handoff. **Do NOT create separate handoff files** (`.claude/session-handoff-*.md`).
 
-The handoff file should include:
-- What was accomplished
-- Current system state (services running? models loaded? branches?)
-- Artifacts created or modified
-- Resume instructions for next session
-- Key gotchas
+Verify that the updates from steps 2-3 contain everything a new session needs:
+- **session-log.md** has a "Next" pointer saying what to start with
+- **tasks.md** shows which tasks are done and which are pending
+- **session-context.md** has current status and active decisions
+- **index.md** links to any new archive files created this session
+
+If significant research or findings were produced, ensure they're archived in `.claude/archive/` and indexed in `.claude/index.md` (not left only in conversation context).
 
 ### 5. Warn about uncommitted changes
 
