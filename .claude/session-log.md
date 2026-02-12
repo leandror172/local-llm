@@ -1,7 +1,127 @@
 # Session Log
 
 **Current Session:** 2026-02-11
-**Phase:** Layer 0 — Foundation Upgrades
+**Phase:** Layer 0 — Foundation Upgrades (COMPLETE)
+
+---
+
+## 2026-02-11 - Session 12: Few-Shot Example Library (Task 0.4) — Layer 0 Complete!
+
+### Context
+Final Layer 0 task. Plan approved in plan mode, then implemented in this session. Ollama was running, enabling live A/B verification.
+
+### What Was Done
+
+**Task 0.4 — Few-shot example library (4 phases):**
+
+Phase 1 — Created 6 example files in `benchmarks/examples/`:
+- `backend/01-go-error-handling.md` — error wrapping with `%w`, stdlib only
+- `backend/02-java-record-stream.md` — records, Stream API, complete `main()`
+- `backend/03-go-http-handler.md` — complete program, `net/http`, JSON response
+- `visual/01-canvas-circle-animation.md` — Canvas, `requestAnimationFrame`, delta-time
+- `visual/02-canvas-gradient-bg.md` — static render, no CDN, self-contained
+- `visual/03-canvas-mouse-follow.md` — `addEventListener`, lerp, unique var names
+- Format: YAML frontmatter + `## Task` / `## Input` / `## Output` sections (machine-parseable)
+- Each example deliberately simpler than benchmark prompts — teaches the pattern, not the task
+
+Phase 2 — Added `--examples` flag to `ollama-probe.py` (~30 lines):
+- `discover_examples(spec)` — auto-discovers from `benchmarks/examples/<category>/` or comma-separated paths
+- `load_examples(paths)` — parses `## Input` / `## Output` sections, reuses `strip_frontmatter()`
+- `format_examples_prompt(examples, prompt)` — assembles `User:/Assistant:` pairs + original prompt
+- Composes naturally with `--vary`, `--no-think`, `--format-file`
+
+Phase 3 — Created `benchmarks/lib/run-fewshot-test.sh`:
+- A/B wrapper: runs same prompt twice (baseline vs with examples)
+- Saves to `results/fewshot/` for later review
+
+Phase 4 — Live A/B verification on merge-intervals prompt:
+- Baseline: 978 tokens, 21.5s, 4175 chars (Java, verbose)
+- Few-shot: 521 tokens, 9.8s, 1922 chars (Go with generics, concise)
+- Token reduction: 47% fewer output tokens
+- Wall time: 54% faster (9.8s vs 21.5s)
+- Prompt overhead: +800 prompt tokens (one-time input cost)
+- Language steering: model chose Go (matching 2/3 backend examples) instead of Java
+
+### Decisions Made
+- Examples go in user messages, not system prompts — small models weight nearby tokens more heavily
+- Format uses explicit `User:`/`Assistant:` labels within single message for pattern recognition
+- Category auto-discovery (`--examples backend`) preferred over explicit paths for ease of use
+- Removed unused `glob` import (only `pathlib.Path.glob()` needed)
+
+### Artifacts Created/Modified
+| File | Action |
+|------|--------|
+| `benchmarks/examples/backend/01-go-error-handling.md` | Created |
+| `benchmarks/examples/backend/02-java-record-stream.md` | Created |
+| `benchmarks/examples/backend/03-go-http-handler.md` | Created |
+| `benchmarks/examples/visual/01-canvas-circle-animation.md` | Created |
+| `benchmarks/examples/visual/02-canvas-gradient-bg.md` | Created |
+| `benchmarks/examples/visual/03-canvas-mouse-follow.md` | Created |
+| `benchmarks/lib/ollama-probe.py` | Modified — `--examples` flag + 4 new functions |
+| `benchmarks/lib/run-fewshot-test.sh` | Created — A/B test wrapper |
+| `benchmarks/results/fewshot/` | Created — A/B test results (gitignored) |
+
+### Next
+- **Layer 0 is complete (12/12 tasks)**
+- Layer 0 completion commit
+- Begin Layer 1 planning (MCP server, routing)
+
+---
+
+## 2026-02-11 - Session 11: Backend Runtime Validation (Task 0.10b)
+
+### Context
+Executed the approved plan for Task 0.10b — Go compilation gate for LLM-generated backend code. Go toolchain installed by user; remaining phases implemented by Claude Code.
+
+### What Was Done
+
+**Task 0.10b — Backend runtime validation (Go build + vet):**
+- Installed Go 1.23.6 in WSL2 (`/usr/local/go/bin`, added to `~/.bashrc`)
+- Created `benchmarks/lib/validate-code.py` (~260 lines) — core validator:
+  - Go scaffolding: auto-detects missing `package main` / `func main()`, injects them
+  - Line mapping: scaffolded line numbers mapped back to original source lines
+  - `go mod init` in temp dir (required since Go 1.16 module mode default)
+  - `go build` for compilation errors, `go vet` for static analysis warnings
+  - Error classification: `undefined_reference`, `syntax_error`, `type_error`, `unused_import`, `vet_warning`
+  - `unused_import` classified as warning (not error) — Go compiler fails on it but it's not a logic bug
+  - JSON output matches `validate-html.js` contract exactly
+- Created `benchmarks/lib/run-validate-code.sh` (~22 lines) — whitelistable bash wrapper
+- Created 5 test fixtures in `benchmarks/test-fixtures/go/`:
+  - `valid-complete.go` — full program (PASS)
+  - `valid-snippet.go` — LRU cache snippet, no package/main (PASS — scaffolding works)
+  - `invalid-undefined.go` — undefined var (FAIL, `undefined_reference`, line 7)
+  - `invalid-syntax.go` — missing brace (FAIL, `syntax_error`)
+  - `invalid-type.go` — string where int expected (FAIL, `type_error`, line 11)
+- Integrated into `benchmarks/lib/decomposed-run.py`:
+  - Added `validate_code()` function mirroring `validate_html()`
+  - Validation dispatch by file extension (`.go` → `validate_code`, else → `validate_html`)
+- Integrated into `benchmarks/run-benchmark.sh`:
+  - Go validation block in backend `else` branch, mirrors HTML validation pattern
+  - Same `$VALIDATE` flag, same summary JSON fields (`validation_status`)
+
+### Decisions Made
+- Go only (Java deferred — complex scaffolding, JDK not in default repos)
+- `unused_import` as warning, not error — prevents false negatives on structurally correct code
+- `go mod init validate-temp` in each temp dir — required for Go 1.16+ module mode
+- Extension-based dispatch in both pipelines — naturally extensible for future languages
+
+### Artifacts Created/Modified
+| File | Action |
+|------|--------|
+| `benchmarks/lib/validate-code.py` | Created — core Go validator |
+| `benchmarks/lib/run-validate-code.sh` | Created — whitelistable wrapper |
+| `benchmarks/test-fixtures/go/valid-complete.go` | Created — test fixture |
+| `benchmarks/test-fixtures/go/valid-snippet.go` | Created — test fixture (scaffolding test) |
+| `benchmarks/test-fixtures/go/invalid-undefined.go` | Created — test fixture |
+| `benchmarks/test-fixtures/go/invalid-syntax.go` | Created — test fixture |
+| `benchmarks/test-fixtures/go/invalid-type.go` | Created — test fixture |
+| `benchmarks/lib/decomposed-run.py` | Modified — `validate_code()` + extension dispatch |
+| `benchmarks/run-benchmark.sh` | Modified — Go validation in backend branch |
+
+### Next
+- Task 0.4: Few-shot example library — last remaining Layer 0 task (11/12 → 12/12)
+- Layer 0 completion tracking commit
+- Begin Layer 1 planning (MCP server, routing)
 
 ---
 

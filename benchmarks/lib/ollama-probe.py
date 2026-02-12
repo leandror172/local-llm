@@ -11,6 +11,9 @@ Structured output (JSON schema):
 """
 
 import argparse, json, urllib.request, time, re, sys
+from pathlib import Path
+
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / 'examples'
 
 
 def parse_value(v):
@@ -27,6 +30,49 @@ def parse_value(v):
 def strip_frontmatter(text):
     m = re.match(r'^---\s*\n.*?\n---\s*\n', text, re.DOTALL)
     return text[m.end():].strip() if m else text.strip()
+
+
+def parse_example_sections(text):
+    """Parse ## Input and ## Output sections from an example file."""
+    body = strip_frontmatter(text)
+    inp = re.search(r'## Input\s*\n(.*?)(?=\n## |\Z)', body, re.DOTALL)
+    out = re.search(r'## Output\s*\n(.*?)(?=\n## |\Z)', body, re.DOTALL)
+    if not inp or not out:
+        return None
+    return (inp.group(1).strip(), out.group(1).strip())
+
+
+def discover_examples(spec):
+    """Resolve example spec to list of file paths.
+    If spec is 'backend' or 'visual', auto-discover from examples/<category>/.
+    Otherwise, treat as comma-separated file paths."""
+    category_dir = EXAMPLES_DIR / spec
+    if category_dir.is_dir():
+        return sorted(str(p) for p in category_dir.glob('*.md'))
+    return [p.strip() for p in spec.split(',') if p.strip()]
+
+
+def load_examples(paths):
+    """Read example files, return list of (input, output) tuples."""
+    examples = []
+    for path in paths:
+        text = open(path).read()
+        parsed = parse_example_sections(text)
+        if parsed:
+            examples.append(parsed)
+    return examples
+
+
+def format_examples_prompt(examples, original_prompt):
+    """Assemble few-shot examples + original prompt into one user message."""
+    parts = ['EXAMPLES (follow these patterns):\n']
+    for i, (inp, out) in enumerate(examples, 1):
+        parts.append(f'Example {i}:')
+        parts.append(f'User: {inp}')
+        parts.append(f'Assistant:\n{out}\n')
+    parts.append('---\nNow complete the following task:')
+    parts.append(original_prompt)
+    return '\n'.join(parts)
 
 
 def call_ollama(base_url, model, prompt, extra_params, timeout):
@@ -81,6 +127,7 @@ def main():
     p.add_argument('--output', help='Save JSON results to file')
     p.add_argument('--format-file', help='JSON schema file for structured output (use with --vary format=on,off)')
     p.add_argument('--no-think', action='store_true', help='Disable thinking mode (adds think: false)')
+    p.add_argument('--examples', help='Few-shot examples: category name (backend|visual) or comma-separated paths')
     args = p.parse_args()
 
     if not args.prompt and not args.prompt_file:
@@ -89,6 +136,13 @@ def main():
     prompt = args.prompt
     if args.prompt_file:
         prompt = strip_frontmatter(open(args.prompt_file).read())
+
+    if args.examples:
+        paths = discover_examples(args.examples)
+        examples = load_examples(paths)
+        if examples:
+            prompt = format_examples_prompt(examples, prompt)
+            print(f'Loaded {len(examples)} few-shot examples ({len(prompt)} chars total)')
 
     key, vals_str = args.vary.split('=', 1)
     values = [parse_value(v) for v in vals_str.split(',')]

@@ -79,7 +79,7 @@ Install and configure a local LLM on Windows with WSL2:
 - **Phase 6:** ✅ Complete (CLAUDE.md updated, directory structure verified)
 - **Plan v2:** Drafted — 10 layers of next-steps work (see `.claude/plan-v2.md`)
 - **Pre-Layer 0 prep:** Done — CLAUDE.md hardened, agent principles doc, /session-handoff skill, git housekeeping
-- **Last checkpoint:** 2026-02-11 - Task 0.10a (frontend validation) complete. 10/12 Layer 0 tasks done. Remaining: 0.4 (few-shot library), 0.10b (Go/Java compile + static analysis — needs toolchain setup). Uncommitted changes ready for commit.
+- **Last checkpoint:** 2026-02-11 - **Layer 0 COMPLETE (12/12 tasks)**. Task 0.4 (few-shot example library) implemented and verified with live A/B test. Next: Layer 1 (MCP server, routing).
 - **Environment change:** Claude Code now runs from WSL2 natively (not Git Bash). All commands are direct Linux — no `wsl -- bash -c` wrapper needed.
 
 ---
@@ -142,6 +142,7 @@ When starting a new session:
 7. Docker + native Ollama conflict on port 11434 — stop one before starting the other
 8. Puppeteer's bundled Chromium needs ~12 system libs (libnspr4, libnss3, etc.) — installed in WSL2. Windows Chrome cannot be driven across WSL2 boundary.
 9. Always invoke benchmark Python scripts via bash wrappers (`lib/run-*.sh`), not `python3 lib/*.py` directly — wrappers are safe to whitelist
+10. Go 1.16+ requires `go mod init` before `go build` — module mode is the default. Standalone Go files need a temp dir with `go.mod` to compile.
 
 ---
 
@@ -157,7 +158,7 @@ When starting a new session:
 For detailed context on any session, check the handoff files:
 - `session-handoff-2026-02-03.md` - Phase 0-2 completion, ready for Phase 3
 - `session-handoff-2026-02-06.md` - Phase 3-5 completion, ready for Phase 6
-- `session-handoff-2026-02-11.md` - Task 0.10a (frontend validation) complete
+- `session-handoff-2026-02-11.md` - Sessions 10-12, Layer 0 complete
 
 ## Artifacts Created (Phase 3, 2026-02-06)
 

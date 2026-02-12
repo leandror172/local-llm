@@ -27,3 +27,6 @@ benchmarks/results/
 
 # Node.js dependencies (Puppeteer for HTML validation)
 benchmarks/node_modules/
+
+# Python bytecode cache
+__pycache__/
