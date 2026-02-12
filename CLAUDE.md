@@ -5,7 +5,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Reference Lookup Convention
 
 Rules in this file may include `[ref:KEY]` tags pointing to detailed reference material.
-**To look up:** `grep -r "ref:KEY" .claude/` → find the file + line → read from `<!-- ref:KEY -->` to `<!-- /ref:KEY -->`.
+**To look up:** `.claude/tools/ref-lookup.sh KEY` — prints the referenced section. Run with no args to list all keys.
 
 ## WORKFLOW RULES (HARD REQUIREMENTS)
 

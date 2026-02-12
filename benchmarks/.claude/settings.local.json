@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sv http://localhost:11434/api/tags)",
+      "Bash(/mnt/i/workspaces/llm/benchmarks/lib/run-structured-tests.sh:*)",
+      "Bash(/mnt/i/workspaces/llm/benchmarks/lib/run-decomposed.sh:*)"
+    ]
+  }
+}
