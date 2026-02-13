@@ -96,6 +96,39 @@ All Qwen3 personas use `think: false` by default (simple tasks don't benefit fro
 }
 ```
 
+### System-Wide Setup
+
+To make ollama-bridge available in **every** Claude Code session (not just this repo), add it at the user level.
+
+**Claude Code (user-level)** — add to `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "ollama-bridge": {
+      "command": "/mnt/i/workspaces/llm/mcp-server/run-server.sh"
+    }
+  }
+}
+```
+
+**Claude Desktop (Windows)** — add to `%APPDATA%\Claude\claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ollama-bridge": {
+      "command": "wsl",
+      "args": ["--", "/mnt/i/workspaces/llm/mcp-server/run-server.sh"]
+    }
+  }
+}
+```
+
+The `wsl --` prefix lets Claude Desktop (a Windows process) spawn the server inside WSL where Ollama and Python live.
+
+**Startup behavior:** The server probes Ollama on startup and logs status to stderr. If Ollama is unreachable, the server starts anyway — tools return friendly error messages until Ollama becomes available.
+
 ### Environment Variables
 
 **Claude Code side:**
@@ -166,6 +199,7 @@ The persona hasn't been created. Run `ollama create <persona-name> -f modelfiles
 - May be a cold start — try again after model loads
 
 **Claude doesn't use the tools**
-- Verify `.mcp.json` is in the repo root and Claude Code was started from that directory
+- Check user-level config: `~/.claude.json` should have a top-level `mcpServers` entry
+- For project-only setup: verify `.mcp.json` is in the repo root
 - Run `/mcp` in Claude Code to check server status
 - Restart Claude Code after config changes

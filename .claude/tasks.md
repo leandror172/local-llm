@@ -23,7 +23,7 @@
 - [x] 1.4 Configure ClaudeCode to use the MCP server → `.mcp.json` (project-level), `MCP_TIMEOUT=120000` in `.bashrc`
 - [x] 1.5 Test: ClaudeCode delegates a boilerplate function to local model → all 6 tools verified end-to-end
 - [x] 1.6 Document usage patterns and limitations → `mcp-server/README.md`
-- [ ] 1.7 Make MCP server available system-wide (user-level config, Claude Desktop, reliability)
+- [x] 1.7 Make MCP server available system-wide → user-level `~/.claude.json`, Claude Desktop config, startup health probe
 
 ### Closing-the-gap integration
 - Apply structured prompts (skeleton format) when calling Ollama

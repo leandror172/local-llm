@@ -216,7 +216,9 @@ Other infrastructure:
 | Ollama async client | `mcp-server/src/ollama_mcp/client.py` | httpx connection pooling, ChatResponse, error types |
 | MCP tools (6 total) | `mcp-server/src/ollama_mcp/server.py` | ask_ollama, list_models, generate_code, summarize, classify_text, translate |
 | Bash wrapper | `mcp-server/run-server.sh` | `uv run` launcher (project convention) |
-| Claude Code integration | `.mcp.json` (repo root) | Project-level MCP server registration |
+| Claude Code integration (project) | `.mcp.json` (repo root) | Project-level MCP server registration |
+| Claude Code integration (user) | `~/.claude.json` → top-level `mcpServers` | System-wide — available in every Claude Code session |
+| Claude Desktop integration | `%APPDATA%\Claude\claude_desktop_config.json` | Uses `wsl --` prefix for Windows-to-WSL bridging |
 | MCP timeout config | `~/.bashrc` | `MCP_TIMEOUT=120000` (matches server-side 120s) |
 
 ---

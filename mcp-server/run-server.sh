@@ -19,6 +19,11 @@ set -euo pipefail
 # pyproject.toml.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Ensure ~/.local/bin is on PATH. When spawned by Claude Desktop via
+# `wsl --`, the shell is non-interactive so ~/.bashrc isn't sourced
+# and tools like `uv` (installed to ~/.local/bin) won't be found.
+export PATH="$HOME/.local/bin:$PATH"
+
 # `uv run` does three things automatically:
 #   1. Creates a virtual environment if one doesn't exist
 #   2. Installs/syncs dependencies from pyproject.toml

@@ -5,6 +5,57 @@
 
 ---
 
+## 2026-02-13 - Session 17: Task 1.7 — System-Wide MCP Availability
+
+### Context
+Resuming from Session 16 which completed Tasks 1.4-1.6 (MCP wiring, verification, docs). This session makes ollama-bridge available everywhere.
+
+### What Was Done
+
+**Task 1.7 Complete: MCP server available system-wide**
+
+1. **Startup health probe** (`server.py` `_lifespan`):
+   - After creating `OllamaClient`, probes `list_models()` in a try/except
+   - Success: logs model count to stderr (e.g., "16 model(s) available")
+   - Failure: logs warning to stderr — does NOT block server startup
+   - Catches both `OllamaConnectionError` and generic `Exception` for robustness
+
+2. **User-level Claude Code config** (`~/.claude.json`):
+   - Added top-level `mcpServers` entry with `ollama-bridge`
+   - Server is now available in every Claude Code session, not just `/mnt/i/workspaces/llm`
+   - Project-level `.mcp.json` kept in place (harmless overlap, serves as documentation)
+
+3. **Claude Desktop config** (`%APPDATA%\Claude\claude_desktop_config.json`):
+   - Added `mcpServers` entry using `wsl --` prefix for Windows-to-WSL bridging
+   - Claude Desktop (Windows process) can now spawn the server inside WSL2
+
+4. **Documentation updates**:
+   - `mcp-server/README.md`: Added "System-Wide Setup" section with user-level + Desktop instructions
+   - Updated troubleshooting to reference user-level config
+   - `tasks.md`: Task 1.7 marked complete
+   - `index.md`: Updated Layer 1 table with new config locations
+
+### Decisions Made
+- **Graceful degradation over gating:** Server starts regardless of Ollama status — individual tools handle errors
+- **Keep `.mcp.json`:** Harmless overlap with user-level; serves as in-repo documentation for other contributors
+- **stderr for diagnostics:** stdout is reserved for JSON-RPC protocol; stderr is the correct channel
+
+### Verification Results
+- Claude Code from different directory: **passed** — tools available system-wide
+- Claude Desktop initial attempt: **failed** — `uv: not found` (non-interactive shell doesn't source `~/.bashrc`)
+- **Fix:** Added `export PATH="$HOME/.local/bin:$PATH"` to `run-server.sh` — makes script self-contained
+- Claude Desktop after fix: **passed** — all tools callable from Desktop app
+
+### Gotcha Discovered
+Non-interactive shells (spawned by `wsl --`, cron, systemd) skip `~/.bashrc`, so `~/.local/bin` tools like `uv` aren't on `$PATH`. Scripts invoked by external orchestrators must set their own `$PATH`.
+
+### Next
+- **Layer 1 is complete (7/7).** All tasks done, verified, documented.
+- Next session: Start **Layer 2** (check `.claude/plan-v2.md` for scope and tasks)
+- Uncommitted changes from this session need committing first
+
+---
+
 ## 2026-02-13 - Session 16: Tasks 1.4 & 1.5 — MCP Wiring + End-to-End Verification
 
 ### Context

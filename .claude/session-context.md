@@ -45,9 +45,10 @@
 
 - **Phases 0-6:** Complete → `.claude/archive/phases-0-6.md`
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
-- **Active:** Layer 1 — MCP Server (Ollama as Claude Code tool)
-- **Last completed:** Task 1.3 (4 specialized tools + personas) → `mcp-server/src/ollama_mcp/server.py`
+- **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
+- **Last completed:** Task 1.7 (system-wide MCP: user-level, Claude Desktop, health probe)
 - **Last checkpoint:** 2026-02-13
+- **Next:** Layer 2 (check `.claude/plan-v2.md` for scope)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---

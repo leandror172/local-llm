@@ -12,6 +12,7 @@ The server uses a "lifespan" pattern to manage the Ollama HTTP client:
 - On shutdown: close the client cleanly (release TCP connections)
 """
 
+import sys
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
@@ -70,6 +71,27 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
     """
     global _client
     _client = OllamaClient()
+
+    # Non-blocking health probe — log Ollama status at startup for diagnostics.
+    # Tools handle errors individually, so failure here doesn't block the server.
+    try:
+        models = await _client.list_models()
+        print(
+            f"[ollama-bridge] Ollama connected — {len(models)} model(s) available",
+            file=sys.stderr,
+        )
+    except OllamaConnectionError:
+        print(
+            "[ollama-bridge] Warning: Ollama is not reachable. "
+            "Tools will return friendly errors until Ollama starts.",
+            file=sys.stderr,
+        )
+    except Exception as e:
+        print(
+            f"[ollama-bridge] Warning: Health probe failed: {e}",
+            file=sys.stderr,
+        )
+
     try:
         yield
     finally:
