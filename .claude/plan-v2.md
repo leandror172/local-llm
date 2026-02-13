@@ -69,6 +69,7 @@ Key decisions:
 | 1.4 | Configure ClaudeCode to use the MCP server | 1 hr | |
 | 1.5 | Test: ClaudeCode delegates a boilerplate function to local model | 1 hr | |
 | 1.6 | Document usage patterns and limitations | 2 hrs | |
+| 1.7 | Make MCP server available system-wide (user-level config, Claude Desktop, reliability) | 2-3 hrs | |
 
 ### Closing-the-gap integration
 - The MCP server should apply structured prompts (skeleton format) when calling Ollama

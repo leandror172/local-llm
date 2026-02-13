@@ -211,10 +211,13 @@ Other infrastructure:
 | Topic | File | Key Content |
 |-------|------|-------------|
 | MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, 6 tools |
+| Usage patterns & limitations docs | `mcp-server/README.md` | Architecture, tools, delegation guide, troubleshooting |
 | Server config (defaults, env vars) | `mcp-server/src/ollama_mcp/config.py` | OLLAMA_URL, model, timeout, think, temps |
 | Ollama async client | `mcp-server/src/ollama_mcp/client.py` | httpx connection pooling, ChatResponse, error types |
 | MCP tools (6 total) | `mcp-server/src/ollama_mcp/server.py` | ask_ollama, list_models, generate_code, summarize, classify_text, translate |
 | Bash wrapper | `mcp-server/run-server.sh` | `uv run` launcher (project convention) |
+| Claude Code integration | `.mcp.json` (repo root) | Project-level MCP server registration |
+| MCP timeout config | `~/.bashrc` | `MCP_TIMEOUT=120000` (matches server-side 120s) |
 
 ---
 

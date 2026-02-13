@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "ollama-bridge": {
+      "command": "/mnt/i/workspaces/llm/mcp-server/run-server.sh"
+    }
+  }
+}

@@ -20,9 +20,10 @@
 - [x] 1.1 Research MCP server specification and ClaudeCode integration → `.claude/archive/layer-1-research.md`
 - [x] 1.2 Build MCP server wrapping Ollama `/api/chat` **(Python / FastMCP)** → `mcp-server/`
 - [x] 1.3 Define tool capabilities: generate_code, classify_text, summarize, translate → 4 Modelfiles + 4 MCP tools + language routing
-- [ ] 1.4 Configure ClaudeCode to use the MCP server
-- [ ] 1.5 Test: ClaudeCode delegates a boilerplate function to local model
-- [ ] 1.6 Document usage patterns and limitations
+- [x] 1.4 Configure ClaudeCode to use the MCP server → `.mcp.json` (project-level), `MCP_TIMEOUT=120000` in `.bashrc`
+- [x] 1.5 Test: ClaudeCode delegates a boilerplate function to local model → all 6 tools verified end-to-end
+- [x] 1.6 Document usage patterns and limitations → `mcp-server/README.md`
+- [ ] 1.7 Make MCP server available system-wide (user-level config, Claude Desktop, reliability)
 
 ### Closing-the-gap integration
 - Apply structured prompts (skeleton format) when calling Ollama

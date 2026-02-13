@@ -5,6 +5,65 @@
 
 ---
 
+## 2026-02-13 - Session 16: Tasks 1.4 & 1.5 — MCP Wiring + End-to-End Verification
+
+### Context
+Resuming from Session 15 which completed Task 1.3 (4 specialized tools). This session wires the MCP server into Claude Code.
+
+### What Was Done
+
+**Task 1.4 Complete: Claude Code configured to use the Ollama MCP server**
+
+Created `.mcp.json` at repo root (project-level scope):
+- Server name: `ollama-bridge`
+- Command: `/mnt/i/workspaces/llm/mcp-server/run-server.sh` (bash wrapper convention)
+- Project-level scope chosen over user-level — system-wide availability deferred to Task 1.7
+
+Added `MCP_TIMEOUT=120000` to `~/.bashrc`:
+- Default MCP timeout is 10s — too short for Ollama cold starts (model loading into VRAM)
+- Matched to server-side `DEFAULT_TIMEOUT` (120s) in `config.py`
+- This is a Claude Code env var (global, affects all MCP servers)
+
+Added Task 1.7 to plan: "Make MCP server available system-wide" — covers user-level config, Claude Desktop, and reliability for always-on use.
+
+### Decisions Made
+- **Project-level (`.mcp.json`)** over user-level (`~/.claude.json`) — avoids exposing an unreliable server to all Claude contexts before reliability work
+- **Timeout = 120s** — matches server-side timeout, covers cold starts without being excessive
+- **Task 1.7 added** — system-wide availability requires reliability work (auto-start Ollama, health checks, graceful degradation)
+
+**Task 1.5 Complete: End-to-end delegation verified**
+
+After restart, Claude Code discovered all 6 tools from `ollama-bridge`. Smoke tests:
+
+| Tool | Test | Result |
+|------|------|--------|
+| `list_models` | List available models | 16 models returned, all 8 personas visible |
+| `generate_code` | Python IPv4 validator | Clean function, routed to `my-codegen-q3` |
+| `classify_text` | Expense: "groceries $87.50" | `{"category":"food","confidence":1.0}` — grammar-constrained JSON |
+| `summarize` | MCP protocol (3 points) | Exactly 3 bullet points, factually correct |
+| `translate` | EN → PT-BR | Natural output, no preamble |
+| `ask_ollama` | *(verified in Task 1.3)* | General-purpose Q&A works |
+
+All tools returned within normal latency (no cold start this session).
+
+**Task 1.6 Complete: Documentation written**
+
+Created `mcp-server/README.md` covering:
+- Architecture diagram (Claude Code → MCP → Ollama pipeline)
+- All 6 tools with signatures and routing logic
+- "When to delegate" decision guide (boilerplate/transforms → local; refactoring/architecture → Claude)
+- All 8 model personas with roles and temperatures
+- Configuration reference (both Claude Code and server-side env vars)
+- 6 known limitations (single GPU, context window, quality ceiling, cold starts, no streaming, thinking overhead)
+- Troubleshooting guide (connection, model not found, timeout, tools not appearing)
+
+Updated `.claude/index.md` — added README, `.mcp.json`, and `MCP_TIMEOUT` entries to Layer 1 Implementation section.
+
+### Next
+- Task 1.7: Make MCP server available system-wide (deferred — future layer work)
+
+---
+
 ## 2026-02-13 - Session 15: Task 1.3 — Specialized MCP Tool Capabilities
 
 ### Context
