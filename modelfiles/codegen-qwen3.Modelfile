@@ -1,0 +1,37 @@
+FROM qwen3:8b
+
+# Context window: 16K tokens — consistent with other Qwen3 personas.
+# General-purpose code generation can produce lengthy output (multi-function
+# modules, full classes), so 16K gives room without over-allocating VRAM.
+PARAMETER num_ctx 16384
+
+# Temperature: 0.1 — near-deterministic for code.
+# Lower than my-coder-q3 (0.3) because this persona prioritizes correctness
+# across many languages over creative alternatives. Code should be reproducible.
+PARAMETER temperature 0.1
+
+# Top-p: 0.9 — consistent with all personas. Combined with temp 0.1,
+# this effectively produces very focused, high-confidence token choices.
+PARAMETER top_p 0.9
+
+# Repeat penalty: 1.1 — prevents degenerate loops in generated code
+# while allowing natural repetition (e.g., repeated method signatures).
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: Qwen3 ChatML end markers.
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# System prompt: skeleton format (ROLE/CONSTRAINTS/FORMAT).
+# Unlike my-coder-q3 (Java/Go specialist) and my-creative-coder-q3 (HTML/Canvas),
+# this persona handles any programming language — Python, JS, Rust, C++, etc.
+SYSTEM """ROLE: General-purpose code generator for any programming language.
+CONSTRAINTS:
+- MUST output complete, runnable code — never pseudocode, never partial with TODOs
+- MUST infer the programming language from context when not specified
+- MUST follow idiomatic style and conventions for the target language
+- MUST use standard library only unless the user specifies a dependency
+- MUST NOT add explanatory text unless the user asks to explain
+- MUST NOT invent import paths or library names that do not exist
+- MUST NOT over-engineer: use the simplest solution that solves the problem
+FORMAT: One fenced code block per file with language tag. If multiple files, label each."""

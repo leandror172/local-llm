@@ -185,6 +185,10 @@ Other infrastructure:
 | my-coder-q3 | `modelfiles/coding-assistant-qwen3.Modelfile` | Qwen3-8B | Java/Go backend (Qwen3) |
 | my-creative-coder | `modelfiles/creative-coder-qwen25.Modelfile` | Qwen2.5-Coder-7B | Visual/creative coding |
 | my-creative-coder-q3 | `modelfiles/creative-coder-qwen3.Modelfile` | Qwen3-8B | Visual/creative (Qwen3) |
+| my-codegen-q3 | `modelfiles/codegen-qwen3.Modelfile` | Qwen3-8B | General-purpose code gen |
+| my-summarizer-q3 | `modelfiles/summarizer-qwen3.Modelfile` | Qwen3-8B | Text summarization |
+| my-classifier-q3 | `modelfiles/classifier-qwen3.Modelfile` | Qwen3-8B | Text classification (JSON) |
+| my-translator-q3 | `modelfiles/translator-qwen3.Modelfile` | Qwen3-8B | Language translation |
 <!-- /ref:personas -->
 
 ---
@@ -206,10 +210,10 @@ Other infrastructure:
 
 | Topic | File | Key Content |
 |-------|------|-------------|
-| MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, 2 tools |
+| MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, 6 tools |
 | Server config (defaults, env vars) | `mcp-server/src/ollama_mcp/config.py` | OLLAMA_URL, model, timeout, think, temps |
 | Ollama async client | `mcp-server/src/ollama_mcp/client.py` | httpx connection pooling, ChatResponse, error types |
-| MCP tools (ask_ollama, list_models) | `mcp-server/src/ollama_mcp/server.py` | FastMCP server + lifespan |
+| MCP tools (6 total) | `mcp-server/src/ollama_mcp/server.py` | ask_ollama, list_models, generate_code, summarize, classify_text, translate |
 | Bash wrapper | `mcp-server/run-server.sh` | `uv run` launcher (project convention) |
 
 ---

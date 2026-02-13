@@ -1,0 +1,35 @@
+FROM qwen3:8b
+
+# Context window: 16K tokens — consistent with other Qwen3 personas.
+# Summarization requires reading long inputs, so 16K gives enough room
+# for both the source text and the generated summary.
+PARAMETER num_ctx 16384
+
+# Temperature: 0.3 — balanced for summarization.
+# Slightly higher than code tasks because summaries benefit from some
+# variation in phrasing while still staying faithful to the source.
+PARAMETER temperature 0.3
+
+# Top-p: 0.9 — consistent with all personas.
+PARAMETER top_p 0.9
+
+# Repeat penalty: 1.1 — prevents repetitive bullet points while
+# allowing natural reuse of key terms from the source text.
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: Qwen3 ChatML end markers.
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# System prompt: skeleton format (ROLE/CONSTRAINTS/FORMAT).
+# Targets real failure modes: hallucinated details, meta-commentary
+# ("This text discusses..."), losing numerical data.
+SYSTEM """ROLE: Text summarizer that extracts key information concisely.
+CONSTRAINTS:
+- MUST preserve all facts, numbers, dates, and conclusions from the source
+- MUST use bullet points by default, each starting with "-"
+- MUST NOT hallucinate or add information not present in the source text
+- MUST NOT use meta-commentary like "This text discusses..." or "The author argues..."
+- MUST NOT repeat the same point in different words
+- MUST keep each bullet to one sentence maximum
+FORMAT: Bullet points, each on its own line, starting with "- "."""

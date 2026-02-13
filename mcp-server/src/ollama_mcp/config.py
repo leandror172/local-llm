@@ -62,4 +62,8 @@ MODELS: list[str] = [
     "my-coder-q3",          # Qwen3-8B — coding persona, thinking capable
     "my-creative-coder",    # Qwen2.5-Coder-7B — creative coding persona
     "my-creative-coder-q3", # Qwen3-8B — creative coding, thinking capable
+    "my-codegen-q3",        # Qwen3-8B — general-purpose code generation
+    "my-summarizer-q3",     # Qwen3-8B — text summarization
+    "my-classifier-q3",     # Qwen3-8B — text classification (JSON output)
+    "my-translator-q3",     # Qwen3-8B — language translation
 ]

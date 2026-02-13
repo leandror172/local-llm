@@ -13,12 +13,31 @@ The server uses a "lifespan" pattern to manage the Ollama HTTP client:
 """
 
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from mcp.server.fastmcp import FastMCP
 
 from ollama_mcp.client import OllamaClient, OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError
 from ollama_mcp.config import DEFAULT_MODEL, MODELS, TEMPS
+
+# ---------------------------------------------------------------------------
+# Language → persona routing for generate_code
+# ---------------------------------------------------------------------------
+
+# Maps programming languages to the best-fit persona. Languages not listed
+# here fall through to the general-purpose my-codegen-q3 persona.
+LANGUAGE_ROUTES: dict[str, str] = {
+    "java": "my-coder-q3",
+    "go": "my-coder-q3",
+    "golang": "my-coder-q3",
+    "html": "my-creative-coder-q3",
+    "javascript": "my-creative-coder-q3",
+    "js": "my-creative-coder-q3",
+    "css": "my-creative-coder-q3",
+    "svg": "my-creative-coder-q3",
+}
+
+_DEFAULT_CODEGEN_MODEL = "my-codegen-q3"
 
 # ---------------------------------------------------------------------------
 # Module-level client (set during server lifespan)
@@ -88,14 +107,18 @@ async def ask_ollama(
 ) -> str:
     """Ask a question to a local Ollama model.
 
-    Use for simple tasks like generating boilerplate code, explaining concepts,
-    text transformation, or quick Q&A. The model runs locally on GPU — fast
-    response times but less capable than Claude.
+    General-purpose tool for explanations, Q&A, brainstorming, and analysis.
+    For specialized tasks, prefer the dedicated tools:
+    - generate_code: code generation (auto-routes to language-specific personas)
+    - summarize: text summarization (bullet points)
+    - classify_text: text classification (structured JSON output)
+    - translate: language translation
 
     Args:
         prompt: The question or instruction for the model.
         model: Ollama model to use. Available: my-coder, my-coder-q3,
-               my-creative-coder, my-creative-coder-q3.
+               my-creative-coder, my-creative-coder-q3, my-codegen-q3,
+               my-summarizer-q3, my-classifier-q3, my-translator-q3.
                Default: my-coder-q3 (Qwen3-8B, good all-rounder).
         temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative).
                      Default: model's built-in default.
@@ -161,3 +184,225 @@ async def list_models() -> str:
         lines.append(f"  - {name} ({size_gb:.1f} GB)")
 
     return "Available Ollama models:\n" + "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Shared error handler
+# ---------------------------------------------------------------------------
+
+def _format_error(e: Exception) -> str:
+    """Convert Ollama exceptions to user-friendly error strings."""
+    if isinstance(e, OllamaConnectionError):
+        return (
+            "Error: Cannot connect to Ollama. "
+            "Is it running? Start with: ollama serve"
+        )
+    if isinstance(e, OllamaModelNotFoundError):
+        return (
+            f"Error: Model not found. "
+            f"Available models: {', '.join(MODELS)}"
+        )
+    if isinstance(e, OllamaTimeoutError):
+        return (
+            "Error: Ollama timed out. The model may be loading (cold start). "
+            "Try again in a few seconds."
+        )
+    return f"Error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Specialized tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def generate_code(
+    prompt: str,
+    language: str | None = None,
+    model: str | None = None,
+) -> str:
+    """Generate code using a local Ollama model with smart persona routing.
+
+    Automatically selects the best persona based on the target language:
+    - Java, Go → my-coder-q3 (backend specialist)
+    - HTML, JavaScript, CSS → my-creative-coder-q3 (browser/Canvas specialist)
+    - All other languages → my-codegen-q3 (general-purpose code generator)
+
+    An explicit model parameter overrides the automatic routing.
+
+    Args:
+        prompt: What code to generate (e.g., "binary search function").
+        language: Target programming language (e.g., "python", "rust").
+                  Used for persona routing and prepended as a hint to the prompt.
+                  If omitted, the model infers the language from context.
+        model: Override automatic persona routing with a specific model name.
+
+    Returns:
+        Generated code (typically in a fenced code block). Returns an error
+        message string if Ollama is unreachable.
+    """
+    client = _get_client()
+
+    # Determine which persona to use: explicit override > language route > default
+    if model is not None:
+        chosen_model = model
+    elif language is not None:
+        chosen_model = LANGUAGE_ROUTES.get(language.lower(), _DEFAULT_CODEGEN_MODEL)
+    else:
+        chosen_model = _DEFAULT_CODEGEN_MODEL
+
+    # Prepend language hint so the persona knows what to generate
+    if language:
+        full_prompt = f"[Language: {language}]\n{prompt}"
+    else:
+        full_prompt = prompt
+
+    try:
+        response = await client.chat(
+            prompt=full_prompt,
+            model=chosen_model,
+            think=False,
+        )
+        return response.content
+    except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
+        return _format_error(e)
+
+
+@mcp.tool()
+async def summarize(
+    text: str,
+    max_points: int | None = None,
+    model: str = "my-summarizer-q3",
+) -> str:
+    """Summarize text into concise bullet points using a local Ollama model.
+
+    The summarizer preserves facts, numbers, and conclusions from the source.
+    Output is bullet points by default.
+
+    Args:
+        text: The text to summarize.
+        max_points: Maximum number of bullet points. If omitted, the model
+                    decides based on content length.
+        model: Ollama model to use. Default: my-summarizer-q3.
+
+    Returns:
+        Bullet-point summary. Returns an error message string if Ollama
+        is unreachable.
+    """
+    client = _get_client()
+
+    # Build prompt with optional constraint
+    if max_points is not None:
+        prompt = f"Summarize the following text in at most {max_points} bullet points:\n\n{text}"
+    else:
+        prompt = f"Summarize the following text:\n\n{text}"
+
+    try:
+        response = await client.chat(
+            prompt=prompt,
+            model=model,
+            think=False,
+        )
+        return response.content
+    except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
+        return _format_error(e)
+
+
+@mcp.tool()
+async def classify_text(
+    text: str,
+    categories: list[str],
+    model: str = "my-classifier-q3",
+) -> str:
+    """Classify text into one of the provided categories using a local Ollama model.
+
+    Uses grammar-constrained decoding (Ollama's format parameter) to guarantee
+    valid JSON output with the category restricted to the provided list.
+
+    Args:
+        text: The text to classify.
+        categories: List of valid category names (e.g., ["food", "transport", "housing"]).
+                    The model must pick exactly one.
+        model: Ollama model to use. Default: my-classifier-q3.
+
+    Returns:
+        JSON string with keys: category, confidence (0.0-1.0), reasoning.
+        Returns an error message string if Ollama is unreachable.
+    """
+    client = _get_client()
+
+    # Build dynamic JSON schema — the enum constrains the model's output
+    # to only the provided categories via grammar-constrained decoding.
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "category": {
+                "type": "string",
+                "enum": categories,
+            },
+            "confidence": {
+                "type": "number",
+            },
+            "reasoning": {
+                "type": "string",
+            },
+        },
+        "required": ["category", "confidence", "reasoning"],
+    }
+
+    prompt = (
+        f"Classify the following text into one of these categories: "
+        f"{', '.join(categories)}.\n\n{text}"
+    )
+
+    try:
+        response = await client.chat(
+            prompt=prompt,
+            model=model,
+            format=schema,
+            think=False,
+        )
+        return response.content
+    except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
+        return _format_error(e)
+
+
+@mcp.tool()
+async def translate(
+    text: str,
+    target_language: str,
+    source_language: str | None = None,
+    model: str = "my-translator-q3",
+) -> str:
+    """Translate text to a target language using a local Ollama model.
+
+    The translator preserves meaning, tone, and formatting. Outputs only the
+    translated text with no preamble or explanation.
+
+    Args:
+        text: The text to translate.
+        target_language: Language to translate into (e.g., "Spanish", "Japanese").
+        source_language: Language of the input text. If omitted, the model
+                         auto-detects the source language.
+        model: Ollama model to use. Default: my-translator-q3.
+
+    Returns:
+        Translated text only. Returns an error message string if Ollama
+        is unreachable.
+    """
+    client = _get_client()
+
+    # Build prompt with language pair info
+    if source_language:
+        prompt = f"Translate the following text from {source_language} to {target_language}:\n\n{text}"
+    else:
+        prompt = f"Translate the following text to {target_language}:\n\n{text}"
+
+    try:
+        response = await client.chat(
+            prompt=prompt,
+            model=model,
+            think=False,
+        )
+        return response.content
+    except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
+        return _format_error(e)

@@ -1,6 +1,6 @@
 # Task Progress
 
-**Last Updated:** 2026-02-12
+**Last Updated:** 2026-02-13
 **Active Layer:** Layer 1 — MCP Server
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
@@ -19,7 +19,7 @@
 
 - [x] 1.1 Research MCP server specification and ClaudeCode integration → `.claude/archive/layer-1-research.md`
 - [x] 1.2 Build MCP server wrapping Ollama `/api/chat` **(Python / FastMCP)** → `mcp-server/`
-- [ ] 1.3 Define tool capabilities: generate_code, classify_text, summarize, translate (+ general-purpose: scraping, PDF, research, conversation)
+- [x] 1.3 Define tool capabilities: generate_code, classify_text, summarize, translate → 4 Modelfiles + 4 MCP tools + language routing
 - [ ] 1.4 Configure ClaudeCode to use the MCP server
 - [ ] 1.5 Test: ClaudeCode delegates a boilerplate function to local model
 - [ ] 1.6 Document usage patterns and limitations

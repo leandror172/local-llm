@@ -5,6 +5,61 @@
 
 ---
 
+## 2026-02-13 - Session 15: Task 1.3 — Specialized MCP Tool Capabilities
+
+### Context
+Resuming from Session 14 which completed Task 1.2 (MCP server built). This session adds 4 specialized tools with dedicated Ollama personas.
+
+### What Was Done
+
+**Task 1.3 Complete: 4 specialized tools with per-task personas**
+
+Created 4 Modelfiles (all based on `qwen3:8b`, sharing weight layers):
+
+| Modelfile | Persona | Temp | Role |
+|-----------|---------|------|------|
+| `modelfiles/codegen-qwen3.Modelfile` | `my-codegen-q3` | 0.1 | General-purpose code gen (Python, Rust, C++, etc.) |
+| `modelfiles/summarizer-qwen3.Modelfile` | `my-summarizer-q3` | 0.3 | Text summarization (bullet points) |
+| `modelfiles/classifier-qwen3.Modelfile` | `my-classifier-q3` | 0.1 | Text classification (JSON output) |
+| `modelfiles/translator-qwen3.Modelfile` | `my-translator-q3` | 0.3 | Language translation (100+ languages) |
+
+Added 4 tool functions to `mcp-server/src/ollama_mcp/server.py`:
+
+| Tool | Key Feature |
+|------|-------------|
+| `generate_code(prompt, language?, model?)` | Smart language routing: Java/Go→my-coder-q3, HTML/JS/CSS→my-creative-coder-q3, else→my-codegen-q3 |
+| `summarize(text, max_points?, model?)` | Optional `max_points` constraint, bullet-point output |
+| `classify_text(text, categories, model?)` | Grammar-constrained JSON via dynamic schema + `format` param |
+| `translate(text, target_language, source_language?, model?)` | Auto-detect source language |
+
+Also added:
+- `LANGUAGE_ROUTES` dict for generate_code persona routing
+- `_format_error()` shared error handler
+- Updated `ask_ollama` docstring with routing guidance to specialized tools
+- Updated `config.py` MODELS list (now 8 personas)
+
+**All smoke tests passed against live Ollama:**
+- `generate_code("binary search", language="python")` → clean Python function
+- `classify_text("Uber ride $45", ["food","transport","housing"])` → `{"category":"transport","confidence":0.95,...}`
+- `summarize(python_history, max_points=3)` → 3 bullet points, no meta-commentary
+- `translate("Hello world", "Spanish")` → "Hola mundo" (no preamble)
+- Language routing: Java→my-coder-q3 (added error handling per its SYSTEM), HTML→my-creative-coder-q3 (used Canvas API per its SYSTEM)
+
+### Decisions Made
+- **Temperature split:** 0.1 for deterministic tasks (code, classification), 0.3 for variation tasks (summarization, translation)
+- **Per-task personas over API system prompts:** Avoids conflicting instructions between Modelfile SYSTEM and API `system` param
+- **`think=False` hardcoded** for all specialized tools (simple tasks per Layer 0 strategy)
+- **Language routing dict** (`LANGUAGE_ROUTES`): clean, extensible, explicit model override always wins
+- **Grammar-constrained decoding** for classify_text: dynamic JSON schema with enum from categories list, passed via `format` param
+- **Shared `_format_error`** helper to DRY error handling across new tools (existing `ask_ollama` kept inline for backwards clarity)
+
+### Next
+- Task 1.4: Configure Claude Code to use the MCP server (`claude mcp add`)
+- Task 1.5: End-to-end test — Claude Code delegates to local model
+- Task 1.6: Document usage patterns and limitations
+
+---
+
 ## 2026-02-12 - Session 14: Task 1.2 — MCP Server Built and Verified
 
 ### Context
