@@ -1,7 +1,64 @@
 # Session Log
 
-**Current Layer:** Layer 1 — MCP Server
+**Current Layer:** Layer 2 — Local-First CLI Tool
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-16 - Session 18: Layer 2 Kickoff — Tool Evaluation + Installation
+
+### Context
+First session of Layer 2. Layer 1 complete (7/7). Goal: set up a Claude Code-like CLI running against local Ollama with optional frontier escalation (Pattern A: local-first, escalates up).
+
+### What Was Done
+
+**Task 2.1 Complete: Tool landscape evaluation**
+
+Ran 3 parallel research agents surveying the entire local-first CLI tool landscape (Feb 2026):
+
+- **34 tools surveyed** across 5 tiers (major CLIs, niche tools, enterprise, IDE-only, frameworks)
+- **Key architectural finding:** Two camps — **text-format agents** (Aider) vs **tool-calling agents** (OpenCode, Goose, Qwen Code, Cline CLI). Tool-calling requires valid JSON from the LLM, which 7-8B models fail at systemically. Text-format is the only reliable path for our Qwen3-8B / RTX 3060 setup.
+- **Major new entrants** not in original plan: OpenCode (100K+ stars, Go TUI), Qwen Code (Qwen-optimized, Gemini CLI fork), Codex CLI (OpenAI, `--oss` flag), Kilo CLI (Memory Bank feature), Cline CLI (was IDE-only, now has CLI)
+- **Ecosystem shift:** `ollama launch` (v0.15, Jan 2026) = zero-config setup; MCP standardization drove extension ecosystems
+- **Goose lead/worker analysis:** Elegant auto-fallback, but failure mode is protocol-level (malformed JSON), not quality-level — with 8B models, would end up running on Claude most of the time
+- **Selected:** Aider (primary) + OpenCode (comparison)
+
+**Task 2.2 Complete: Both tools installed and configured**
+
+| Tool | Version | Config | Model | Install |
+|------|---------|--------|-------|---------|
+| Aider | v0.86.2 | `.aider.conf.yml` | `qwen2.5-coder:7b` (whole format) | `uv tool install aider-chat` |
+| OpenCode | v1.2.5 | `opencode.json` | `qwen3:8b` via Ollama | `curl -fsSL https://opencode.ai/install \| bash` |
+
+Both smoke-tested against live Ollama — working.
+
+**Task 2.3 Complete: Frontier fallback pre-wired (dormant)**
+
+- Created `.env` (gitignored) with 7 pre-documented frontier providers, all commented out
+- Top free tiers: Google Gemini (frontier-class), Groq (fast 70B), Cerebras (1M tokens/day), OpenRouter (multi-model)
+- Aider: frontier via `--architect --model gemini/gemini-2.5-flash` (CLI flag toggle)
+- OpenCode: Google + Groq added as providers in `opencode.json` (select from TUI)
+- All dormant until an API key is uncommented in `.env`
+
+### Decisions Made
+- **Aider primary, OpenCode secondary:** Aider's text-format editing is the only reliable approach for 7-8B models. OpenCode is comparison + future use with larger models.
+- **Goose deferred:** Lead/worker is interesting but tool-calling JSON failures make it impractical at 8B.
+- **Qwen Code — revisit later:** Optimized for Qwen3-Coder models (MoE, 3B active/80B total). Worth testing when we pull Qwen3-Coder-Next.
+- **Frontier = opt-in per session:** Default is always local-only. Frontier activated via CLI flags (Aider) or TUI selection (OpenCode). `.env` is the API key catalog.
+- **`.gitignore` refined:** `.aider*` blanket replaced with specific working files — config files (`.aider.conf.yml`, `opencode.json`) are tracked.
+
+### Files Created/Modified
+| File | Action |
+|------|--------|
+| `.aider.conf.yml` | Created — Aider project config (local default, frontier via flags) |
+| `opencode.json` | Created — OpenCode project config (3 providers: Ollama, Gemini, Groq) |
+| `.env` | Created — API key catalog, 7 providers (gitignored) |
+| `.gitignore` | Updated — added `.env`, refined `.aider*` to specific files |
+| `.claude/session-context.md` | Updated — Layer 2 decisions added |
+
+### Next
+- **Task 2.4:** Test on a real coding task — compare Aider and OpenCode quality vs Claude Code
+- **Task 2.5:** Document when to use local-first CLI vs Claude Code
 
 ---
 

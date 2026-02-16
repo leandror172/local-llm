@@ -30,3 +30,10 @@ benchmarks/node_modules/
 
 # Python bytecode cache
 __pycache__/
+
+# Environment variables (API keys, secrets)
+.env
+# Aider working files (chat history, cache, tags — not config)
+.aider.tags.cache.v0/
+.aider.chat.history.md
+.aider.input.history

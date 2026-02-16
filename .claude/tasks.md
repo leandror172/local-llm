@@ -1,7 +1,7 @@
 # Task Progress
 
-**Last Updated:** 2026-02-13
-**Active Layer:** Layer 1 — MCP Server
+**Last Updated:** 2026-02-16
+**Active Layer:** Layer 2 — Local-First CLI Tool
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
 ---
@@ -10,28 +10,30 @@
 
 - **Phases 0-6:** Infrastructure setup complete (Ollama, models, Docker, verification, docs)
 - **Layer 0:** Foundation upgrades complete (12/12) — Qwen3 models, benchmarks, structured output, thinking mode strategy, decomposition, runtime validation, few-shot examples
+- **Layer 1:** MCP Server complete (7/7) — FastMCP server, 6 tools, system-wide availability
 
 ---
 
-## Layer 1: MCP Server — Ollama as ClaudeCode Tool
+## Layer 2: Local-First CLI Tool
 
-**Goal:** Let ClaudeCode delegate simple tasks to local Ollama (Pattern B: frontier-first, delegates down).
+**Goal:** A Claude Code-like interface running against local Ollama, with optional frontier escalation (Pattern A: local-first, escalates up).
 
-- [x] 1.1 Research MCP server specification and ClaudeCode integration → `.claude/archive/layer-1-research.md`
-- [x] 1.2 Build MCP server wrapping Ollama `/api/chat` **(Python / FastMCP)** → `mcp-server/`
-- [x] 1.3 Define tool capabilities: generate_code, classify_text, summarize, translate → 4 Modelfiles + 4 MCP tools + language routing
-- [x] 1.4 Configure ClaudeCode to use the MCP server → `.mcp.json` (project-level), `MCP_TIMEOUT=120000` in `.bashrc`
-- [x] 1.5 Test: ClaudeCode delegates a boilerplate function to local model → all 6 tools verified end-to-end
-- [x] 1.6 Document usage patterns and limitations → `mcp-server/README.md`
-- [x] 1.7 Make MCP server available system-wide → user-level `~/.claude.json`, Claude Desktop config, startup health probe
+- [x] 2.1 Evaluate tools: landscape survey of 34 CLI tools → Aider (primary) + OpenCode (comparison)
+- [x] 2.2 Install and configure Aider v0.86.2 + OpenCode v1.2.5 with Ollama backend
+- [x] 2.3 Configure frontier fallback → `.env` with 7 providers (dormant), CLI-flag toggle
+- [ ] 2.4 Test on a real coding task: compare output quality vs Claude Code
+- [ ] 2.5 Document when to use local-first CLI vs Claude Code
+
+### Key Findings
+- **Architecture divide:** Text-format agents (Aider) vs tool-calling agents (OpenCode, Goose). Tool-calling fails systemically at 7-8B.
+- **Aider advantages at 8B:** tree-sitter repo map, auto-commit + undo, `whole` edit format, architect mode (frontier plans, local codes)
+- **Deferred:** Goose (lead/worker is elegant but protocol-level failures at 8B), Qwen Code (revisit when we pull Qwen3-Coder-Next)
 
 ### Closing-the-gap integration
-- Apply structured prompts (skeleton format) when calling Ollama
-- Temperature presets per tool capability (0.1 for code, 0.3 for general, 0.7 for creative)
-- Structured output (JSON schema) for classification and structured responses
-- `think: false` default, escalate to `think: true` for complex reasoning or retries
+- Cascade pattern (#14): frontier fallback via Aider `--architect` mode or `.env` API keys
+- Best-of-N (#10): can run same prompt through Aider + OpenCode and compare
 
 ### Unlocks
-- Reduced Claude token consumption for simple tasks
-- Foundation for any frontier tool to call local models
-- First instance of "routing" in practice
+- Coding continues when Claude quota is depleted
+- Unlimited experimentation and iteration
+- Persona testing without frontier token cost

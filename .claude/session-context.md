@@ -46,9 +46,10 @@
 - **Phases 0-6:** Complete → `.claude/archive/phases-0-6.md`
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
-- **Last completed:** Task 1.7 (system-wide MCP: user-level, Claude Desktop, health probe)
-- **Last checkpoint:** 2026-02-13
-- **Next:** Layer 2 (check `.claude/plan-v2.md` for scope)
+- **Layer 2:** In progress (3/5) — Aider + OpenCode installed, frontier pre-wired
+- **Last completed:** Task 2.3 (frontier fallback configured, dormant)
+- **Last checkpoint:** 2026-02-16
+- **Next:** Task 2.4 (real coding test: Aider vs OpenCode vs Claude Code)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
@@ -80,6 +81,13 @@ The tracking files ARE the handoff — no separate handoff files needed.
 - **Licensing rule (STRONG):** Always check + honor external project licenses. If attribution required, add to `docs/ATTRIBUTIONS.md`. Never skip this.
 - **Reference existing work:** Borrow architectural patterns with attribution from llm-use, ultimate_mcp_server, locallama-mcp, MCP-ollama_server
 - **Research archive:** `.claude/archive/layer-1-research.md`
+
+### Layer 2 Decisions (decided 2026-02-16)
+- **Tool selection:** Aider (primary) + OpenCode (comparison). Aider chosen for text-format editing (no JSON tool-calling required — critical for 7-8B models). OpenCode for comparison + future use with larger models.
+- **Architecture insight:** Two camps — text-format agents (Aider) vs tool-calling agents (OpenCode, Goose, Qwen Code). Tool-calling fails systemically at 7-8B; text-format is reliable.
+- **Goose deferred:** Lead/worker auto-fallback is elegant but the failure mode is protocol-level (malformed JSON), not quality-level — auto-escalation would just run Claude most of the time.
+- **Qwen Code — revisit later:** QwenLM/qwen-code is optimized for Qwen3-Coder models (MoE, 3B active/80B total). Worth testing when we pull Qwen3-Coder-Next. Also interesting as the Gemini CLI fork with Qwen-specific tuning.
+- **Research archive:** `.claude/archive/layer-2-research.md` (to be created)
 
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)

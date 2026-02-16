@@ -1,0 +1,33 @@
+# Aider configuration for local Ollama + frontier fallback
+# Docs: https://aider.chat/docs/config/aider_conf.html
+
+# Default model: Qwen2.5-Coder-7B via Ollama (best local coder for our 12GB VRAM)
+model: ollama_chat/qwen2.5-coder:7b
+
+# Edit format: "whole" is most reliable with 7-8B models
+# (small models struggle with diff/search-replace structured formats)
+edit-format: whole
+
+# Suppress the OLLAMA_API_BASE warning (defaults to localhost:11434, which is correct)
+no-show-model-warnings: true
+
+# Read API keys from .env file
+env-file: .env
+
+# ============================================================
+# Frontier fallback — toggle via CLI flags, not config
+# ============================================================
+# Default: local-only (settings above).
+# To enable frontier planning with local execution:
+#
+#   aider --architect --model gemini/gemini-2.5-flash
+#   aider --architect --model groq/llama-3.3-70b-versatile
+#   aider --architect --model anthropic/claude-sonnet-4-5-20250929
+#
+# Architect mode: frontier model PLANS the change, local model WRITES the code.
+# The editor-model stays as configured above (ollama qwen2.5-coder:7b).
+#
+# To switch to full frontier (no local):
+#   aider --model gemini/gemini-2.5-flash
+#
+# To switch models mid-session: /model gemini/gemini-2.5-flash
