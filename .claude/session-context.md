@@ -46,10 +46,10 @@
 - **Phases 0-6:** Complete → `.claude/archive/phases-0-6.md`
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
-- **Layer 2:** In progress (3/5) — Aider + OpenCode installed, frontier pre-wired
-- **Last completed:** Task 2.3 (frontier fallback configured, dormant)
-- **Last checkpoint:** 2026-02-16
-- **Next:** Task 2.4 (real coding test: Aider vs OpenCode vs Claude Code)
+- **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
+- **Last completed:** Task 2.5 (decision guide written)
+- **Last checkpoint:** 2026-02-17
+- **Next:** Layer 3 — check `.claude/plan-v2.md` for Layer 3 definition
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
@@ -82,12 +82,17 @@ The tracking files ARE the handoff — no separate handoff files needed.
 - **Reference existing work:** Borrow architectural patterns with attribution from llm-use, ultimate_mcp_server, locallama-mcp, MCP-ollama_server
 - **Research archive:** `.claude/archive/layer-1-research.md`
 
-### Layer 2 Decisions (decided 2026-02-16)
+### Layer 2 Decisions (decided 2026-02-16/17)
 - **Tool selection:** Aider (primary) + OpenCode (comparison). Aider chosen for text-format editing (no JSON tool-calling required — critical for 7-8B models). OpenCode for comparison + future use with larger models.
 - **Architecture insight:** Two camps — text-format agents (Aider) vs tool-calling agents (OpenCode, Goose, Qwen Code). Tool-calling fails systemically at 7-8B; text-format is reliable.
-- **Goose deferred:** Lead/worker auto-fallback is elegant but the failure mode is protocol-level (malformed JSON), not quality-level — auto-escalation would just run Claude most of the time.
-- **Qwen Code — revisit later:** QwenLM/qwen-code is optimized for Qwen3-Coder models (MoE, 3B active/80B total). Worth testing when we pull Qwen3-Coder-Next. Also interesting as the Gemini CLI fork with Qwen-specific tuning.
-- **Research archive:** `.claude/archive/layer-2-research.md` (to be created)
+- **Goose and Qwen Code installed but confirmed broken at 7-8B:** Same root cause as OpenCode local. All tool-calling agents require either 30B+ local model or frontier API.
+- **Groq free tier incompatible with tool-calling agents:** Tool-definition overhead ≈16K tokens, exceeds 12K TPM limit. Use Gemini free tier instead.
+- **Worktrees must strip `.claude/`:** Other tools' models read CLAUDE.md and skill files, causing context pollution. Strip before using any non-Claude-Code tool.
+- **Qwen Code config gotcha:** Provider `id` field must be the actual Ollama model name (e.g., `qwen3:8b`), not a human-readable label — it is sent directly as the model parameter in API calls.
+- **Aider quality limits at 7-8B:** `javax.persistence` (old namespace for Spring Boot 3.x), wrong web stack (webflux), `@Autowired` field injection (spec violation), broken physics (coordinate transforms). Treat Aider output as a draft requiring review.
+- **`no-auto-commits: true` in Aider:** User found auto-commit disruptive. Enabled by default now.
+- **Qwen Code — revisit later:** QwenLM/qwen-code needs qwen3-coder (smallest = 30B, 19GB). Defer until hardware upgrade or cloud option.
+- **Findings + decision guide:** `tests/layer2-comparison/findings.md` — full test results, failure taxonomy, when-to-use guide.
 
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)

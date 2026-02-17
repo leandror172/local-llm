@@ -250,10 +250,15 @@ Full research → `.claude/archive/layer-1-research.md`
 
 | Topic | File | Key Content |
 |-------|------|-------------|
-| Aider project config | `.aider.conf.yml` | Local default (qwen2.5-coder:7b, whole format), frontier via CLI flags |
+| Aider project config | `.aider.conf.yml` | Local default (qwen2.5-coder:7b, whole format, no-auto-commits), frontier via CLI flags |
 | OpenCode project config | `opencode.json` | 3 providers: Ollama, Google Gemini, Groq |
+| Qwen Code config | `~/.qwen/settings.json` | qwen3:8b via Ollama OpenAI-compat API (id = model name) |
+| Goose config | `~/.config/goose/config.yaml` | qwen2.5-coder:7b, developer extension; `GOOSE_DISABLE_KEYRING=1` required in WSL2 |
 | Frontier API key catalog | `.env` (gitignored) | 7 providers documented with signup URLs and limits |
 | Layer 2 decisions | `.claude/session-context.md` § "Layer 2 Decisions" | Tool selection rationale, architecture divide, deferred items |
+| Test prompts | `tests/layer2-comparison/` | 3 tests: Spring Boot, visual, MCP tool |
+| Test runner guide | `tests/layer2-comparison/README.md` | 5-tool setup, run commands, diff commands, cleanup |
+| **Test findings & decision guide** | `tests/layer2-comparison/findings.md` | Full results, failure taxonomy, when to use what |
 
 ---
 

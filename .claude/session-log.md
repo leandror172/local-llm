@@ -1,7 +1,66 @@
 # Session Log
 
-**Current Layer:** Layer 2 — Local-First CLI Tool
+**Current Layer:** Layer 2 — Complete ✅
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-17 - Session 19: Layer 2 Complete — Testing, Expansion, Findings
+
+### Context
+Resumed from Session 18 (Tasks 2.1-2.3 done). Goal: run real coding tests across tools, compare output quality, document decision guide (Tasks 2.4-2.5).
+
+### What Was Done
+
+**Task 2.4 Complete: Five-tool comparison test**
+
+Expanded original Aider + OpenCode plan to 5 tools after discovering OpenCode + local models failed:
+
+| Tool | Model | Result |
+|------|-------|--------|
+| Aider | qwen2.5-coder:7b (local) | ✅ Executed all 3 tests |
+| Claude Code | claude-sonnet | ✅ Executed all 3 tests, higher quality |
+| OpenCode | qwen3:8b (local) | ❌ Emitted Python pseudocode instead of JSON tool calls |
+| OpenCode | Groq Llama 3.3 70B | ❌ TPM exceeded (tool-definition overhead = 16K tokens, limit = 12K) |
+| Qwen Code | qwen3:8b (local) | ❌ No file writes — plan described, tools never invoked |
+| Goose | qwen2.5-coder:7b (local) | ❌ Tool calls sent with missing `content` field |
+
+**New tools installed and tested:**
+- Goose v1.24.0 (`curl` install, `GOOSE_DISABLE_KEYRING=1` for WSL2, `~/.config/goose/config.yaml`)
+- Qwen Code v0.10.3 (`npm install -g @qwen-code/qwen-code`, `~/.qwen/settings.json`)
+- Config fix: Qwen Code `id` field must be the actual model name (e.g., `qwen3:8b`), not a display name
+- New test worktrees: `test-goose`, `test-qwencode`; all worktrees had `.claude/` stripped to prevent context pollution
+
+**Code quality comparison (Aider vs Claude Code):**
+
+| Test | Aider | Claude Code |
+|------|-------|-------------|
+| Spring Boot — compiles? | ❌ `javax.persistence` (Boot 3.x needs `jakarta`) | ✅ Correct |
+| Spring Boot — runs? | ❌ Wrong web stack (webflux vs web) | ✅ Correct |
+| Spring Boot — spec compliance | ❌ `@Autowired` field injection (spec said constructor) | ✅ Constructor injection |
+| Visual — physics correct | ❌ Fixed-axis collision in rotated square (ball escapes) | ✅ Coordinate transforms |
+| Visual — real trail | ❌ Single fading arc | ✅ 120-position history |
+| MCP tool — spec fallback | ❌ Missing char estimate fallback | ✅ Implemented |
+
+**Task 2.5 Complete: Decision guide written**
+- Full findings documented in `tests/layer2-comparison/findings.md`
+- Decision guide covers: when to use Aider vs Claude Code vs frontier-backed tools
+- Failure taxonomy table: 7 failure types with examples and mitigations
+
+### Decisions Made
+- **Tool-calling wall is confirmed:** All 3 tool-calling agents failed at 7-8B scale. Not a prompt issue — a model capability threshold. Only text-format (Aider) works reliably locally.
+- **Groq incompatible with OpenCode:** Tool-definition overhead exceeds 12K TPM free limit regardless of prompt size. Gemini free tier is the only viable path.
+- **`javax` vs `jakarta`** is a hard training cutoff marker — 7-8B models consistently use old namespace for Spring Boot 3.x. Confirmed Aider failure.
+- **Spatial reasoning requires scale:** Rotating square physics correct on Claude, broken on qwen2.5-coder:7b. Same pattern as benchmark findings.
+- **Aider `no-auto-commits: true` added** — user found auto-commit disruptive.
+- **Worktrees must have `.claude/` stripped** — other tools' models read CLAUDE.md and session files, causing context pollution (session-handoff loop in OpenCode was the trigger).
+- **Qwen Code `id` field = model name:** OpenAI-compatible provider in Qwen Code uses the provider `id` as the model parameter in API calls, not `model.name`. Must be `qwen3:8b`, not `ollama-local`.
+- **Qwen Code revisit deferred:** No viable local model at 7-8B; qwen3-coder smallest local is 30B (19GB). Added to future notes.
+
+### Next
+- **Layer 2 is complete (5/5).** Next session should start **Layer 3** — check `.claude/plan-v2.md` for Layer 3 definition.
+- Before starting Layer 3: commit all uncommitted changes from this session.
+- Optional: Get Gemini API key to give OpenCode a fair test with a working frontier model.
 
 ---
 

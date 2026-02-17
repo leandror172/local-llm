@@ -1,12 +1,15 @@
 # Aider configuration for local Ollama + frontier fallback
 # Docs: https://aider.chat/docs/config/aider_conf.html
 
-# Default model: Qwen2.5-Coder-7B via Ollama (best local coder for our 12GB VRAM)
-model: ollama_chat/qwen2.5-coder:7b
+# Default model: my-aider persona (Qwen2.5-Coder-7B, temp=0.1, 16K context, no SYSTEM prompt)
+model: ollama_chat/my-aider
 
 # Edit format: "whole" is most reliable with 7-8B models
 # (small models struggle with diff/search-replace structured formats)
 edit-format: whole
+
+# Disable auto-commit (let user control git history)
+no-auto-commits: true
 
 # Suppress the OLLAMA_API_BASE warning (defaults to localhost:11434, which is correct)
 no-show-model-warnings: true

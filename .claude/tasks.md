@@ -1,7 +1,7 @@
 # Task Progress
 
-**Last Updated:** 2026-02-16
-**Active Layer:** Layer 2 — Local-First CLI Tool
+**Last Updated:** 2026-02-17
+**Active Layer:** Layer 3 — (see plan-v2.md for definition)
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
 ---
@@ -21,13 +21,15 @@
 - [x] 2.1 Evaluate tools: landscape survey of 34 CLI tools → Aider (primary) + OpenCode (comparison)
 - [x] 2.2 Install and configure Aider v0.86.2 + OpenCode v1.2.5 with Ollama backend
 - [x] 2.3 Configure frontier fallback → `.env` with 7 providers (dormant), CLI-flag toggle
-- [ ] 2.4 Test on a real coding task: compare output quality vs Claude Code
-- [ ] 2.5 Document when to use local-first CLI vs Claude Code
+- [x] 2.4 Five-tool comparison test (Aider, OpenCode, Qwen Code, Goose, Claude Code) — see `tests/layer2-comparison/findings.md`
+- [x] 2.5 Decision guide written — `tests/layer2-comparison/findings.md` § "Decision Guide"
 
 ### Key Findings
-- **Architecture divide:** Text-format agents (Aider) vs tool-calling agents (OpenCode, Goose). Tool-calling fails systemically at 7-8B.
-- **Aider advantages at 8B:** tree-sitter repo map, auto-commit + undo, `whole` edit format, architect mode (frontier plans, local codes)
-- **Deferred:** Goose (lead/worker is elegant but protocol-level failures at 8B), Qwen Code (revisit when we pull Qwen3-Coder-Next)
+- **Tool-calling wall at 7-8B:** All tool-calling agents (OpenCode, Qwen Code, Goose) failed locally. Only Aider's text-format works reliably.
+- **Groq free tier incompatible with tool-calling agents:** Tool-definition overhead ≈16K tokens exceeds 12K TPM limit. Gemini free tier needed.
+- **Aider quality limits:** `javax.persistence` (wrong namespace for Boot 3.x), broken physics (no coordinate transforms), missed spec requirements. Treat output as draft.
+- **Installed tools:** Aider v0.86.2, OpenCode v1.2.5, Qwen Code v0.10.3, Goose v1.24.0
+- **Deferred:** Qwen Code with qwen3-coder (smallest = 30B, 19GB — needs hardware upgrade)
 
 ### Closing-the-gap integration
 - Cascade pattern (#14): frontier fallback via Aider `--architect` mode or `.env` API keys
