@@ -179,16 +179,46 @@ Other infrastructure:
 <!-- ref:personas -->
 ## Personas (Modelfiles)
 
+**Registry:** `personas/registry.yaml` (machine-readable source of truth)
+**Template:** `personas/persona-template.md` (spec for creating new personas)
+
+### Specialized Coding
 | Persona | Modelfile | Base Model | Role |
 |---------|-----------|------------|------|
-| my-coder | `modelfiles/coding-assistant.Modelfile` | Qwen2.5-Coder-7B | Java/Go backend |
-| my-coder-q3 | `modelfiles/coding-assistant-qwen3.Modelfile` | Qwen3-8B | Java/Go backend (Qwen3) |
+| my-java-q3 | `modelfiles/java-qwen3.Modelfile` | Qwen3-8B | Java 21, Spring Boot 3.x |
+| my-go-q3 | `modelfiles/go-qwen3.Modelfile` | Qwen3-8B | Go 1.22+, Effective Go |
+| my-python-q3 | `modelfiles/python-qwen3.Modelfile` | Qwen3-8B | Python 3.11+, FastAPI, CLI |
 | my-creative-coder | `modelfiles/creative-coder-qwen25.Modelfile` | Qwen2.5-Coder-7B | Visual/creative coding |
 | my-creative-coder-q3 | `modelfiles/creative-coder-qwen3.Modelfile` | Qwen3-8B | Visual/creative (Qwen3) |
-| my-codegen-q3 | `modelfiles/codegen-qwen3.Modelfile` | Qwen3-8B | General-purpose code gen |
-| my-summarizer-q3 | `modelfiles/summarizer-qwen3.Modelfile` | Qwen3-8B | Text summarization |
+| my-codegen-q3 | `modelfiles/codegen-qwen3.Modelfile` | Qwen3-8B | General-purpose code gen (polyglot fallback) |
+
+### LLM Infrastructure
+| Persona | Modelfile | Base Model | Role |
+|---------|-----------|------------|------|
+| my-shell-q3 | `modelfiles/shell-qwen3.Modelfile` | Qwen3-8B | Bash/shell, Linux/WSL2 |
+| my-mcp-q3 | `modelfiles/mcp-qwen3.Modelfile` | Qwen3-8B | MCP server dev (FastMCP) |
+| my-prompt-eng-q3 | `modelfiles/prompt-eng-qwen3.Modelfile` | Qwen3-8B | Prompt engineering (7-14B) |
+
+### NLP / Utility
+| Persona | Modelfile | Base Model | Role |
+|---------|-----------|------------|------|
 | my-classifier-q3 | `modelfiles/classifier-qwen3.Modelfile` | Qwen3-8B | Text classification (JSON) |
-| my-translator-q3 | `modelfiles/translator-qwen3.Modelfile` | Qwen3-8B | Language translation |
+| my-summarizer-q3 | `modelfiles/summarizer-qwen3.Modelfile` | Qwen3-8B | Text summarization |
+| my-translator-q3 | `modelfiles/translator-qwen3.Modelfile` | Qwen3-8B | Language translation (generic) |
+| my-ptbr-q3 | `modelfiles/ptbr-translator-qwen3.Modelfile` | Qwen3-8B | PT-BR ↔ English specialist |
+| my-tech-writer-q3 | `modelfiles/tech-writer-qwen3.Modelfile` | Qwen3-8B | Technical docs, READMEs |
+
+### Legacy / Fallback
+| Persona | Modelfile | Base Model | Role |
+|---------|-----------|------------|------|
+| my-coder | `modelfiles/coding-assistant.Modelfile` | Qwen2.5-Coder-7B | Java/Go backend (polyglot) |
+| my-coder-q3 | `modelfiles/coding-assistant-qwen3.Modelfile` | Qwen3-8B | Java/Go backend (polyglot, Qwen3) |
+
+### Bare (Tool Wrappers)
+| Persona | Modelfile | Base Model | Host Tool |
+|---------|-----------|------------|-----------|
+| my-aider | `modelfiles/aider-qwen25.Modelfile` | Qwen2.5-Coder-7B | Aider |
+| my-opencode | `modelfiles/opencode-qwen3.Modelfile` | Qwen3-8B | OpenCode |
 <!-- /ref:personas -->
 
 ---
@@ -259,6 +289,16 @@ Full research → `.claude/archive/layer-1-research.md`
 | Test prompts | `tests/layer2-comparison/` | 3 tests: Spring Boot, visual, MCP tool |
 | Test runner guide | `tests/layer2-comparison/README.md` | 5-tool setup, run commands, diff commands, cleanup |
 | **Test findings & decision guide** | `tests/layer2-comparison/findings.md` | Full results, failure taxonomy, when to use what |
+
+---
+
+## Layer 3 Implementation
+
+| Topic | File | Key Content |
+|-------|------|-------------|
+| Persona template spec | `personas/persona-template.md` | Fields, defaults, skeleton, model selection, checklist |
+| Persona registry | `personas/registry.yaml` | 18 active, 10 planned; machine-readable source of truth |
+| All Modelfiles | `modelfiles/*.Modelfile` | 18 total (10 original + 8 new specialized) |
 
 ---
 

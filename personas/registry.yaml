@@ -1,0 +1,245 @@
+# Persona Registry
+# Source of truth for all Ollama personas managed by this project.
+# Updated by: persona creator (Task 3.2) or manually.
+# Last updated: 2026-02-17
+
+# ──────────────────────────────────────────────
+# Specialized coding personas
+# ──────────────────────────────────────────────
+
+my-java-q3:
+  modelfile: modelfiles/java-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Java 21 backend developer (Spring Boot 3.x, Jakarta EE)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-go-q3:
+  modelfile: modelfiles/go-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Go 1.22+ backend developer (Effective Go)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-python-q3:
+  modelfile: modelfiles/python-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Python 3.11+ developer (FastAPI, async, CLI tools)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-creative-coder:
+  modelfile: modelfiles/creative-coder-qwen25.Modelfile
+  base_model: qwen2.5-coder:7b
+  role: Interactive browser visualizations (HTML/Canvas/SVG)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-creative-coder-q3:
+  modelfile: modelfiles/creative-coder-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Interactive browser visualizations (HTML/Canvas/SVG)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-codegen-q3:
+  modelfile: modelfiles/codegen-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: General-purpose code generator (polyglot fallback)
+  temperature: 0.1
+  num_ctx: 16384
+  tier: full
+  status: active
+
+# ──────────────────────────────────────────────
+# LLM infrastructure personas
+# ──────────────────────────────────────────────
+
+my-shell-q3:
+  modelfile: modelfiles/shell-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Bash/shell scripting specialist (Linux, WSL2)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-mcp-q3:
+  modelfile: modelfiles/mcp-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: MCP server/tool developer (Python FastMCP)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-prompt-eng-q3:
+  modelfile: modelfiles/prompt-eng-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Prompt engineering specialist (7-14B local models)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+# ──────────────────────────────────────────────
+# NLP / utility personas
+# ──────────────────────────────────────────────
+
+my-classifier-q3:
+  modelfile: modelfiles/classifier-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Text classifier (single-category assignment)
+  temperature: 0.1
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-summarizer-q3:
+  modelfile: modelfiles/summarizer-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Text summarizer (bullet-point extraction)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-translator-q3:
+  modelfile: modelfiles/translator-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Language translator (generic, any language pair)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-ptbr-q3:
+  modelfile: modelfiles/ptbr-translator-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: PT-BR ↔ English specialist translator
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-tech-writer-q3:
+  modelfile: modelfiles/tech-writer-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Technical writer (docs, READMEs, API docs)
+  temperature: 0.7
+  num_ctx: 16384
+  tier: full
+  status: active
+
+# ──────────────────────────────────────────────
+# Legacy / fallback coding personas
+# ──────────────────────────────────────────────
+
+my-coder:
+  modelfile: modelfiles/coding-assistant.Modelfile
+  base_model: qwen2.5-coder:7b
+  role: Backend code generator — Java 21+ and Go 1.22+ (polyglot fallback)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+  note: Kept as polyglot fallback. Prefer my-java-q3 or my-go-q3 for new work.
+
+my-coder-q3:
+  modelfile: modelfiles/coding-assistant-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Backend code generator — Java 21+ and Go 1.22+ (polyglot fallback)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+  note: Kept as polyglot fallback. Prefer my-java-q3 or my-go-q3 for new work.
+
+# ──────────────────────────────────────────────
+# Bare personas (host tool controls the prompt)
+# ──────────────────────────────────────────────
+
+my-aider:
+  modelfile: modelfiles/aider-qwen25.Modelfile
+  base_model: qwen2.5-coder:7b
+  role: Aider CLI integration
+  temperature: 0.1
+  num_ctx: 16384
+  tier: bare
+  host_tool: aider
+  status: active
+
+my-opencode:
+  modelfile: modelfiles/opencode-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: OpenCode CLI integration
+  temperature: 0.1
+  num_ctx: 16384
+  tier: bare
+  host_tool: opencode
+  status: active
+
+# ──────────────────────────────────────────────
+# Planned personas (not yet created)
+# ──────────────────────────────────────────────
+
+# my-react-q3:
+#   base_model: qwen3:8b
+#   role: React 18+ / TypeScript frontend developer
+#   status: planned
+
+# my-angular-q3:
+#   base_model: qwen3:8b
+#   role: Angular 17+ / TypeScript frontend developer
+#   status: planned
+
+# my-architect-q3:
+#   base_model: qwen3:14b
+#   role: High-level system design and architecture (14B for deeper reasoning)
+#   num_ctx: 4096
+#   status: planned
+
+# my-be-architect-q3:
+#   base_model: qwen3:8b
+#   role: Backend architecture (API design, data modeling, microservices)
+#   status: planned
+
+# my-fe-architect-q3:
+#   base_model: qwen3:8b
+#   role: Frontend architecture (component trees, state management)
+#   status: planned
+
+# my-aws-q3:
+#   base_model: qwen3:8b
+#   role: AWS consultant (services, IAM, cost patterns)
+#   status: planned
+
+# my-gcp-q3:
+#   base_model: qwen3:8b
+#   role: GCP consultant (services, IAM, cost patterns)
+#   status: planned
+
+# my-java-reviewer-q3:
+#   base_model: qwen3:8b
+#   role: Java-specific code review
+#   status: planned
+
+# my-go-reviewer-q3:
+#   base_model: qwen3:8b
+#   role: Go-specific code review
+#   status: planned
+
+# my-career-coach-q3:
+#   base_model: qwen3:8b
+#   role: Resume, LinkedIn, interview prep (PT-BR aware)
+#   status: planned

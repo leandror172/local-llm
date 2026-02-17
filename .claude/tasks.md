@@ -1,7 +1,7 @@
 # Task Progress
 
 **Last Updated:** 2026-02-17
-**Active Layer:** Layer 3 — (see plan-v2.md for definition)
+**Active Layer:** Layer 3 — Persona Creator
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
 ---
@@ -39,3 +39,29 @@
 - Coding continues when Claude quota is depleted
 - Unlimited experimentation and iteration
 - Persona testing without frontier token cost
+
+---
+
+## Layer 3: Persona Creator
+
+**Goal:** A system that builds, tests, and refines Modelfile personas through conversation.
+
+- [x] 3.1 Design persona template — `personas/persona-template.md` (fields, defaults, skeleton, model selection guide)
+- [x] 3.6 Create specialized persona set — 8 new personas (java, go, python, shell, mcp, prompt-eng, ptbr, tech-writer)
+- [x] 3.5 Persona registry — `personas/registry.yaml` (18 active, 10 planned)
+- [ ] 3.2 Build conversational persona creator (Python CLI)
+- [ ] 3.3 Model selection logic (embedded in creator)
+- [ ] 3.4 Auto-detection: analyze codebase/domain → propose persona
+
+### Persona Inventory (18 active)
+**Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-creative-coder(-q3), my-codegen-q3
+**LLM infrastructure:** my-shell-q3, my-mcp-q3, my-prompt-eng-q3
+**NLP / utility:** my-classifier-q3, my-summarizer-q3, my-translator-q3, my-ptbr-q3, my-tech-writer-q3
+**Legacy fallback:** my-coder, my-coder-q3 (polyglot Java+Go — prefer specialists)
+**Bare (tool wrappers):** my-aider, my-opencode
+
+### Design Decisions
+- **Specialization over generalization:** Narrow personas outperform broad ones at 7-8B. my-java-q3 with `MUST use jakarta.*` beats generic my-coder-q3 that tries to cover both Java and Go.
+- **Constraint-driven prompts:** Each MUST/MUST NOT targets an observed failure mode (e.g., javax.persistence from Layer 2, unquoted variables in shell).
+- **Two-tier system:** Full personas (SYSTEM + all params) vs bare personas (minimal, for external tools like Aider/OpenCode).
+- **Registry as source of truth:** `personas/registry.yaml` — machine-readable, ready for the creator tool.

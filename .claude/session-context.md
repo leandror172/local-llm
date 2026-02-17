@@ -47,9 +47,9 @@
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Last completed:** Task 2.5 (decision guide written)
+- **Last completed:** Tasks 3.1, 3.5, 3.6 (persona template, registry, 8 new personas)
 - **Last checkpoint:** 2026-02-17
-- **Next:** Layer 3 — check `.claude/plan-v2.md` for Layer 3 definition
+- **Next:** Task 3.2 — Build conversational persona creator (Python CLI)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---

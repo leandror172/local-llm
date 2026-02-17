@@ -1,7 +1,54 @@
 # Session Log
 
-**Current Layer:** Layer 2 — Complete ✅
+**Current Layer:** Layer 3 — Persona Creator (in progress)
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-17 - Session 20: Layer 3 Kickoff — Template, Registry, 8 Specialized Personas
+
+### Context
+Layer 2 complete. Starting Layer 3 (Persona Creator). Entry point: `.claude/plan-v2.md` Layer 3 definition.
+
+### What Was Done
+
+**Task 3.1 Complete: Persona template specification**
+- Created `personas/persona-template.md` — canonical reference for all persona creation
+- Codifies the two-tier system (full vs bare personas), ROLE/CONSTRAINTS/FORMAT skeleton
+- Temperature guide (0.1/0.3/0.7), model selection decision flow, naming conventions
+- Checklist for creating new personas
+
+**Task 3.6 Complete: 8 new specialized personas created and registered**
+
+| Persona | Modelfile | Role | Key Constraints |
+|---------|-----------|------|-----------------|
+| my-java-q3 | java-qwen3.Modelfile | Java 21, Spring Boot 3.x | jakarta.* not javax.*, constructor injection, records |
+| my-go-q3 | go-qwen3.Modelfile | Go 1.22+, Effective Go | Error handling, context.Context, consumer-side interfaces |
+| my-python-q3 | python-qwen3.Modelfile | Python 3.11+, FastAPI | Type hints, pathlib, lazy logging, no mutable defaults |
+| my-shell-q3 | shell-qwen3.Modelfile | Bash/shell, Linux/WSL2 | set -euo pipefail, quoted vars, [[ ]] over [ ] |
+| my-mcp-q3 | mcp-qwen3.Modelfile | MCP server dev (FastMCP) | Async handlers, tool descriptions, structured errors |
+| my-prompt-eng-q3 | prompt-eng-qwen3.Modelfile | Prompt engineering (7-14B) | ROLE/CONSTRAINTS/FORMAT, hard language, 120-token limit |
+| my-ptbr-q3 | ptbr-translator-qwen3.Modelfile | PT-BR ↔ English | False cognates, tech term preservation, register matching |
+| my-tech-writer-q3 | tech-writer-qwen3.Modelfile | Technical docs/READMEs | Active voice, no filler, structure-first, temp=0.7 |
+
+**Task 3.5 Complete: Persona registry**
+- Created `personas/registry.yaml` — machine-readable source of truth
+- 18 active personas, 10 planned (commented, with metadata)
+- Organized by category: specialized coding, LLM infrastructure, NLP/utility, legacy, bare
+
+### Decisions Made
+- **Specialization over generalization:** Narrow personas outperform broad ones at 7-8B. Splitting my-coder into my-java-q3 + my-go-q3 (each gets domain-specific constraints).
+- **Keep my-coder-q3 as fallback:** Not deleted, marked as polyglot fallback in registry. Prefer specialists for new work.
+- **LLM infrastructure personas added:** my-python-q3, my-shell-q3, my-mcp-q3, my-prompt-eng-q3 — the project's own toolstack gets dedicated personas.
+- **Constraint design = observed failures:** Each MUST/MUST NOT targets a real failure mode (javax.persistence from Layer 2, unquoted variables in shell, etc.).
+- **Deferred 4 personas:** my-react-q3, my-angular-q3, my-ollama-q3, my-career-coach-q3 — no active projects/use cases yet.
+- **Taxonomy expanded beyond original plan:** Original plan had 7 generic personas; revised to ~20 specialized ones grouped by domain.
+
+### Next
+- **Task 3.2:** Build conversational persona creator (Python CLI — asks questions, generates Modelfile, registers with Ollama)
+- **Task 3.3:** Model selection logic (embedded in creator)
+- **Task 3.4:** Auto-detection (analyze codebase/domain → propose persona)
+- Before starting: commit all uncommitted changes from this session
 
 ---
 
