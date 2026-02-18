@@ -777,7 +777,12 @@ def detect(path: str, registry_path: str = None, verbose: bool = False) -> list:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description='Analyze a codebase to detect appropriate Ollama personas'
+        description='Analyze a codebase to detect appropriate Ollama personas',
+        epilog='Examples:\n'
+               '  personas/run-detect-persona.sh /path/to/repo\n'
+               '  personas/run-detect-persona.sh --verbose /path/to/repo\n'
+               '  personas/run-detect-persona.sh --json-compact /path/to/repo',
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('path', help='Path to codebase root directory')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -786,31 +791,64 @@ def main():
                         help='Scan without modifying state (info only)')
     parser.add_argument('--json-compact', action='store_true',
                         help='Output compact JSON (no pretty-print)')
-    parser.add_argument('--registry', help='Path to registry.yaml')
+    parser.add_argument('--registry', help='Path to registry.yaml (default: personas/registry.yaml)')
 
     args = parser.parse_args()
 
     # Validate path
     try:
         path = Path(args.path).resolve()
+
         if not path.exists():
-            print(f"Error: path does not exist: {args.path}", file=sys.stderr)
+            print(f"Error: Path does not exist: {args.path}", file=sys.stderr)
+            if args.verbose:
+                print(f"  Resolved to: {path}", file=sys.stderr)
             sys.exit(1)
+
         if not path.is_dir():
-            print(f"Error: path is not a directory: {args.path}", file=sys.stderr)
+            print(f"Error: Path is not a directory: {args.path}", file=sys.stderr)
             sys.exit(1)
+
+        if args.verbose:
+            print(f"[main] Analyzing: {path}", file=sys.stderr)
+
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        print(f"Error: Failed to access path: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Validate registry if custom path provided
+    if args.registry:
+        registry_path = Path(args.registry).resolve()
+        if not registry_path.exists():
+            print(f"Error: Registry file not found: {args.registry}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        registry_path = None
+
     # Detect personas
-    results = detect(str(path), registry_path=args.registry, verbose=args.verbose)
+    try:
+        results = detect(str(path), registry_path=registry_path, verbose=args.verbose)
+    except Exception as e:
+        print(f"Error: Detection failed: {e}", file=sys.stderr)
+        if args.verbose:
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
+
+    # Validate results
+    if not results:
+        print(f"Error: No personas detected (registry may be empty)", file=sys.stderr)
+        sys.exit(1)
 
     # Output
-    if args.json_compact:
-        print(json.dumps(results, separators=(',', ':')))
-    else:
-        print(json.dumps(results, indent=2))
+    try:
+        if args.json_compact:
+            print(json.dumps(results, separators=(',', ':')))
+        else:
+            print(json.dumps(results, indent=2))
+    except Exception as e:
+        print(f"Error: Failed to serialize results: {e}", file=sys.stderr)
+        sys.exit(1)
 
     sys.exit(0)
 
