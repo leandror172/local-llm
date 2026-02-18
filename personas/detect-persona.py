@@ -73,31 +73,35 @@ EXTENSION_SIGNALS = {
 # ──────────────────────────────────────────────────────────────────────────────
 
 IMPORT_PATTERNS = {
-    # Python frameworks
-    r'^\s*import\s+fastapi': {'lang': 'python', 'framework': 'fastapi', 'strength': 0.95},
-    r'^\s*from\s+fastapi\s+import': {'lang': 'python', 'framework': 'fastapi', 'strength': 0.95},
-    r'^\s*import\s+flask': {'lang': 'python', 'framework': 'flask', 'strength': 0.9},
-    r'^\s*from\s+flask\s+import': {'lang': 'python', 'framework': 'flask', 'strength': 0.9},
-    r'^\s*import\s+django': {'lang': 'python', 'framework': 'django', 'strength': 0.9},
-    r'^\s*import\s+pandas': {'lang': 'python', 'category': 'data-science', 'strength': 0.7},
-    r'^\s*import\s+numpy': {'lang': 'python', 'category': 'data-science', 'strength': 0.7},
+    # Python frameworks (fastapi/flask/django priority)
+    r'^\s*(?:import|from)\s+fastapi': {'lang': 'python', 'framework': 'fastapi', 'strength': 0.95},
+    r'^\s*(?:import|from)\s+flask': {'lang': 'python', 'framework': 'flask', 'strength': 0.9},
+    r'^\s*(?:import|from)\s+django': {'lang': 'python', 'framework': 'django', 'strength': 0.9},
+    r'^\s*(?:import|from)\s+starlette': {'lang': 'python', 'framework': 'fastapi', 'strength': 0.8},
+    r'^\s*(?:import|from)\s+(?:pandas|numpy)': {'lang': 'python', 'category': 'data-science', 'strength': 0.7},
+    r'^\s*(?:import|from)\s+pytest': {'lang': 'python', 'category': 'testing', 'strength': 0.6},
+    r'^\s*(?:import|from)\s+asyncio': {'lang': 'python', 'category': 'backend', 'strength': 0.5},
 
-    # Java frameworks
+    # Java frameworks (spring dominates)
     r'^\s*import\s+org\.springframework': {'lang': 'java', 'framework': 'spring-boot', 'strength': 1.0},
     r'^\s*import\s+jakarta\.': {'lang': 'java', 'framework': 'spring-boot', 'strength': 0.9},
-    r'^\s*import\s+javax\.servlet': {'lang': 'java', 'category': 'backend', 'strength': 0.8},
+    r'^\s*import\s+(?:javax\.persistence|javax\.servlet)': {'lang': 'java', 'category': 'backend', 'strength': 0.8},
+    r'^\s*import\s+com\.google\.protobuf': {'lang': 'java', 'framework': 'grpc', 'strength': 0.85},
 
     # Go frameworks
-    r'^\s*import\s+\(\s*"github\.com/grpc': {'lang': 'go', 'framework': 'grpc', 'strength': 0.95},
+    r'^\s*import\s+(?:\(|").*?(?:google\.golang\.org/grpc|grpc-go)': {'lang': 'go', 'framework': 'grpc', 'strength': 0.95},
     r'^\s*import\s+"github\.com/gin-gonic/gin': {'lang': 'go', 'framework': 'gin', 'strength': 0.9},
+    r'^\s*import\s+"gorm\.io': {'lang': 'go', 'framework': 'gorm', 'strength': 0.85},
     r'^\s*import\s+"database/sql': {'lang': 'go', 'category': 'backend', 'strength': 0.7},
+    r'^\s*import\s+"net/http': {'lang': 'go', 'category': 'backend', 'strength': 0.6},
 
-    # JavaScript/TypeScript frameworks
+    # JavaScript/TypeScript frameworks (React/Angular dominate)
     r"^\s*import\s+.*from\s+['\"]react['\"]": {'lang': 'javascript', 'framework': 'react', 'strength': 1.0},
     r"^\s*import\s+.*from\s+['\"]@angular": {'lang': 'typescript', 'framework': 'angular', 'strength': 1.0},
     r"^\s*import\s+.*from\s+['\"]vue['\"]": {'lang': 'javascript', 'framework': 'vue', 'strength': 0.95},
     r"^\s*import\s+.*from\s+['\"]express['\"]": {'lang': 'javascript', 'framework': 'express', 'strength': 0.9},
-    r"^\s*const\s+\w+\s*=\s*require\(['\"]react['\"]\)": {'lang': 'javascript', 'framework': 'react', 'strength': 0.9},
+    r"^\s*import\s+.*from\s+['\"]next['\"]": {'lang': 'javascript', 'framework': 'react', 'strength': 0.95},
+    r"^\s*const\s+\w+\s*=\s*require\s*\(\s*['\"]react['\"]": {'lang': 'javascript', 'framework': 'react', 'strength': 0.85},
 
     # Config/markup
     r'^\s*<!DOCTYPE\s+html': {'lang': 'html', 'category': 'frontend', 'strength': 0.6},
@@ -131,6 +135,42 @@ EXCLUDED_DIRS = {
 
 # Code file extensions to scan
 CODE_EXTENSIONS = set(EXTENSION_SIGNALS.keys()) | {'.jsx', '.tsx'}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Framework keywords (for config file content parsing)
+# ──────────────────────────────────────────────────────────────────────────────
+
+FRAMEWORK_KEYWORDS = {
+    # JavaScript/TypeScript frameworks
+    'react': ['react', '@react', 'next.js', 'nextjs'],
+    'angular': ['@angular', 'angular'],
+    'vue': ['vue', 'vuex'],
+    'svelte': ['svelte'],
+    'express': ['express'],
+
+    # Python frameworks
+    'fastapi': ['fastapi', 'starlette'],
+    'flask': ['flask'],
+    'django': ['django'],
+    'pytest': ['pytest'],
+    'pandas': ['pandas', 'numpy'],
+
+    # Java frameworks
+    'spring-boot': ['spring-boot', 'spring-web', 'spring-data', 'org.springframework'],
+    'jakarta': ['jakarta', 'java.persistence'],
+    'grpc': ['grpc'],
+
+    # Go frameworks
+    'gin': ['gin-gonic'],
+    'gorm': ['gorm'],
+
+    # Build/package managers
+    'maven': ['maven'],
+    'gradle': ['gradle'],
+    'npm': ['npm'],
+    'yarn': ['yarn'],
+    'pnpm': ['pnpm'],
+}
 
 
 def scan_codebase(path: str, verbose: bool = False) -> list:
@@ -287,11 +327,86 @@ def score_imports(files: list, verbose: bool = False) -> dict:
     return dict(scores)
 
 
+def _parse_package_json(path: Path) -> list:
+    """Extract dependencies from package.json."""
+    frameworks = []
+    try:
+        content = path.read_text(errors='ignore')
+        # Simple regex-based extraction (avoid full JSON parse for robustness)
+        deps = re.findall(r'"([^"]+)":\s*"[^"]*"', content)
+        for dep in deps:
+            for framework, keywords in FRAMEWORK_KEYWORDS.items():
+                if any(keyword in dep.lower() for keyword in keywords):
+                    frameworks.append(framework)
+                    break
+    except Exception:
+        pass
+    return list(set(frameworks))  # Deduplicate
+
+
+def _parse_pom_xml(path: Path) -> list:
+    """Extract dependencies from pom.xml."""
+    frameworks = []
+    try:
+        content = path.read_text(errors='ignore')
+        # Extract artifact IDs and group IDs
+        deps = re.findall(r'<artifactId>([^<]+)</artifactId>', content)
+        deps += re.findall(r'<groupId>([^<]+)</groupId>', content)
+        for dep in deps:
+            for framework, keywords in FRAMEWORK_KEYWORDS.items():
+                if any(keyword in dep.lower() for keyword in keywords):
+                    frameworks.append(framework)
+                    break
+    except Exception:
+        pass
+    return list(set(frameworks))
+
+
+def _parse_requirements_txt(path: Path) -> list:
+    """Extract dependencies from requirements.txt."""
+    frameworks = []
+    try:
+        content = path.read_text(errors='ignore')
+        # Extract package names (before ==, >=, etc.)
+        packages = re.findall(r'([a-zA-Z0-9_-]+)\s*[=!<>]', content)
+        for package in packages:
+            for framework, keywords in FRAMEWORK_KEYWORDS.items():
+                if any(keyword in package.lower() for keyword in keywords):
+                    frameworks.append(framework)
+                    break
+    except Exception:
+        pass
+    return list(set(frameworks))
+
+
+def _parse_go_mod(path: Path) -> list:
+    """Extract dependencies from go.mod."""
+    frameworks = []
+    try:
+        content = path.read_text(errors='ignore')
+        # Extract import paths
+        imports = re.findall(r'require\s+(?:github\.com|golang\.org)/([^ \n]+)', content)
+        for imp in imports:
+            for framework, keywords in FRAMEWORK_KEYWORDS.items():
+                if any(keyword in imp.lower() for keyword in keywords):
+                    frameworks.append(framework)
+                    break
+    except Exception:
+        pass
+    return list(set(frameworks))
+
+
 def score_configs(root: Path, verbose: bool = False) -> dict:
     """
     Score languages based on presence and content of config files.
 
     Weight: 20% of total score
+
+    Enhancements in Phase 2:
+    - Parse package.json for React/Angular/Vue/Express
+    - Parse pom.xml for Spring/Jakarta/Maven
+    - Parse requirements.txt for FastAPI/Django/Flask
+    - Parse go.mod for gRPC/Gin
 
     Args:
         root: Root directory Path
@@ -305,19 +420,42 @@ def score_configs(root: Path, verbose: bool = False) -> dict:
     for config_name, signal in CONFIG_SIGNALS.items():
         config_path = root / config_name
 
-        if config_path.exists():
-            strength = signal.get('strength', 0.5)
-            score = strength * 0.20  # 20% weight
+        if not config_path.exists():
+            continue
 
-            # Primary signal
-            if 'default_lang' in signal:
-                scores[signal['default_lang']] += score
+        strength = signal.get('strength', 0.5)
+        base_score = strength * 0.20  # 20% weight
 
-            if 'default_framework' in signal:
-                scores[signal['default_framework']] += score * 0.3
+        # Primary signal: language/framework from config name
+        if 'default_lang' in signal:
+            scores[signal['default_lang']] += base_score
+
+        if 'default_framework' in signal:
+            scores[signal['default_framework']] += base_score * 0.3
+
+        # Advanced Phase 2: Parse config file contents
+        found_frameworks = []
+
+        if config_name == 'package.json':
+            found_frameworks = _parse_package_json(config_path)
+        elif config_name == 'pom.xml':
+            found_frameworks = _parse_pom_xml(config_path)
+        elif config_name == 'requirements.txt':
+            found_frameworks = _parse_requirements_txt(config_path)
+        elif config_name == 'go.mod':
+            found_frameworks = _parse_go_mod(config_path)
+
+        # Add bonus scores for detected frameworks
+        for framework in found_frameworks:
+            fw_bonus = base_score * 0.4  # Additional 40% of base for detected frameworks
+            scores[framework] += fw_bonus
 
             if verbose:
-                print(f"[cfg] {config_name}: +{score:.3f}", file=sys.stderr)
+                print(f"[cfg] {config_name}: {framework} detected (+{fw_bonus:.3f})",
+                      file=sys.stderr)
+
+        if verbose and not found_frameworks:
+            print(f"[cfg] {config_name}: +{base_score:.3f}", file=sys.stderr)
 
     return dict(scores)
 

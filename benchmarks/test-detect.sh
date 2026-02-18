@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-DETECTOR="$REPO_ROOT/personas/detect-persona.py"
+DETECTOR="$REPO_ROOT/personas/run-detect-persona.sh"
 TEST_FIXTURES="$SCRIPT_DIR/test-fixtures"
 
 # Colors
@@ -31,11 +31,11 @@ test_case() {
     fi
 
     # Run detector and extract top persona
-    local cmd="python3 '$DETECTOR' '$fixture_path' 2>/dev/null"
+    local cmd="'$DETECTOR' '$fixture_path' 2>/dev/null"
     local json_cmd='import sys, json; data = json.load(sys.stdin); print(data[0]["persona_name"] if data else "NONE")'
 
     local top_persona
-    top_persona=$( (eval "$cmd" | python3 -c "$json_cmd" 2>/dev/null) || echo "ERROR" )
+    top_persona=$( (bash -c "$cmd" | python3 -c "$json_cmd" 2>/dev/null) || echo "ERROR" )
 
     if [[ "$top_persona" == "ERROR" ]] || [[ -z "$top_persona" ]]; then
         echo -e "${RED}✗${NC} $name — detection failed"
