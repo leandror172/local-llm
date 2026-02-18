@@ -5,6 +5,54 @@
 
 ---
 
+## 2026-02-17 - Session 21: Tasks 3.2 + 3.3 — Persona Creator CLI, 28 Active Personas
+
+### Context
+Resumed from Session 20 (Tasks 3.1, 3.5, 3.6 done). Context was compacted before starting. Entry point: Task 3.2 (conversational persona creator). User switched from Opus 4.6 to Sonnet 4.6 mid-session for implementation phase.
+
+### What Was Done
+
+**Task 3.2 + 3.3 Complete: Conversational persona creator with embedded model selection**
+- Created `personas/create-persona.py` — standalone Python CLI (~420 lines, no venv needed)
+- Created `personas/run-create-persona.sh` — bash wrapper (whitelist-safe; user set auto-approve)
+- Features: 8-step interactive flow, `--non-interactive` mode with full flag set, `--dry-run`, collision guard, auto name suggestion
+- MODEL_MATRIX embeds Task 3.3 logic: domain → (model, ctx, default_temp); e.g., reasoning → qwen3:14b/4096, classification → qwen3:4b-q8_0/4096
+- Domain default constraints per category (code/reasoning/classification/writing/translation/other)
+- Registry append uses raw text (not PyYAML round-trip) to preserve comment section headers
+
+**10 remaining planned personas created via the new creator script**
+
+| Persona | Model | Tier | Key role |
+|---------|-------|------|---------|
+| my-react-q3 | qwen3:8b | full | React 18+ TypeScript frontend |
+| my-angular-q3 | qwen3:8b | full | Angular 17+ TypeScript frontend |
+| my-architect-q3 | **qwen3:14b** | full | High-level system architect (deeper reasoning) |
+| my-be-architect-q3 | qwen3:8b | full | Backend architecture: API design, data modeling, microservices |
+| my-fe-architect-q3 | qwen3:8b | full | Frontend architecture: component trees, state management |
+| my-aws-q3 | qwen3:8b | full | AWS consultant: services, IAM, cost patterns |
+| my-gcp-q3 | qwen3:8b | full | GCP consultant: services, IAM, cost patterns |
+| my-java-reviewer-q3 | qwen3:8b | full | Java code reviewer (temp=0.1, deterministic) |
+| my-go-reviewer-q3 | qwen3:8b | full | Go code reviewer (temp=0.1, deterministic) |
+| my-career-coach-q3 | qwen3:8b | full | Career coach for SW engineers (temp=0.7, PT-BR aware) |
+
+**Registry updated:** 18 → 28 active personas, 0 planned remaining.
+
+### Decisions Made
+- **Standalone script (no venv):** PyYAML 5.4.1 already system-wide; avoids uv scaffolding overhead. Follows `ollama-probe.py` pattern.
+- **Raw text append for registry:** PyYAML `dump()` strips all comments and section headers. Creator appends raw YAML text block instead. New entries land after the planned comments section (users can reorder manually).
+- **`--constraints` splits by comma:** Constraint strings must not contain commas. Documented as design constraint of the tool.
+- **`--dry-run` flag:** Safe for Claude Code use (no side effects). Used for verification before committing.
+- **Reviewer personas at temp=0.1:** Code review should be deterministic — same code in, same findings out.
+- **career-coach at temp=0.7:** Writing/coaching benefits from varied phrasing.
+- **my-be-architect-q3 / my-fe-architect-q3 use "other" domain (→ qwen3:8b):** Planned registry specified qwen3:8b. Only my-architect-q3 (top-level) uses qwen3:14b via "reasoning" domain.
+- **Auto-approve set for `personas/run-create-persona.sh`:** User will not be prompted for this wrapper again.
+
+### Next
+- **Task 3.4:** Auto-detection — analyze a codebase/domain and propose the appropriate persona
+- Uncommitted changes from this session (see warning below)
+
+---
+
 ## 2026-02-17 - Session 20: Layer 3 Kickoff — Template, Registry, 8 Specialized Personas
 
 ### Context
