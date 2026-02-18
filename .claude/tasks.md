@@ -52,6 +52,7 @@
 - [x] 3.2 Build conversational persona creator — `personas/create-persona.py` + `run-create-persona.sh`
 - [x] 3.3 Model selection logic — embedded in creator (MODEL_MATRIX: domain → model + ctx + temp)
 - [ ] 3.4 Auto-detection: analyze codebase/domain → propose persona
+- [ ] 3.5 Conversational persona builder — use LLM to elicit constraints interactively (triggered by PR #1 review)
 
 ### Persona Inventory (28 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
