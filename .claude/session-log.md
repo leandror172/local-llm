@@ -1,7 +1,101 @@
 # Session Log
 
 **Current Layer:** Layer 3 — Persona Creator (in progress)
+**Current Session:** 2026-02-18 — Task 3.4 complete (all 3 phases)
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-18 - Session 22: Task 3.4 Complete — Codebase Analyzer (3 Phases)
+
+### Context
+Resumed from Session 21 (Tasks 3.2/3.3 done, 28 personas registered). Entry point: Task 3.4 (file-based codebase analyzer for persona detection). User requested implementation plan from .claude/plan-v2.md. Completed all three phases in single session. Used Haiku 4.5 for implementation.
+
+### What Was Done
+
+**Task 3.4 Complete: Codebase Analyzer — All 3 Phases**
+
+**Phase 1 — Core Detection** (~550 lines)
+- Created `personas/detect-persona.py` with 3-signal detector:
+  * File extension heuristics (50% weight): `.java`, `.go`, `.py`, `.tsx`, etc.
+  * Import pattern detection (30% weight): Spring, FastAPI, React, gRPC, Angular
+  * Config file presence (20% weight): pom.xml, go.mod, package.json, requirements.txt
+  * Registry lookup + top-3 ranking by confidence (0.0–1.0)
+  * Graceful fallback to `my-codegen-q3` for unknown codebases
+- Created `personas/run-detect-persona.sh` — whitelist-safe CLI wrapper
+- Built 5 test fixtures: java-backend, go-grpc, react-frontend, python-fastapi, monorepo-mixed
+- Created `benchmarks/test-detect.sh` verification script (all 5 tests pass ✓)
+
+**Phase 2 — Advanced Signals** (enhanced parsing)
+- Config file *content* parsing (new):
+  * `_parse_package_json()` — extracts React/Angular/Vue/Express from dependencies
+  * `_parse_pom_xml()` — extracts Spring/Jakarta/Maven from artifactIds
+  * `_parse_requirements_txt()` — extracts FastAPI/Django/Flask from packages
+  * `_parse_go_mod()` — extracts gRPC/Gin from import paths
+- Enhanced IMPORT_PATTERNS with language-specific regex:
+  * Python: `(?:import|from)` for fastapi, flask, django, starlette
+  * Java: Spring imports, Jakarta EE, gRPC
+  * Go: gRPC, Gin, GORM, net/http
+  * JavaScript/TypeScript: React, Angular, Vue, Express, Next.js
+- Framework keyword bonus scoring (40% of base score for detected frameworks)
+- All tests still passing (5/5)
+
+**Phase 3 — Polish & Documentation** (final refinements)
+- Created `personas/DETECT-PERSONA.md` — 200+ line comprehensive guide:
+  * Algorithm explanation with weight breakdown
+  * 12 usage examples (CLI + Python import + edge cases)
+  * Supported languages/framework matrix
+  * Integration roadmap for Task 3.5
+  * Testing instructions
+- Improved error handling in main():
+  * Path existence and type validation
+  * Registry file existence check
+  * Better error messages with context (resolved paths in verbose mode)
+  * Try/except around detection and JSON serialization
+  * Traceback printing in verbose mode
+- Enhanced help message with examples
+- All tests still passing (5/5)
+
+**Commits this session:**
+- 9b86320 Task 3.4 Phase 1: Core codebase analyzer (file-based persona detection)
+- 97bbe26 Task 3.4 Phase 2: Advanced import and config parsing
+- 9fe21c4 Task 3.4 Phase 3: Polish and documentation
+- 844acd0 Mark Task 3.4 as complete (all phases done)
+
+### Decisions Made
+
+- **Use wrapper script instead of direct python3 calls:** User corrected mid-session (correct per project patterns). Updated test-detect.sh to use `personas/run-detect-persona.sh` instead of `python3 personas/detect-persona.py`. Wrapper handles PATH setup for non-interactive shells.
+
+- **Three-signal weighting (50/30/20):** Extensions are strongest signal (files are immutable); imports are good but require parsing; config files are weakest (may be outdated). Per the plan.
+
+- **Config file content parsing as Phase 2 enhancement:** Initially designed as Phase 1 feature, but breaking it out to Phase 2 allowed cleaner separation. Adds ~100 lines but significantly improves detection accuracy (e.g., can distinguish React from Node.js pure apps).
+
+- **Top-3 ranking instead of top-1:** Supports monorepo discovery without decomposition (Phase 2 enhancement deferred). Top-1 is sufficient for single-language codebases; top-3 gives alternatives for edge cases and mixed codebases.
+
+- **Fallback to my-codegen-q3 at 0.5 confidence:** For unknown/empty codebases. Allows CLI to always exit code 0 (no hard failures). Caller decides whether to trust the fallback.
+
+- **Importable detect() function:** Designed for Task 3.5 integration. Returns same JSON structure as CLI for consistency.
+
+- **Registry as single source of truth:** Extract language hints from persona.role string (e.g., "Java 21 backend..." → `['java']`). Avoids maintaining separate metadata file.
+
+### Next
+
+**Immediate (next session):**
+- Merge `feature/task-3.4-codebase-analyzer` to master
+- Start Task 3.5 (Conversational persona builder) — will import and call `detect()`
+
+**Task 3.5 responsibilities:**
+- Import: `from personas.detect_persona import detect`
+- Call: `results = detect(user_repo_path)`
+- Seed LLM dialogue: "I detected Java. Is this correct?"
+- Offer top-1 as suggestion, alternatives (top-2, top-3) as fallback
+- Manual constraint entry if user disagrees with detection
+
+**No new gotchas discovered.** Project patterns confirmed stable:
+- Bash wrappers for whitelist safety ✓
+- Registry as YAML source of truth ✓
+- Importable Python modules ✓
+- Test fixtures in benchmarks/test-fixtures/ ✓
 
 ---
 

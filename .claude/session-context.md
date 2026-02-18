@@ -47,9 +47,17 @@
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Last completed:** Tasks 3.2, 3.3 (creator CLI + model selection), all 10 planned personas created (28 total)
-- **Last checkpoint:** 2026-02-17 (session 21)
-- **Next:** Task 3.4 — Auto-detection: analyze codebase/domain → propose persona
+- **Layer 3:** In progress (4/5 done)
+  * ✅ 3.1 Persona template + 3.6 Specialized 8 personas (28 active total)
+  * ✅ 3.2 Creator CLI (conversational builder, interactive 8-step flow)
+  * ✅ 3.3 Model selection (MODEL_MATRIX embedded)
+  * ✅ 3.5 Registry (machine-readable YAML, source of truth)
+  * ✅ **3.4 COMPLETE: Codebase analyzer (all 3 phases done, ready for 3.5 integration)**
+  * ⏳ 3.5 Conversational persona builder — *next task* (will use detect() function)
+- **Last completed:** Task 3.4 — Codebase analyzer (3 phases: core, advanced, polish)
+- **Last checkpoint:** 2026-02-18 (session 22)
+- **Next:** Task 3.5 — Conversational builder (integrates detect() for file-based hints)
+- **Branch:** feature/task-3.4-codebase-analyzer (ready to merge to master)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
@@ -94,14 +102,24 @@ The tracking files ARE the handoff — no separate handoff files needed.
 - **Qwen Code — revisit later:** QwenLM/qwen-code needs qwen3-coder (smallest = 30B, 19GB). Defer until hardware upgrade or cloud option.
 - **Findings + decision guide:** `tests/layer2-comparison/findings.md` — full test results, failure taxonomy, when-to-use guide.
 
-### Layer 3 Decisions (decided 2026-02-17)
+### Layer 3 Decisions (decided 2026-02-17 + 2026-02-18)
+
+**Tasks 3.1-3.3, 3.6 (2026-02-17):**
 - **Creator tool:** `personas/create-persona.py` — standalone Python script (no venv; PyYAML system-wide). Bash wrapper `run-create-persona.sh` is auto-approved for Claude Code.
 - **Registry append = raw text:** PyYAML `dump()` strips all comment section headers. Creator appends raw YAML text block to preserve structure.
 - **MODEL_MATRIX:** domain → (model, ctx, default_temp). reasoning→qwen3:14b/4096, classification→qwen3:4b/4096, others→qwen3:8b/16384.
 - **Reviewer personas at temp=0.1:** deterministic; same code in → same review findings out.
 - **`--constraints` splits by comma:** Constraint strings must not contain commas internally (design constraint of the CLI flag).
-- **Sonnet preferred for implementation:** Opus for planning/ambiguous decisions; Sonnet for well-defined code generation (saves ~5x quota).
 - **28 active personas:** All planned personas from registry.yaml are now created and registered.
+
+**Task 3.4 (2026-02-18):**
+- **Codebase analyzer as pure heuristics:** No LLM calls, deterministic output. Three-signal weighting: extensions (50%) > imports (30%) > config files (20%).
+- **Config file content parsing:** Parse package.json, pom.xml, requirements.txt, go.mod to extract framework keywords. Adds significant accuracy over presence-only detection.
+- **Top-3 ranking instead of top-1:** Supports monorepo discovery without decomposition. Top-1 sufficient for single-language codebases; top-3 provides alternatives.
+- **Importable detect() function:** Designed for Task 3.5 integration (conversational builder will call `detect(repo_path)` to seed dialogue).
+- **Fallback to my-codegen-q3 at 0.5 confidence:** Unknown codebases always return valid result (no errors); caller decides whether to trust fallback.
+- **Wrapper script pattern:** `personas/run-detect-persona.sh` is whitelist-safe. Test script updated to use wrapper (not direct python3).
+- **Test-driven development:** 5 fixtures (java, go, react, python, monorepo), all passing 100% (5/5).
 
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)
