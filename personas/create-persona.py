@@ -43,6 +43,9 @@ from models import (
     get_persona_name_suffix,
 )
 
+# Import reusable interactive helpers (Task 3.4 refactoring)
+from lib.interactive import ask, ask_choice, ask_multiline, ask_confirm
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Paths
 # ──────────────────────────────────────────────────────────────────────────────
@@ -109,83 +112,6 @@ DEFAULT_FORMATS = {
 # ──────────────────────────────────────────────────────────────────────────────
 # Input helpers
 # ──────────────────────────────────────────────────────────────────────────────
-
-def ask(prompt: str, default: str | None = None) -> str:
-    """Prompt for a single-line string. Shows default in brackets if provided."""
-    display = f"{prompt}"
-    if default:
-        display += f" [{default}]"
-    display += ": "
-    while True:
-        try:
-            value = input(display).strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\nAborted.")
-            sys.exit(0)
-        if value:
-            return value
-        if default is not None:
-            return default
-        print("  (required — please enter a value)")
-
-
-def ask_choice(prompt: str, choices: list[str], default: str | None = None) -> str:
-    """Numbered menu prompt. Returns the chosen string value."""
-    print(f"\n{prompt}")
-    for i, c in enumerate(choices, 1):
-        marker = " (default)" if c == default else ""
-        print(f"  {i}. {c}{marker}")
-    while True:
-        try:
-            raw = input("  Choice [1]: " if default == choices[0] else "  Choice: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\nAborted.")
-            sys.exit(0)
-        if not raw and default is not None:
-            return default
-        try:
-            idx = int(raw) - 1
-            if 0 <= idx < len(choices):
-                return choices[idx]
-        except ValueError:
-            # Allow typing the value directly
-            if raw in choices:
-                return raw
-        print(f"  Enter a number 1–{len(choices)}")
-
-
-def ask_multiline(prompt: str, sentinel: str = ".") -> list[str]:
-    """Collect lines until user enters sentinel. Returns list of non-empty strings."""
-    print(f"{prompt} (one per line, '{sentinel}' when done, blank line to skip):")
-    lines = []
-    while True:
-        try:
-            line = input("  > ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-        if line == sentinel:
-            break
-        if line:
-            lines.append(line)
-    return lines
-
-
-def ask_confirm(prompt: str, default: bool = True) -> bool:
-    """Yes/no prompt. Returns bool."""
-    hint = "[Y/n]" if default else "[y/N]"
-    while True:
-        try:
-            raw = input(f"{prompt} {hint}: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print("\nAborted.")
-            sys.exit(0)
-        if not raw:
-            return default
-        if raw in ("y", "yes"):
-            return True
-        if raw in ("n", "no"):
-            return False
-        print("  Please enter y or n")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
