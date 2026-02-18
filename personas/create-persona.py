@@ -26,6 +26,23 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Import centralized model configuration (Task 3.4 refactoring)
+from models import (
+    MODEL_MATRIX,
+    DOMAIN_CHOICES,
+    TEMPERATURES,
+    TEMPERATURE_MAP,
+    TEMP_CATEGORY_TO_CHOICE,
+    TEMP_DESCRIPTIONS,
+    MODEL_TAG_TO_SUFFIX,
+    MODEL_TAG_TO_Q_SUFFIX,
+    get_model,
+    get_temperature_value,
+    get_temperature_description,
+    get_modelfile_suffix,
+    get_persona_name_suffix,
+)
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Paths
 # ──────────────────────────────────────────────────────────────────────────────
@@ -34,65 +51,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MODELFILES_DIR = REPO_ROOT / "modelfiles"
 REGISTRY_PATH = REPO_ROOT / "personas" / "registry.yaml"
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Model selection matrix (Task 3.3)
-# Each entry: (display_name, ollama_tag, num_ctx, default_temp_category)
-# ──────────────────────────────────────────────────────────────────────────────
-
-MODEL_MATRIX = {
-    "code":           ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
-    "reasoning":      ("Qwen3-14B",             "qwen3:14b",                     4096, "quality"),
-    "classification": ("Qwen3-4B",              "qwen3:4b-q8_0",                 4096, "correctness"),
-    "writing":        ("Llama-3.1-8B",          "llama3.1:8b-instruct-q5_K_M", 16384, "quality"),
-    "translation":    ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
-    "other":          ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
-}
-
-DOMAIN_CHOICES = ["code", "reasoning", "classification", "writing", "translation", "other"]
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Temperature
-# ──────────────────────────────────────────────────────────────────────────────
-
-TEMPERATURE_MAP = {
-    "deterministic": 0.1,   # correctness: classifier, codegen
-    "balanced":      0.3,   # quality: coder, translator, summarizer
-    "creative":      0.7,   # creativity: writer, brainstormer
-}
-
-TEMP_CATEGORY_TO_CHOICE = {
-    "correctness": "deterministic",
-    "quality":     "balanced",
-    "creativity":  "creative",
-}
-
-TEMP_DESCRIPTIONS = {
-    "deterministic": "0.1 — same input → same output (classifier, codegen)",
-    "balanced":      "0.3 — accurate with mild variation (coder, translator)",
-    "creative":      "0.7 — diverse phrasing (writer, brainstormer)",
-}
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Model-tag → Modelfile filename suffix
-# ──────────────────────────────────────────────────────────────────────────────
-
-MODEL_TAG_TO_SUFFIX = {
-    "qwen3:8b":                     "qwen3",
-    "qwen3:14b":                    "qwen3",
-    "qwen3:4b-q8_0":                "qwen3",
-    "qwen2.5-coder:7b":             "qwen25",
-    "llama3.1:8b-instruct-q5_K_M":  "llama31",
-}
-
-# Model-tag → persona name q-suffix (appended to "my-<slug>")
-MODEL_TAG_TO_Q_SUFFIX = {
-    "qwen3:8b":                     "-q3",
-    "qwen3:14b":                    "-q3",
-    "qwen3:4b-q8_0":                "-q3",
-    "qwen2.5-coder:7b":             "",
-    "llama3.1:8b-instruct-q5_K_M":  "",
-}
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Domain defaults
@@ -305,11 +263,16 @@ def _ctx_comment(num_ctx: int) -> str:
 
 
 def _temp_comment(temperature: float) -> str:
-    return {
-        0.1: "near-deterministic; same input should yield same output.",
-        0.3: "accurate with mild variation; quality over creativity.",
-        0.7: "creative phrasing; output evaluated for diversity.",
-    }[temperature]
+    """Get human-readable temperature comment from consolidated TEMPERATURES config."""
+    # Find temperature by value
+    for temp_name, temp_data in TEMPERATURES.items():
+        if temp_data["value"] == temperature:
+            # Return descriptive comment (extracted from description)
+            desc = temp_data["description"]
+            # Remove the numeric prefix (e.g., "0.1 — ") to get the comment part
+            return desc.split(" — ", 1)[1] if " — " in desc else desc
+    # Fallback
+    return f"Temperature {temperature}"
 
 
 def _normalize_constraint(c: str) -> str:
