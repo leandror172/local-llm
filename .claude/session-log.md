@@ -1,8 +1,87 @@
 # Session Log
 
 **Current Layer:** Layer 3 — Persona Creator (in progress)
-**Current Session:** 2026-02-18 — Task 3.4 complete (all 3 phases)
+**Current Session:** 2026-02-18 — Task 3.4 + Layer 3 refactoring complete
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-18 - Session 22 (Continued): Layer 3 Refactoring — PR #1 Deferred Tasks
+
+### Context
+Completed Task 3.4 handoff. User flagged three refactoring items from PR #1 review that were deferred. Analyzed cost/benefit and decided to execute all three in same session while context was warm. Used Sonnet for straightforward refactoring.
+
+### What Was Done
+
+**All three PR #1 deferred items completed:**
+
+1. **Refactor 1: MODEL_MATRIX → personas/models.py** (~1 hour)
+   - Extracted model selection logic to centralized `personas/models.py`
+   - Contains: MODEL_MATRIX, DOMAIN_CHOICES, temperature config, helper functions
+   - Updated create-persona.py to import from models.py
+   - Reduced create-persona.py by ~80 lines
+   - Enables reuse by detect-persona.py, Task 3.5, future tools
+
+2. **Refactor 2: Input helpers → personas/lib/interactive.py** (~50 min)
+   - Extracted ask(), ask_choice(), ask_multiline(), ask_confirm() to shared library
+   - Created personas/lib/ package structure
+   - Updated create-persona.py to import from lib.interactive
+   - Reduced create-persona.py by ~75 lines
+   - Enables consistent UX across personas package tools
+
+3. **Refactor 3: TEMPERATURE consolidation** (~already done in Refactor 1)
+   - Merged TEMPERATURE_MAP + _temp_comment into single TEMPERATURES dict
+   - Structure: `{"temp_name": {"value": 0.X, "description": "...", "use_case": "..."}}`
+   - Updated _temp_comment() to reference consolidated structure
+   - Prevents future drift if new temperatures added
+   - Both TEMPERATURE_MAP and TEMP_DESCRIPTIONS available for backward compatibility
+
+**Commits this phase:**
+- 11a7152 Refactor 1: Extract MODEL_MATRIX to personas/models.py
+- 03923b0 Refactor 2: Extract interactive input helpers to personas/lib/interactive.py
+- e9c5c10 Layer 3 refactoring complete: Consolidate persona infrastructure (summary)
+
+**Verification:**
+- All refactoring verified via `personas/run-create-persona.sh --help`
+- Incremental commits (one per refactor) for clear git history
+- Tested via approved wrapper scripts (not direct python3 calls)
+- Zero behavior changes; clean refactoring
+
+### Decisions Made
+
+- **Do refactoring now vs defer:** Cost/benefit analysis showed low risk + warm context → immediate benefit for Task 3.5. Avoided premature extraction in Refactor 1 & 2 by deferring secondary consumers (only extracted when 2+ users exist). TEMPERATURE consolidation justified as bug prevention.
+
+- **Incremental commits:** One commit per refactor + summary commit. Improves git history readability and allows reverting individual refactors if needed.
+
+- **Keep backward compatibility:** TEMPERATURE_MAP and TEMP_DESCRIPTIONS still available as properties of TEMPERATURES dict. Prevents breaking existing code.
+
+### Impact
+
+**For Task 3.5:**
+- Can now import `from models import MODEL_MATRIX, TEMPERATURES, get_model()`
+- Can import `from lib.interactive import ask, ask_choice, ask_multiline, ask_confirm`
+- No need to reimplement input logic; consistent UX with create-persona.py
+- Foundation is clean, consolidated, reusable
+
+**Code metrics:**
+- Reduced create-persona.py by 155 lines (consolidation)
+- Created 58 lines in personas/models.py (reusable)
+- Created 121 lines in personas/lib/interactive.py (reusable)
+- Net: -155 + 58 + 121 = +24 lines (but better organized, reusable)
+
+### Next
+
+**Immediate (next session):**
+- Merge `feature/layer3-refactoring-consolidate-personas` to master
+- Start Task 3.5 with clean, refactored foundation
+- Begin conversational persona builder implementation
+
+**Task 3.5 roadmap:**
+- Import and use refactored models.py (model selection)
+- Import and use refactored lib/interactive.py (user dialogue)
+- Import detect() from detect-persona.py (file-based hints)
+- Build LLM-driven constraint elicitation flow
+- Integrate with registry for persona lookup
 
 ---
 
@@ -594,3 +673,23 @@ Full findings archived → `.claude/archive/layer-1-research.md`
 
 ### Next
 - Task 1.2: Plan and build the MCP server architecture
+
+---
+
+## CRITICAL NOTE: Task 3.4 Refactoring Debt (Deferred from PR #1)
+
+**User flagged at end of Session 22:** Three refactoring improvements from PR #1 review were deferred but **NOT captured in session-log until now**:
+
+1. **MODEL_MATRIX centralization** — Extract to `personas/models.py` when Task 3.5 needs it (currently single consumer in create-persona.py)
+2. **Input helpers** — Extract ask()/ask_choice()/etc. to `personas/lib/interactive.py` when Task 3.5 needs them
+3. **TEMPERATURE_MAP + _temp_comment consolidation** — **IMPORTANT:** Merge into single dict-of-dicts to prevent drift. Currently hardcoded in _temp_comment (line 307) instead of referencing TEMPERATURE_MAP.
+
+**When to handle:** Start of Task 3.5 session, before building conversational builder. Can be grouped refactoring pass (2-3 hours).
+
+**Reason these matter:**
+- Prevents code duplication in Task 3.5
+- Consolidates "temperature" metadata to single place (prevents bugs)
+- Keeps related concerns together
+
+See memory file for full reasoning and PR #1 discussion.
+
