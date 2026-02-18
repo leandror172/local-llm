@@ -52,13 +52,15 @@
 - [x] 3.2 Build conversational persona creator — `personas/create-persona.py` + `run-create-persona.sh`
 - [x] 3.3 Model selection logic — embedded in creator (MODEL_MATRIX: domain → model + ctx + temp)
 - [x] 3.4 Codebase analyzer — file-based persona detection (returns top 3 with confidence scores)
-  - **Phase 1 complete:** Core detection, 3-signal scoring, 5 test fixtures (all passing)
+  - **COMPLETE:** Phase 1, 2, 3 all done ✓
+  - Phase 1: Core detection, 3-signal scoring, 5 test fixtures (all passing)
+  - Phase 2: Advanced import/config parsing (package.json, pom.xml, requirements.txt, go.mod)
+  - Phase 3: Polish, documentation (DETECT-PERSONA.md), error handling
   - Input: directory path
-  - Output: ranked personas with confidence; no dialogue, no side effects
-  - Callable as Python function + standalone CLI (`personas/detect-persona.py` + wrapper)
-  - **Phase 2 (in progress):** Advanced import/config parsing, monorepo decomposition
-  - Heuristics: file extensions, top-level imports, config files
-  - Caller (CLI or 3.5) decides fallback/threshold behavior
+  - Output: ranked personas with confidence (0.0–1.0); no dialogue, no side effects
+  - Callable as Python function + standalone CLI (`personas/run-detect-persona.sh`)
+  - Heuristics: file extensions (50%), imports (30%), config files (20%)
+  - Ready for Task 3.5 integration
 - [ ] 3.5 Conversational persona builder — use LLM + detect() to elicit constraints interactively (triggered by PR #1 review)
   - Input: natural language via dialogue
   - Can call detect() for file-based hints
