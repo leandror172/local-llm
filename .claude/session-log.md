@@ -594,3 +594,23 @@ Full findings archived → `.claude/archive/layer-1-research.md`
 
 ### Next
 - Task 1.2: Plan and build the MCP server architecture
+
+---
+
+## CRITICAL NOTE: Task 3.4 Refactoring Debt (Deferred from PR #1)
+
+**User flagged at end of Session 22:** Three refactoring improvements from PR #1 review were deferred but **NOT captured in session-log until now**:
+
+1. **MODEL_MATRIX centralization** — Extract to `personas/models.py` when Task 3.5 needs it (currently single consumer in create-persona.py)
+2. **Input helpers** — Extract ask()/ask_choice()/etc. to `personas/lib/interactive.py` when Task 3.5 needs them
+3. **TEMPERATURE_MAP + _temp_comment consolidation** — **IMPORTANT:** Merge into single dict-of-dicts to prevent drift. Currently hardcoded in _temp_comment (line 307) instead of referencing TEMPERATURE_MAP.
+
+**When to handle:** Start of Task 3.5 session, before building conversational builder. Can be grouped refactoring pass (2-3 hours).
+
+**Reason these matter:**
+- Prevents code duplication in Task 3.5
+- Consolidates "temperature" metadata to single place (prevents bugs)
+- Keeps related concerns together
+
+See memory file for full reasoning and PR #1 discussion.
+
