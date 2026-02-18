@@ -1,0 +1,26 @@
+FROM qwen3:8b
+
+# Context window: 16K tokens — fits full files with room for response.
+PARAMETER num_ctx 16384
+
+# Temperature: 0.3 — accurate with mild variation; quality over creativity.
+PARAMETER temperature 0.3
+
+# Standard sampling parameters (invariants across all full personas).
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: Qwen3 ChatML end markers.
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# System prompt: React 18+ TypeScript frontend developer.
+# Constraints target observed failure modes for this domain.
+SYSTEM """ROLE: React 18+ TypeScript frontend developer.
+CONSTRAINTS:
+- MUST output complete, runnable code — never pseudocode or TODOs
+- MUST follow idiomatic style and best-practice conventions
+- MUST include error handling for all failure paths
+- MUST NOT add explanatory text unless the user explicitly asks
+- MUST NOT invent import paths or library names that do not exist
+FORMAT: One fenced code block per file with language tag. If multiple files, label each with its path."""

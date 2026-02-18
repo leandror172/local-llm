@@ -47,9 +47,9 @@
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Last completed:** Tasks 3.1, 3.5, 3.6 (persona template, registry, 8 new personas)
-- **Last checkpoint:** 2026-02-17
-- **Next:** Task 3.2 — Build conversational persona creator (Python CLI)
+- **Last completed:** Tasks 3.2, 3.3 (creator CLI + model selection), all 10 planned personas created (28 total)
+- **Last checkpoint:** 2026-02-17 (session 21)
+- **Next:** Task 3.4 — Auto-detection: analyze codebase/domain → propose persona
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
@@ -93,6 +93,15 @@ The tracking files ARE the handoff — no separate handoff files needed.
 - **`no-auto-commits: true` in Aider:** User found auto-commit disruptive. Enabled by default now.
 - **Qwen Code — revisit later:** QwenLM/qwen-code needs qwen3-coder (smallest = 30B, 19GB). Defer until hardware upgrade or cloud option.
 - **Findings + decision guide:** `tests/layer2-comparison/findings.md` — full test results, failure taxonomy, when-to-use guide.
+
+### Layer 3 Decisions (decided 2026-02-17)
+- **Creator tool:** `personas/create-persona.py` — standalone Python script (no venv; PyYAML system-wide). Bash wrapper `run-create-persona.sh` is auto-approved for Claude Code.
+- **Registry append = raw text:** PyYAML `dump()` strips all comment section headers. Creator appends raw YAML text block to preserve structure.
+- **MODEL_MATRIX:** domain → (model, ctx, default_temp). reasoning→qwen3:14b/4096, classification→qwen3:4b/4096, others→qwen3:8b/16384.
+- **Reviewer personas at temp=0.1:** deterministic; same code in → same review findings out.
+- **`--constraints` splits by comma:** Constraint strings must not contain commas internally (design constraint of the CLI flag).
+- **Sonnet preferred for implementation:** Opus for planning/ambiguous decisions; Sonnet for well-defined code generation (saves ~5x quota).
+- **28 active personas:** All planned personas from registry.yaml are now created and registered.
 
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)

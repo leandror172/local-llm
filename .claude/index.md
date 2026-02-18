@@ -297,8 +297,10 @@ Full research → `.claude/archive/layer-1-research.md`
 | Topic | File | Key Content |
 |-------|------|-------------|
 | Persona template spec | `personas/persona-template.md` | Fields, defaults, skeleton, model selection, checklist |
-| Persona registry | `personas/registry.yaml` | 18 active, 10 planned; machine-readable source of truth |
-| All Modelfiles | `modelfiles/*.Modelfile` | 18 total (10 original + 8 new specialized) |
+| Persona registry | `personas/registry.yaml` | 28 active, 0 planned; machine-readable source of truth |
+| Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags |
+| Creator bash wrapper | `personas/run-create-persona.sh` | Whitelist-safe entry point (auto-approved) |
+| All Modelfiles | `modelfiles/*.Modelfile` | 28 total across all categories |
 
 ---
 

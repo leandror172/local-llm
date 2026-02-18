@@ -243,3 +243,93 @@ my-opencode:
 #   base_model: qwen3:8b
 #   role: Resume, LinkedIn, interview prep (PT-BR aware)
 #   status: planned
+
+my-react-q3:
+  modelfile: modelfiles/react-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: React 18+ TypeScript frontend developer
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-angular-q3:
+  modelfile: modelfiles/angular-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Angular 17+ TypeScript frontend developer
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-architect-q3:
+  modelfile: modelfiles/architect-qwen3.Modelfile
+  base_model: qwen3:14b
+  role: High-level system architect for design patterns, scalability, and technology selection
+  temperature: 0.3
+  num_ctx: 4096
+  tier: full
+  status: active
+
+my-be-architect-q3:
+  modelfile: modelfiles/be-architect-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Backend architecture specialist for API design, data modeling, and microservices
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-fe-architect-q3:
+  modelfile: modelfiles/fe-architect-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Frontend architecture specialist for component trees, state management, and performance
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-aws-q3:
+  modelfile: modelfiles/aws-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: AWS consultant covering services, IAM policies, and cost optimization
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-gcp-q3:
+  modelfile: modelfiles/gcp-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: GCP consultant covering services, IAM policies, and cost optimization
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-java-reviewer-q3:
+  modelfile: modelfiles/java-reviewer-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Java code reviewer focused on correctness, Spring Boot 3.x idioms, and security
+  temperature: 0.1
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-go-reviewer-q3:
+  modelfile: modelfiles/go-reviewer-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Go code reviewer focused on correctness, error handling, and idiomatic Go
+  temperature: 0.1
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-career-coach-q3:
+  modelfile: modelfiles/career-coach-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Career coach for software engineers covering resume, LinkedIn, and interview prep
+  temperature: 0.7
+  num_ctx: 16384
+  tier: full
+  status: active
