@@ -56,16 +56,25 @@
   - Phase 1: Core detection, 3-signal scoring, 5 test fixtures (all passing)
   - Phase 2: Advanced import/config parsing (package.json, pom.xml, requirements.txt, go.mod)
   - Phase 3: Polish, documentation (DETECT-PERSONA.md), error handling
-  - Input: directory path
-  - Output: ranked personas with confidence (0.0–1.0); no dialogue, no side effects
+  - Merged to master (PR #2)
+  - Input: directory path; Output: ranked personas with confidence (0.0–1.0)
   - Callable as Python function + standalone CLI (`personas/run-detect-persona.sh`)
   - Heuristics: file extensions (50%), imports (30%), config files (20%)
-  - Ready for Task 3.5 integration
-- [ ] 3.5 Conversational persona builder — use LLM + detect() to elicit constraints interactively (triggered by PR #1 review)
+
+- [x] **Layer 3 Refactoring** (bonus work: all PR #1 deferred items)
+  - **Refactor 1:** MODEL_MATRIX → personas/models.py (centralized, reusable)
+  - **Refactor 2:** Input helpers → personas/lib/interactive.py (ask, ask_choice, ask_multiline, ask_confirm)
+  - **Refactor 3:** TEMPERATURES consolidation (dict-of-dicts, prevents drift)
+  - Result: create-persona.py reduced by 155 lines; clean foundation for Task 3.5
+  - PR #3 created (awaiting merge to master)
+
+- [ ] 3.5 Conversational persona builder — use LLM + detect() to elicit constraints interactively
   - Input: natural language via dialogue
-  - Can call detect() for file-based hints
-  - Asks clarifying questions; proposes constraints
-  - Falls back to creator if no match found
+  - Call detect() for file-based hints (seed dialogue with detected language)
+  - Use lib.interactive helpers for consistent prompting UX
+  - Ask clarifying questions; propose constraints based on LLM reasoning + feedback
+  - Fall back to creator CLI if no match found
+  - **Status:** Ready to start (foundation refactored, all prep work done)
 
 ### Persona Inventory (28 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3

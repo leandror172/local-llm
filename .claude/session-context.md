@@ -47,17 +47,23 @@
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Layer 3:** In progress (4/5 done)
+- **Layer 3:** In progress (4/5 done + refactoring bonus complete)
   * ✅ 3.1 Persona template + 3.6 Specialized 8 personas (28 active total)
   * ✅ 3.2 Creator CLI (conversational builder, interactive 8-step flow)
-  * ✅ 3.3 Model selection (MODEL_MATRIX embedded)
+  * ✅ 3.3 Model selection (MODEL_MATRIX in models.py)
   * ✅ 3.5 Registry (machine-readable YAML, source of truth)
-  * ✅ **3.4 COMPLETE: Codebase analyzer (all 3 phases done, ready for 3.5 integration)**
-  * ⏳ 3.5 Conversational persona builder — *next task* (will use detect() function)
-- **Last completed:** Task 3.4 — Codebase analyzer (3 phases: core, advanced, polish)
-- **Last checkpoint:** 2026-02-18 (session 22)
-- **Next:** Task 3.5 — Conversational builder (integrates detect() for file-based hints)
-- **Branch:** feature/task-3.4-codebase-analyzer (ready to merge to master)
+  * ✅ **3.4 COMPLETE:** Codebase analyzer (all 3 phases done, ready for 3.5 integration)
+  * ✅ **BONUS:** Layer 3 refactoring (all PR #1 deferred items resolved)
+    - Refactor 1: MODEL_MATRIX → personas/models.py
+    - Refactor 2: Input helpers → personas/lib/interactive.py
+    - Refactor 3: TEMPERATURES consolidation (dict-of-dicts)
+  * ⏳ 3.5 Conversational persona builder — *next task* (foundation refactored and ready)
+- **Last completed:** Layer 3 refactoring (all 3 PR #1 deferred items)
+- **Last checkpoint:** 2026-02-18 (session 22, extended)
+- **Next:** Task 3.5 — Conversational builder (no prep work needed; foundation clean)
+- **Branches:**
+  * master: Task 3.4 merged (PR #2)
+  * feature/layer3-refactoring-consolidate-personas: Refactoring complete (PR #3, awaiting merge)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
@@ -120,6 +126,15 @@ The tracking files ARE the handoff — no separate handoff files needed.
 - **Fallback to my-codegen-q3 at 0.5 confidence:** Unknown codebases always return valid result (no errors); caller decides whether to trust fallback.
 - **Wrapper script pattern:** `personas/run-detect-persona.sh` is whitelist-safe. Test script updated to use wrapper (not direct python3).
 - **Test-driven development:** 5 fixtures (java, go, react, python, monorepo), all passing 100% (5/5).
+
+**Layer 3 Refactoring (2026-02-18, Session 22 extended):**
+- **Do refactoring now vs defer:** User caught deferred refactoring items from PR #1. Analyzed cost/benefit: low risk + warm context + immediate benefit for Task 3.5 → decided to execute immediately instead of deferring to Task 3.5.
+- **Incremental extraction:** Only extracted when 2+ consumers existed (avoided premature abstraction). MODEL_MATRIX and input helpers extracted because Task 3.5 will also need them.
+- **TEMPERATURES consolidation:** Merged TEMPERATURE_MAP + _temp_comment into single dict-of-dicts structure to prevent future drift if new temperatures added. Bug prevention priority.
+- **Backward compatibility:** TEMPERATURE_MAP and TEMP_DESCRIPTIONS remain available as properties of TEMPERATURES dict. No breaking changes to existing code.
+- **Test via approved wrappers:** All refactoring verified using `personas/run-create-persona.sh` (already approved wrapper script, not direct python3 calls).
+- **Incremental commits:** One commit per refactor + summary commit. Improves git traceability and allows reverting individual refactors if needed.
+- **Task 3.5 foundation:** Can now import both personas/models.py and personas/lib/interactive.py without reimplementation. No prep work needed; foundation clean and consolidated.
 
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)
