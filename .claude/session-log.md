@@ -1,8 +1,50 @@
 # Session Log
 
 **Current Layer:** Layer 3 — Persona Creator (in progress)
-**Current Session:** 2026-02-18 — Task 3.4 + Layer 3 refactoring complete
+**Current Session:** 2026-02-19 — Task 3.5 in progress (Tasks 1+2 done, Task 3 next)
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-19 - Session 23: Task 3.5 In Progress — Tasks 1+2 Complete
+
+### Context
+Resumed from session 22 (Layer 3 refactoring complete, PR #3 merged to master). Planning on Sonnet → Opus for plan writing → Sonnet for execution. Used subagent-driven-development skill for Tasks 1+2, dropping it for Tasks 3-5 (too token-heavy for Pro plan).
+
+### What Was Done
+
+**Plan written (Opus 4.6):** `docs/plans/2026-02-18-conversational-persona-builder.md`
+- 5 tasks: designer persona → sync client → core builder → bash wrapper → integration/docs
+- Architecture: single-shot + one refinement pass; `my-persona-designer-q3` on qwen3:8b
+- Handoff: LLM spec → `create-persona.py --non-interactive` flags
+
+**Task 1 complete — `my-persona-designer-q3` persona:**
+- Created `modelfiles/persona-designer-qwen3.Modelfile`, registered with Ollama
+- Appended to `personas/registry.yaml` (now 29 active personas)
+- Quality review fix: tier values + constraint count wording improved in system prompt
+- Commits: `5efa311`, `e9498c0`
+
+**Task 2 complete — `personas/lib/ollama_client.py`:**
+- Synchronous urllib-based Ollama client (no new deps)
+- Exports: `ollama_chat(prompt, *, model, system, temperature, think, format_schema, timeout)`
+- Returns: `{content, model, eval_count, total_duration_ms}`
+- **Bug caught:** dead `except TimeoutError` — urllib wraps socket.timeout inside URLError, must check `isinstance(e.reason, TimeoutError)` inside URLError handler
+- **Bug caught:** `HTTPError` must be caught BEFORE `URLError` (it's a subclass)
+- Test fixtures committed to `benchmarks/test-fixtures/ollama-client/` (not /tmp/)
+- Commits: `9c69c58`, `59e119d`
+
+### Decisions Made
+- **Drop subagent framework for Tasks 3-5:** Token cost too high for Pro plan; tasks 3-5 are mechanical.
+- **Architecture confirmed:** Two-pass (initial + one refinement), future: multi-round + qwen3:14b test.
+
+### Next
+
+**Task 3 — `personas/build-persona.py` (start here on resume):**
+- Full code in plan: `docs/plans/2026-02-18-conversational-persona-builder.md` § Task 3
+- Key imports: `ollama_chat`, `detect`, `ask/ask_confirm`, `DOMAIN_CHOICES`, `TEMPERATURES`
+- PERSONA_SPEC_SCHEMA has enum for domain, temperature (0.1/0.3/0.7), tier (full/bare)
+- Test: `benchmarks/test-build-persona.sh` — 3 cases (describe-only, codebase-seeded, dry-run)
+- Then Task 4 (wrapper), Task 5 (integration + BUILD-PERSONA.md)
 
 ---
 
