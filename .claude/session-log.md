@@ -1,8 +1,58 @@
 # Session Log
 
-**Current Layer:** Layer 3 — Persona Creator (in progress)
-**Current Session:** 2026-02-19 — Task 3.5 in progress (Tasks 1+2 done, Task 3 next)
+**Current Layer:** Layer 3 — Persona Creator (COMPLETE)
+**Current Session:** 2026-02-19 — Layer 3 complete, branch ready for PR
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-19 - Session 24: Task 3.5 Complete — Layer 3 Done
+
+### Context
+Resumed from session 23 (Tasks 1+2 of 3.5 done). Picked up at Task 3 (`build-persona.py`). Also clarified the `bash <script>` vs `./script.sh` pattern — user pointed out `bash` invocations can't be individually whitelisted in Claude Code's permission system.
+
+### What Was Done
+
+**Task 3 — `personas/build-persona.py` (core LLM builder):**
+- `build_initial_prompt()`: injects codebase detect results + user description + constraint guidelines
+- `build_refinement_prompt()`: passes original spec + feedback for single refinement pass
+- `call_designer()`: calls `my-persona-designer-q3` with `PERSONA_SPEC_SCHEMA` structured output
+- `validate_spec()`: checks all required fields, domain/temperature enum values, constraint count
+- `display_proposal()`: formatted display with temp name resolved from value
+- `build_creator_command()` / `handoff_to_creator()`: converts spec dict → `create-persona.py --non-interactive` flags
+- **Bug 1 fixed:** `detect-persona.py` has a hyphen → can't `import detect_persona` → used `importlib.util.spec_from_file_location()`
+- **Bug 2 fixed:** Embedded commas in LLM constraints ("MUST use X, NOT Y") split incorrectly when passed to `--constraints` → replaced commas within each constraint with semicolons before joining
+- Tests: `benchmarks/test-build-persona.sh` (3 cases: describe-only, codebase-seeded, dry-run) — 3/3 passing
+- Commit: `c1b6927`
+
+**Task 4 — `personas/run-build-persona.sh` (bash wrapper):**
+- Standard wrapper pattern with `PATH` fix for non-interactive WSL shells
+- **Bug 3 fixed:** Python stdout fully buffered in pipes → subprocess output appeared before `print()` output → fixed with `python3 -u` (unbuffered mode)
+- Commit: `1c8e1d2`
+
+**Task 5 — Integration verification + docs:**
+- Full regression: 11/11 tests passing (5 detect + 3 ollama-client + 3 build-persona)
+- Live e2e: created `my-rust-async-q3` persona end-to-end (Ollama registered + registry updated)
+- Refinement flow tested: "generic backend developer" → Express/TypeScript after feedback
+- `personas/BUILD-PERSONA.md`: architecture diagram, usage examples, schema, known limitations
+- Tracking files updated, branch ready for PR
+- Commit: `01ae817`
+
+**Shell script invocation convention clarified:**
+- `./script.sh` instead of `bash script.sh` — the `./` form is whitelistable per-script in Claude Code
+- All test scripts confirmed `+x`; going forward always use `./`
+
+### Decisions Made
+- **`importlib` for hyphenated modules:** Project uses `kebab-case.py` + bash wrappers; `importlib.util.spec_from_file_location()` is the correct stdlib pattern when you need to import a file whose name isn't a valid identifier.
+- **Constraint comma fix in `build-persona.py`:** Replace `,` within constraints with `;` before joining — boundary fix, no change to `create-persona.py` API.
+- **`python3 -u` in wrapper:** Unbuffered mode ensures correct output ordering when stdout is a pipe (subprocess output no longer jumps ahead of Python print() output).
+- **Keep `my-rust-async-q3`:** Test persona is valid and useful; left in registry + Ollama.
+
+### Next
+
+**Layer 3 complete. Open PR for `feature/task-3.5-conversational-builder` → merge to master → start Layer 4.**
+
+Uncommitted: `personas/registry.yaml` (has `my-rust-async-q3` entry from live test), `modelfiles/rust-async-qwen3.Modelfile` — ask user whether to commit before PR or include in PR.
 
 ---
 

@@ -342,3 +342,12 @@ my-persona-designer-q3:
   num_ctx: 16384
   tier: full
   status: active
+
+my-rust-async-q3:
+  modelfile: modelfiles/rust-async-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Rust async systems programmer using Tokio and Axum
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
