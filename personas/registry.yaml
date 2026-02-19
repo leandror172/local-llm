@@ -333,3 +333,12 @@ my-career-coach-q3:
   num_ctx: 16384
   tier: full
   status: active
+
+my-persona-designer-q3:
+  modelfile: modelfiles/persona-designer-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: Persona design specialist (analyzes requirements and proposes Modelfile specs)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
