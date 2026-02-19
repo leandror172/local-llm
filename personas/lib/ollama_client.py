@@ -45,9 +45,9 @@ def ollama_chat(
         total_duration_ms (float).
 
     Raises:
-        ConnectionError: Ollama not reachable.
-        TimeoutError: Ollama didn't respond in time.
-        RuntimeError: Ollama returned an error (e.g., model not found).
+        ConnectionError: Cannot reach Ollama (not running, wrong port).
+        TimeoutError: Ollama did not respond within timeout (model may be loading).
+        RuntimeError: Ollama returned HTTP error or error field in response body.
     """
     messages = []
     if system:
@@ -75,16 +75,22 @@ def ollama_chat(
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise RuntimeError(
+                f"Model '{model}' not found in Ollama. Run: ollama list"
+            ) from e
+        raise RuntimeError(f"Ollama HTTP error {e.code}: {e.reason}") from e
     except urllib.error.URLError as e:
+        if isinstance(e.reason, TimeoutError):
+            raise TimeoutError(
+                f"Ollama did not respond within {timeout}s. Model may be loading."
+            ) from e
         if "Connection refused" in str(e) or "Name or service not known" in str(e):
             raise ConnectionError(
                 f"Cannot connect to Ollama at {OLLAMA_URL}. Is Ollama running?"
             ) from e
         raise RuntimeError(f"Ollama request failed: {e}") from e
-    except TimeoutError:
-        raise TimeoutError(
-            f"Ollama did not respond within {timeout}s. Model may be loading."
-        )
 
     if "error" in body:
         raise RuntimeError(f"Ollama error: {body['error']}")
