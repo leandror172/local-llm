@@ -80,6 +80,9 @@
   - **✅ Task 5:** Integration verified (11/11 tests), live persona created (`my-rust-async-q3`), docs written
   - Tests: `./benchmarks/test-build-persona.sh` (use `./` not `bash` — enables Claude Code whitelist)
   - Docs: `personas/BUILD-PERSONA.md`
+  - **Follow-ups (deferred, not blocking Layer 4):**
+    - [ ] 3.5-A: Test `my-persona-designer-q3` with `qwen3:14b` backend — 14B would improve nuanced constraint inference (e.g., "Java + Spring Boot + enterprise" → infers Jakarta EE namespace, constructor injection, OpenAPI annotations without being told). Tradeoff: 32 tok/s vs 51 tok/s, and 4K ctx limit on RTX 3060 12GB (vs 16K for 8B). Worth benchmarking quality difference on representative descriptions.
+    - [ ] 3.5-B: Implement Option 3 multi-round conversation loop — LLM asks one clarifying question at a time, user responds, N turns before proposing spec. More natural UX but: requires history list management, qwen3:8b degrades past ~4K history tokens, latency compounds (~4s × N turns), terminal UX awkward with thinking delays between questions. Current Option 2 (single-shot + one refinement) chosen as sweet spot; Option 3 is the natural next step if interactive feel becomes a priority.
 
 ### Persona Inventory (28 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
