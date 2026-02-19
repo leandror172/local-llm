@@ -57,13 +57,13 @@
     - Refactor 1: MODEL_MATRIX → personas/models.py
     - Refactor 2: Input helpers → personas/lib/interactive.py
     - Refactor 3: TEMPERATURES consolidation (dict-of-dicts)
-  * ⏳ 3.5 Conversational persona builder — *next task* (foundation refactored and ready)
-- **Last completed:** Layer 3 refactoring (all 3 PR #1 deferred items)
-- **Last checkpoint:** 2026-02-18 (session 22, extended)
-- **Next:** Task 3.5 — Conversational builder (no prep work needed; foundation clean)
+  * ⏳ 3.5 Conversational persona builder — **IN PROGRESS** (Tasks 1+2 done, Task 3 next)
+- **Last completed:** Task 3.5 subtasks 1+2 (session 23, 2026-02-19)
+- **Last checkpoint:** 2026-02-19 (session 23)
+- **Next:** Task 3.5 Task 3 — `personas/build-persona.py` (see tasks.md for full detail)
 - **Branches:**
-  * master: Task 3.4 merged (PR #2)
-  * feature/layer3-refactoring-consolidate-personas: Refactoring complete (PR #3, awaiting merge)
+  * master: PR #3 merged (layer 3 refactoring complete)
+  * feature/task-3.5-conversational-builder: active, Tasks 1+2 committed
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
