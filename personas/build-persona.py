@@ -291,7 +291,7 @@ def build_creator_command(spec: dict, dry_run: bool = False) -> list[str]:
         "--temperature", temp_name,
         "--tier", spec.get("tier", "full"),
         "--output-format", spec["output_format"],
-        "--constraints", ",".join(spec["constraints"]),
+        "--constraints", ",".join(c.replace(",", ";") for c in spec["constraints"]),
     ]
 
     if spec.get("language"):

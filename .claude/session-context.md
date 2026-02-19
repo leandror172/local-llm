@@ -47,7 +47,7 @@
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Layer 3:** In progress (4/5 done + refactoring bonus complete)
+- **Layer 3:** Complete (5/5 done + refactoring bonus complete)
   * ✅ 3.1 Persona template + 3.6 Specialized 8 personas (28 active total)
   * ✅ 3.2 Creator CLI (conversational builder, interactive 8-step flow)
   * ✅ 3.3 Model selection (MODEL_MATRIX in models.py)
@@ -57,13 +57,13 @@
     - Refactor 1: MODEL_MATRIX → personas/models.py
     - Refactor 2: Input helpers → personas/lib/interactive.py
     - Refactor 3: TEMPERATURES consolidation (dict-of-dicts)
-  * ⏳ 3.5 Conversational persona builder — **IN PROGRESS** (Tasks 1+2 done, Task 3 next)
-- **Last completed:** Task 3.5 subtasks 1+2 (session 23, 2026-02-19)
-- **Last checkpoint:** 2026-02-19 (session 23)
-- **Next:** Task 3.5 Task 3 — `personas/build-persona.py` (see tasks.md for full detail)
+  * ✅ 3.5 Conversational persona builder — **COMPLETE** (Tasks 1-5 all done)
+- **Last completed:** Task 3.5 all subtasks (session 24, 2026-02-19)
+- **Last checkpoint:** 2026-02-19 (session 24)
+- **Next:** Layer 3 complete → open PR for Task 3.5 branch, merge to master, start Layer 4
 - **Branches:**
   * master: PR #3 merged (layer 3 refactoring complete)
-  * feature/task-3.5-conversational-builder: active, Tasks 1+2 committed
+  * feature/task-3.5-conversational-builder: all 5 tasks done, ready for PR
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
