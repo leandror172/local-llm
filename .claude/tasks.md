@@ -68,21 +68,18 @@
   - Result: create-persona.py reduced by 155 lines; clean foundation for Task 3.5
   - PR #3 created (awaiting merge to master)
 
-- [ ] 3.5 Conversational persona builder — **IN PROGRESS** (session 23)
-  - Branch: `feature/task-3.5-conversational-builder`
+- [x] 3.5 Conversational persona builder — **COMPLETE** (session 23-24)
+  - Branch: `feature/task-3.5-conversational-builder` (pending PR + merge)
   - Plan: `docs/plans/2026-02-18-conversational-persona-builder.md` (5 tasks)
-  - **✅ Task 1 done:** `my-persona-designer-q3` persona created + registered (commits 5efa311, e9498c0)
-  - **✅ Task 2 done:** `personas/lib/ollama_client.py` — sync urllib client, 3 tests passing (commits 9c69c58, 59e119d)
-    - Bug caught + fixed: urllib exception ordering (HTTPError before URLError, dead TimeoutError block)
-    - Test fixtures moved to committed location: `benchmarks/test-fixtures/ollama-client/`
-  - **⏳ Task 3 next:** `personas/build-persona.py` — core LLM builder script
-    - Imports: `from lib.ollama_client import ollama_chat`, `from detect_persona import detect`
-    - Two-pass flow: initial proposal → optional single refinement → handoff to create-persona.py
-    - Test: `benchmarks/test-build-persona.sh` (--describe only, --codebase seeding, --dry-run)
-  - **⏳ Task 4:** `personas/run-build-persona.sh` — bash wrapper + e2e dry-run tests
-  - **⏳ Task 5:** Integration verification, docs (BUILD-PERSONA.md), tracking updates
-  - Architecture decided: single-shot + one refinement pass; `my-persona-designer-q3` on qwen3:8b
-  - Future (out of scope now): multi-round conversation loop, qwen3:14b testing
+  - **✅ Task 1:** `my-persona-designer-q3` persona created + registered
+  - **✅ Task 2:** `personas/lib/ollama_client.py` — sync urllib client (3 tests passing)
+  - **✅ Task 3:** `personas/build-persona.py` — core LLM builder (3 tests passing)
+    - importlib used for `detect-persona.py` (hyphenated filename — can't import directly)
+    - Constraint sanitization: commas within constraints replaced with semicolons before `--constraints` join
+  - **✅ Task 4:** `personas/run-build-persona.sh` — wrapper with `python3 -u` (stdout unbuffering fix)
+  - **✅ Task 5:** Integration verified (11/11 tests), live persona created (`my-rust-async-q3`), docs written
+  - Tests: `./benchmarks/test-build-persona.sh` (use `./` not `bash` — enables Claude Code whitelist)
+  - Docs: `personas/BUILD-PERSONA.md`
 
 ### Persona Inventory (28 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
