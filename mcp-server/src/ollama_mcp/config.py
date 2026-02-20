@@ -57,6 +57,24 @@ TEMPS: dict[str, float] = {
 
 # These are the custom Ollama model personas configured on this system.
 # Used in tool descriptions so Claude knows what models are available.
+# ---------------------------------------------------------------------------
+# Repository paths
+# ---------------------------------------------------------------------------
+
+# Root of the LLM repository. Set by run-server.sh so the MCP server can
+# locate repo-level resources (persona registry, scripts) without fragile
+# relative-path traversal from within the installed package.
+REPO_ROOT: str | None = os.environ.get("LLM_REPO_ROOT")
+
+# Path to the persona registry YAML file. None if REPO_ROOT is not set.
+REGISTRY_PATH: str | None = (
+    os.path.join(REPO_ROOT, "personas", "registry.yaml") if REPO_ROOT else None
+)
+
+# ---------------------------------------------------------------------------
+# Available models (informational)
+# ---------------------------------------------------------------------------
+
 MODELS: list[str] = [
     "my-coder",             # Qwen2.5-Coder-7B — fast, good at code
     "my-coder-q3",          # Qwen3-8B — coding persona, thinking capable

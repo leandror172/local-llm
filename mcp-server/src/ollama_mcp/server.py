@@ -12,6 +12,9 @@ The server uses a "lifespan" pattern to manage the Ollama HTTP client:
 - On shutdown: close the client cleanly (release TCP connections)
 """
 
+import asyncio
+import json
+import os
 import sys
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
@@ -19,23 +22,22 @@ from typing import Any, AsyncIterator
 from mcp.server.fastmcp import FastMCP
 
 from ollama_mcp.client import OllamaClient, OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError
-from ollama_mcp.config import DEFAULT_MODEL, MODELS, TEMPS
+from ollama_mcp.config import DEFAULT_MODEL, MODELS, REGISTRY_PATH, REPO_ROOT, TEMPS
+from ollama_mcp import registry
 
 # ---------------------------------------------------------------------------
 # Language → persona routing for generate_code
 # ---------------------------------------------------------------------------
 
-# Maps programming languages to the best-fit persona. Languages not listed
-# here fall through to the general-purpose my-codegen-q3 persona.
-LANGUAGE_ROUTES: dict[str, str] = {
+# Fallback routes used only when the persona registry isn't loaded.
+# When the registry IS loaded, registry.get_language_routes() provides a
+# richer mapping built from actual persona metadata (see registry.py).
+_FALLBACK_LANGUAGE_ROUTES: dict[str, str] = {
     "java": "my-coder-q3",
     "go": "my-coder-q3",
-    "golang": "my-coder-q3",
     "html": "my-creative-coder-q3",
     "javascript": "my-creative-coder-q3",
-    "js": "my-creative-coder-q3",
     "css": "my-creative-coder-q3",
-    "svg": "my-creative-coder-q3",
 }
 
 _DEFAULT_CODEGEN_MODEL = "my-codegen-q3"
@@ -92,6 +94,27 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
             file=sys.stderr,
         )
 
+    # Load persona registry (used for query_personas, language routing, and
+    # persona validation). Non-fatal: tools degrade gracefully if missing.
+    if REGISTRY_PATH:
+        try:
+            reg = registry.load_registry(REGISTRY_PATH)
+            active = sum(1 for v in reg.values() if v.get("status") == "active")
+            print(
+                f"[ollama-bridge] Persona registry loaded — {active} active persona(s)",
+                file=sys.stderr,
+            )
+        except Exception as e:
+            print(
+                f"[ollama-bridge] Warning: Could not load persona registry: {e}",
+                file=sys.stderr,
+            )
+    else:
+        print(
+            "[ollama-bridge] Warning: LLM_REPO_ROOT not set — persona registry unavailable",
+            file=sys.stderr,
+        )
+
     try:
         yield
     finally:
@@ -126,6 +149,7 @@ async def ask_ollama(
     prompt: str,
     model: str = DEFAULT_MODEL,
     temperature: float | None = None,
+    persona: str | None = None,
 ) -> str:
     """Ask a question to a local Ollama model.
 
@@ -144,11 +168,28 @@ async def ask_ollama(
                Default: my-coder-q3 (Qwen3-8B, good all-rounder).
         temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative).
                      Default: model's built-in default.
+        persona: Use a specific persona by name (e.g., "my-python-q3").
+                 Overrides the model parameter. Use query_personas to discover
+                 available personas. Returns an error if the persona is not
+                 found in the registry.
 
     Returns:
         The model's text response. If Ollama is unreachable, returns an error
         message instead of raising (so Claude can handle it gracefully).
     """
+    # Persona override: validate against registry and use as model name
+    if persona is not None:
+        reg = registry.get_registry()
+        if reg and persona not in reg:
+            # Suggest similar names to help the caller
+            suggestions = [n for n in reg if persona.split("-")[1] in n] if "-" in persona else []
+            msg = f"Error: Persona '{persona}' not found in registry."
+            if suggestions:
+                msg += f" Similar: {', '.join(suggestions[:5])}"
+            msg += " Use query_personas() to list available personas."
+            return msg
+        model = persona
+
     client = _get_client()
 
     try:
@@ -244,10 +285,12 @@ async def generate_code(
 ) -> str:
     """Generate code using a local Ollama model with smart persona routing.
 
-    Automatically selects the best persona based on the target language:
-    - Java, Go → my-coder-q3 (backend specialist)
-    - HTML, JavaScript, CSS → my-creative-coder-q3 (browser/Canvas specialist)
-    - All other languages → my-codegen-q3 (general-purpose code generator)
+    Automatically selects the best persona based on the target language
+    using the persona registry. Examples:
+    - Java → my-java-q3, Go → my-go-q3, Python → my-python-q3
+    - React → my-react-q3, Rust → my-rust-async-q3
+    - HTML/JS/CSS → my-creative-coder-q3 (browser/Canvas specialist)
+    - Other languages → my-codegen-q3 (general-purpose fallback)
 
     An explicit model parameter overrides the automatic routing.
 
@@ -268,7 +311,13 @@ async def generate_code(
     if model is not None:
         chosen_model = model
     elif language is not None:
-        chosen_model = LANGUAGE_ROUTES.get(language.lower(), _DEFAULT_CODEGEN_MODEL)
+        lang_key = language.lower()
+        # Resolve aliases (js→javascript, ts→typescript, golang→go, etc.)
+        lang_key = registry._LANGUAGE_ALIASES.get(lang_key, lang_key)
+        # Merge: registry routes override fallback, but fallback fills gaps
+        # (e.g., javascript/css → creative-coder not detectable from role text)
+        routes = {**_FALLBACK_LANGUAGE_ROUTES, **registry.get_language_routes()}
+        chosen_model = routes.get(lang_key, _DEFAULT_CODEGEN_MODEL)
     else:
         chosen_model = _DEFAULT_CODEGEN_MODEL
 
@@ -428,3 +477,155 @@ async def translate(
         return response.content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
         return _format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# Persona tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def query_personas(
+    language: str | None = None,
+    domain: str | None = None,
+    tier: str | None = None,
+    name: str | None = None,
+) -> str:
+    """Query available Ollama personas from the registry.
+
+    Returns matching personas as a JSON array. All filters are optional
+    and combined with AND logic. With no filters, returns all active personas.
+
+    Use this to discover which specialized personas exist before choosing
+    a model for ask_ollama or generate_code.
+
+    Args:
+        language: Filter by language (e.g., "java", "python", "rust").
+        domain: Filter by domain keyword in role (e.g., "frontend", "review", "architect").
+        tier: Filter by tier ("full" = standalone persona, "bare" = host-tool controlled).
+        name: Filter by substring in persona name (e.g., "coder", "architect").
+
+    Returns:
+        JSON array of matching personas with their attributes.
+    """
+    results = registry.query_personas(
+        language=language,
+        domain=domain,
+        tier=tier,
+        name=name,
+    )
+
+    if not results:
+        return json.dumps({"message": "No personas match the given filters.", "filters": {
+            k: v for k, v in {"language": language, "domain": domain, "tier": tier, "name": name}.items() if v
+        }})
+
+    return json.dumps(results, indent=2)
+
+
+@mcp.tool()
+async def detect_persona(path: str) -> str:
+    """Analyze a codebase and return ranked persona matches.
+
+    Scans the directory for language files, frameworks, and patterns, then
+    matches against the persona registry. No LLM call — purely file-based
+    analysis, so it completes in seconds.
+
+    Args:
+        path: Absolute path to the codebase root directory to analyze.
+
+    Returns:
+        JSON array of persona matches ranked by confidence, each with:
+        persona_name, confidence, reason, base_model, role, tier.
+        Returns an error message if the path doesn't exist or REPO_ROOT is not set.
+    """
+    if not REPO_ROOT:
+        return "Error: LLM_REPO_ROOT not set — cannot locate detect-persona script."
+
+    script = os.path.join(REPO_ROOT, "personas", "run-detect-persona.sh")
+    if not os.path.isfile(script):
+        return f"Error: Detection script not found at {script}"
+
+    if not os.path.isdir(path):
+        return f"Error: Directory not found: {path}"
+
+    try:
+        # create_subprocess_exec passes args as an array — no shell injection
+        # risk (equivalent to Node's execFile, not exec).
+        proc = await asyncio.create_subprocess_exec(
+            script, "--json-compact", path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+
+        if proc.returncode != 0:
+            err_msg = stderr.decode().strip() if stderr else "Unknown error"
+            return f"Error: detect-persona exited with code {proc.returncode}: {err_msg}"
+
+        return stdout.decode().strip()
+
+    except asyncio.TimeoutError:
+        proc.kill()
+        return "Error: detect-persona timed out after 30 seconds."
+    except Exception as e:
+        return f"Error running detect-persona: {e}"
+
+
+@mcp.tool()
+async def build_persona(
+    description: str,
+    codebase_path: str | None = None,
+) -> str:
+    """Propose a new persona spec from a natural-language description.
+
+    Uses an LLM (my-persona-designer-q3) to analyze the description and
+    generate a complete persona specification. This is read-only — it
+    proposes a spec but does NOT create the persona. The user must review
+    and approve before creation.
+
+    Args:
+        description: What the persona should do (e.g., "Rust async systems
+                     programmer using Tokio and Axum").
+        codebase_path: Optional path to a codebase for context. The builder
+                       will analyze it to tailor the persona to the project.
+
+    Returns:
+        JSON object with proposed spec: persona_name, domain, language,
+        temperature, role, constraints, output_format, tier.
+        Returns an error message if REPO_ROOT is not set or the script fails.
+    """
+    if not REPO_ROOT:
+        return "Error: LLM_REPO_ROOT not set — cannot locate build-persona script."
+
+    script = os.path.join(REPO_ROOT, "personas", "run-build-persona.sh")
+    if not os.path.isfile(script):
+        return f"Error: Builder script not found at {script}"
+
+    # Build argument list: --describe "..." --json-only --skip-refinement
+    # create_subprocess_exec passes args as array — no shell injection risk.
+    args = [script, "--describe", description, "--json-only", "--skip-refinement"]
+
+    if codebase_path:
+        if not os.path.isdir(codebase_path):
+            return f"Error: Codebase directory not found: {codebase_path}"
+        args.extend(["--codebase", codebase_path])
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+
+        if proc.returncode != 0:
+            err_msg = stderr.decode().strip() if stderr else "Unknown error"
+            return f"Error: build-persona exited with code {proc.returncode}: {err_msg}"
+
+        return stdout.decode().strip()
+
+    except asyncio.TimeoutError:
+        proc.kill()
+        return "Error: build-persona timed out after 120 seconds."
+    except Exception as e:
+        return f"Error running build-persona: {e}"

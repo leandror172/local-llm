@@ -24,6 +24,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # and tools like `uv` (installed to ~/.local/bin) won't be found.
 export PATH="$HOME/.local/bin:$PATH"
 
+# Expose the repo root so the MCP server can locate the persona registry
+# and other repo-level resources without fragile path traversal from Python.
+export LLM_REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # `uv run` does three things automatically:
 #   1. Creates a virtual environment if one doesn't exist
 #   2. Installs/syncs dependencies from pyproject.toml
