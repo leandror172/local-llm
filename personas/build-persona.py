@@ -158,12 +158,14 @@ def build_refinement_prompt(original_spec: dict, feedback: str) -> str:
 # LLM interaction
 # ──────────────────────────────────────────────────────────────────────────────
 
-def call_designer(prompt: str) -> dict:
+def call_designer(prompt: str, model: str = DESIGNER_MODEL, verbose: bool = False) -> dict:
     """
-    Call my-persona-designer-q3 with structured output.
+    Call the designer model with structured output.
 
     Args:
         prompt: The constructed prompt.
+        model: Ollama model name to use (default: DESIGNER_MODEL).
+        verbose: If True, print prompt and raw response to stderr.
 
     Returns:
         Parsed JSON dict from the LLM.
@@ -171,14 +173,20 @@ def call_designer(prompt: str) -> dict:
     Raises:
         RuntimeError: If LLM returns invalid JSON or connection fails.
     """
+    if verbose:
+        print(f"\n[VERBOSE] Prompt ({len(prompt)} chars):\n{prompt}\n", file=sys.stderr)
+
     try:
         response = ollama_chat(
             prompt,
-            model=DESIGNER_MODEL,
+            model=model,
             format_schema=PERSONA_SPEC_SCHEMA,
         )
     except (ConnectionError, TimeoutError, RuntimeError) as e:
         raise RuntimeError(f"LLM call failed: {e}") from e
+
+    if verbose:
+        print(f"[VERBOSE] Raw response:\n{response['content']}\n", file=sys.stderr)
 
     try:
         spec = json.loads(response["content"])
@@ -322,7 +330,8 @@ def handoff_to_creator(spec: dict, dry_run: bool = False) -> int:
 
 def run(description: str, codebase_path: str | None = None,
         dry_run: bool = False, json_only: bool = False,
-        skip_refinement: bool = False) -> int:
+        skip_refinement: bool = False, designer_model: str = DESIGNER_MODEL,
+        verbose: bool = False) -> int:
     """
     Main entry point for the conversational builder flow.
 
@@ -332,6 +341,8 @@ def run(description: str, codebase_path: str | None = None,
         dry_run: If True, don't write files (preview only).
         json_only: If True, output raw JSON and exit (for testing).
         skip_refinement: If True, skip the refinement feedback step.
+        designer_model: Ollama model to use as the persona designer.
+        verbose: If True, print prompts and raw responses to stderr.
 
     Returns:
         Exit code (0 = success).
@@ -349,11 +360,11 @@ def run(description: str, codebase_path: str | None = None,
             detect_results = None
 
     # Step 2: Initial LLM call
-    print("[LLM] Generating persona proposal...")
+    print(f"[LLM] Generating persona proposal (model: {designer_model})...")
     prompt = build_initial_prompt(description, detect_results)
 
     try:
-        spec = call_designer(prompt)
+        spec = call_designer(prompt, model=designer_model, verbose=verbose)
     except RuntimeError as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         return 1
@@ -382,7 +393,7 @@ def run(description: str, codebase_path: str | None = None,
             print("[LLM] Refining proposal...")
             refine_prompt = build_refinement_prompt(spec, feedback)
             try:
-                spec = call_designer(refine_prompt)
+                spec = call_designer(refine_prompt, model=designer_model, verbose=verbose)
             except RuntimeError as e:
                 print(f"[ERROR] Refinement failed: {e}", file=sys.stderr)
                 print("        Using original proposal.")
@@ -425,6 +436,10 @@ def parse_args():
                    help="Output raw JSON proposal and exit (for testing/piping).")
     p.add_argument("--skip-refinement", action="store_true",
                    help="Skip the refinement feedback step.")
+    p.add_argument("--designer-model", metavar="MODEL", default=DESIGNER_MODEL,
+                   help=f"Ollama model to use as persona designer (default: {DESIGNER_MODEL}).")
+    p.add_argument("--verbose", action="store_true",
+                   help="Print prompts and raw LLM responses to stderr (useful for debugging).")
     return p.parse_args()
 
 
@@ -449,6 +464,8 @@ def main() -> int:
         dry_run=args.dry_run,
         json_only=args.json_only,
         skip_refinement=args.skip_refinement,
+        designer_model=args.designer_model,
+        verbose=args.verbose,
     )
 
 

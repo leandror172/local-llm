@@ -1,0 +1,45 @@
+# Persona Designer Comparison — Test Cases
+#
+# One description per line. Blank lines and lines starting with # are ignored.
+# Groups are for human readability only; the script processes all lines equally.
+#
+# WHAT EACH GROUP TESTS:
+#   Concrete/domain-specific  → does the model infer version-implied constraints?
+#   Bare/tool-wrapper         → does the model understand minimal-prompt philosophy?
+#   Abstract/creative         → can the model translate fuzzy intent into crisp rules?
+
+# ── Concrete / domain-specific ────────────────────────────────────────────────
+
+# Baseline: should reliably produce jakarta.*, constructor injection, OpenAPI
+Java Spring Boot enterprise REST API
+
+# Hard: Axon 4.x → Spring Boot 2.x → javax.* (NOT jakarta.*). Version-implied package.
+Java event-driven microservice with Axon Framework 4.9
+
+# Hard: Spring Data JPA 3.2 + Hibernate 6.4 → Spring Boot 3.x → jakarta.persistence
+Java microservice with Spring Data JPA 3.2 and Hibernate 6.4
+
+# Medium: async/await, page.wait_for_selector, stealth headers, timeout handling
+Python web scraper using Playwright for dynamic content
+
+# Medium: arXiv/Semantic Scholar APIs, citation dedup, bibliography format
+Python research agent that fetches papers, summarizes them, and maintains a bibliography
+
+# ── Bare / tool-wrapper ────────────────────────────────────────────────────────
+
+# Should produce tier=bare, very short role, minimal constraints (tool-calling agents need room)
+Bare assistant for OpenCode — tool-calling coding agent, minimal system prompt
+
+# Should produce tier=bare, constraint: avoid long explanations, no unnecessary markdown
+Bare assistant for Claude Code configured to use a local model — concise, no markdown verbosity
+
+# ── Abstract / creative ────────────────────────────────────────────────────────
+
+# Should produce temp=0.7, MUST NOT self-censor, MUST offer 3+ alternatives
+A creative product brainstorm collaborator — generates diverse and unconventional ideas, avoids filtering or self-censorship
+
+# Should produce: MUST read code before explaining, MUST NOT trust comments, skeptical framing
+A code archaeologist who reads unfamiliar legacy codebases and explains what the code actually does — not what the comments claim
+
+# Should produce: MUST NOT state answers directly, MUST ask at least one question per response
+A Socratic tutor that never gives direct answers but guides the student through questions to reach understanding themselves
