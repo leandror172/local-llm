@@ -59,7 +59,7 @@ PERSONA_SPEC_SCHEMA = {
         "persona_name": {"type": "string"},
         "domain": {"type": "string", "enum": DOMAIN_CHOICES},
         "language": {"type": "string"},
-        "temperature": {"type": "number", "enum": [0.1, 0.3, 0.7]},
+        "temperature": {"type": "number", "enum": list(VALID_TEMPERATURES)},
         "role": {"type": "string"},
         "constraints": {"type": "array", "items": {"type": "string"}},
         "output_format": {"type": "string"},
@@ -75,6 +75,9 @@ PERSONA_SPEC_SCHEMA = {
 TEMP_VALUE_TO_NAME = {
     data["value"]: name for name, data in TEMPERATURES.items()
 }
+
+# Valid temperatures (single source of truth from TEMPERATURES)
+VALID_TEMPERATURES = tuple(TEMP_VALUE_TO_NAME.keys())
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -217,8 +220,9 @@ def validate_spec(spec: dict) -> list[str]:
         errors.append(f"Invalid domain '{spec['domain']}'. Must be one of: {', '.join(DOMAIN_CHOICES)}")
 
     # Temperature
-    if spec["temperature"] not in (0.1, 0.3, 0.7):
-        errors.append(f"Invalid temperature {spec['temperature']}. Must be 0.1, 0.3, or 0.7")
+    if spec["temperature"] not in VALID_TEMPERATURES:
+        temps = ", ".join(str(t) for t in sorted(VALID_TEMPERATURES))
+        errors.append(f"Invalid temperature {spec['temperature']}. Must be one of: {temps}")
 
     # Name pattern
     name = spec.get("persona_name", "")
