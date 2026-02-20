@@ -47,23 +47,22 @@
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Layer 3:** Complete (5/5 done + refactoring bonus complete)
-  * ✅ 3.1 Persona template + 3.6 Specialized 8 personas (28 active total)
+- **Layer 3:** Complete (5/5 done + refactoring bonus + 3.5-A comparison)
+  * ✅ 3.1 Persona template + 3.6 Specialized 8 personas (29 active total, +1 from live test)
   * ✅ 3.2 Creator CLI (conversational builder, interactive 8-step flow)
   * ✅ 3.3 Model selection (MODEL_MATRIX in models.py)
   * ✅ 3.5 Registry (machine-readable YAML, source of truth)
-  * ✅ **3.4 COMPLETE:** Codebase analyzer (all 3 phases done, ready for 3.5 integration)
+  * ✅ **3.4 COMPLETE:** Codebase analyzer (all 3 phases done)
   * ✅ **BONUS:** Layer 3 refactoring (all PR #1 deferred items resolved)
-    - Refactor 1: MODEL_MATRIX → personas/models.py
-    - Refactor 2: Input helpers → personas/lib/interactive.py
-    - Refactor 3: TEMPERATURES consolidation (dict-of-dicts)
-  * ✅ 3.5 Conversational persona builder — **COMPLETE** (Tasks 1-5 all done)
-- **Last completed:** Task 3.5 all subtasks (session 24, 2026-02-19)
-- **Last checkpoint:** 2026-02-19 (session 24)
-- **Next:** Layer 3 complete → open PR for Task 3.5 branch, merge to master, start Layer 4
+  * ✅ **3.5 Conversational persona builder — COMPLETE** (Tasks 1-5 all done)
+  * ✅ **3.5-A Persona designer comparison — COMPLETE** (benchmark, analysis, architecture)
+- **Last completed:** Task 3.5-A comparison benchmark (session 25, 2026-02-20)
+- **Last checkpoint:** 2026-02-20 (session 25)
+- **Next:** Merge decision for 3.5 + 3.5-A branches → Layer 4 (Evaluator Framework)
 - **Branches:**
   * master: PR #3 merged (layer 3 refactoring complete)
   * feature/task-3.5-conversational-builder: all 5 tasks done, ready for PR
+  * feature/task-3.5-A-comparison: benchmark infrastructure + analysis (just committed)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
