@@ -52,6 +52,14 @@ detect = _mod.detect
 
 DESIGNER_MODEL = "my-persona-designer-q3"
 
+# Temperature name lookup (reverse of TEMPERATURES)
+TEMP_VALUE_TO_NAME = {
+    data["value"]: name for name, data in TEMPERATURES.items()
+}
+
+# Valid temperatures (single source of truth from TEMPERATURES)
+VALID_TEMPERATURES = tuple(TEMP_VALUE_TO_NAME.keys())
+
 # JSON schema for structured output from the designer model
 PERSONA_SPEC_SCHEMA = {
     "type": "object",
@@ -70,14 +78,6 @@ PERSONA_SPEC_SCHEMA = {
         "role", "constraints", "output_format", "tier",
     ],
 }
-
-# Temperature name lookup (reverse of TEMPERATURES)
-TEMP_VALUE_TO_NAME = {
-    data["value"]: name for name, data in TEMPERATURES.items()
-}
-
-# Valid temperatures (single source of truth from TEMPERATURES)
-VALID_TEMPERATURES = tuple(TEMP_VALUE_TO_NAME.keys())
 
 
 # ──────────────────────────────────────────────────────────────────────────────
