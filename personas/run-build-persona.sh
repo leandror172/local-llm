@@ -9,6 +9,8 @@
 #   personas/run-build-persona.sh --describe "Java Spring Boot developer"
 #   personas/run-build-persona.sh --describe "Go dev" --codebase /path/to/repo
 #   personas/run-build-persona.sh --dry-run --describe "Python FastAPI dev"
+#   personas/run-build-persona.sh --designer-model qwen3:14b --describe "Rust async dev"
+#   personas/run-build-persona.sh --verbose --describe "Go dev"  # prints prompts to stderr
 #   personas/run-build-persona.sh  # interactive mode
 
 set -euo pipefail

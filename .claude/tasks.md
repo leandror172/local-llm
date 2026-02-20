@@ -84,7 +84,7 @@
     - [ ] 3.5-A: Test `my-persona-designer-q3` with `qwen3:14b` backend — 14B would improve nuanced constraint inference (e.g., "Java + Spring Boot + enterprise" → infers Jakarta EE namespace, constructor injection, OpenAPI annotations without being told). Tradeoff: 32 tok/s vs 51 tok/s, and 4K ctx limit on RTX 3060 12GB (vs 16K for 8B). Worth benchmarking quality difference on representative descriptions.
     - [ ] 3.5-B: Implement Option 3 multi-round conversation loop — LLM asks one clarifying question at a time, user responds, N turns before proposing spec. More natural UX but: requires history list management, qwen3:8b degrades past ~4K history tokens, latency compounds (~4s × N turns), terminal UX awkward with thinking delays between questions. Current Option 2 (single-shot + one refinement) chosen as sweet spot; Option 3 is the natural next step if interactive feel becomes a priority.
 
-### Persona Inventory (28 active)
+### Persona Inventory (29 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
 **Code reviewers:** my-java-reviewer-q3, my-go-reviewer-q3
 **Architecture:** my-architect-q3 (14B), my-be-architect-q3, my-fe-architect-q3
@@ -94,6 +94,17 @@
 **Life / career:** my-career-coach-q3
 **Legacy fallback:** my-coder, my-coder-q3 (polyglot Java+Go — prefer specialists)
 **Bare (tool wrappers):** my-aider, my-opencode
+**Rust async:** my-rust-async-q3 (added during 3.5 live e2e test)
+
+### Future Persona Candidates (not yet built)
+Identified during 3.5-A designer comparison test design — abstract personas that proved
+interesting to reason about and could be genuinely useful:
+- **my-code-archaeologist-q3**: Reads unfamiliar legacy codebases and explains what they
+  actually do — not what comments say. MUST NOT trust comments, MUST read before explaining,
+  skeptical framing. Good for onboarding onto inherited code.
+- **my-socratic-tutor-q3**: Never gives direct answers; leads through questions.
+  MUST NOT state answers, MUST ask ≥1 question per response, domain-agnostic.
+  Useful for learning sessions where spoon-feeding defeats the purpose.
 
 ### Creator Tool
 - Script: `personas/create-persona.py` — interactive 8-step flow or `--non-interactive` flags
