@@ -1,8 +1,65 @@
 # Session Log
 
-**Current Layer:** Layer 3 — Persona Creator (COMPLETE) → Layer 3.5-A (COMPLETE)
-**Current Session:** 2026-02-20 — Task 3.5-A benchmark complete, ready for merge decision
+**Current Layer:** Layer 3 COMPLETE → next: Layer 4 (Evaluator Framework)
+**Current Session:** 2026-02-20 — MCP-1/2/3/4 done, housekeeping done, ready for Layer 4
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-20 - Session 26: MCP-1/2/3/4 — Persona-Aware MCP Tools
+
+### Context
+MCP server (Layer 1) had 6 generic tools but predated Layer 3 persona system (30 personas, registry, detector, builder). These 4 tasks bring the MCP server in sync with persona infrastructure. Implementation order: MCP-4 → MCP-1 → MCP-2 → MCP-3.
+
+### What Was Done
+
+**MCP-4: Persona Registry Query Tool**
+- New `mcp-server/src/ollama_mcp/registry.py` (~170 lines): load YAML, cache, query, build language routes
+- Added `REPO_ROOT` + `REGISTRY_PATH` constants to `config.py`
+- Added `LLM_REPO_ROOT` env var export to `run-server.sh`
+- Added `pyyaml>=6.0` dependency
+- New `query_personas(language?, domain?, tier?, name?)` tool — filters registry, returns JSON
+
+**MCP-1: Persona-Aware Routing**
+- Replaced hardcoded `LANGUAGE_ROUTES` with registry-driven `get_language_routes()`
+- Added `persona` param to `ask_ollama` with registry validation + suggestions
+- Routing now: java→my-java-q3, go→my-go-q3, python→my-python-q3, rust→my-rust-async-q3, etc.
+- Fallback dict preserved for when registry isn't loaded
+- Language aliases: js→javascript, ts→typescript, golang→go, sh→bash
+
+**MCP-2: Detect Persona Tool**
+- New `detect_persona(path)` tool — runs `run-detect-persona.sh --json-compact` via `asyncio.create_subprocess_exec`
+- 30s timeout, input validation, structured error returns
+
+**MCP-3: Build Persona Tool**
+- New `build_persona(description, codebase_path?)` tool — runs `run-build-persona.sh --describe --json-only --skip-refinement`
+- 120s timeout (involves LLM call), optional `--codebase` flag
+
+**Bugfix: build-persona.py forward-reference**
+- `VALID_TEMPERATURES` used at line 62 but defined at line 80 — moved definitions above schema
+
+**Verification bugs found and fixed:**
+- Dict merge: `routes or fallback` replaced with `{**fallback, **routes}` (registry non-empty = fallback never consulted)
+- Qwen3 tiebreaker: when two generalists match same language, prefer `-q3` suffix persona
+
+### Commits
+- `f4b6feb` feat: MCP-1/2/3/4 — persona-aware routing and registry tools
+- `2e500c1` fix: forward-reference error in build-persona.py
+
+### Decisions Made
+- **Subprocess for detect/build:** Clean isolation, no sys.path hacking, reuses existing tested CLI scripts
+- **Registry loads once at startup:** Personas change rarely; server restart is trivial (~1s)
+- **Merge > replace for routes:** `{**fallback, **registry}` preserves fallback entries (js, css) that can't be detected from role text
+- **Qwen3 tiebreaker:** When two generalists tie, prefer `-q3` (newer model) over Qwen2.5 variant
+
+### Housekeeping
+- Updated `tasks.md`: MCP-1/2/3/4 marked complete, 3.5-A marked done, persona count 30
+- Updated `session-context.md`: current status, branch info
+- Updated `session-log.md`: this entry
+
+### Next
+- **Merge decision:** Two feature branches still unmerged (`feature/task-3.5-conversational-builder`, `feature/task-3.5-A-comparison`)
+- **Layer 4: Evaluator Framework** — define evaluation criteria, build pipeline, benchmark prompt sets
 
 ---
 

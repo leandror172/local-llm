@@ -1,7 +1,7 @@
 # Task Progress
 
-**Last Updated:** 2026-02-17 (session 21)
-**Active Layer:** Layer 3 — Persona Creator
+**Last Updated:** 2026-02-20 (session 26)
+**Active Layer:** Layer 3 complete → next: Layer 4 (Evaluator Framework)
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
 ---
@@ -10,7 +10,7 @@
 
 - **Phases 0-6:** Infrastructure setup complete (Ollama, models, Docker, verification, docs)
 - **Layer 0:** Foundation upgrades complete (12/12) — Qwen3 models, benchmarks, structured output, thinking mode strategy, decomposition, runtime validation, few-shot examples
-- **Layer 1:** MCP Server complete (7/7) — FastMCP server, 6 tools, system-wide availability
+- **Layer 1:** MCP Server complete (7/7 + MCP-1/2/3/4) — FastMCP server, 9 tools, persona-aware routing, system-wide availability
 
 ---
 
@@ -80,11 +80,11 @@
   - **✅ Task 5:** Integration verified (11/11 tests), live persona created (`my-rust-async-q3`), docs written
   - Tests: `./benchmarks/test-build-persona.sh` (use `./` not `bash` — enables Claude Code whitelist)
   - Docs: `personas/BUILD-PERSONA.md`
-  - **Follow-ups (deferred, not blocking Layer 4):**
-    - [ ] 3.5-A: Test `my-persona-designer-q3` with `qwen3:14b` backend — 14B would improve nuanced constraint inference (e.g., "Java + Spring Boot + enterprise" → infers Jakarta EE namespace, constructor injection, OpenAPI annotations without being told). Tradeoff: 32 tok/s vs 51 tok/s, and 4K ctx limit on RTX 3060 12GB (vs 16K for 8B). Worth benchmarking quality difference on representative descriptions.
-    - [ ] 3.5-B: Implement Option 3 multi-round conversation loop — LLM asks one clarifying question at a time, user responds, N turns before proposing spec. More natural UX but: requires history list management, qwen3:8b degrades past ~4K history tokens, latency compounds (~4s × N turns), terminal UX awkward with thinking delays between questions. Current Option 2 (single-shot + one refinement) chosen as sweet spot; Option 3 is the natural next step if interactive feel becomes a priority.
+  - **Follow-ups:**
+    - [x] 3.5-A: Persona designer comparison benchmark — 8b, 14b, Claude Haiku compared. Finding: 8b production-ready, 14b not worth 3x perf hit, Claude Haiku best at abstract intent. Branch: `feature/task-3.5-A-comparison` (unmerged)
+    - [ ] 3.5-B: Implement Option 3 multi-round conversation loop — deferred, not blocking Layer 4
 
-### Persona Inventory (29 active)
+### Persona Inventory (30 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
 **Code reviewers:** my-java-reviewer-q3, my-go-reviewer-q3
 **Architecture:** my-architect-q3 (14B), my-be-architect-q3, my-fe-architect-q3
@@ -92,6 +92,7 @@
 **LLM infrastructure:** my-shell-q3, my-mcp-q3, my-prompt-eng-q3
 **NLP / utility:** my-classifier-q3, my-summarizer-q3, my-translator-q3, my-ptbr-q3, my-tech-writer-q3
 **Life / career:** my-career-coach-q3
+**Meta:** my-persona-designer-q3
 **Legacy fallback:** my-coder, my-coder-q3 (polyglot Java+Go — prefer specialists)
 **Bare (tool wrappers):** my-aider, my-opencode
 **Rust async:** my-rust-async-q3 (added during 3.5 live e2e test)
@@ -111,13 +112,15 @@ interesting to reason about and could be genuinely useful:
 - Wrapper: `personas/run-create-persona.sh` — whitelist-safe, auto-approved
 - Features: model selection (Task 3.3), domain defaults, name suggestion, collision guard, `--dry-run`
 
-### MCP Enhancement Tasks (deferred — Layer 1 catch-up)
-Current MCP server (Layer 1) has 6 generic tools but predates Layer 3 persona system.
-These tasks bring the MCP in sync with persona infrastructure:
-- [ ] **MCP-1: Persona-aware routing** — `generate_code` currently routes by language to generic models. Should use `registry.yaml` to pick the best specialized persona (e.g., Java → `my-java-q3`, Go → `my-go-q3`). `ask_ollama` could also accept an optional persona parameter.
-- [ ] **MCP-2: Detect persona tool** — New MCP tool: given a codebase path, call `detect()` and return ranked persona matches. Lets Claude Code auto-suggest the right local model for a repo.
-- [ ] **MCP-3: Build persona tool** — New MCP tool: given a free-form description, call `build-persona.py --describe "..." --json-only --skip-refinement` and return the proposed spec. Non-interactive mode fits MCP request/response perfectly.
-- [ ] **MCP-4: Persona registry query** — New MCP tool: query `registry.yaml` — "list all personas", "which personas handle Java?", "show constraints for my-java-q3". Gives Claude Code visibility into what local models are available.
+### MCP Enhancement Tasks (Layer 1 catch-up — COMPLETE)
+Brought the MCP server in sync with Layer 3 persona infrastructure (session 26):
+- [x] **MCP-4: Persona registry query** — `query_personas` tool: filters by language/domain/tier/name, returns JSON
+- [x] **MCP-1: Persona-aware routing** — `generate_code` uses registry-driven routes (java→my-java-q3, etc.); `ask_ollama` gains `persona` param with registry validation
+- [x] **MCP-2: Detect persona tool** — `detect_persona` tool: runs `run-detect-persona.sh --json-compact` via subprocess
+- [x] **MCP-3: Build persona tool** — `build_persona` tool: runs `run-build-persona.sh --describe --json-only --skip-refinement` via subprocess
+- [x] **Bugfix:** `build-persona.py` forward-reference error (VALID_TEMPERATURES used before definition)
+- New file: `mcp-server/src/ollama_mcp/registry.py` (~170 lines)
+- Tool count: 6 → 9; dependency added: `pyyaml>=6.0`
 
 ### Design Decisions
 - **Specialization over generalization:** Narrow personas outperform broad ones at 7-8B. my-java-q3 with `MUST use jakarta.*` beats generic my-coder-q3 that tries to cover both Java and Go.
