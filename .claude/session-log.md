@@ -1,8 +1,64 @@
 # Session Log
 
-**Current Layer:** Layer 3 — Persona Creator (COMPLETE)
-**Current Session:** 2026-02-19 — Layer 3 complete, branch ready for PR
+**Current Layer:** Layer 3 — Persona Creator (COMPLETE) → Layer 3.5-A (COMPLETE)
+**Current Session:** 2026-02-20 — Task 3.5-A benchmark complete, ready for merge decision
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-20 - Session 25: Task 3.5-A — Persona Designer Comparison Benchmark
+
+### Context
+Resumed with recontextualization after model switch to Sonnet 4.6. Task: build comprehensive benchmark comparing persona designer backends (qwen3:8b, qwen3:14b, Claude Haiku). User requested analysis first (Option 3), then 14B comparison (Option 1), then Claude via sub-agents (Option 2 adapted). Final result: separate branch for 3.5-A work pending merge decision.
+
+### What Was Done
+
+**Phase 1: 8b Analysis (Option 3)**
+- Analyzed `persona-designer-compare-20260219-214831.json` (10 test cases, 8b only)
+- Identified patterns: strong on domain knowledge, weak on version-implied constraints
+- Created `3.5A-ANALYSIS.md` with test-by-test breakdown, strengths/gaps, recommendations
+
+**Phase 2: 8b + 14b Comparison (Option 1)**
+- Ran full 10-case benchmark: `./benchmarks/compare-persona-designer.sh --skip-claude`
+- Timing: 8b ~12s/case, 14b ~35s/case (3x slower, 4K context limit)
+- Quality: 14b avoids explicit errors but doesn't improve over 8b
+- Findings: 14b not worth the performance trade-off
+- Saved: `persona-designer-compare-8b-14b-FULL.txt`
+
+**Phase 3: Claude via Sub-agents (Option 2 adapted)**
+- Spawned Task sub-agents (Haiku, no web search) on 3 key cases
+- Test 1 (Axon 4.9): Claude correctly identified Jakarta EE + added eventual consistency, snapshots
+- Test 2 (Research agent): Claude took testing-focused approach vs API-focused
+- Test 3 (Brainstorm): Claude escalated temp to 0.9 (vs 0.7) + anti-pattern constraints
+- Finding: Claude Haiku best-in-class for understanding abstract intent
+- Saved: `3.5A-CLAUDE-COMPARISON.md`
+
+**Phase 4: Commit 3.5-A Work**
+- Created new branch: `feature/task-3.5-A-comparison` (separate from main task-3.5)
+- Added `--designer-model` flag to `build-persona.py` (override backend)
+- Added `--verbose` flag to `build-persona.py` (debug output to stderr)
+- Created `benchmarks/lib/compare-persona-designer.py` (unified benchmark engine)
+- Created `benchmarks/compare-persona-designer.sh` (whitelist-safe wrapper)
+- Created `benchmarks/prompts/persona-designer-test-cases.txt` (10 test cases in 3 groups)
+- Updated `run-build-persona.sh` usage docs with new flags
+- Commit: `8fad0be`
+
+### Decisions Made
+- **Designer backend flexibility:** `--designer-model` allows testing any Ollama model (current default: `my-persona-designer-q3`, no change to existing workflows)
+- **Separate 3.5-A branch:** Keep benchmark work on dedicated branch, separate from main task-3.5 conversational builder
+- **Findings ready, merge pending:** 3.5-A analysis complete; next session decides merge timing
+- **Anti-pattern scoring noted:** Claude's success at anti-pattern thinking (avoid disclaimers, avoid caveats) will inform Layer 4 evaluator design
+
+### Key Findings
+- **8b:** Production-ready, solid constraint inference, efficient
+- **14b:** Not worth 3x performance hit; same quality or avoids constraints instead of solving them
+- **Claude Haiku:** Best at understanding abstract intent, escalating temperature appropriately, architectural reasoning
+- **Axon test:** Initially thought it failed (8b said jakarta for Axon 4.9), but Claude found Axon 4.9 actually requires Spring Boot 3.x → jakarta is correct. Web search vs pure reasoning trade-off discovered.
+
+### Next
+- Decide: merge both `feature/task-3.5-conversational-builder` and `feature/task-3.5-A-comparison` to master (closes Layer 3), or keep separate
+- If merged: start Layer 4 (Evaluator Framework) next session
+- If kept separate: document merge strategy and resume with next phase
 
 ---
 
