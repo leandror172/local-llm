@@ -111,6 +111,14 @@ interesting to reason about and could be genuinely useful:
 - Wrapper: `personas/run-create-persona.sh` — whitelist-safe, auto-approved
 - Features: model selection (Task 3.3), domain defaults, name suggestion, collision guard, `--dry-run`
 
+### MCP Enhancement Tasks (deferred — Layer 1 catch-up)
+Current MCP server (Layer 1) has 6 generic tools but predates Layer 3 persona system.
+These tasks bring the MCP in sync with persona infrastructure:
+- [ ] **MCP-1: Persona-aware routing** — `generate_code` currently routes by language to generic models. Should use `registry.yaml` to pick the best specialized persona (e.g., Java → `my-java-q3`, Go → `my-go-q3`). `ask_ollama` could also accept an optional persona parameter.
+- [ ] **MCP-2: Detect persona tool** — New MCP tool: given a codebase path, call `detect()` and return ranked persona matches. Lets Claude Code auto-suggest the right local model for a repo.
+- [ ] **MCP-3: Build persona tool** — New MCP tool: given a free-form description, call `build-persona.py --describe "..." --json-only --skip-refinement` and return the proposed spec. Non-interactive mode fits MCP request/response perfectly.
+- [ ] **MCP-4: Persona registry query** — New MCP tool: query `registry.yaml` — "list all personas", "which personas handle Java?", "show constraints for my-java-q3". Gives Claude Code visibility into what local models are available.
+
 ### Design Decisions
 - **Specialization over generalization:** Narrow personas outperform broad ones at 7-8B. my-java-q3 with `MUST use jakarta.*` beats generic my-coder-q3 that tries to cover both Java and Go.
 - **Constraint-driven prompts:** Each MUST/MUST NOT targets an observed failure mode (e.g., javax.persistence from Layer 2, unquoted variables in shell).
