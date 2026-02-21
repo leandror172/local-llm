@@ -1,0 +1,77 @@
+id: code-go
+domain: go
+description: Evaluation rubric for Go code generation
+
+# Phase 1: automated validators to run
+validators:
+  - type: code
+    extensions: [.go]
+
+criteria:
+  # --- Phase 1: Automated (deterministic) ---
+
+  - name: compiles
+    phase: 1
+    description: Code compiles without errors (go build)
+    weight: 3.0
+    auto_source: validator
+    scoring:
+      5: "Zero errors and zero warnings"
+      3: "Warnings only (unused imports, vet issues)"
+      1: "Does not compile"
+
+  - name: vet_clean
+    phase: 1
+    description: Passes go vet with no warnings
+    weight: 1.0
+    auto_source: validator
+    scoring:
+      5: "Zero vet warnings"
+      3: "1-2 vet warnings"
+      1: "3+ vet warnings"
+
+  # --- Phase 2: LLM judge ---
+
+  - name: correctness
+    phase: 2
+    description: Does the code solve the stated problem correctly?
+    weight: 3.0
+    scoring:
+      5: "Fully solves the problem with all requirements met"
+      4: "Solves the core problem, minor requirements missing"
+      3: "Partial solution; major requirements missing or incorrect"
+      2: "Attempts the problem but largely incorrect logic"
+      1: "Does not address the problem"
+
+  - name: idiomatic_go
+    phase: 2
+    description: Uses idiomatic Go patterns and conventions
+    weight: 2.0
+    scoring:
+      5: "Excellent Go idioms: proper error handling, idiomatic naming, correct use of goroutines/channels if applicable"
+      4: "Mostly idiomatic with minor deviations"
+      3: "Mix of idiomatic and non-idiomatic patterns"
+      2: "Largely non-idiomatic; looks like another language translated to Go"
+      1: "Does not follow Go conventions at all"
+
+  - name: readability
+    phase: 2
+    description: Code is clear, well-structured, and appropriately commented
+    weight: 1.5
+    scoring:
+      5: "Crystal clear: good function decomposition, meaningful names, comments where non-obvious"
+      4: "Clear and readable with minor organizational issues"
+      3: "Readable but could be better organized or named"
+      2: "Hard to follow in places; poor naming or structure"
+      1: "Very hard to follow; poor naming, no structure, dense"
+
+  - name: completeness
+    phase: 2
+    description: Code is self-contained and runnable (imports, main, demo if appropriate)
+    weight: 1.5
+    scoring:
+      5: "Complete runnable program with imports and a clear demonstration"
+      4: "Complete but missing a demonstration"
+      3: "Missing minor pieces (some imports, minor scaffolding)"
+      2: "Fragment; requires significant scaffolding to run"
+      1: "Snippet only; not runnable without major additions"

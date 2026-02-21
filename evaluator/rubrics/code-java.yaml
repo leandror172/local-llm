@@ -1,0 +1,64 @@
+id: code-java
+domain: java
+description: Evaluation rubric for Java code generation (Spring Boot 3.x / Jakarta EE)
+
+# Phase 1: no Java validator yet — future: javac + checkstyle
+# validators: []
+
+criteria:
+  # --- Phase 2: LLM judge (all criteria; Phase 1 validator deferred) ---
+
+  - name: correctness
+    phase: 2
+    description: Does the code solve the stated problem correctly?
+    weight: 3.0
+    scoring:
+      5: "Fully solves the problem with all requirements met"
+      4: "Solves the core problem, minor requirements missing"
+      3: "Partial solution; major requirements missing or incorrect"
+      2: "Attempts the problem but largely incorrect logic"
+      1: "Does not address the problem"
+
+  - name: jakarta_namespace
+    phase: 2
+    description: Uses jakarta.* namespace (Spring Boot 3.x), NOT javax.*
+    weight: 2.5
+    scoring:
+      5: "Consistently uses jakarta.* for persistence, validation, servlet, etc."
+      4: "Mostly jakarta.* with 1 javax.* slip"
+      3: "Mixed usage of jakarta.* and javax.*"
+      2: "Mostly javax.* (Spring Boot 2.x pattern)"
+      1: "Exclusively javax.* (wrong for Spring Boot 3.x)"
+
+  - name: spring_patterns
+    phase: 2
+    description: Uses correct Spring Boot 3.x patterns (constructor injection, proper annotations)
+    weight: 2.0
+    scoring:
+      5: "Constructor injection throughout, correct annotations (@RestController, @Service, etc.), no @Autowired field injection"
+      4: "Mostly constructor injection, minor annotation issues"
+      3: "Mix of constructor and field injection"
+      2: "Primarily @Autowired field injection (spec violation)"
+      1: "No dependency injection; misuses Spring annotations"
+
+  - name: readability
+    phase: 2
+    description: Code is clear, well-structured, and follows Java conventions
+    weight: 1.5
+    scoring:
+      5: "Clean structure, meaningful names, appropriate use of records/lambdas/streams where suitable"
+      4: "Clear with minor style issues"
+      3: "Readable but verbose or inconsistently styled"
+      2: "Hard to follow; poor naming or overly complex"
+      1: "Very hard to follow"
+
+  - name: completeness
+    phase: 2
+    description: Code includes necessary imports, class structure, and is self-contained
+    weight: 1.0
+    scoring:
+      5: "Complete with all imports, proper class/package structure, runnable"
+      4: "Complete with minor omissions"
+      3: "Missing several imports or structural pieces"
+      2: "Significant scaffolding required to compile"
+      1: "Fragment only; not compilable without major additions"
