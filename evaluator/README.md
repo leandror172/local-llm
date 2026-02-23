@@ -11,6 +11,38 @@ The evaluator answers: **"Which persona is best for X?"** by running the same pr
 
 All components are standalone scripts with structured JSON I/O and model as parameter — composable for future pipeline use.
 
+## Two scripts, two levels
+
+**`run-evaluate.sh` scores one output.** It takes an LLM response you already have and runs it through the rubric. No generation — just judgment.
+
+```
+prompt file + output file + rubric → score JSON
+```
+
+Use it when you have an output from any source (a benchmark run, a live session, another tool) and want to know how it scores.
+
+**`run-benchmark.sh` runs the full N personas × M prompts matrix.** It calls Ollama to generate outputs, then scores each one using `evaluate.py` internally.
+
+```
+prompt directory + persona list + rubric → results directory + leaderboard
+```
+
+Use it when you want to compare personas head-to-head.
+
+**The relationship:**
+
+```
+benchmark.py
+  └── for each persona × prompt:
+        ollama_chat(persona, prompt)   ← generate
+        evaluate.py functions          ← score
+  └── aggregate all scores → summary.json + report.md
+```
+
+`benchmark.py` imports `evaluate.py`'s functions directly (via `importlib`) so there is no subprocess overhead per evaluation — but both remain independently usable scripts.
+
+---
+
 ## Quick Start
 
 ### Evaluate a single output
