@@ -1,7 +1,7 @@
 # Task Progress
 
-**Last Updated:** 2026-02-20 (session 26)
-**Active Layer:** Layer 3 complete → next: Layer 4 (Evaluator Framework)
+**Last Updated:** 2026-02-21 (session 27)
+**Active Layer:** Layer 4 complete → next: PR/merge + Layer 5 (Expense Classifier)
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
 ---
@@ -111,6 +111,26 @@ interesting to reason about and could be genuinely useful:
 - Script: `personas/create-persona.py` — interactive 8-step flow or `--non-interactive` flags
 - Wrapper: `personas/run-create-persona.sh` — whitelist-safe, auto-approved
 - Features: model selection (Task 3.3), domain defaults, name suggestion, collision guard, `--dry-run`
+
+## Layer 4: Evaluator Framework — COMPLETE
+
+- [x] 4.1 Rubrics: 6 YAML rubric files in `evaluator/rubrics/` (code-go, code-java, code-python, code-general, classification, writing)
+- [x] 4.2 evaluate.py: two-phase scoring engine + `evaluator/run-evaluate.sh`
+  - Phase 1: automated checks (Go compile/vet, JSON schema) → deterministic scores
+  - Phase 2: LLM judge via ollama_chat (one criterion per call, temp=0.1, structured output)
+- [x] 4.3 benchmark.py: persona×prompt orchestrator + `evaluator/run-benchmark.sh`
+  - VRAM optimization: groups personas by base_model, defers judge to end
+  - --dry-run mode, --all-coding discovery, results → `evaluator/results/{timestamp}/`
+- [x] 4.4 Prompt sets: 40 prompts across 5 domains (go:10, java:10, python:10, cls:5, shell:5)
+
+### Deferred / Future Evaluator Work
+- [ ] **4.x Shell rubric:** Create `evaluator/rubrics/code-shell.yaml` with `shellcheck` as a Phase 1 validator (same pattern as Go's `go build + vet`). Add handler for `type: shell` in `evaluate.py:run_phase1()`. Until then, shell prompts use `code-general.yaml` (Phase 2 only).
+- [ ] **4.x Java/Python Phase 1 validators:** `javac` compile check for Java, `py_compile` for Python — adds deterministic Phase 1 scores to those rubrics.
+- [ ] **4.x Phase 3 frontier judge:** Extension point designed in `docs/plans/2026-02-21-layer4-discussion-context.md` — Claude API call for subjective/ambiguous cases.
+- [ ] **4.6 Claude Desktop insights tool:** Standalone `tools/claude-desktop-insights.py` (split out from original Layer 4 scope).
+
+### Discussion context: `docs/plans/2026-02-21-layer4-discussion-context.md`
+Key decisions: Stance 3 (Unix-style seams), three-phase scoring, tight scope, 4.6 split to standalone utility
 
 ### MCP Enhancement Tasks (Layer 1 catch-up — COMPLETE)
 Brought the MCP server in sync with Layer 3 persona infrastructure (session 26):

@@ -56,13 +56,12 @@
   * ✅ **BONUS:** Layer 3 refactoring (all PR #1 deferred items resolved)
   * ✅ **3.5 Conversational persona builder — COMPLETE** (Tasks 1-5 all done)
   * ✅ **3.5-A Persona designer comparison — COMPLETE** (benchmark, analysis, architecture)
-- **Last completed:** MCP-1/2/3/4 persona-aware routing + registry tools (session 26, 2026-02-20)
-- **Last checkpoint:** 2026-02-20 (session 26)
-- **Next:** Merge decision for 3.5 + 3.5-A branches → Layer 4 (Evaluator Framework)
+- **Last completed:** Layer 4 Evaluator Framework — all 4 tasks complete (session 27, 2026-02-21)
+- **Last checkpoint:** 2026-02-21 (session 27)
+- **Next:** PR + merge for Layer 4 branch → Layer 5 (Expense Classifier) or live eval run
 - **Branches:**
   * master: MCP-1/2/3/4 committed (9 tools, registry-driven routing, build-persona.py bugfix)
-  * feature/task-3.5-conversational-builder: all 5 tasks done, ready for PR (unmerged)
-  * feature/task-3.5-A-comparison: benchmark infrastructure + analysis (unmerged)
+  * feature/layer4-evaluator-framework: Layer 4 complete (53 files, committed, not yet merged)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
