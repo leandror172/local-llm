@@ -2,7 +2,7 @@
 id: go-07-middleware-chain
 domain: go
 difficulty: medium
-timeout: 300
+
 description: Composable HTTP middleware chain with context values
 ---
 

@@ -2,7 +2,7 @@
 id: sh-03-health-check
 domain: shell
 difficulty: medium
-timeout: 300
+
 description: Service health check with retry and alerting
 ---
 

@@ -2,7 +2,7 @@
 id: sh-04-git-hook
 domain: shell
 difficulty: medium
-timeout: 300
+
 description: Git commit-msg hook enforcing Conventional Commits
 ---
 
