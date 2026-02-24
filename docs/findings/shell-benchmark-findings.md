@@ -114,11 +114,18 @@ Both `my-shell-q3` and `my-coder-q3` averaged exactly **66.7%** across their 4 c
 
 **Where the specialist doesn't win:** complex, multi-requirement prompts (sh-01, sh-03, sh-05). On these, `my-coder-q3` matched or outperformed — likely because the polyglot's more general training gives it better coverage of multi-domain bash patterns.
 
-### 2. Prompt complexity is the primary variable
+### 2. Prompt complexity is the primary variable — and a prompt engineering problem
 
 `sh-01-log-analyzer` and `sh-02-backup-rotation` exhausted every persona at every timeout (300s, 600s, 900s) — they simply require too many tokens for 8B models to generate reliably. The problem is not timeout tuning; it is prompt difficulty relative to model capacity.
 
 `sh-04-git-hook` and `sh-03-health-check` completed reliably for all 8B personas. `sh-05-deploy-script` is borderline. The **reliable zone for 8B shell generation is single-concept scripts under ~300 lines**.
+
+**Generalizable principle:** When a prompt exhausts the model's generation budget, two classes of failure appear simultaneously — timeout (incomplete output) and logic errors (the model rushes or loses coherence in long scripts). Neither is fixable by persona constraints. The remedy is **prompt decomposition**: split multi-requirement prompts into sub-tasks that each fit within the model's reliable window, then compose the results. This is closing-the-gap technique #3 (decomposition), already documented for visual generation — it applies equally to complex shell scripts.
+
+**Implication for future benchmarks:** Before running a persona benchmark, classify prompts by expected output length relative to the target model tier:
+- 8B models: reliable up to ~400 tokens output (~300 lines of code). Prompts requiring more should be decomposed or reserved for 14B+.
+- 14B models: reliable up to ~800 tokens output. Complex multi-requirement scripts are in range.
+- Prompt complexity can be estimated cheaply: ask the model to outline the script structure first (fast, low tokens), then judge whether the full implementation fits the tier.
 
 ### 3. 14B model produces cleaner shellcheck output than 8B shell specialist
 
