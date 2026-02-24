@@ -172,6 +172,98 @@ def generate_output(persona: str, prompt_body: str, timeout: int) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# run_benchmark helpers — each owns one step of the generation/scoring pipeline
+# ---------------------------------------------------------------------------
+
+def _evaluation_summary(scored: dict) -> dict:
+    """Convert a full evaluate.py result dict to the compact per-result summary.
+
+    Used for both freshly-computed scores and cached scores loaded from disk,
+    ensuring the shape stored in summary.json is always identical.
+    """
+    return {
+        "phase1_score": scored["phase1"]["weighted_score"],
+        "phase2_score": scored["phase2"]["weighted_score"],
+        "overall_score": scored["overall"]["weighted_score"],
+        "overall_percentage": scored["overall"]["percentage"],
+        "criteria": {
+            c["name"]: {"score": c["score"], "reason": c["reason"]}
+            for c in (scored["phase1"]["criteria"] + scored["phase2"]["criteria"])
+        },
+    }
+
+
+def _save_raw_generation(raw_dir: Path, slug: str, persona: str, pid: str,
+                          gen: dict, prompt_body: str) -> None:
+    """Persist a raw generation result to the raw/ directory."""
+    (raw_dir / f"{slug}.json").write_text(json.dumps({
+        "persona": persona, "prompt_id": pid,
+        "generation": gen,
+        "prompt_body": prompt_body,
+    }, indent=2))
+
+
+def _extract_and_save_code(code_dir: Path, slug: str, gen: dict, domain: str) -> None:
+    """Extract a code block from LLM output and save it to the code/ directory.
+
+    Updates gen in place with 'extracted_code' and 'extracted_lang' keys.
+    No-op (sets both to None) if the generation did not succeed.
+    """
+    if gen["status"] != "success":
+        gen["extracted_code"] = None
+        gen["extracted_lang"] = None
+        return
+
+    code_text, lang = extract_code_from_text(gen["content"], domain)
+    if code_text and lang:
+        ext_map = {"go": ".go", "java": ".java", "python": ".py",
+                   "javascript": ".js", "typescript": ".ts", "rust": ".rs",
+                   "bash": ".sh", "shell": ".sh"}
+        ext = ext_map.get(lang, ".txt")
+        (code_dir / f"{slug}{ext}").write_text(code_text)
+    gen["extracted_code"] = code_text
+    gen["extracted_lang"] = lang
+
+
+def _run_and_save_evaluation(
+    score_path: Path,
+    prompt: dict,
+    gen: dict,
+    rubric: dict,
+    domain: str,
+    judge_model: str,
+    skip_phase1: bool,
+    skip_phase2: bool,
+    quiet: bool,
+) -> dict:
+    """Run phase1 + phase2 evaluation, persist result to disk, return full scored dict."""
+    persona = gen["persona"]
+    pid = gen["prompt_id"]
+    code_text = gen.get("extracted_code")
+
+    p1_scores = []
+    p2_scores, p2_count, p2_duration_ms = [], 0, 0.0
+
+    if not skip_phase1:
+        if not quiet:
+            print(f"  [eval p1] {persona} × {pid}", file=sys.stderr)
+        p1_scores = run_phase1(gen["content"], rubric, domain)
+
+    if not skip_phase2:
+        if not quiet:
+            print(f"  [eval p2] {persona} × {pid}", file=sys.stderr)
+        p2_scores, p2_count, p2_duration_ms = run_phase2(
+            prompt["body"], gen["content"], code_text,
+            rubric, judge_model, quiet
+        )
+
+    scored = aggregate_scores(p1_scores, p2_scores, p2_count, p2_duration_ms)
+    scored["evaluated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    score_path.write_text(json.dumps(scored, indent=2))
+    return scored
+
+
+# ---------------------------------------------------------------------------
 # Main benchmark loop
 # ---------------------------------------------------------------------------
 
@@ -235,41 +327,16 @@ def run_benchmark(
                     print(f"  [generate] {persona} × {pid} ...", file=sys.stderr)
 
                 gen = generate_output(persona, prompt["body"], timeout)
-                gen.update({
-                    "persona": persona,
-                    "prompt_id": pid,
-                    "prompt_path": prompt["path"],
-                    "base_model": base_model,
-                })
+                gen.update({"persona": persona, "prompt_id": pid,
+                             "prompt_path": prompt["path"], "base_model": base_model})
 
-                # Save raw output
-                raw_path = raw_dir / f"{slug}.json"
-                raw_path.write_text(json.dumps({
-                    "persona": persona, "prompt_id": pid,
-                    "generation": gen,
-                    "prompt_body": prompt["body"],
-                }, indent=2))
-
-                # Extract and save code
-                if gen["status"] == "success":
-                    code_text, lang = extract_code_from_text(gen["content"], domain)
-                    if code_text and lang:
-                        ext_map = {"go": ".go", "java": ".java", "python": ".py",
-                                   "javascript": ".js", "typescript": ".ts", "rust": ".rs",
-                                   "bash": ".sh", "shell": ".sh"}
-                        ext = ext_map.get(lang, ".txt")
-                        (code_dir / f"{slug}{ext}").write_text(code_text)
-                    gen["extracted_code"] = code_text
-                    gen["extracted_lang"] = lang
-                else:
-                    gen["extracted_code"] = None
-                    gen["extracted_lang"] = None
-
+                _save_raw_generation(raw_dir, slug, persona, pid, gen, prompt["body"])
+                _extract_and_save_code(code_dir, slug, gen, domain)
                 generation_results.append(gen)
 
-    # --- Phase 2: Evaluate all outputs (defer judge model load until here) ---
-    # In resume mode, only warmup the judge if there are evals that still need to run
-    pending_evals = not skip_phase2 and (
+    # --- Phase 2: Score all outputs (defer judge model load until here) ---
+    # In resume mode, only warmup the judge if there are scores still needed
+    pending_scoring = not skip_phase2 and (
         not resume or
         any(
             gen["status"] == "success" and
@@ -277,7 +344,7 @@ def run_benchmark(
             for gen in generation_results
         )
     )
-    if pending_evals:
+    if pending_scoring:
         if not quiet:
             print(f"\n[benchmark] loading judge model {judge_model} for Phase 2 ...", file=sys.stderr)
         warmup(judge_model, timeout, quiet)
@@ -302,64 +369,22 @@ def run_benchmark(
         }
 
         if gen["status"] == "success":
-            # Resume: load cached eval if available
-            eval_path = evals_dir / f"{slug}-eval.json"
-            if resume and eval_path.exists():
+            score_path = evals_dir / f"{slug}-eval.json"
+
+            # Resume: load cached scores if available
+            if resume and score_path.exists():
                 if not quiet:
-                    print(f"  [resume] {persona} × {pid} (eval cached)", file=sys.stderr)
-                eval_result = json.loads(eval_path.read_text())
-                result["evaluation"] = {
-                    "phase1_score": eval_result["phase1"]["weighted_score"],
-                    "phase2_score": eval_result["phase2"]["weighted_score"],
-                    "overall_score": eval_result["overall"]["weighted_score"],
-                    "overall_percentage": eval_result["overall"]["percentage"],
-                    "criteria": {
-                        c["name"]: {"score": c["score"], "reason": c["reason"]}
-                        for c in (eval_result["phase1"]["criteria"] + eval_result["phase2"]["criteria"])
-                    },
-                }
+                    print(f"  [resume] {persona} × {pid} (evaluation cached)", file=sys.stderr)
+                result["evaluation"] = _evaluation_summary(json.loads(score_path.read_text()))
                 all_results.append(result)
                 continue
 
-            # Find prompt body
             prompt = next(p for p in prompts if p["id"] == pid)
-            code_text = gen.get("extracted_code")
-
-            p1_scores = []
-            p2_scores = []
-            p2_eval_count = 0
-            p2_duration_ms = 0.0
-
-            if not skip_phase1:
-                if not quiet:
-                    print(f"  [eval p1] {persona} × {pid}", file=sys.stderr)
-                p1_scores = run_phase1(gen["content"], rubric, domain)
-
-            if not skip_phase2:
-                if not quiet:
-                    print(f"  [eval p2] {persona} × {pid}", file=sys.stderr)
-                p2_scores, p2_eval_count, p2_duration_ms = run_phase2(
-                    prompt["body"], gen["content"], code_text,
-                    rubric, judge_model, quiet
-                )
-
-            eval_result = aggregate_scores(p1_scores, p2_scores, p2_eval_count, p2_duration_ms)
-            eval_result["evaluated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-            # Save per-eval JSON
-            eval_path = evals_dir / f"{slug}-eval.json"
-            eval_path.write_text(json.dumps(eval_result, indent=2))
-
-            result["evaluation"] = {
-                "phase1_score": eval_result["phase1"]["weighted_score"],
-                "phase2_score": eval_result["phase2"]["weighted_score"],
-                "overall_score": eval_result["overall"]["weighted_score"],
-                "overall_percentage": eval_result["overall"]["percentage"],
-                "criteria": {
-                    c["name"]: {"score": c["score"], "reason": c["reason"]}
-                    for c in (eval_result["phase1"]["criteria"] + eval_result["phase2"]["criteria"])
-                },
-            }
+            scored = _run_and_save_evaluation(
+                score_path, prompt, gen, rubric, domain,
+                judge_model, skip_phase1, skip_phase2, quiet
+            )
+            result["evaluation"] = _evaluation_summary(scored)
 
         all_results.append(result)
 
