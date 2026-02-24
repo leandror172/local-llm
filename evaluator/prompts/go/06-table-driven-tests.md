@@ -2,7 +2,7 @@
 id: go-06-table-driven-tests
 domain: go
 difficulty: medium
-
+timeout: 600
 description: Table-driven test suite for a string parser
 ---
 

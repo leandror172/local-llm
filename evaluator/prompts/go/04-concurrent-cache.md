@@ -2,7 +2,7 @@
 id: go-04-concurrent-cache
 domain: go
 difficulty: medium
-
+timeout: 600
 description: Concurrent-safe LRU cache with TTL expiration
 ---
 

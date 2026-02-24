@@ -2,7 +2,7 @@
 id: go-02-cli-flags
 domain: go
 difficulty: easy
-timeout: 180
+timeout: 600
 description: CLI tool with flag parsing and subcommands
 ---
 

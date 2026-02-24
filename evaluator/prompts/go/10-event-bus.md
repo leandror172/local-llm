@@ -2,7 +2,7 @@
 id: go-10-event-bus
 domain: go
 difficulty: hard
-timeout: 420
+timeout: 600
 description: Type-safe event bus with generics and async dispatch
 ---
 
