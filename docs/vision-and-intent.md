@@ -157,4 +157,4 @@ OpenClaw or any similar autonomous framework needs its own security planning pro
 | `docs/model-strategy.md` | Which models for which roles, VRAM budgeting. (To be created) |
 | `.claude/plan-v2.md` | Execution roadmap with layers, tasks, dependencies. (To be created) |
 | `.claude/session-context.md` | Operational state for session continuity. |
-| `docs/model-comparison-hello-world.md` | Baseline quality benchmark. Template for future comparisons. |
+| `docs/findings/model-comparison-hello-world.md` | Baseline quality benchmark. Template for future comparisons. |

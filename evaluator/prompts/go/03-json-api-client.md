@@ -2,7 +2,7 @@
 id: go-03-json-api-client
 domain: go
 difficulty: easy
-timeout: 180
+timeout: 600
 description: JSON HTTP API client with error handling and retry
 ---
 

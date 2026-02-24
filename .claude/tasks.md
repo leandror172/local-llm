@@ -1,7 +1,7 @@
 # Task Progress
 
-**Last Updated:** 2026-02-21 (session 27)
-**Active Layer:** Layer 4 complete → next: PR/merge + Layer 5 (Expense Classifier)
+**Last Updated:** 2026-02-23 (session 28)
+**Active Layer:** Layer 4 branch (unmerged) → immediate next: Task 4.x Shell rubric
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
 ---
@@ -21,8 +21,8 @@
 - [x] 2.1 Evaluate tools: landscape survey of 34 CLI tools → Aider (primary) + OpenCode (comparison)
 - [x] 2.2 Install and configure Aider v0.86.2 + OpenCode v1.2.5 with Ollama backend
 - [x] 2.3 Configure frontier fallback → `.env` with 7 providers (dormant), CLI-flag toggle
-- [x] 2.4 Five-tool comparison test (Aider, OpenCode, Qwen Code, Goose, Claude Code) — see `tests/layer2-comparison/findings.md`
-- [x] 2.5 Decision guide written — `tests/layer2-comparison/findings.md` § "Decision Guide"
+- [x] 2.4 Five-tool comparison test (Aider, OpenCode, Qwen Code, Goose, Claude Code) — see `docs/findings/layer2-tool-comparison.md`
+- [x] 2.5 Decision guide written — `docs/findings/layer2-tool-comparison.md` § "Decision Guide"
 
 ### Key Findings
 - **Tool-calling wall at 7-8B:** All tool-calling agents (OpenCode, Qwen Code, Goose) failed locally. Only Aider's text-format works reliably.
@@ -124,10 +124,20 @@ interesting to reason about and could be genuinely useful:
 - [x] 4.4 Prompt sets: 40 prompts across 5 domains (go:10, java:10, python:10, cls:5, shell:5)
 
 ### Deferred / Future Evaluator Work
-- [ ] **4.x Shell rubric:** Create `evaluator/rubrics/code-shell.yaml` with `shellcheck` as a Phase 1 validator (same pattern as Go's `go build + vet`). Add handler for `type: shell` in `evaluate.py:run_phase1()`. Until then, shell prompts use `code-general.yaml` (Phase 2 only).
+- [x] **4.x Shell rubric** — COMPLETE (2026-02-24, session 29). PR #7. Findings: `docs/findings/shell-benchmark-findings.md`
+  - `evaluator/rubrics/code-shell.yaml` — new rubric (1 Phase 1 + 5 Phase 2 criteria)
+  - `benchmarks/lib/validate-code.py` — added `validate_shell()` + `.sh` dispatch + shellcheck availability check
+  - `evaluator/lib/evaluate.py` — added `shellcheck_clean` case (plan was wrong: else path returned null)
+  - `modelfiles/shell-qwen3.Modelfile` — 6 new shellcheck-targeted constraints (SC2207/SC2181/SC2012/SC2064/SC2168/SC2030 eliminated)
+  - **Key findings:** Specialist hypothesis not confirmed at 8B (both 66.7%); constraints fix mechanical patterns but not logic errors; sh-01/sh-02 exceed 8B generation capacity at any timeout; sh-04 is best differentiator (specialist 95.2% vs baseline 68.6%)
 - [ ] **4.x Java/Python Phase 1 validators:** `javac` compile check for Java, `py_compile` for Python — adds deterministic Phase 1 scores to those rubrics.
 - [ ] **4.x Phase 3 frontier judge:** Extension point designed in `docs/plans/2026-02-21-layer4-discussion-context.md` — Claude API call for subjective/ambiguous cases.
 - [ ] **4.6 Claude Desktop insights tool:** Standalone `tools/claude-desktop-insights.py` (split out from original Layer 4 scope).
+
+### Session 28 fixes (committed 41a99ba, branch feature/layer4-evaluator-framework)
+- [x] evaluate.py: `result = None` before try block (UnboundLocalError on judge failure)
+- [x] benchmark.py: Markdown table separator fix in `generate_report()`
+- [x] benchmark.py: `--resume RUN_ID` flag — skip cached generations + evals, rerun only missing
 
 ### Discussion context: `docs/plans/2026-02-21-layer4-discussion-context.md`
 Key decisions: Stance 3 (Unix-style seams), three-phase scoring, tight scope, 4.6 split to standalone utility

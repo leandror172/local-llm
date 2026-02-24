@@ -1,0 +1,77 @@
+id: code-shell
+domain: shell
+description: Evaluation rubric for shell script generation
+
+validators:
+  - type: code
+    extensions: [.sh]
+
+criteria:
+  # --- Phase 1: Automated ---
+
+  - name: shellcheck_clean
+    phase: 1
+    description: Passes shellcheck with no errors or warnings
+    weight: 3.0
+    auto_source: validator
+    scoring:
+      5: "No shellcheck errors or warnings (error/warning severity)"
+      3: "Info or style issues only — no errors or warnings"
+      1: "Has shellcheck errors or warnings (bugs, quoting issues, etc.)"
+
+  # --- Phase 2: LLM judge ---
+
+  - name: correctness
+    phase: 2
+    description: Does the script solve the stated problem correctly?
+    weight: 3.0
+    scoring:
+      5: "Fully solves the problem; would work correctly in practice"
+      4: "Solves the core problem; minor edge cases missing"
+      3: "Partial solution; significant requirements missing or incorrect"
+      2: "Attempts the problem but largely incorrect logic"
+      1: "Does not address the problem"
+
+  - name: best_practices
+    phase: 2
+    description: Follows shell scripting best practices
+    weight: 2.0
+    scoring:
+      5: "Excellent: uses set -euo pipefail, properly quotes variables, avoids common pitfalls"
+      4: "Mostly correct; minor lapses (e.g., occasional unquoted variable)"
+      3: "Some good practices but missing important ones (e.g., no error handling)"
+      2: "Several bad practices that would cause bugs in real use"
+      1: "Ignores shell best practices; fragile or dangerous code"
+
+  - name: readability
+    phase: 2
+    description: Script is clear, well-structured, and commented where appropriate
+    weight: 1.5
+    scoring:
+      5: "Clear structure, meaningful variable names, helpful comments for non-obvious logic"
+      4: "Readable with minor organizational issues"
+      3: "Functional but hard to follow in places"
+      2: "Dense or confusingly structured"
+      1: "Very hard to follow"
+
+  - name: completeness
+    phase: 2
+    description: Script is self-contained and runnable (shebang, required helpers, usage info)
+    weight: 1.5
+    scoring:
+      5: "Complete: shebang, argument handling or usage, all required logic present"
+      4: "Complete but missing minor polish (e.g., no usage message)"
+      3: "Missing pieces that would require additions before running"
+      2: "Significant scaffolding required"
+      1: "Snippet only; not a runnable script"
+
+  - name: edge_cases
+    phase: 2
+    description: Handles edge cases gracefully (empty input, missing files, bad args)
+    weight: 1.0
+    scoring:
+      5: "Handles all obvious edge cases with clear error messages"
+      4: "Handles most edge cases; minor gaps"
+      3: "Handles some edge cases; several unhandled"
+      2: "Little edge case handling; would break on common failures"
+      1: "No edge case handling"

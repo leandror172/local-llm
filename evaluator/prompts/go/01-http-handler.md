@@ -2,7 +2,7 @@
 id: go-01-http-handler
 domain: go
 difficulty: easy
-timeout: 300
+timeout: 600
 description: HTTP server with logging middleware
 ---
 

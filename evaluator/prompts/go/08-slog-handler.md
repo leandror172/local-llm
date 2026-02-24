@@ -2,7 +2,7 @@
 id: go-08-slog-handler
 domain: go
 difficulty: hard
-timeout: 420
+timeout: 600
 description: Custom slog.Handler implementation with filtering and formatting
 ---
 

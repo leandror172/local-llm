@@ -2,7 +2,7 @@
 id: go-05-worker-pool
 domain: go
 difficulty: medium
-timeout: 300
+timeout: 600
 description: Worker pool with graceful shutdown and result collection
 ---
 

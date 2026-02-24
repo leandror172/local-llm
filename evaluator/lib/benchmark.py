@@ -17,6 +17,7 @@ Usage:
     [--skip-phase1]         # skip automated checks
     [--skip-phase2]         # skip LLM judge (generation only)
     [--results-dir DIR]     # override default evaluator/results/
+    [--resume RUN_ID]       # resume from existing run (skip cached generations + evals)
 
 Exit codes:
   0 = benchmark complete
@@ -186,6 +187,7 @@ def run_benchmark(
     skip_phase2: bool,
     do_warmup: bool,
     quiet: bool,
+    resume: bool = False,
 ) -> list[dict]:
     """Run all persona × prompt combinations, evaluate, return flat results list."""
     raw_dir = run_dir / "raw"
@@ -206,14 +208,28 @@ def run_benchmark(
             print(f"\n[benchmark] base_model={base_model} ({len(group_personas)} personas)", file=sys.stderr)
 
         for persona in group_personas:
-            # Warmup once per base_model group
-            if do_warmup and base_model not in warmed_bases:
+            # In resume mode, skip warmup if every prompt for this persona is already cached
+            all_cached = resume and all(
+                (raw_dir / f"{persona}--{p['id']}.json").exists() for p in prompts
+            )
+            # Warmup once per base_model group (skip if all prompts cached)
+            if do_warmup and not all_cached and base_model not in warmed_bases:
                 warmup(persona, timeout, quiet)
                 warmed_bases.add(base_model)
 
             for prompt in prompts:
                 pid = prompt["id"]
                 slug = f"{persona}--{pid}"
+
+                # Resume: load cached generation instead of calling the model
+                if resume:
+                    raw_path = raw_dir / f"{slug}.json"
+                    if raw_path.exists():
+                        if not quiet:
+                            print(f"  [resume] {persona} × {pid} (cached)", file=sys.stderr)
+                        saved = json.loads(raw_path.read_text())
+                        generation_results.append(saved["generation"])
+                        continue
 
                 if not quiet:
                     print(f"  [generate] {persona} × {pid} ...", file=sys.stderr)
@@ -252,8 +268,18 @@ def run_benchmark(
                 generation_results.append(gen)
 
     # --- Phase 2: Evaluate all outputs (defer judge model load until here) ---
-    if not skip_phase2 and not quiet:
-        print(f"\n[benchmark] loading judge model {judge_model} for Phase 2 ...", file=sys.stderr)
+    # In resume mode, only warmup the judge if there are evals that still need to run
+    pending_evals = not skip_phase2 and (
+        not resume or
+        any(
+            gen["status"] == "success" and
+            not (evals_dir / f"{gen['persona']}--{gen['prompt_id']}-eval.json").exists()
+            for gen in generation_results
+        )
+    )
+    if pending_evals:
+        if not quiet:
+            print(f"\n[benchmark] loading judge model {judge_model} for Phase 2 ...", file=sys.stderr)
         warmup(judge_model, timeout, quiet)
 
     all_results = []
@@ -276,6 +302,25 @@ def run_benchmark(
         }
 
         if gen["status"] == "success":
+            # Resume: load cached eval if available
+            eval_path = evals_dir / f"{slug}-eval.json"
+            if resume and eval_path.exists():
+                if not quiet:
+                    print(f"  [resume] {persona} × {pid} (eval cached)", file=sys.stderr)
+                eval_result = json.loads(eval_path.read_text())
+                result["evaluation"] = {
+                    "phase1_score": eval_result["phase1"]["weighted_score"],
+                    "phase2_score": eval_result["phase2"]["weighted_score"],
+                    "overall_score": eval_result["overall"]["weighted_score"],
+                    "overall_percentage": eval_result["overall"]["percentage"],
+                    "criteria": {
+                        c["name"]: {"score": c["score"], "reason": c["reason"]}
+                        for c in (eval_result["phase1"]["criteria"] + eval_result["phase2"]["criteria"])
+                    },
+                }
+                all_results.append(result)
+                continue
+
             # Find prompt body
             prompt = next(p for p in prompts if p["id"] == pid)
             code_text = gen.get("extracted_code")
@@ -443,7 +488,7 @@ def generate_report(summary: dict) -> str:
     if criterion_data:
         persona_cols = personas
         header = "| Criterion | " + " | ".join(f"`{p}`" for p in persona_cols) + " |"
-        sep = "|-----------|" + "|---------|" * len(persona_cols)
+        sep = "|-----------|" + "---------|" * len(persona_cols)
         lines.append(header)
         lines.append(sep)
 
@@ -504,6 +549,8 @@ def main() -> int:
     parser.add_argument("--skip-phase1", action="store_true")
     parser.add_argument("--skip-phase2", action="store_true")
     parser.add_argument("--results-dir", default=str(RESULTS_BASE))
+    parser.add_argument("--resume", metavar="RUN_ID", default=None,
+                        help="Resume from existing run dir (skip cached generations + evals)")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
@@ -530,13 +577,23 @@ def main() -> int:
         print_dry_run(prompts, personas, rubric, args.judge_model, registry, args.timeout)
         return 0
 
-    # Create run directory
-    run_id = datetime.now().strftime("%Y-%m-%dT%H%M%S")
-    run_dir = Path(args.results_dir) / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    # Create or resume run directory
+    if args.resume:
+        run_dir = Path(args.results_dir) / args.resume
+        if not run_dir.exists():
+            print(f"ERROR: Resume dir not found: {run_dir}", file=sys.stderr)
+            return 1
+        run_id = args.resume
+        if not args.quiet:
+            print(f"[benchmark] resuming run_id={run_id}", file=sys.stderr)
+    else:
+        run_id = datetime.now().strftime("%Y-%m-%dT%H%M%S")
+        run_dir = Path(args.results_dir) / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        if not args.quiet:
+            print(f"[benchmark] run_id={run_id}", file=sys.stderr)
 
     if not args.quiet:
-        print(f"[benchmark] run_id={run_id}", file=sys.stderr)
         print(f"[benchmark] prompts={len(prompts)}, personas={len(personas)}", file=sys.stderr)
         print(f"[benchmark] results → {run_dir}", file=sys.stderr)
 
@@ -552,6 +609,7 @@ def main() -> int:
         skip_phase2=args.skip_phase2,
         do_warmup=not args.no_warmup,
         quiet=args.quiet,
+        resume=args.resume is not None,
     )
 
     summary = build_summary(results, run_id, rubric, args.judge_model, personas, registry)

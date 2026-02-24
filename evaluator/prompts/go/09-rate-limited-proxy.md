@@ -2,7 +2,7 @@
 id: go-09-rate-limited-proxy
 domain: go
 difficulty: hard
-timeout: 420
+timeout: 600
 description: Rate-limited HTTP reverse proxy with per-host limits
 ---
 
