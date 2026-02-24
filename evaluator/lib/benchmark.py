@@ -34,13 +34,12 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
-
 # --- Path setup ---
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "personas" / "lib"))
 
 from ollama_client import ollama_chat  # noqa: E402
+from registry import load_registry  # noqa: E402
 OllamaConnectionError = ConnectionError  # stdlib ConnectionError raised by ollama_client
 
 # Import evaluate.py functions directly (avoid subprocess overhead per eval)
@@ -58,21 +57,12 @@ aggregate_scores = _eval_mod.aggregate_scores
 
 DEFAULT_JUDGE_MODEL = "my-codegen-q3"
 DEFAULT_TIMEOUT = 300
-REGISTRY_PATH = REPO_ROOT / "personas" / "registry.yaml"
 RESULTS_BASE = REPO_ROOT / "evaluator" / "results"
 
 
 # ---------------------------------------------------------------------------
 # Registry helpers
 # ---------------------------------------------------------------------------
-
-def load_registry() -> dict:
-    """Load personas/registry.yaml, return dict of active personas."""
-    with open(REGISTRY_PATH) as f:
-        raw = yaml.safe_load(f) or {}
-    return {k: v for k, v in raw.items()
-            if isinstance(v, dict) and v.get("status") == "active"}
-
 
 def resolve_personas(names: list[str], all_coding: bool, registry: dict) -> list[str]:
     """Resolve persona names to a validated list."""
