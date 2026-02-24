@@ -2,7 +2,7 @@
 
 A practical guide to maximizing output quality from Qwen2.5-Coder-7B (and successors) on an RTX 3060 12GB, benchmarked against Claude Opus 4.6.
 
-**Context:** See [model-comparison-hello-world.md](model-comparison-hello-world.md) for the baseline comparison that motivated this analysis.
+**Context:** See [model-comparison-hello-world.md](findings/model-comparison-hello-world.md) for the baseline comparison that motivated this analysis.
 
 ---
 
@@ -377,7 +377,7 @@ To explore any technique in detail:
 1. Pick a technique from the priority matrix
 2. Create a new Modelfile variant to test it (e.g., `modelfiles/structured-coder.Modelfile` with skeleton-format system prompt)
 3. Run the same prompt through both variants and compare
-4. Document results in `docs/` using the format from [model-comparison-hello-world.md](model-comparison-hello-world.md)
+4. Document results in `docs/findings/` using the format from [model-comparison-hello-world.md](findings/model-comparison-hello-world.md)
 
 Suggested first experiments:
 - **Experiment 1:** Swap Qwen2.5-Coder-7B for Qwen3-8B Q5_K_M. Re-run the hello world comparison.

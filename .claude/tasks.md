@@ -21,8 +21,8 @@
 - [x] 2.1 Evaluate tools: landscape survey of 34 CLI tools → Aider (primary) + OpenCode (comparison)
 - [x] 2.2 Install and configure Aider v0.86.2 + OpenCode v1.2.5 with Ollama backend
 - [x] 2.3 Configure frontier fallback → `.env` with 7 providers (dormant), CLI-flag toggle
-- [x] 2.4 Five-tool comparison test (Aider, OpenCode, Qwen Code, Goose, Claude Code) — see `tests/layer2-comparison/findings.md`
-- [x] 2.5 Decision guide written — `tests/layer2-comparison/findings.md` § "Decision Guide"
+- [x] 2.4 Five-tool comparison test (Aider, OpenCode, Qwen Code, Goose, Claude Code) — see `docs/findings/layer2-tool-comparison.md`
+- [x] 2.5 Decision guide written — `docs/findings/layer2-tool-comparison.md` § "Decision Guide"
 
 ### Key Findings
 - **Tool-calling wall at 7-8B:** All tool-calling agents (OpenCode, Qwen Code, Goose) failed locally. Only Aider's text-format works reliably.
@@ -124,7 +124,7 @@ interesting to reason about and could be genuinely useful:
 - [x] 4.4 Prompt sets: 40 prompts across 5 domains (go:10, java:10, python:10, cls:5, shell:5)
 
 ### Deferred / Future Evaluator Work
-- [x] **4.x Shell rubric** — COMPLETE (2026-02-24, session 29). PR #7. Findings: `docs/plans/2026-02-24-shell-benchmark-findings.md`
+- [x] **4.x Shell rubric** — COMPLETE (2026-02-24, session 29). PR #7. Findings: `docs/findings/shell-benchmark-findings.md`
   - `evaluator/rubrics/code-shell.yaml` — new rubric (1 Phase 1 + 5 Phase 2 criteria)
   - `benchmarks/lib/validate-code.py` — added `validate_shell()` + `.sh` dispatch + shellcheck availability check
   - `evaluator/lib/evaluate.py` — added `shellcheck_clean` case (plan was wrong: else path returned null)

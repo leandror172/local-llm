@@ -1,8 +1,56 @@
 # Session Log
 
-**Current Layer:** Layer 4 COMPLETE → next: Layer 5 (Expense Classifier) or live eval run
-**Current Session:** 2026-02-23 — Layer 4 done (Tasks 4.1–4.4 + README), branch feature/layer4-evaluator-framework unmerged
+**Current Layer:** Layer 4 branch → merge pending; next immediate: Task 4.x Shell rubric
+**Current Session:** 2026-02-23 — Session 28: full benchmark runs (5 domains), bug fixes, --resume flag
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-23 - Session 28: Benchmark Runs + Evaluator Fixes
+
+### Context
+Layer 4 branch unmerged. Ran full benchmark suite (go, java, python, classification, shell) to validate the evaluator framework in practice. Two bugs surfaced and fixed.
+
+### What Was Done
+
+**Bug fix: evaluate.py — UnboundLocalError**
+- `result` was only assigned inside the `try` block in `run_phase2()`; if `ollama_chat()` raised, the `if result is not None:` guard at line 362 hit `UnboundLocalError`
+- Fix: initialize `result = None` before the `try` block
+- Commit: `41a99ba`
+
+**Bug fix: benchmark.py — invalid Markdown table separator**
+- `generate_report()` was emitting `|-----------||---------|` (doubled `|`), producing broken report.md tables
+- Fix: remove leading `|` from the repeated separator fragment
+- Commit: `41a99ba`
+
+**Feature: benchmark.py — `--resume RUN_ID` flag**
+- Triggered by Go Phase 2 crash mid-run: all 30 raw generations were saved but 19 evals were missing
+- Loads `raw/{slug}.json` to reconstruct `generation_results` without calling the model; loads `evals/{slug}-eval.json` to skip completed evaluations; runs only missing evals; rewrites `summary.json` + `report.md`
+- Warmup skipped for fully-cached base_model groups and for judge when all evals present
+- Commit: `41a99ba`
+
+### Benchmark Results (5 domains, all run 2026-02-23)
+
+| Domain | Winner | Avg% | Notes |
+|--------|--------|------|-------|
+| Java | my-java-q3 | 87.4% | +8.2% over coder; jakarta_namespace constraint paid off |
+| Python | my-python-q3 | 88.2% | +0.2% over coder; specialist gap negligible |
+| Classification | my-classifier-q3 | 100% | JSON schema (Phase 1) differentiates; coder 90.4% |
+| Go | my-go-q3 | 78.7% | Timeout-heavy (6/10 for go-q3); 300s limit too tight |
+| Shell | my-coder-q3 | 74.9% | Specialist loses due to timeouts + no shellcheck rubric |
+
+### Key Findings
+- **Specialist advantage strongest where hard constraints apply** (Java: jakarta.* namespace)
+- **Timeout rate is the biggest data quality issue** — Go 14B (architect) hit 8/10 timeouts
+- **`compiles` P1 gate score is consistently low** (~1.5-2.1/5 for Go) — most generated Go doesn't compile; what does compile always passes `go vet`
+- **Classification Phase 1 (JSON schema) is doing real work** — my-coder-q3 failed json_valid for expense/sentiment
+- **Shell results are misleading without shellcheck rubric** — `code-shell.yaml` task becomes priority
+
+### Commits
+- `41a99ba` fix: patch two benchmark bugs + add --resume flag to benchmark.py
+
+### Next
+- Plan + implement Task 4.x: `code-shell.yaml` rubric + shellcheck Phase 1 handler in evaluate.py
 
 ---
 

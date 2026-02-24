@@ -104,7 +104,7 @@ The tracking files ARE the handoff — no separate handoff files needed.
 - **Aider quality limits at 7-8B:** `javax.persistence` (old namespace for Spring Boot 3.x), wrong web stack (webflux), `@Autowired` field injection (spec violation), broken physics (coordinate transforms). Treat Aider output as a draft requiring review.
 - **`no-auto-commits: true` in Aider:** User found auto-commit disruptive. Enabled by default now.
 - **Qwen Code — revisit later:** QwenLM/qwen-code needs qwen3-coder (smallest = 30B, 19GB). Defer until hardware upgrade or cloud option.
-- **Findings + decision guide:** `tests/layer2-comparison/findings.md` — full test results, failure taxonomy, when-to-use guide.
+- **Findings + decision guide:** `docs/findings/layer2-tool-comparison.md` — full test results, failure taxonomy, when-to-use guide.
 
 ### Layer 3 Decisions (decided 2026-02-17 + 2026-02-18)
 
