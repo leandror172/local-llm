@@ -335,6 +335,7 @@ def run_phase2(
         system_prompt = _build_judge_system_prompt(criterion)
         user_prompt = _build_judge_user_prompt(prompt_text, output_text, code_text, criterion)
 
+        result = None
         try:
             result = ollama_chat(
                 prompt=user_prompt,
