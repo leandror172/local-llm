@@ -7,6 +7,7 @@ results as JSON matching the validate-html.js contract.
 
 Supported languages:
   - Go: go build + go vet
+  - Shell: shellcheck
 
 Usage:
   python3 lib/validate-code.py [options] <file1.go> [file2.go ...]
@@ -279,11 +280,68 @@ def validate_go(file_path, timeout, keep_temp):
 
 
 # ---------------------------------------------------------------------------
+# Shell validation
+# ---------------------------------------------------------------------------
+
+def validate_shell(file_path, timeout, keep_temp):
+    """Validate a single shell script using shellcheck. Returns a result dict."""
+    basename = os.path.basename(file_path)
+    abs_path = os.path.abspath(file_path)
+    start_time = time.time()
+
+    errors = []
+    warnings = []
+
+    try:
+        result = subprocess.run(
+            ['shellcheck', '--format=json1', abs_path],
+            capture_output=True, text=True, timeout=timeout,
+        )
+        # shellcheck exits 0 (clean), 1 (has findings), 2 (usage error), 3+
+        raw = result.stdout.strip()
+        if raw:
+            data = json.loads(raw)
+            for comment in data.get('comments', []):
+                level = comment.get('level', 'warning')
+                item = {
+                    'type': f'sc_{level}',
+                    'code': comment.get('code'),
+                    'text': comment.get('message', ''),
+                    'line': comment.get('line'),
+                }
+                if level in ('error', 'warning'):
+                    errors.append(item)
+                else:  # info, style
+                    warnings.append(item)
+    except subprocess.TimeoutExpired:
+        errors.append({'type': 'timeout', 'text': f'shellcheck timed out after {timeout}s', 'line': None})
+    except json.JSONDecodeError as e:
+        errors.append({'type': 'parse_error', 'text': f'shellcheck output parse error: {e}', 'line': None})
+    except FileNotFoundError:
+        return _tool_error('shellcheck not found — install with: sudo apt-get install shellcheck')
+
+    load_time_ms = int((time.time() - start_time) * 1000)
+    status = 'fail' if errors else 'pass'
+    return {
+        'file': basename,
+        'path': abs_path,
+        'status': status,
+        'errors': errors,
+        'warnings': warnings,
+        'error_count': len(errors),
+        'warning_count': len(warnings),
+        'load_time_ms': load_time_ms,
+        'validated_at': time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime()),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Language dispatch
 # ---------------------------------------------------------------------------
 
 VALIDATORS = {
     '.go': validate_go,
+    '.sh': validate_shell,
 }
 
 
@@ -322,10 +380,13 @@ def main():
             _tool_error(f'unsupported file type: {ext} (supported: {", ".join(VALIDATORS.keys())})')
         resolved.append((abs_path, validator))
 
-    # Check that the compiler is available
+    # Check that required tools are available
     if any(ext == '.go' for ext in (os.path.splitext(p)[1] for p, _ in resolved)):
         if shutil.which('go') is None:
             _tool_error('go compiler not found in PATH — install Go first')
+    if any(ext == '.sh' for ext in (os.path.splitext(p)[1] for p, _ in resolved)):
+        if shutil.which('shellcheck') is None:
+            _tool_error('shellcheck not found — install with: sudo apt-get install shellcheck')
 
     results = []
     any_fail = False

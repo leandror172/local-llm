@@ -155,6 +155,14 @@ def _score_from_validator_output(validator_results: list[dict], criterion: dict)
         else:
             score, reason = 1, f"{vet_warnings} vet warnings (3+)"
 
+    elif name == "shellcheck_clean":
+        if total_errors == 0 and total_warnings == 0:
+            score, reason = 5, "0 shellcheck errors or warnings"
+        elif total_errors == 0:
+            score, reason = 3, f"0 errors, {total_warnings} info/style issue(s)"
+        else:
+            score, reason = 1, f"{total_errors} shellcheck error(s)/warning(s)"
+
     else:
         # Unknown auto criterion — skip
         return {"name": name, "score": None, "max": 5,
