@@ -1,8 +1,64 @@
 # Session Log
 
-**Current Layer:** Layer 4 branch → merge pending; next immediate: Task 4.x Shell rubric
-**Current Session:** 2026-02-23 — Session 28: full benchmark runs (5 domains), bug fixes, --resume flag
+**Current Layer:** Layer 4 branch → shell rubric complete, PR #7 open
+**Current Session:** 2026-02-24 — Session 29: shell rubric, shellcheck validator, persona constraint hardening, docs restructure
 **Previous logs:** `.claude/archive/session-log-layer0.md`
+
+---
+
+## 2026-02-24 - Session 29: Shell Rubric + shellcheck Phase 1 + Persona Hardening
+
+### Context
+Resumed from session 28 handoff. Plan approved (`~/.claude/plans/linear-growing-donut.md`), shellcheck confirmed installed (v0.8.0). Executed the plan, then ran three benchmark rounds, iterated on persona constraints, and restructured docs.
+
+### What Was Done
+
+**Task 4.x Shell rubric — COMPLETE (PR #7)**
+- Created `evaluator/rubrics/code-shell.yaml` — 1 Phase 1 criterion (`shellcheck_clean`, w=3.0) + 5 Phase 2 criteria (correctness, best_practices, readability, completeness, edge_cases)
+- Added `validate_shell()` to `benchmarks/lib/validate-code.py` — uses `shellcheck --format=json1`; error/warning severity → errors list, info/style → warnings list; `.sh` dispatch added
+- Fixed `evaluator/lib/evaluate.py` — plan said "no changes needed" but the `else` branch returned `score: null`; added explicit `shellcheck_clean` case to `_score_from_validator_output()`
+- Commit: `5be8e58`
+
+**Three benchmark runs (2026-02-24)**
+- T103037: first run, 300s timeout — 4/5 my-shell-q3 timeouts
+- T123513: 600s timeout — all generations complete except sh-01 (both personas)
+- T190133: 900s, prompts sh-01+sh-02 only — complementary timeouts (each persona completed one, timed on the other)
+- Combined dataset: both personas averaged exactly 66.7% across 4 completed prompts each
+
+**my-shell-q3 persona constraint hardening**
+- Analysed shellcheck findings across all 10 benchmark outputs by SC code
+- Added 6 new targeted constraints: `mapfile -t` array pattern, process substitution for loops, `find` over `ls`, direct exit-code checks (`if ! cmd`), single-quoted trap args, `${var:?}` rm guard, `local` scope rule
+- Added global `MUST produce output that passes shellcheck with zero errors or warnings` as overarching intent
+- Iterative smoke-testing (6 rounds): SC2207/SC2181/SC2012/SC2064/SC2168/SC2030 eliminated; residual SC2183/SC2154/SC1073 are logic errors — not fixable by constraints
+- Commit: `574f915`
+
+**Docs restructured**
+- Created `docs/findings/` — canonical home for post-evaluation analysis
+- Moved: `tests/layer2-comparison/findings.md` → `docs/findings/layer2-tool-comparison.md`
+- Moved: `docs/model-comparison-hello-world.md` → `docs/findings/model-comparison-hello-world.md`
+- Moved: `docs/plans/2026-02-24-shell-benchmark-findings.md` → `docs/findings/shell-benchmark-findings.md`
+- `docs/plans/` now contains only pre-implementation design documents
+- Updated 8 live references across index.md, session-context.md, tasks.md, closing-the-gap.md, vision-and-intent.md, generate-report.py
+- Commits: `26a3905`, `4d73d8f`
+
+**Prompt complexity finding documented and saved to memory**
+- Expanded `docs/findings/shell-benchmark-findings.md` with generalizable principle: prompt complexity causes timeout + logic errors simultaneously — remedy is decomposition, not constraint tuning
+- Empirical output budgets: 8B ~400 tokens, 14B ~800 tokens
+- Added to `MEMORY.md` for cross-session recall
+- Commit: `c92db7c`
+
+### Decisions Made
+- **Specialist hypothesis not confirmed at 8B scale:** both my-shell-q3 and my-coder-q3 averaged 66.7%; specialist wins on sh-04 (95.2% vs 68.6%) but tied overall
+- **Constraint engineering scope:** MUST constraints fix mechanical patterns (SC codes), not logic errors (wrong printf args, unset vars, malformed regex). Logic errors require decomposition or larger model
+- **sh-01/sh-02 are beyond 8B budget:** timeout at 300s/600s/900s — classified as 14B-tier prompts; should be decomposed or reserved for my-architect-q3
+- **sed → Read tool reminder:** user caught use of `sed -n 'Xp'` for file reading; should always use Read tool with offset/limit instead
+- **docs/findings/ structure:** `docs/plans/` for pre-implementation design only; `docs/findings/` for post-analysis. Both `tests/layer2-comparison/findings.md` and model-comparison doc moved accordingly
+
+### Next
+- Merge PR #7 (`feature/4x-shell-rubric` → `feature/layer4-evaluator-framework`) when ready
+- **4.x Java/Python Phase 1 validators:** `javac` compile check for Java, `py_compile` for Python — next deferred evaluator task
+- Increase default `--timeout` in `run-benchmark.sh` from 300s → 600s (per-domain defaults also worth considering)
+- Trim or decompose `sh-01-log-analyzer` and `sh-02-backup-rotation` for 8B benchmarking
 
 ---
 
