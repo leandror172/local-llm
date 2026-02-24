@@ -124,12 +124,12 @@ interesting to reason about and could be genuinely useful:
 - [x] 4.4 Prompt sets: 40 prompts across 5 domains (go:10, java:10, python:10, cls:5, shell:5)
 
 ### Deferred / Future Evaluator Work
-- [x] **4.x Shell rubric** — COMPLETE (2026-02-24, session 29). Plan: `~/.claude/plans/linear-growing-donut.md`. Files created/modified:
+- [x] **4.x Shell rubric** — COMPLETE (2026-02-24, session 29). PR #7. Findings: `docs/plans/2026-02-24-shell-benchmark-findings.md`
   - `evaluator/rubrics/code-shell.yaml` — new rubric (1 Phase 1 + 5 Phase 2 criteria)
   - `benchmarks/lib/validate-code.py` — added `validate_shell()` + `.sh` dispatch + shellcheck availability check
-  - `evaluator/lib/evaluate.py` — added `shellcheck_clean` case to `_score_from_validator_output()` (plan was wrong: else path returned null, not generic score)
-  - Verified: clean script → score 5/5; flawed script → FAIL with sc_error/sc_warning breakdown
-  - **Note:** plan said evaluate.py needs NO changes — incorrect, shellcheck_clean case was missing
+  - `evaluator/lib/evaluate.py` — added `shellcheck_clean` case (plan was wrong: else path returned null)
+  - `modelfiles/shell-qwen3.Modelfile` — 6 new shellcheck-targeted constraints (SC2207/SC2181/SC2012/SC2064/SC2168/SC2030 eliminated)
+  - **Key findings:** Specialist hypothesis not confirmed at 8B (both 66.7%); constraints fix mechanical patterns but not logic errors; sh-01/sh-02 exceed 8B generation capacity at any timeout; sh-04 is best differentiator (specialist 95.2% vs baseline 68.6%)
 - [ ] **4.x Java/Python Phase 1 validators:** `javac` compile check for Java, `py_compile` for Python — adds deterministic Phase 1 scores to those rubrics.
 - [ ] **4.x Phase 3 frontier judge:** Extension point designed in `docs/plans/2026-02-21-layer4-discussion-context.md` — Claude API call for subjective/ambiguous cases.
 - [ ] **4.6 Claude Desktop insights tool:** Standalone `tools/claude-desktop-insights.py` (split out from original Layer 4 scope).
