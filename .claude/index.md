@@ -171,7 +171,7 @@ Other infrastructure:
 |---------|-------|---------|
 | `benchmarks/lib/run-decomposed.sh` | `decomposed-run.py` | Multi-stage incremental build pipeline |
 | `benchmarks/lib/run-validate-html.sh` | `validate-html.js` (Puppeteer) | Headless browser smoke test for HTML/JS |
-| `benchmarks/lib/run-validate-code.sh` | `validate-code.py` | Go compilation + vet gate for backend code |
+| `benchmarks/lib/run-validate-code.sh` | `validate-code.py` | Code compilation/syntax gate: Go (build+vet), Shell (shellcheck), Python (compile()), Java (javac) |
 | `benchmarks/lib/run-structured-tests.sh` | `ollama-probe.py` | JSON schema compliance testing |
 | `benchmarks/lib/run-fewshot-test.sh` | `ollama-probe.py` | A/B test: baseline vs few-shot on same prompt |
 
@@ -181,7 +181,7 @@ Other infrastructure:
 | `benchmarks/lib/ollama-probe.py` | Core probe tool: `--model --prompt-file --vary --examples --no-think --format-file` |
 | `benchmarks/lib/decomposed-run.py` | Pipeline runner for multi-stage prompts |
 | `benchmarks/lib/validate-html.js` | Puppeteer headless browser (Node.js) |
-| `benchmarks/lib/validate-code.py` | Go build + vet scaffolding |
+| `benchmarks/lib/validate-code.py` | Multi-language validator: Go (build+vet), Shell (shellcheck), Python (compile()), Java (javac+scaffold) |
 | `benchmarks/lib/extract-html.py` | Extract HTML from LLM markdown output |
 | `benchmarks/lib/extract-code.py` | Extract code blocks from LLM output |
 | `benchmarks/lib/generate-report.py` | Generate comparison reports from results |

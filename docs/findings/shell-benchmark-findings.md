@@ -150,7 +150,9 @@ The smoke-test iteration loop (5 rounds) showed that specific-pattern constraint
 
 ## Follow-up Items
 
-- [ ] Trim or split `sh-01-log-analyzer` and `sh-02-backup-rotation` — both consistently exceed 8B generation capacity
+- [x] Split `sh-01-log-analyzer` → `01a-log-stats.md` (stats 1–5) + `01b-log-histogram.md` (histogram only)
+- [x] Split `sh-02-backup-rotation` → `02a-backup-create.md` (mktemp+trap) + `02b-backup-rotate.md` (keep-N rotation)
+      Each sub-task targets ~150–250 token output — within the 8B reliable window (~400 tokens)
 - [ ] Increase default `--timeout` in `run-benchmark.sh` from 300s to 600s (or add per-domain defaults)
 - [ ] Consider `sh-04-git-hook` as the canonical "shell specialist test" — it's the most reliable differentiator
 - [ ] Java Phase 1 validator (`javac`) and Python Phase 1 validator (`py_compile`) — next deferred evaluator tasks
