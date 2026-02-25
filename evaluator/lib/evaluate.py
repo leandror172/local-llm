@@ -164,6 +164,12 @@ def _score_from_validator_output(validator_results: list[dict], criterion: dict)
         else:
             score, reason = 1, f"{total_errors} shellcheck error(s)/warning(s)"
 
+    elif name == "syntax_valid":
+        if total_errors == 0:
+            score, reason = 5, "0 syntax errors"
+        else:
+            score, reason = 1, f"{total_errors} syntax error(s)"
+
     else:
         # Unknown auto criterion — skip
         return {"name": name, "score": None, "max": 5,
