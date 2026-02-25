@@ -134,18 +134,14 @@ interesting to reason about and could be genuinely useful:
   - `evaluator/lib/evaluate.py` — added `shellcheck_clean` case (plan was wrong: else path returned null)
   - `modelfiles/shell-qwen3.Modelfile` — 6 new shellcheck-targeted constraints (SC2207/SC2181/SC2012/SC2064/SC2168/SC2030 eliminated)
   - **Key findings:** Specialist hypothesis not confirmed at 8B (both 66.7%); constraints fix mechanical patterns but not logic errors; sh-01/sh-02 exceed 8B generation capacity at any timeout; sh-04 is best differentiator (specialist 95.2% vs baseline 68.6%)
-- [ ] **4.x Java/Python Phase 1 validators:** `javac` compile check for Java, `py_compile` for Python — adds deterministic Phase 1 scores to those rubrics.
-  <!-- ref:java-validator-design -->
-  **Pre-implementation decisions (resolve before coding):**
-  - **`javac` not installed** — requires `sudo apt-get install default-jdk-headless`. Cannot run via Claude Code. Ask user first.
-  - **Extend, don't create:** add `validate_java()` to existing `benchmarks/lib/validate-code.py` + `.java` entry in `VALIDATORS` dict. Same for Python: `validate_python()` + `.py`.
-  - **4 files change:** `validate-code.py`, `code-java.yaml` (add Phase 1 criterion), `evaluate.py` (`_score_from_validator_output()` — name criterion `compiles` to reuse existing branch), `run-validate-code.sh` (add javac availability check).
-  - **Classpath strategy (key decision):** bare `javac` fails on `jakarta.*`/Spring imports ("cannot find symbol") even for correct code. Recommended: scope Phase 1 to JDK-only syntax; classify Spring import failures as `missing_dependency` warnings, not errors. Document this explicitly.
-  - **Java scaffolding:** filename must match public class name — parse `public class (\w+)` from output, name temp file accordingly. Wrap bare method snippets in a default class. More complex than Go (`package main` injection).
-  - **jakarta.* gotcha:** benchmark Java prompts target Spring Boot 3.x which uses `jakarta.*` not `javax.*`. The `my-java-q3` persona already enforces this (constraint pays off: 87.4% vs 79.2% baseline in session 28). The validator does not need to enforce namespace — that's Phase 2's job.
-  - **Python first:** `py_compile` is unblocked (stdlib, no install needed). Implement Python validator first, then Java once javac is confirmed available.
-  - **Test fixtures:** 5 fixtures per validator in `benchmarks/test-fixtures/java/` and `benchmarks/test-fixtures/python/` — follow the Go convention (2 pass, 3 fail with distinct error types).
-  <!-- /ref:java-validator-design -->
+- [x] **4.x Java/Python Phase 1 validators:** COMPLETE (session 31, PR #8)
+  - Python: `validate_python()` via built-in `compile()`, `syntax_valid` criterion in `code-python.yaml`, 5 fixtures
+  - Java: `validate_java()` via `javac` with class-name scaffolding + two-pass `missing_dependency` classifier, `compiles` criterion in `code-java.yaml`, 5 fixtures
+  - `validate-code.py` now covers Go, Shell, Python, Java
+- [x] **4.x sh-01/sh-02 prompt decomposition:** COMPLETE (session 31, PR #8)
+  - `01a-log-stats.md`, `01b-log-histogram.md`, `02a-backup-create.md`, `02b-backup-rotate.md`
+  - Each targets ~150–250 token output — within 8B reliable window
+- [x] **4.x Default timeout bump:** COMPLETE (session 31) — `benchmark.py` DEFAULT_TIMEOUT 300s → 600s
 - [ ] **4.x Phase 3 frontier judge:** Extension point designed in `docs/plans/2026-02-21-layer4-discussion-context.md` — Claude API call for subjective/ambiguous cases.
 - [ ] **4.6 Claude Desktop insights tool:** Standalone `tools/claude-desktop-insights.py` (split out from original Layer 4 scope).
 

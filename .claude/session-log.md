@@ -1,8 +1,32 @@
 # Session Log
 
-**Current Layer:** Layer 4 deferred — Java/Python Phase 1 validators next
-**Current Session:** 2026-02-25 — Session 30: doc infrastructure, ref blocks, session tooling, context comparison
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`
+**Current Layer:** Layer 4 deferred — all complete; Layer 5 is next
+**Current Session:** 2026-02-25 — Session 31: Phase 1 validators (Python + Java) + prompt decomposition
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`
+
+---
+
+## 2026-02-25 - Session 31: Phase 1 Validators + Prompt Decomposition
+
+### Context
+Resumed from session 30. javac confirmed installed by user at session start — unblocked Java validator work.
+
+### What Was Done
+- **Python Phase 1 syntax validator:** `validate_python()` using built-in `compile()` (in-process, ~3ms/file, no subprocess, no temp files). `syntax_valid` criterion added to `code-python.yaml` (phase 1, weight 3.0). New scoring branch in `evaluate.py`. 5 test fixtures: `valid-complete.py`, `valid-snippet.py`, `invalid-syntax.py`, `invalid-indent.py`, `invalid-unclosed.py`. All pass/fail as expected.
+- **Java Phase 1 compile validator:** `validate_java()` using `javac` subprocess with scaffolding (class-name→filename matching, bare-snippet wrapper). Two-pass `missing_dependency` classifier: Spring/Jakarta import failures → warnings (score 3), not errors (score 1). `compiles` criterion reused in `code-java.yaml` — no `evaluate.py` change needed. 5 test fixtures: `valid-standalone.java` (clean, score 5), `valid-spring-snippet.java` (missing-dep warnings, score 3), plus 3 invalid (syntax/type/undefined, score 1). Confirmed with javac 25.0.2.
+- **sh-01/sh-02 decomposition:** Both prompts exceeded 8B ~400-token output budget at any timeout. Split into 4 focused sub-tasks: `01a-log-stats.md` (stats 1–5), `01b-log-histogram.md` (histogram only), `02a-backup-create.md` (mktemp+trap), `02b-backup-rotate.md` (keep-N rotation). Each targets ~150–250 tokens. Findings doc follow-up items marked complete.
+- **Default timeout bump:** `benchmark.py` `DEFAULT_TIMEOUT` 300s → 600s (empirically required from session 29 data).
+- **4 commits on `feature/phase1-code-validators`**, PR #8 opened and merged to master.
+- **`.claude/index.md`** updated: validate-code.py description now lists all 4 languages.
+
+### Decisions Made
+- **Python uses `compile()` not `py_compile`:** Built-in compile() is cleaner — no .pyc side effects, catches all SyntaxError subclasses, in-process speed.
+- **Java `missing_dependency` = warning not error:** Scopes Phase 1 to JDK syntax only; correct Spring Boot code scores 3 (not 1) when deps are absent from classpath.
+- **`compiles` criterion reused for Java:** No evaluate.py change needed — the existing branch already handles the 5/3/1 scoring via error/warning counts.
+- **Decomposed prompts keep `decomposed_from:` frontmatter field** linking back to original — preserves traceability without renaming the originals.
+
+### Next
+- **All Layer 4 deferred items complete.** Next: read `.claude/plan-v2.md` to identify Layer 5 scope and discuss first tasks.
 
 ---
 
@@ -152,64 +176,6 @@ Layer 4 branch unmerged. Ran full benchmark suite (go, java, python, classificat
 
 ### Next
 - Plan + implement Task 4.x: `code-shell.yaml` rubric + shellcheck Phase 1 handler in evaluate.py
-
----
-
-## 2026-02-23 - Session 27: Layer 4 — Evaluator Framework
-
-### Context
-Layers 0–3 and MCP-1/2/3/4 complete. Session began with architectural discussion (Opus), then switched to Sonnet for implementation. Key design constraints: (1) model flexibility — swappable later; (2) future "configurable pipeline" concept (declarative DAG). Chose Stance 3: Unix-style seams (standalone scripts with JSON I/O, model as parameter, no formal framework).
-
-### What Was Done
-
-**Task 4.1 — Rubrics (6 YAML files)**
-- `evaluator/rubrics/code-go.yaml` — Phase 1: `compiles`(w=3.0) + `vet_clean`(w=1.0); Phase 2: correctness/idiomatic_go/readability/completeness
-- `evaluator/rubrics/code-java.yaml` — Phase 2 only; targets jakarta.* (not javax.*), Spring constructor injection
-- `evaluator/rubrics/code-python.yaml` — Phase 2 only; type hints, pythonic style
-- `evaluator/rubrics/code-general.yaml` — Language-agnostic fallback
-- `evaluator/rubrics/classification.yaml` — Phase 1: json_valid + confidence_range; Phase 2: category_correctness(w=4.0), calibration, reasoning
-- `evaluator/rubrics/writing.yaml` — Phase 2 only: accuracy/clarity/structure/conciseness/completeness
-
-**Task 4.2 — evaluate.py (~280 lines)**
-- `evaluator/lib/evaluate.py` — Core scoring engine. Phase 1: subprocess to validate-code.py. Phase 2: one LLM call/criterion with `format_schema`, `temperature=0.1`, `think=False`
-- `evaluator/run-evaluate.sh` — Whitelist-safe wrapper
-
-**Task 4.3 — benchmark.py (~320 lines)**
-- `evaluator/lib/benchmark.py` — Persona×prompt matrix orchestrator. Groups by `base_model` to minimize VRAM reloads. Defers Phase 2 judging until all generation complete
-- `evaluator/run-benchmark.sh` — Whitelist-safe wrapper
-- **Bugfix:** `ImportError: cannot import name 'ConnectionError' from 'ollama_client'` — fixed by using stdlib `ConnectionError = ConnectionError` instead of named import
-
-**Task 4.4 — Prompt sets (40 files)**
-- `evaluator/prompts/go/` — 10 prompts (easy×3, medium×4, hard×3): http-handler through event-bus
-- `evaluator/prompts/java/` — 10 prompts: Spring Boot 3.x/jakarta.*, targeting known failure modes
-- `evaluator/prompts/python/` — 10 prompts: FastAPI, asyncio, SQLAlchemy 2.0, type hints
-- `evaluator/prompts/classification/` — 5 prompts: expense, sentiment, bug severity, language, topic
-- `evaluator/prompts/shell/` — 5 prompts: log analyzer, backup, health check, git hook, deploy
-
-**Documentation**
-- `evaluator/README.md` — 213 lines: quick start, rubric format, prompt format, VRAM strategy, options reference, extension guide
-- `docs/plans/2026-02-21-layer4-discussion-context.md` — Architectural discussion context preserved
-- `docs/plans/2026-02-21-layer4-evaluator-framework.md` — Copy of approved plan
-
-### Commits
-- `4f074bf` feat: Layer 4 — Evaluator Framework (Tasks 4.1–4.4) [53 files, 2980 insertions]
-- `e45169a` docs: add README.md for evaluator framework
-
-### Decisions Made
-- **Stance 3 (Unix seams):** No formal pipeline class — every component is a standalone script. Future DAG composes them via JSON I/O
-- **VRAM grouping:** `group_by_base_model()` reads registry; my-go-q3 and my-java-q3 both use qwen3:8b so switching is free
-- **Deferred Phase 2:** All generation runs first, then judge model loads once for entire batch — avoids ping-ponging
-- **One criterion per LLM call:** 7-8B models more reliable at focused yes/no rubric evaluation than multi-criterion prompts
-- **Rubrics as data:** Adding a domain requires only a new YAML + prompt directory, no Python changes
-- **Task 4.6 deferred:** Claude Desktop insights → standalone `tools/claude-desktop-insights.py` (not part of Layer 4)
-
-### Pending / Deferred
-- PR creation + merge feature/layer4-evaluator-framework → master
-- Live validation run (2 prompts × 1 persona as smoke test)
-- Layer 5: Expense Classifier (next major layer per plan-v2.md)
-- `tools/claude-desktop-insights.py` (Task 4.6 split out)
-- Phase 3 frontier judge extension point (design documented in discussion-context.md)
-- Java/Python Phase 1 validators (javac, py_compile) — deferred
 
 ---
 

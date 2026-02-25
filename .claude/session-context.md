@@ -51,13 +51,10 @@
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
-- **Layer 4:** Complete — evaluator framework, shell rubric, all merged to master (PR #6, #7)
-- **Last checkpoint:** Session 30 (2026-02-25) — doc infrastructure, ref blocks (15 keys), resume.sh, rotate, MCP ref_lookup, context comparison
+- **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
+- **Last checkpoint:** Session 31 (2026-02-25) — Python validator, Java validator, sh-01/sh-02 decomposition, timeout bump, PR #8 merged
 - **Branch:** `master` (clean)
-- **Next tasks (Layer 4 deferred):**
-  1. Java/Python Phase 1 validators — see `ref-lookup.sh java-validator-design` (Python first; Java needs `sudo apt-get install default-jdk-headless`)
-  2. Default `--timeout` bump: 300s → 600s in `run-benchmark.sh`
-  3. Decompose `sh-01`/`sh-02` prompts for 8B benchmarking
+- **Next:** All Layer 4 deferred items done. Read `.claude/plan-v2.md` to scope Layer 5.
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
 
