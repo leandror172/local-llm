@@ -2,11 +2,27 @@ id: code-java
 domain: java
 description: Evaluation rubric for Java code generation (Spring Boot 3.x / Jakarta EE)
 
-# Phase 1: no Java validator yet — future: javac + checkstyle
-# validators: []
+# Phase 1: javac syntax check (JDK classpath only — no Spring/Jakarta jars).
+# Spring/Jakarta import failures are classified as 'missing_dependency' warnings,
+# not errors. Correct Spring code scores 3 (warnings); syntax errors score 1.
+validators:
+  - type: code
+    extensions: [.java]
 
 criteria:
-  # --- Phase 2: LLM judge (all criteria; Phase 1 validator deferred) ---
+  # --- Phase 1: Automated (deterministic) ---
+
+  - name: compiles
+    phase: 1
+    description: Code compiles without syntax/type errors (javac, JDK classpath only)
+    weight: 3.0
+    auto_source: validator
+    scoring:
+      5: "Zero errors and zero warnings (pure JDK code)"
+      3: "Missing-dependency warnings only (Spring/Jakarta imports without classpath)"
+      1: "Syntax or type errors"
+
+  # --- Phase 2: LLM judge ---
 
   - name: correctness
     phase: 2
