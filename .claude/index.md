@@ -288,7 +288,7 @@ Full research → `.claude/archive/layer-1-research.md`
 | Layer 2 decisions | `.claude/session-context.md` § "Layer 2 Decisions" | Tool selection rationale, architecture divide, deferred items |
 | Test prompts | `tests/layer2-comparison/` | 3 tests: Spring Boot, visual, MCP tool |
 | Test runner guide | `tests/layer2-comparison/README.md` | 5-tool setup, run commands, diff commands, cleanup |
-| **Test findings & decision guide** | `tests/layer2-comparison/findings.md` | Full results, failure taxonomy, when to use what |
+| **Test findings & decision guide** | `docs/findings/layer2-tool-comparison.md` | Full results, failure taxonomy, when to use what |
 
 ---
 

@@ -2,7 +2,7 @@
 """Generate a markdown benchmark report from summary.json.
 
 Reads the summary produced by run-benchmark.sh and outputs a formatted
-comparison report following the style of docs/model-comparison-hello-world.md.
+comparison report following the style of docs/findings/model-comparison-hello-world.md.
 
 Usage:
   python3 generate-report.py summary.json report.md

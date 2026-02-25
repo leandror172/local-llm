@@ -1,0 +1,64 @@
+id: writing
+domain: writing
+description: Evaluation rubric for writing tasks (technical writing, summaries, explanations)
+
+# No automated validators for writing
+# validators: []
+
+criteria:
+  # --- Phase 2: LLM judge ---
+
+  - name: accuracy
+    phase: 2
+    description: Content is factually correct and addresses the prompt accurately
+    weight: 3.0
+    scoring:
+      5: "Fully accurate; addresses all aspects of the prompt correctly"
+      4: "Mostly accurate with minor gaps or imprecisions"
+      3: "Partially accurate; some factual errors or significant omissions"
+      2: "Several factual errors or largely misses the prompt"
+      1: "Mostly incorrect or completely misses the point"
+
+  - name: clarity
+    phase: 2
+    description: Writing is clear and easy to understand for the intended audience
+    weight: 2.5
+    scoring:
+      5: "Crystal clear; ideas flow logically, terminology appropriate for audience"
+      4: "Clear with minor awkward passages"
+      3: "Generally understandable but some confusing sections"
+      2: "Often unclear or uses inappropriate vocabulary"
+      1: "Very hard to understand"
+
+  - name: structure
+    phase: 2
+    description: Writing is well-organized with a logical flow
+    weight: 2.0
+    scoring:
+      5: "Excellent structure: clear opening, logical progression, clean conclusion"
+      4: "Good structure with minor organizational issues"
+      3: "Some structure present but inconsistent"
+      2: "Poorly organized; ideas scattered"
+      1: "No discernible structure"
+
+  - name: conciseness
+    phase: 2
+    description: Writing is appropriately concise without unnecessary padding
+    weight: 1.5
+    scoring:
+      5: "Tight and focused; every sentence adds value"
+      4: "Mostly concise with minor redundancy"
+      3: "Some padding or repetition but not excessive"
+      2: "Verbose; significant redundancy or filler"
+      1: "Extremely verbose; core message buried in padding"
+
+  - name: completeness
+    phase: 2
+    description: Writing covers all aspects requested in the prompt
+    weight: 1.0
+    scoring:
+      5: "Covers everything requested with appropriate depth"
+      4: "Covers most aspects with minor omissions"
+      3: "Covers some aspects; notable omissions"
+      2: "Covers less than half of what was requested"
+      1: "Barely addresses the prompt"

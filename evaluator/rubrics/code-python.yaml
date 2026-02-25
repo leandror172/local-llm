@@ -1,0 +1,64 @@
+id: code-python
+domain: python
+description: Evaluation rubric for Python code generation (modern Python 3.10+)
+
+# Phase 1: no validator yet — future: python3 -m py_compile + ruff
+# validators: []
+
+criteria:
+  # --- Phase 2: LLM judge (all criteria; Phase 1 validator deferred) ---
+
+  - name: correctness
+    phase: 2
+    description: Does the code solve the stated problem correctly?
+    weight: 3.0
+    scoring:
+      5: "Fully solves the problem with all requirements met"
+      4: "Solves the core problem, minor requirements missing"
+      3: "Partial solution; major requirements missing or incorrect"
+      2: "Attempts the problem but largely incorrect logic"
+      1: "Does not address the problem"
+
+  - name: type_hints
+    phase: 2
+    description: Uses type annotations on function signatures and key variables
+    weight: 2.0
+    scoring:
+      5: "All function parameters and return types annotated; uses typing module appropriately"
+      4: "Most signatures annotated; minor gaps"
+      3: "Some annotations present but inconsistent"
+      2: "Minimal or no type hints"
+      1: "No type hints at all"
+
+  - name: pythonic_style
+    phase: 2
+    description: Uses idiomatic Python patterns (list comprehensions, context managers, dataclasses, etc.)
+    weight: 2.0
+    scoring:
+      5: "Idiomatic throughout: comprehensions where appropriate, context managers for resources, modern syntax"
+      4: "Mostly idiomatic with minor old-style patterns"
+      3: "Mix of idiomatic and verbose/old-style patterns"
+      2: "Largely non-idiomatic; reads like C or Java"
+      1: "Does not follow Python conventions"
+
+  - name: readability
+    phase: 2
+    description: Code is clear, well-structured, and follows PEP 8 conventions
+    weight: 1.5
+    scoring:
+      5: "Clean, readable, follows PEP 8, meaningful names, appropriate docstrings"
+      4: "Clear with minor style issues"
+      3: "Readable but inconsistently styled"
+      2: "Hard to follow; poor naming or structure"
+      1: "Very hard to follow"
+
+  - name: completeness
+    phase: 2
+    description: Code is self-contained and runnable (imports, if __name__ == '__main__', etc.)
+    weight: 1.5
+    scoring:
+      5: "Complete with all imports, runnable, includes a usage example"
+      4: "Complete with minor omissions"
+      3: "Missing several imports or entry point"
+      2: "Fragment; significant additions needed"
+      1: "Snippet only; not runnable"

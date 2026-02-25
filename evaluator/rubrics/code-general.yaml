@@ -1,0 +1,64 @@
+id: code-general
+domain: general
+description: Language-agnostic evaluation rubric for code generation (fallback for domains without a specialist rubric)
+
+# No automated validators — use Phase 2 only
+# validators: []
+
+criteria:
+  # --- Phase 2: LLM judge ---
+
+  - name: correctness
+    phase: 2
+    description: Does the code solve the stated problem correctly?
+    weight: 3.0
+    scoring:
+      5: "Fully solves the problem with all requirements met"
+      4: "Solves the core problem, minor requirements missing"
+      3: "Partial solution; major requirements missing or incorrect"
+      2: "Attempts the problem but largely incorrect logic"
+      1: "Does not address the problem"
+
+  - name: readability
+    phase: 2
+    description: Code is clear, well-structured, and uses meaningful names
+    weight: 2.0
+    scoring:
+      5: "Crystal clear: good decomposition, meaningful names, appropriate comments"
+      4: "Clear with minor issues"
+      3: "Readable but could be better organized"
+      2: "Hard to follow in places"
+      1: "Very hard to follow"
+
+  - name: best_practices
+    phase: 2
+    description: Follows language-appropriate best practices and conventions
+    weight: 2.0
+    scoring:
+      5: "Excellent use of language conventions, error handling, and patterns"
+      4: "Mostly follows best practices with minor deviations"
+      3: "Some best practices followed, some ignored"
+      2: "Largely ignores language conventions"
+      1: "Actively violates common best practices"
+
+  - name: completeness
+    phase: 2
+    description: Code is self-contained and runnable without major additions
+    weight: 1.5
+    scoring:
+      5: "Complete with all necessary imports, structure, and a working demo"
+      4: "Complete with minor omissions"
+      3: "Missing several pieces but the core logic is present"
+      2: "Fragment; significant additions needed to run"
+      1: "Snippet only; not runnable"
+
+  - name: edge_cases
+    phase: 2
+    description: Handles edge cases and error conditions appropriately
+    weight: 1.5
+    scoring:
+      5: "Considers and handles relevant edge cases (null/empty input, errors, boundaries)"
+      4: "Handles most edge cases with minor gaps"
+      3: "Some error handling present but incomplete"
+      2: "Minimal error handling"
+      1: "No edge case handling; will crash on non-happy-path input"

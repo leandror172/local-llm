@@ -1,0 +1,69 @@
+id: classification
+domain: classification
+description: Evaluation rubric for text classification tasks
+
+# Phase 1: JSON schema validation (automated)
+validators:
+  - type: json_schema
+    required_fields: [category, confidence, reasoning]
+    field_types:
+      category: string
+      confidence: number
+      reasoning: string
+
+criteria:
+  # --- Phase 1: Automated ---
+
+  - name: json_valid
+    phase: 1
+    description: Output is valid JSON with required fields (category, confidence, reasoning)
+    weight: 2.0
+    auto_source: validator
+    scoring:
+      5: "Valid JSON with all required fields and correct types"
+      3: "Valid JSON but missing optional fields or minor type issues"
+      1: "Invalid JSON or missing required fields"
+
+  - name: confidence_range
+    phase: 1
+    description: Confidence score is a number in [0.0, 1.0]
+    weight: 1.0
+    auto_source: validator
+    scoring:
+      5: "Confidence is a float in [0.0, 1.0]"
+      1: "Confidence is out of range or wrong type"
+
+  # --- Phase 2: LLM judge ---
+
+  - name: category_correctness
+    phase: 2
+    description: The chosen category is correct or most appropriate for the input
+    weight: 4.0
+    scoring:
+      5: "Correct category, clearly the best match"
+      4: "Correct category but a close alternative also exists"
+      3: "Reasonable category but not the best match"
+      2: "Wrong category but shows partial understanding"
+      1: "Completely wrong category"
+
+  - name: confidence_calibration
+    phase: 2
+    description: Confidence score reflects actual certainty appropriately
+    weight: 2.0
+    scoring:
+      5: "Confidence matches the ambiguity of the input (high for clear cases, low for ambiguous ones)"
+      4: "Confidence is reasonable with minor miscalibration"
+      3: "Confidence is somewhat off (too high for ambiguous input, too low for clear input)"
+      2: "Confidence is consistently miscalibrated"
+      1: "Confidence is random or always at extremes"
+
+  - name: reasoning_quality
+    phase: 2
+    description: Reasoning field explains why this category was chosen
+    weight: 1.0
+    scoring:
+      5: "Clear, concise reasoning that cites specific evidence from the input"
+      4: "Good reasoning with minor gaps"
+      3: "Some reasoning present but vague"
+      2: "Minimal reasoning"
+      1: "No reasoning or completely irrelevant"

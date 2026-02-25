@@ -56,13 +56,13 @@
   * ✅ **BONUS:** Layer 3 refactoring (all PR #1 deferred items resolved)
   * ✅ **3.5 Conversational persona builder — COMPLETE** (Tasks 1-5 all done)
   * ✅ **3.5-A Persona designer comparison — COMPLETE** (benchmark, analysis, architecture)
-- **Last completed:** MCP-1/2/3/4 persona-aware routing + registry tools (session 26, 2026-02-20)
-- **Last checkpoint:** 2026-02-20 (session 26)
-- **Next:** Merge decision for 3.5 + 3.5-A branches → Layer 4 (Evaluator Framework)
+- **Last completed:** Session 29 (2026-02-24) — shell rubric, shellcheck validator, persona hardening, 3 benchmark runs, docs restructure
+- **Last checkpoint:** 2026-02-24 (session 29)
+- **Next:** Merge PR #7 (`feature/4x-shell-rubric` → `feature/layer4-evaluator-framework`), then Java/Python Phase 1 validators. Increase default --timeout to 600s.
 - **Branches:**
   * master: MCP-1/2/3/4 committed (9 tools, registry-driven routing, build-persona.py bugfix)
-  * feature/task-3.5-conversational-builder: all 5 tasks done, ready for PR (unmerged)
-  * feature/task-3.5-A-comparison: benchmark infrastructure + analysis (unmerged)
+  * feature/layer4-evaluator-framework: Layer 4 complete + session 28 fixes (not yet merged to master)
+  * feature/4x-shell-rubric: Shell rubric + constraints + docs restructure — PR #7 open → target: feature/layer4-evaluator-framework (latest: c92db7c)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 
 ---
@@ -105,7 +105,7 @@ The tracking files ARE the handoff — no separate handoff files needed.
 - **Aider quality limits at 7-8B:** `javax.persistence` (old namespace for Spring Boot 3.x), wrong web stack (webflux), `@Autowired` field injection (spec violation), broken physics (coordinate transforms). Treat Aider output as a draft requiring review.
 - **`no-auto-commits: true` in Aider:** User found auto-commit disruptive. Enabled by default now.
 - **Qwen Code — revisit later:** QwenLM/qwen-code needs qwen3-coder (smallest = 30B, 19GB). Defer until hardware upgrade or cloud option.
-- **Findings + decision guide:** `tests/layer2-comparison/findings.md` — full test results, failure taxonomy, when-to-use guide.
+- **Findings + decision guide:** `docs/findings/layer2-tool-comparison.md` — full test results, failure taxonomy, when-to-use guide.
 
 ### Layer 3 Decisions (decided 2026-02-17 + 2026-02-18)
 
