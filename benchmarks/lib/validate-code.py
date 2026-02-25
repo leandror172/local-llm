@@ -336,12 +336,283 @@ def validate_shell(file_path, timeout, keep_temp):
 
 
 # ---------------------------------------------------------------------------
+# Java scaffolding
+# ---------------------------------------------------------------------------
+
+PUBLIC_CLASS_RE = re.compile(r'\bpublic\s+(?:class|interface|enum|record)\s+(\w+)')
+ANY_CLASS_RE = re.compile(r'\b(?:class|interface|enum|record)\s+(\w+)')
+
+
+def scaffold_java(source_text):
+    """Scaffold Java source into a compilable form.
+
+    Returns (class_name_stem, final_source).
+    - If a public class/interface/enum/record is found, its name drives the filename.
+    - If only a non-public class is found, its name is used.
+    - If no class exists (bare method snippets), source is wrapped in 'public class Snippet'.
+    """
+    m = PUBLIC_CLASS_RE.search(source_text)
+    if m:
+        return m.group(1), source_text
+
+    m = ANY_CLASS_RE.search(source_text)
+    if m:
+        return m.group(1), source_text
+
+    # Bare snippet — wrap in placeholder class
+    wrapped = f'public class Snippet {{\n{source_text}\n}}\n'
+    return 'Snippet', wrapped
+
+
+# ---------------------------------------------------------------------------
+# Java error parsing
+# ---------------------------------------------------------------------------
+
+# Pattern: /path/to/File.java:15: error: some message
+JAVA_DIAG_RE = re.compile(r'^.*?:(\d+):\s*(?:error|warning):\s*(.+)$')
+
+# Known third-party package prefixes that won't be on the JDK classpath
+_EXTERNAL_PREFIXES = (
+    'org.springframework',
+    'jakarta.',
+    'javax.',
+    'lombok.',
+    'io.micrometer',
+    'org.slf4j',
+    'org.mapstruct',
+    'org.hibernate',
+    'com.fasterxml',
+    'io.swagger',
+)
+
+
+def _is_external_package(msg):
+    """Return True if a 'does not exist' message refers to a known external package."""
+    # msg is like: "package org.springframework.web does not exist"
+    parts = msg.split()
+    if len(parts) >= 2:
+        pkg = parts[1]
+        return any(pkg.startswith(p) for p in _EXTERNAL_PREFIXES)
+    return False
+
+
+def classify_java_error(msg):
+    """Classify a javac error message into a type string."""
+    m = msg.lower()
+    if 'cannot find symbol' in m or 'does not exist' in m:
+        return 'undefined_reference'
+    if (';' in m and 'expected' in m) or 'illegal start' in m or \
+            'reached end of file' in m or 'class, interface' in m or \
+            'expected' in m:
+        return 'syntax_error'
+    if 'incompatible types' in m or 'cannot convert' in m:
+        return 'type_error'
+    return 'compile_error'
+
+
+def parse_java_output(stderr_text):
+    """Parse javac stderr into structured (errors, warnings) lists.
+
+    Two-pass strategy:
+      Pass 1 — identify whether any 'package does not exist' errors name external
+               packages (Spring, Jakarta, etc.). If so, set has_missing_dep=True.
+      Pass 2 — emit those as warnings (type='missing_dependency'); also emit any
+               'cannot find symbol' errors as missing_dependency warnings when
+               has_missing_dep is True (they are likely cascade failures from the
+               absent dependencies, not real logic errors).
+    """
+    raw = []
+    for line in stderr_text.splitlines():
+        line = line.strip()
+        m = JAVA_DIAG_RE.match(line)
+        if m:
+            raw.append((int(m.group(1)), m.group(2)))
+
+    # Pass 1
+    has_missing_dep = any(
+        'does not exist' in msg and _is_external_package(msg)
+        for _, msg in raw
+    )
+
+    errors = []
+    warnings = []
+
+    # Pass 2
+    for lineno, msg in raw:
+        if 'does not exist' in msg and _is_external_package(msg):
+            warnings.append({'type': 'missing_dependency', 'text': msg, 'line': lineno})
+        elif 'cannot find symbol' in msg and has_missing_dep:
+            warnings.append({'type': 'missing_dependency', 'text': msg, 'line': lineno})
+        else:
+            errors.append({
+                'type': classify_java_error(msg),
+                'text': msg,
+                'line': lineno,
+            })
+
+    return errors, warnings
+
+
+# ---------------------------------------------------------------------------
+# Java validation
+# ---------------------------------------------------------------------------
+
+def validate_java(file_path, timeout, keep_temp):
+    """Validate a single Java file using javac. Returns a result dict.
+
+    Scaffolding: renames the temp file to match the public class name (Java requires
+    filename == public class name). Wraps bare method snippets in a placeholder class.
+
+    Classpath strategy (Phase 1 scope): no classpath beyond the JDK is provided.
+    Errors from missing Spring/Jakarta dependencies are classified as
+    'missing_dependency' warnings rather than hard errors, so that syntactically
+    correct Spring Boot code scores 3 (warnings only) rather than 1 (errors).
+    """
+    basename = os.path.basename(file_path)
+    abs_path = os.path.abspath(file_path)
+    start_time = time.time()
+
+    try:
+        with open(abs_path) as f:
+            source_text = f.read()
+    except (OSError, IOError) as e:
+        return {
+            'file': basename,
+            'path': abs_path,
+            'status': 'fail',
+            'errors': [{'type': 'io_error', 'text': str(e), 'line': None}],
+            'warnings': [],
+            'error_count': 1,
+            'warning_count': 0,
+            'load_time_ms': int((time.time() - start_time) * 1000),
+            'validated_at': time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime()),
+        }
+
+    class_name, scaffolded = scaffold_java(source_text)
+    temp_dir = tempfile.mkdtemp(prefix='validate-java-')
+    temp_file = os.path.join(temp_dir, f'{class_name}.java')
+
+    try:
+        with open(temp_file, 'w') as f:
+            f.write(scaffolded)
+
+        errors = []
+        warnings = []
+
+        try:
+            result = subprocess.run(
+                ['javac', temp_file],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            if result.returncode != 0:
+                errors, warnings = parse_java_output(result.stderr)
+        except subprocess.TimeoutExpired:
+            errors.append({
+                'type': 'timeout',
+                'text': f'javac timed out after {timeout}s',
+                'line': None,
+            })
+        except FileNotFoundError:
+            return _tool_error('javac not found — install with: sudo apt-get install default-jdk-headless')
+
+        load_time_ms = int((time.time() - start_time) * 1000)
+        status = 'fail' if errors else 'pass'
+
+        return {
+            'file': basename,
+            'path': abs_path,
+            'status': status,
+            'errors': errors,
+            'warnings': warnings,
+            'error_count': len(errors),
+            'warning_count': len(warnings),
+            'load_time_ms': load_time_ms,
+            'validated_at': time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime()),
+        }
+
+    finally:
+        if not keep_temp:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        else:
+            print(f'  temp dir kept: {temp_dir}', file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Python validation
+# ---------------------------------------------------------------------------
+
+def classify_python_error(exc: SyntaxError) -> str:
+    """Classify a Python SyntaxError by its type."""
+    name = type(exc).__name__
+    if 'Indentation' in name or 'Tab' in name:
+        return 'indentation_error'
+    return 'syntax_error'
+
+
+def validate_python(file_path, timeout, keep_temp):
+    """Validate a single Python file using the built-in compiler. Returns a result dict.
+
+    Uses compile() (stdlib, in-process) to catch SyntaxError and its subclasses
+    (IndentationError, TabError). No temp files are written; keep_temp is unused.
+    """
+    basename = os.path.basename(file_path)
+    abs_path = os.path.abspath(file_path)
+    start_time = time.time()
+
+    errors = []
+    warnings = []
+
+    try:
+        with open(abs_path) as f:
+            source = f.read()
+    except (OSError, IOError) as e:
+        return {
+            'file': basename,
+            'path': abs_path,
+            'status': 'fail',
+            'errors': [{'type': 'io_error', 'text': str(e), 'line': None}],
+            'warnings': [],
+            'error_count': 1,
+            'warning_count': 0,
+            'load_time_ms': int((time.time() - start_time) * 1000),
+            'validated_at': time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime()),
+        }
+
+    try:
+        compile(source, abs_path, 'exec')
+    except SyntaxError as e:
+        errors.append({
+            'type': classify_python_error(e),
+            'text': str(e),
+            'line': e.lineno,
+        })
+
+    load_time_ms = int((time.time() - start_time) * 1000)
+    status = 'fail' if errors else 'pass'
+    return {
+        'file': basename,
+        'path': abs_path,
+        'status': status,
+        'errors': errors,
+        'warnings': warnings,
+        'error_count': len(errors),
+        'warning_count': len(warnings),
+        'load_time_ms': load_time_ms,
+        'validated_at': time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime()),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Language dispatch
 # ---------------------------------------------------------------------------
 
 VALIDATORS = {
     '.go': validate_go,
     '.sh': validate_shell,
+    '.py': validate_python,
+    '.java': validate_java,
 }
 
 
@@ -387,6 +658,12 @@ def main():
     if any(ext == '.sh' for ext in (os.path.splitext(p)[1] for p, _ in resolved)):
         if shutil.which('shellcheck') is None:
             _tool_error('shellcheck not found — install with: sudo apt-get install shellcheck')
+    if any(ext == '.py' for ext in (os.path.splitext(p)[1] for p, _ in resolved)):
+        if shutil.which('python3') is None:
+            _tool_error('python3 not found in PATH')
+    if any(ext == '.java' for ext in (os.path.splitext(p)[1] for p, _ in resolved)):
+        if shutil.which('javac') is None:
+            _tool_error('javac not found — install with: sudo apt-get install default-jdk-headless')
 
     results = []
     any_fail = False

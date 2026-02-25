@@ -2,6 +2,7 @@
 
 **Purpose:** Map of where all project information lives. Read this to find anything.
 
+<!-- ref:indexing-convention -->
 ### Indexing Conventions (Two-Tier System)
 
 | Tier | Notation | When to Use | Lookup Method |
@@ -11,6 +12,10 @@
 
 **Active refs** are for high-frequency, runtime lookups (model selection rules, bash wrapper lists, MCP config).
 **§ pointers** are for low-frequency, "read when needed" navigation (research findings, decision rationale, historical context).
+
+**Single-responsibility rule:** One ref block per concept — don't wrap an entire file in one block.
+Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed for the task.
+<!-- /ref:indexing-convention -->
 
 ---
 
@@ -140,6 +145,14 @@ Other infrastructure:
 > **RULE: Never invoke Python scripts directly.** Always use the bash wrapper (`run-*.sh`).
 > Direct `python3` invocations make "don't ask again" unsafe (whitelists all Python).
 
+### Project Knowledge Tools
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `.claude/tools/resume.sh` | ~40-line session-start summary (status + next + commits) | Every session start |
+| `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; no args = list all keys | Any time a `[ref:KEY]` tag is needed |
+| `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
+| `.claude/tools/benchmark-status.sh` | Rubrics/prompts/personas/results overview | Before any benchmark session |
+
 ### MCP Server
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
@@ -158,7 +171,7 @@ Other infrastructure:
 |---------|-------|---------|
 | `benchmarks/lib/run-decomposed.sh` | `decomposed-run.py` | Multi-stage incremental build pipeline |
 | `benchmarks/lib/run-validate-html.sh` | `validate-html.js` (Puppeteer) | Headless browser smoke test for HTML/JS |
-| `benchmarks/lib/run-validate-code.sh` | `validate-code.py` | Go compilation + vet gate for backend code |
+| `benchmarks/lib/run-validate-code.sh` | `validate-code.py` | Code compilation/syntax gate: Go (build+vet), Shell (shellcheck), Python (compile()), Java (javac) |
 | `benchmarks/lib/run-structured-tests.sh` | `ollama-probe.py` | JSON schema compliance testing |
 | `benchmarks/lib/run-fewshot-test.sh` | `ollama-probe.py` | A/B test: baseline vs few-shot on same prompt |
 
@@ -168,7 +181,7 @@ Other infrastructure:
 | `benchmarks/lib/ollama-probe.py` | Core probe tool: `--model --prompt-file --vary --examples --no-think --format-file` |
 | `benchmarks/lib/decomposed-run.py` | Pipeline runner for multi-stage prompts |
 | `benchmarks/lib/validate-html.js` | Puppeteer headless browser (Node.js) |
-| `benchmarks/lib/validate-code.py` | Go build + vet scaffolding |
+| `benchmarks/lib/validate-code.py` | Multi-language validator: Go (build+vet), Shell (shellcheck), Python (compile()), Java (javac+scaffold) |
 | `benchmarks/lib/extract-html.py` | Extract HTML from LLM markdown output |
 | `benchmarks/lib/extract-code.py` | Extract code blocks from LLM output |
 | `benchmarks/lib/generate-report.py` | Generate comparison reports from results |

@@ -629,3 +629,56 @@ async def build_persona(
         return "Error: build-persona timed out after 120 seconds."
     except Exception as e:
         return f"Error running build-persona: {e}"
+
+
+@mcp.tool()
+async def ref_lookup(key: str) -> str:
+    """Look up a named reference block from the project's documentation index.
+
+    The project uses a two-tier documentation system. Active reference blocks
+    (<!-- ref:KEY --> markers in *.md files) hold concise, runtime-relevant
+    content — model selection rules, persona inventory, bash wrapper lists,
+    resume steps, etc. This tool retrieves a block by key without requiring
+    file access or knowing which file it lives in.
+
+    Pass key="list" to get all available keys.
+
+    Args:
+        key: The reference key to look up (e.g. "current-status", "bash-wrappers",
+             "model-selection"). Pass "list" to enumerate all available keys.
+
+    Returns:
+        The content of the reference block, or a list of available keys if
+        key is "list". Returns an error message if the key is not found or
+        REPO_ROOT is not set.
+    """
+    if not REPO_ROOT:
+        return "Error: LLM_REPO_ROOT not set — cannot locate ref-lookup script."
+
+    script = os.path.join(REPO_ROOT, ".claude", "tools", "ref-lookup.sh")
+    if not os.path.isfile(script):
+        return f"Error: ref-lookup script not found at {script}"
+
+    # Pass args as array — no shell involved, no injection risk.
+    # key="list" maps to --list flag (exits 0); any other key is looked up directly.
+    args = [script, "--list"] if key == "list" else [script, key]
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
+
+        if proc.returncode != 0:
+            err_msg = stderr.decode().strip() if stderr else "Unknown error"
+            return f"ref:'{key}' not found. Available keys: run ref_lookup(key='list')"
+
+        return stdout.decode().strip()
+
+    except asyncio.TimeoutError:
+        proc.kill()
+        return "Error: ref-lookup timed out after 10 seconds."
+    except Exception as e:
+        return f"Error running ref-lookup: {e}"

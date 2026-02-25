@@ -33,9 +33,10 @@ Review the conversation history from this session. Identify:
 
 If the user provided a summary via `$ARGUMENTS`, use it as the starting point but supplement with details from the conversation.
 
-### 2. Update session-log.md
+### 2. Rotate and update session-log.md
 
-Read `.claude/session-log.md`. Add a new entry at the top (below the header) with:
+First, run `.claude/tools/rotate-session-log.sh` to archive old entries (keeps 3 most recent).
+Then read `.claude/session-log.md` and add a new entry at the top (below the header) with:
 
 ```markdown
 ## YYYY-MM-DD - Session N: [Brief Title]

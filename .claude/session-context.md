@@ -4,6 +4,7 @@
 
 ---
 
+<!-- ref:user-prefs -->
 ## User Preferences
 
 ### Interaction Style
@@ -19,6 +20,7 @@
 ### Persona Naming
 - Pattern: `my-<role>` (my-coder, my-creative-coder)
 - Qwen3 variants get `-q3` suffix (my-coder-q3, my-creative-coder-q3)
+<!-- /ref:user-prefs -->
 
 ---
 
@@ -29,9 +31,9 @@
 - **Rule:** System specs, paths, or personal info → write to `local/`
 
 ### Log Rotation
-- **Policy:** By phase — rename `session-log.md` when a layer completes
-- **Archive:** Older logs to `.claude/archive/`
-- **Size limit:** Rotate when `session-log.md` exceeds ~500 lines
+- **Tool:** `.claude/tools/rotate-session-log.sh` — run at session end via session-handoff skill
+- **Policy:** Keep 3 most recent sessions in `session-log.md`; archive the rest
+- **Archive:** `.claude/archive/session-log-YYYY-MM-DD-to-YYYY-MM-DD.md`
 
 ### Context Optimization
 - **System-prompt files** (CLAUDE.md, MEMORY.md): Keep lean — rules + current state only; history in archives
@@ -41,43 +43,41 @@
 
 ---
 
+<!-- ref:current-status -->
 ## Current Status
 
 - **Phases 0-6:** Complete → `.claude/archive/phases-0-6.md`
 - **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
 - **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Layer 3:** Complete (5/5 done + refactoring bonus + 3.5-A comparison)
-  * ✅ 3.1 Persona template + 3.6 Specialized 8 personas (29 active total, +1 from live test)
-  * ✅ 3.2 Creator CLI (conversational builder, interactive 8-step flow)
-  * ✅ 3.3 Model selection (MODEL_MATRIX in models.py)
-  * ✅ 3.5 Registry (machine-readable YAML, source of truth)
-  * ✅ **3.4 COMPLETE:** Codebase analyzer (all 3 phases done)
-  * ✅ **BONUS:** Layer 3 refactoring (all PR #1 deferred items resolved)
-  * ✅ **3.5 Conversational persona builder — COMPLETE** (Tasks 1-5 all done)
-  * ✅ **3.5-A Persona designer comparison — COMPLETE** (benchmark, analysis, architecture)
-- **Last completed:** Session 29 (2026-02-24) — shell rubric, shellcheck validator, persona hardening, 3 benchmark runs, docs restructure
-- **Last checkpoint:** 2026-02-24 (session 29)
-- **Next:** Merge PR #7 (`feature/4x-shell-rubric` → `feature/layer4-evaluator-framework`), then Java/Python Phase 1 validators. Increase default --timeout to 600s.
-- **Branches:**
-  * master: MCP-1/2/3/4 committed (9 tools, registry-driven routing, build-persona.py bugfix)
-  * feature/layer4-evaluator-framework: Layer 4 complete + session 28 fixes (not yet merged to master)
-  * feature/4x-shell-rubric: Shell rubric + constraints + docs restructure — PR #7 open → target: feature/layer4-evaluator-framework (latest: c92db7c)
+- **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
+- **Layer 4:** Complete — evaluator framework, shell rubric, all merged to master (PR #6, #7)
+- **Last checkpoint:** Session 30 (2026-02-25) — doc infrastructure, ref blocks (15 keys), resume.sh, rotate, MCP ref_lookup, context comparison
+- **Branch:** `master` (clean)
+- **Next tasks (Layer 4 deferred):**
+  1. Java/Python Phase 1 validators — see `ref-lookup.sh java-validator-design` (Python first; Java needs `sudo apt-get install default-jdk-headless`)
+  2. Default `--timeout` bump: 300s → 600s in `run-benchmark.sh`
+  3. Decompose `sh-01`/`sh-02` prompts for 8B benchmarking
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
+<!-- /ref:current-status -->
 
 ---
 
+<!-- ref:resume-steps -->
 ## Quick Resume
 
-The tracking files ARE the handoff — no separate handoff files needed.
+Run `.claude/tools/resume.sh` for a compact session-start summary (replaces reading multiple files).
 
-1. Read this file (preferences + active decisions)
-2. Check `.claude/tasks.md` (what's done, what's next)
-3. Check `.claude/session-log.md` — the **"Next" pointer** at the bottom tells you where to start
-4. See `.claude/index.md` to find anything else (archives, research, references)
+Or manually:
+1. `ref-lookup.sh current-status` — current layer, next task, branch state
+2. Tail of `.claude/session-log.md` — "Next" pointer from most recent session
+3. `git log --oneline -3` — recent commits
+4. `.claude/index.md` — find any specific file/topic on demand
+<!-- /ref:resume-steps -->
 
 ---
 
+<!-- ref:active-decisions -->
 ## Active Decisions
 
 ### Plan v2 Architecture (decided 2026-02-07)
@@ -144,3 +144,4 @@ The tracking files ARE the handoff — no separate handoff files needed.
 
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)
+<!-- /ref:active-decisions -->

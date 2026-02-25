@@ -84,6 +84,7 @@
     - [x] 3.5-A: Persona designer comparison benchmark — 8b, 14b, Claude Haiku compared. Finding: 8b production-ready, 14b not worth 3x perf hit, Claude Haiku best at abstract intent. Branch: `feature/task-3.5-A-comparison` (unmerged)
     - [ ] 3.5-B: Implement Option 3 multi-round conversation loop — deferred, not blocking Layer 4
 
+<!-- ref:layer3-inventory -->
 ### Persona Inventory (30 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
 **Code reviewers:** my-java-reviewer-q3, my-go-reviewer-q3
@@ -107,11 +108,14 @@ interesting to reason about and could be genuinely useful:
   MUST NOT state answers, MUST ask ≥1 question per response, domain-agnostic.
   Useful for learning sessions where spoon-feeding defeats the purpose.
 
+<!-- /ref:layer3-inventory -->
+
 ### Creator Tool
 - Script: `personas/create-persona.py` — interactive 8-step flow or `--non-interactive` flags
 - Wrapper: `personas/run-create-persona.sh` — whitelist-safe, auto-approved
 - Features: model selection (Task 3.3), domain defaults, name suggestion, collision guard, `--dry-run`
 
+<!-- ref:layer4-status -->
 ## Layer 4: Evaluator Framework — COMPLETE
 
 - [x] 4.1 Rubrics: 6 YAML rubric files in `evaluator/rubrics/` (code-go, code-java, code-python, code-general, classification, writing)
@@ -131,6 +135,17 @@ interesting to reason about and could be genuinely useful:
   - `modelfiles/shell-qwen3.Modelfile` — 6 new shellcheck-targeted constraints (SC2207/SC2181/SC2012/SC2064/SC2168/SC2030 eliminated)
   - **Key findings:** Specialist hypothesis not confirmed at 8B (both 66.7%); constraints fix mechanical patterns but not logic errors; sh-01/sh-02 exceed 8B generation capacity at any timeout; sh-04 is best differentiator (specialist 95.2% vs baseline 68.6%)
 - [ ] **4.x Java/Python Phase 1 validators:** `javac` compile check for Java, `py_compile` for Python — adds deterministic Phase 1 scores to those rubrics.
+  <!-- ref:java-validator-design -->
+  **Pre-implementation decisions (resolve before coding):**
+  - **`javac` not installed** — requires `sudo apt-get install default-jdk-headless`. Cannot run via Claude Code. Ask user first.
+  - **Extend, don't create:** add `validate_java()` to existing `benchmarks/lib/validate-code.py` + `.java` entry in `VALIDATORS` dict. Same for Python: `validate_python()` + `.py`.
+  - **4 files change:** `validate-code.py`, `code-java.yaml` (add Phase 1 criterion), `evaluate.py` (`_score_from_validator_output()` — name criterion `compiles` to reuse existing branch), `run-validate-code.sh` (add javac availability check).
+  - **Classpath strategy (key decision):** bare `javac` fails on `jakarta.*`/Spring imports ("cannot find symbol") even for correct code. Recommended: scope Phase 1 to JDK-only syntax; classify Spring import failures as `missing_dependency` warnings, not errors. Document this explicitly.
+  - **Java scaffolding:** filename must match public class name — parse `public class (\w+)` from output, name temp file accordingly. Wrap bare method snippets in a default class. More complex than Go (`package main` injection).
+  - **jakarta.* gotcha:** benchmark Java prompts target Spring Boot 3.x which uses `jakarta.*` not `javax.*`. The `my-java-q3` persona already enforces this (constraint pays off: 87.4% vs 79.2% baseline in session 28). The validator does not need to enforce namespace — that's Phase 2's job.
+  - **Python first:** `py_compile` is unblocked (stdlib, no install needed). Implement Python validator first, then Java once javac is confirmed available.
+  - **Test fixtures:** 5 fixtures per validator in `benchmarks/test-fixtures/java/` and `benchmarks/test-fixtures/python/` — follow the Go convention (2 pass, 3 fail with distinct error types).
+  <!-- /ref:java-validator-design -->
 - [ ] **4.x Phase 3 frontier judge:** Extension point designed in `docs/plans/2026-02-21-layer4-discussion-context.md` — Claude API call for subjective/ambiguous cases.
 - [ ] **4.6 Claude Desktop insights tool:** Standalone `tools/claude-desktop-insights.py` (split out from original Layer 4 scope).
 
@@ -151,6 +166,21 @@ Brought the MCP server in sync with Layer 3 persona infrastructure (session 26):
 - [x] **Bugfix:** `build-persona.py` forward-reference error (VALID_TEMPERATURES used before definition)
 - New file: `mcp-server/src/ollama_mcp/registry.py` (~170 lines)
 - Tool count: 6 → 9; dependency added: `pyyaml>=6.0`
+
+---
+
+<!-- ref:deferred-infra -->
+## Deferred Infrastructure / Tooling
+
+Items identified but not yet prioritized — evaluate when relevant layer work begins:
+
+- [ ] **Hook-based auto-resume:** `UserPromptSubmit` Claude Code hook that injects `resume.sh` output as context on session start. Eliminates need for CLAUDE.md instruction to run resume manually. Needs investigation: hook fires every message (not just first), so would need a `.claude/local/session-started` flag to gate it.
+- [ ] **ref-integrity checker:** Script that validates all `[ref:KEY]` tags in CLAUDE.md and docs have corresponding `<!-- ref:KEY -->` blocks in `*.md` files, and all blocks are properly closed. Maintenance/QA tool — run after large doc restructures.
+<!-- /ref:deferred-infra -->
+
+---
+
+<!-- /ref:layer4-status -->
 
 ### Design Decisions
 - **Specialization over generalization:** Narrow personas outperform broad ones at 7-8B. my-java-q3 with `MUST use jakarta.*` beats generic my-coder-q3 that tries to cover both Java and Go.

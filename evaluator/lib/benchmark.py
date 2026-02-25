@@ -13,7 +13,7 @@ Usage:
     [--all-coding]          # auto-discover coding personas from registry
     [--dry-run]             # print plan without making API calls
     [--no-warmup]           # skip warmup call
-    [--timeout 300]         # per-prompt Ollama timeout (seconds)
+    [--timeout 600]         # per-prompt Ollama timeout (seconds)
     [--skip-phase1]         # skip automated checks
     [--skip-phase2]         # skip LLM judge (generation only)
     [--results-dir DIR]     # override default evaluator/results/
@@ -56,7 +56,7 @@ run_phase2 = _eval_mod.run_phase2
 aggregate_scores = _eval_mod.aggregate_scores
 
 DEFAULT_JUDGE_MODEL = "my-codegen-q3"
-DEFAULT_TIMEOUT = 300
+DEFAULT_TIMEOUT = 600
 RESULTS_BASE = REPO_ROOT / "evaluator" / "results"
 
 

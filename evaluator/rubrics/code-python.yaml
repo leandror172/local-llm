@@ -2,11 +2,24 @@ id: code-python
 domain: python
 description: Evaluation rubric for Python code generation (modern Python 3.10+)
 
-# Phase 1: no validator yet — future: python3 -m py_compile + ruff
-# validators: []
+# Phase 1: built-in compile() for syntax checking (stdlib, no extra install)
+validators:
+  - type: code
+    extensions: [.py]
 
 criteria:
-  # --- Phase 2: LLM judge (all criteria; Phase 1 validator deferred) ---
+  # --- Phase 1: Automated (deterministic) ---
+
+  - name: syntax_valid
+    phase: 1
+    description: Code parses without syntax errors (python3 built-in compiler)
+    weight: 3.0
+    auto_source: validator
+    scoring:
+      5: "Zero syntax errors"
+      1: "One or more syntax/indentation errors"
+
+  # --- Phase 2: LLM judge ---
 
   - name: correctness
     phase: 2
