@@ -7,7 +7,7 @@
 #     --personas my-go-q3,my-coder-q3 \
 #     --rubric evaluator/rubrics/code-go.yaml \
 #     --judge-model my-codegen-q3 \
-#     [--all-coding] [--dry-run] [--no-warmup] [--timeout 300]
+#     [--all-coding] [--dry-run] [--no-warmup] [--timeout 600]
 #     [--skip-phase1] [--skip-phase2]
 #
 # Safe to whitelist in Claude Code — only runs evaluator/lib/benchmark.py.
