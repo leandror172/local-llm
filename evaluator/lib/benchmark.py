@@ -328,11 +328,7 @@ def run_benchmark(
     # In resume mode, only warmup the judge if there are scores still needed
     pending_scoring = not skip_phase2 and (
         not resume or
-        any(
-            gen["status"] == "success" and
-            not (evals_dir / f"{gen['persona']}--{gen['prompt_id']}-eval.json").exists()
-            for gen in generation_results
-        )
+        _has_pending_evaluations(evals_dir, generation_results)
     )
     if pending_scoring:
         if not quiet:
@@ -380,6 +376,14 @@ def run_benchmark(
 
     return all_results
 
+def _has_pending_evaluations(evals_dir: Path, generation_results: list[dict]) -> bool:
+    """Return True if any successful generation is missing a cached eval file."""
+    return any(
+        gen["status"] == "success" and
+        not (evals_dir / f"{gen['persona']}--{gen['prompt_id']}-eval.json").exists()
+        for gen in generation_results
+    )
+
 
 # ---------------------------------------------------------------------------
 # Summary and report generation
@@ -396,11 +400,11 @@ def build_summary(
     """Build summary.json structure with leaderboard."""
     # Build leaderboard: average scores per persona
     persona_scores: dict[str, list[float]] = {p: [] for p in personas}
-    for r in results:
-        if r["status"] == "success" and r.get("evaluation"):
-            pct = r["evaluation"].get("overall_percentage")
+    for result in results:
+        if result["status"] == "success" and result.get("evaluation"):
+            pct = result["evaluation"].get("overall_percentage")
             if pct is not None:
-                persona_scores[r["persona"]].append(pct)
+                persona_scores[result["persona"]].append(pct)
 
     leaderboard = []
     for persona in personas:
@@ -450,19 +454,49 @@ def generate_report(summary: dict) -> str:
     lines.append(f"")
 
     # Leaderboard
-    lines.append(f"## Leaderboard")
-    lines.append(f"")
-    lines.append(f"| Rank | Persona | Avg % | Avg Score (/5) | Prompts |")
-    lines.append(f"|------|---------|-------|---------------|---------|")
-    for i, entry in enumerate(summary["leaderboard"], 1):
-        bar = _bar(entry["avg_pct"], 100, 20)
-        lines.append(
-            f"| {i} | `{entry['persona']}` | {entry['avg_pct']}% {bar} "
-            f"| {entry['avg_score']} | {entry['prompts_evaluated']} |"
-        )
-    lines.append(f"")
+    _generate_leaderboard(summary, lines)
 
     # Per-persona breakdown
+    _generate_per_persona_breakdown(summary, lines)
+
+    # Criterion analysis
+    lines.append(f"## Criterion Analysis")
+    lines.append(f"")
+    lines.append(f"_Which criteria differentiate personas most?_")
+    lines.append(f"")
+
+    # Collect criterion scores per persona
+    _collect_criterion_scores(summary, lines)
+
+    return "\n".join(lines)
+
+def _collect_criterion_scores(summary, lines):
+    criterion_data: dict[str, dict[str, list[float]]] = {}
+    for r in summary["results"]:
+        if r["status"] == "success" and r.get("evaluation"):
+            for crit_name, crit_data in r["evaluation"].get("criteria", {}).items():
+                score = crit_data.get("score")
+                if score is not None:
+                    criterion_data.setdefault(crit_name, {})
+                    criterion_data[crit_name].setdefault(r["persona"], []).append(score)
+
+    if criterion_data:
+        persona_cols = list(summary["personas"].keys())
+        header = "| Criterion | " + " | ".join(f"`{p}`" for p in persona_cols) + " |"
+        sep = "|-----------|" + "---------|" * len(persona_cols)
+        lines.append(header)
+        lines.append(sep)
+
+        for crit_name, persona_scores in criterion_data.items():
+            avgs = []
+            for p in persona_cols:
+                scores = persona_scores.get(p, [])
+                avg = round(sum(scores) / len(scores), 2) if scores else None
+                avgs.append(f"{avg:.2f}" if avg is not None else "—")
+            lines.append(f"| {crit_name} | " + " | ".join(avgs) + " |")
+        lines.append(f"")
+
+def _generate_per_persona_breakdown(summary, lines):
     lines.append(f"## Per-Persona Results")
     lines.append(f"")
     personas = list(summary["personas"].keys())
@@ -484,39 +518,18 @@ def generate_report(summary: dict) -> str:
             lines.append(f"| `{r['prompt_id']}` | {status} | {p1} | {p2} | {pct} |")
         lines.append(f"")
 
-    # Criterion analysis
-    lines.append(f"## Criterion Analysis")
+def _generate_leaderboard(summary, lines):
+    lines.append(f"## Leaderboard")
     lines.append(f"")
-    lines.append(f"_Which criteria differentiate personas most?_")
+    lines.append(f"| Rank | Persona | Avg % | Avg Score (/5) | Prompts |")
+    lines.append(f"|------|---------|-------|---------------|---------|")
+    for i, entry in enumerate(summary["leaderboard"], 1):
+        bar = _bar(entry["avg_pct"], 100, 20)
+        lines.append(
+            f"| {i} | `{entry['persona']}` | {entry['avg_pct']}% {bar} "
+            f"| {entry['avg_score']} | {entry['prompts_evaluated']} |"
+        )
     lines.append(f"")
-
-    # Collect criterion scores per persona
-    criterion_data: dict[str, dict[str, list[float]]] = {}
-    for r in summary["results"]:
-        if r["status"] == "success" and r.get("evaluation"):
-            for crit_name, crit_data in r["evaluation"].get("criteria", {}).items():
-                score = crit_data.get("score")
-                if score is not None:
-                    criterion_data.setdefault(crit_name, {})
-                    criterion_data[crit_name].setdefault(r["persona"], []).append(score)
-
-    if criterion_data:
-        persona_cols = personas
-        header = "| Criterion | " + " | ".join(f"`{p}`" for p in persona_cols) + " |"
-        sep = "|-----------|" + "---------|" * len(persona_cols)
-        lines.append(header)
-        lines.append(sep)
-
-        for crit_name, persona_scores in criterion_data.items():
-            avgs = []
-            for p in persona_cols:
-                scores = persona_scores.get(p, [])
-                avg = round(sum(scores) / len(scores), 2) if scores else None
-                avgs.append(f"{avg:.2f}" if avg is not None else "—")
-            lines.append(f"| {crit_name} | " + " | ".join(avgs) + " |")
-        lines.append(f"")
-
-    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
