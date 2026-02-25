@@ -31,6 +31,7 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -201,58 +202,35 @@ def _validate_json_schema(output_text: str, validator_spec: dict) -> dict:
     return {"valid": True, "reason": "All fields present and correctly typed", "data": data}
 
 
-def run_phase1(output_text: str, rubric: dict, domain: str) -> list[dict]:
-    """Run Phase 1 automated checks.
+def _invoke_code_validator(code_text: str, ext: str) -> list[dict]:
+    """Write code to a temp file, run the validate-code wrapper, return results.
 
-    Returns list of scored criterion dicts.
+    Returns a list of validator result dicts (one per file checked). An empty
+    stdout from the wrapper is treated as a clean result (no errors).
+
+    Raises:
+        RuntimeError: If the subprocess times out, returns invalid JSON, or the
+                      wrapper script cannot be found.
     """
-    phase1_criteria = [c for c in rubric["criteria"] if c["phase"] == 1]
-    if not phase1_criteria:
-        return []
+    with tempfile.NamedTemporaryFile(suffix=ext, mode="w", delete=False) as f:
+        f.write(code_text)
+        tmp_path = f.name
 
-    validators = rubric.get("validators", [])
-    scores = []
+    try:
+        result = subprocess.run(
+            [str(VALIDATE_CODE_WRAPPER), "--quiet", tmp_path],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.stdout.strip():
+            return json.loads(result.stdout)
+        return [{"error_count": 0, "warning_count": 0, "errors": []}]
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+        raise RuntimeError(f"validator error: {e}") from e
+    finally:
+        os.unlink(tmp_path)
 
-    # --- Code validator (Go, etc.) ---
-    code_validators = [v for v in validators if v["type"] == "code"]
-    validator_results = []
 
-    if code_validators:
-        code_text, _ = extract_code_from_text(output_text, domain)
-        if code_text is None:
-            # No code found — all Phase 1 criteria score None
-            for c in phase1_criteria:
-                scores.append({"name": c["name"], "score": None, "max": 5,
-                               "weight": c["weight"], "reason": "no code block found in output"})
-            return scores
-
-        ext = code_validators[0]["extensions"][0]
-        with tempfile.NamedTemporaryFile(suffix=ext, mode="w", delete=False) as f:
-            f.write(code_text)
-            tmp_path = f.name
-
-        try:
-            result = subprocess.run(
-                [str(VALIDATE_CODE_WRAPPER), "--quiet", tmp_path],
-                capture_output=True, text=True, timeout=60
-            )
-            if result.stdout.strip():
-                validator_results = json.loads(result.stdout)
-            else:
-                validator_results = [{"error_count": 0, "warning_count": 0, "errors": []}]
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
-            for c in phase1_criteria:
-                scores.append({"name": c["name"], "score": None, "max": 5,
-                               "weight": c["weight"], "reason": f"validator error: {e}"})
-            return scores
-        finally:
-            os.unlink(tmp_path)
-
-        for c in phase1_criteria:
-            if c.get("auto_source") == "validator":
-                scores.append(_score_from_validator_output(validator_results, c))
-
-    # --- JSON schema validator ---
+def _validate_json(output_text: str, phase1_criteria: list[Any], scores: list[Any], validators: list[Any]):
     json_validators = [v for v in validators if v["type"] == "json_schema"]
     if json_validators:
         json_result = _validate_json_schema(output_text, json_validators[0])
@@ -267,6 +245,47 @@ def run_phase1(output_text: str, rubric: dict, domain: str) -> list[dict]:
                 score = 5 if json_result["valid"] else 1
                 scores.append({"name": name, "score": score, "max": 5,
                                "weight": c["weight"], "reason": json_result["reason"]})
+
+
+def run_phase1(output_text: str, rubric: dict, domain: str) -> list[dict]:
+    """Run Phase 1 automated checks.
+
+    Returns list of scored criterion dicts.
+    """
+    phase1_criteria = [c for c in rubric["criteria"] if c["phase"] == 1]
+    if not phase1_criteria:
+        return []
+
+    validators = rubric.get("validators", [])
+    scores = []
+
+    # --- Code validator (Go, shell, etc.) ---
+    code_validators = [v for v in validators if v["type"] == "code"]
+
+    if code_validators:
+        code_text, _ = extract_code_from_text(output_text, domain)
+        if code_text is None:
+            # No code found — all Phase 1 criteria score None
+            for c in phase1_criteria:
+                scores.append({"name": c["name"], "score": None, "max": 5,
+                               "weight": c["weight"], "reason": "no code block found in output"})
+            return scores
+
+        ext = code_validators[0]["extensions"][0]
+        try:
+            validator_results = _invoke_code_validator(code_text, ext)
+        except RuntimeError as e:
+            for c in phase1_criteria:
+                scores.append({"name": c["name"], "score": None, "max": 5,
+                               "weight": c["weight"], "reason": str(e)})
+            return scores
+
+        for c in phase1_criteria:
+            if c.get("auto_source") == "validator":
+                scores.append(_score_from_validator_output(validator_results, c))
+
+    # --- JSON schema validator ---
+    _validate_json(output_text, phase1_criteria, scores, validators)
 
     # Fill any unevaluated Phase 1 criteria
     scored_names = {s["name"] for s in scores}
@@ -423,6 +442,25 @@ def aggregate_scores(
 
 
 # ---------------------------------------------------------------------------
+# Main helpers
+# ---------------------------------------------------------------------------
+
+def _extract_output_text(raw: str) -> str:
+    """Return the model output text from a raw file.
+
+    If raw is an Ollama API JSON response, unwrap message.content;
+    otherwise treat the whole string as plain text.
+    """
+    try:
+        api_resp = json.loads(raw)
+        if "message" in api_resp and "content" in api_resp["message"]:
+            return api_resp["message"]["content"]
+    except json.JSONDecodeError:
+        pass
+    return raw
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -447,13 +485,7 @@ def main() -> int:
         return 1
 
     # Detect if output file is Ollama API JSON
-    output_text = raw
-    try:
-        api_resp = json.loads(raw)
-        if "message" in api_resp and "content" in api_resp["message"]:
-            output_text = api_resp["message"]["content"]
-    except json.JSONDecodeError:
-        pass  # treat as plain text
+    output_text = _extract_output_text(raw)
 
     domain = rubric.get("domain", prompt_meta.get("domain", "general"))
     prompt_id = prompt_meta.get("id", Path(args.prompt).stem)
