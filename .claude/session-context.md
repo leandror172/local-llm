@@ -52,10 +52,10 @@
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, all merged to master (PR #6, #7)
-- **Last checkpoint:** Session 29 (2026-02-24) — shell rubric, shellcheck, persona hardening, docs restructure
-- **Branch:** `master` (clean, all PRs merged)
+- **Last checkpoint:** Session 30 (2026-02-25) — doc infrastructure, ref blocks (15 keys), resume.sh, rotate, MCP ref_lookup, context comparison
+- **Branch:** `master` (clean)
 - **Next tasks (Layer 4 deferred):**
-  1. Java/Python Phase 1 validators (`javac` + `py_compile`)
+  1. Java/Python Phase 1 validators — see `ref-lookup.sh java-validator-design` (Python first; Java needs `sudo apt-get install default-jdk-headless`)
   2. Default `--timeout` bump: 300s → 600s in `run-benchmark.sh`
   3. Decompose `sh-01`/`sh-02` prompts for 8B benchmarking
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
