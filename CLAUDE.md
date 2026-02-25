@@ -43,6 +43,14 @@ Local AI infrastructure on RTX 3060 12GB: multiple specialized models, benchmark
 - **Structured output:** Always use `format` param for JSON — 100% reliable, no speed penalty [ref:structured-output]
 - **Benchmarks:** Always invoke via bash wrappers (`lib/run-*.sh`), never `python3` directly [ref:bash-wrappers]
 
+## Documentation Rules (HARD REQUIREMENTS)
+
+When creating or modifying files:
+1. **New scripts/tools** — add to `[ref:bash-wrappers]` in `.claude/index.md`
+2. **New runtime-relevant doc sections** — wrap with `<!-- ref:KEY -->` / `<!-- /ref:KEY -->` blocks; one concept per block [ref:indexing-convention]
+3. **New files of any kind** — add to `.claude/index.md` under the appropriate table
+4. **§ vs ref:KEY** — use `ref:KEY` for content agents need at runtime; use `§ "Heading"` for background/archive navigation pointers [ref:indexing-convention]
+
 ## Git Safety Protocol
 
 For destructive git operations: explain → backup → dry-run → execute → verify. [ref:git-safety]
@@ -50,13 +58,12 @@ Use `git worktree` for parallel branch work. [ref:git-worktrees]
 
 ## Resuming Multi-Session Work
 
-**On session start:** read `.claude/session-context.md` (preferences + status), then `.claude/tasks.md` (progress).
-**Knowledge index:** `.claude/index.md` maps every topic to its file location.
+**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~40 lines.
+For deeper context: `ref-lookup.sh active-decisions` | `ref-lookup.sh layer4-status` | `ref-lookup.sh bash-wrappers`
+**Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
 **Sensitive data:** `.claude/local/` (gitignored).
 
 ## Current Status
 
-- **Phases 0-6:** Complete (archived → `.claude/archive/phases-0-6.md`)
-- **Layer 0:** Complete — 12/12 tasks (findings → `.claude/archive/layer-0-findings.md`)
-- **Active:** Layer 1 — MCP Server (Ollama as Claude Code tool)
-- **Full roadmap:** `.claude/plan-v2.md` (10 layers)
+- **Layers 0-4:** Complete (archived in `.claude/archive/`). Full roadmap: `.claude/plan-v2.md` (10 layers).
+- **Active layer:** See `ref-lookup.sh current-status` for live state.

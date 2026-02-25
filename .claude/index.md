@@ -2,6 +2,7 @@
 
 **Purpose:** Map of where all project information lives. Read this to find anything.
 
+<!-- ref:indexing-convention -->
 ### Indexing Conventions (Two-Tier System)
 
 | Tier | Notation | When to Use | Lookup Method |
@@ -11,6 +12,10 @@
 
 **Active refs** are for high-frequency, runtime lookups (model selection rules, bash wrapper lists, MCP config).
 **§ pointers** are for low-frequency, "read when needed" navigation (research findings, decision rationale, historical context).
+
+**Single-responsibility rule:** One ref block per concept — don't wrap an entire file in one block.
+Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed for the task.
+<!-- /ref:indexing-convention -->
 
 ---
 
@@ -139,6 +144,14 @@ Other infrastructure:
 
 > **RULE: Never invoke Python scripts directly.** Always use the bash wrapper (`run-*.sh`).
 > Direct `python3` invocations make "don't ask again" unsafe (whitelists all Python).
+
+### Project Knowledge Tools
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `.claude/tools/resume.sh` | ~40-line session-start summary (status + next + commits) | Every session start |
+| `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; no args = list all keys | Any time a `[ref:KEY]` tag is needed |
+| `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
+| `.claude/tools/benchmark-status.sh` | Rubrics/prompts/personas/results overview | Before any benchmark session |
 
 ### MCP Server
 | Script | Purpose | When to Use |

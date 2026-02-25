@@ -84,6 +84,7 @@
     - [x] 3.5-A: Persona designer comparison benchmark — 8b, 14b, Claude Haiku compared. Finding: 8b production-ready, 14b not worth 3x perf hit, Claude Haiku best at abstract intent. Branch: `feature/task-3.5-A-comparison` (unmerged)
     - [ ] 3.5-B: Implement Option 3 multi-round conversation loop — deferred, not blocking Layer 4
 
+<!-- ref:layer3-inventory -->
 ### Persona Inventory (30 active)
 **Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
 **Code reviewers:** my-java-reviewer-q3, my-go-reviewer-q3
@@ -107,11 +108,14 @@ interesting to reason about and could be genuinely useful:
   MUST NOT state answers, MUST ask ≥1 question per response, domain-agnostic.
   Useful for learning sessions where spoon-feeding defeats the purpose.
 
+<!-- /ref:layer3-inventory -->
+
 ### Creator Tool
 - Script: `personas/create-persona.py` — interactive 8-step flow or `--non-interactive` flags
 - Wrapper: `personas/run-create-persona.sh` — whitelist-safe, auto-approved
 - Features: model selection (Task 3.3), domain defaults, name suggestion, collision guard, `--dry-run`
 
+<!-- ref:layer4-status -->
 ## Layer 4: Evaluator Framework — COMPLETE
 
 - [x] 4.1 Rubrics: 6 YAML rubric files in `evaluator/rubrics/` (code-go, code-java, code-python, code-general, classification, writing)
@@ -151,6 +155,21 @@ Brought the MCP server in sync with Layer 3 persona infrastructure (session 26):
 - [x] **Bugfix:** `build-persona.py` forward-reference error (VALID_TEMPERATURES used before definition)
 - New file: `mcp-server/src/ollama_mcp/registry.py` (~170 lines)
 - Tool count: 6 → 9; dependency added: `pyyaml>=6.0`
+
+---
+
+<!-- ref:deferred-infra -->
+## Deferred Infrastructure / Tooling
+
+Items identified but not yet prioritized — evaluate when relevant layer work begins:
+
+- [ ] **Hook-based auto-resume:** `UserPromptSubmit` Claude Code hook that injects `resume.sh` output as context on session start. Eliminates need for CLAUDE.md instruction to run resume manually. Needs investigation: hook fires every message (not just first), so would need a `.claude/local/session-started` flag to gate it.
+- [ ] **ref-integrity checker:** Script that validates all `[ref:KEY]` tags in CLAUDE.md and docs have corresponding `<!-- ref:KEY -->` blocks in `*.md` files, and all blocks are properly closed. Maintenance/QA tool — run after large doc restructures.
+<!-- /ref:deferred-infra -->
+
+---
+
+<!-- /ref:layer4-status -->
 
 ### Design Decisions
 - **Specialization over generalization:** Narrow personas outperform broad ones at 7-8B. my-java-q3 with `MUST use jakarta.*` beats generic my-coder-q3 that tries to cover both Java and Go.
