@@ -9,8 +9,10 @@
 ## 2026-02-26 - Session 33: Layer 5 Deep Design + Vision Docs
 
 ### Context
-Resumed with `/mobile` recontextualization. Full read of existing external artifacts (expense-reporter
-Go source + auto-category analysis) to properly scope Layer 5 before writing any code.
+Forked from Session 32 (rewound before distillation/Layer 7 discussion). Full read of existing external
+artifacts (expense-reporter Go source + auto-category analysis) to properly scope Layer 5 before writing
+any code. **Note:** Session 32 entry below covers the rest of the original conversation — ollama-bridge
+logging (5.0a), CLAUDE.md local-model-first (5.0b), Layer 7 distillation expansion, and `docs/findings/LoRA.md`.
 
 ### What Was Done
 - **Read all expense-reporter source:** Go v2.1.0, 190+ tests, Cobra CLI, excelize, hierarchical
