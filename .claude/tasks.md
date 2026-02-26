@@ -1,7 +1,7 @@
 # Task Progress
 
-**Last Updated:** 2026-02-23 (session 28)
-**Active Layer:** Layer 4 branch (unmerged) → immediate next: Task 4.x Shell rubric
+**Last Updated:** 2026-02-26 (session 32)
+**Active Layer:** Layer 5 — Expense Classifier
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
 ---
@@ -184,3 +184,33 @@ Items identified but not yet prioritized — evaluate when relevant layer work b
 - **Two-tier system:** Full personas (SYSTEM + all params) vs bare personas (minimal, for external tools like Aider/OpenCode).
 - **Registry as source of truth:** `personas/registry.yaml` — machine-readable, appended by creator tool.
 - **Raw text append:** PyYAML strips comments on round-trip; registry uses comment section headers, so creator appends raw YAML text.
+
+---
+
+## Layer 5: Expense Classifier
+
+**Goal:** Local model classifies expenses, auto-inserts into Excel via expense-reporter Go tool.
+**Context:** `docs/vision/expense-classifier-vision.md` (full vision + iterative plan)
+**Data inventory:** `docs/vision/expense-classifier-data-inventory.md`
+**External data:** `I:\workspaces\expenses\` (auto-category analysis + expense-reporter source)
+
+### Pre-work — COMPLETE (session 32)
+- [x] **5.0a** ollama-bridge JSONL logging: `config.py` (CALL_LOG_PATH, LOG_FULL_CONTENT) + `client.py` (_log_call method). Logs to `~/.local/share/ollama-bridge/calls.jsonl`.
+- [x] **5.0b** CLAUDE.md: Layer 5+ local-model-first instruction (try local, evaluate, record ACCEPTED/IMPROVED/REJECTED verdict)
+
+### Layer 5 Tasks (next)
+- [ ] **5.1** Port training data into expense-reporter: copy `feature_dictionary_enhanced.json` + `training_data_complete.json` to `data/` in expense-reporter; document format
+- [ ] **5.2** `classify` command in expense-reporter: 3-field input → Ollama HTTP → structured JSON → top-N subcategories with confidence
+- [ ] **5.3** `auto` command: classify + insert if HIGH confidence (≥0.85), else print candidates
+- [ ] **5.4** `batch-auto` command: classify a CSV, write classified.csv (HIGH) + review.csv (LOW)
+- [ ] **5.5** Correction logging: `corrections.jsonl` — {input, predicted, actual, confidence} on user override
+- [ ] **5.6** Expense persistence: hash ID (sha256[:12] of normalized item+date+value), `expenses_log.jsonl` appended on insert
+- [ ] **5.7** Few-shot injection: keyword pre-match against training data, inject top-K examples into classify prompt
+- [ ] **5.8** MCP thin wrapper in llm repo: `classify_expense` / `add_expense` / `auto_add` tools
+
+### Key decisions (from session 32 design)
+- Classification logic in **expense-reporter** (Go) — it's a product feature, not LLM infrastructure
+- MCP wrapper in **llm repo** — thin, calls the Go binary as subprocess
+- Training data strategy: hybrid (feature dict + correction rules as system + top-K few-shot per request)
+- Structured output via Ollama `format` param — already proven reliable
+- Model to benchmark: Qwen3-8B (`my-classifier-q3`) vs Qwen2.5-Coder-7B (speed)

@@ -63,6 +63,30 @@ For deeper context: `ref-lookup.sh active-decisions` | `ref-lookup.sh layer4-sta
 **Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
 **Sensitive data:** `.claude/local/` (gitignored).
 
+## Local Model Usage (Layer 5+)
+
+When working on Layer 5 (expense classifier) and beyond, **try local models first** for
+code generation tasks. This generates training data for future distillation.
+
+**Use `mcp__ollama-bridge__generate_code` or `mcp__ollama-bridge__ask_ollama` for:**
+- Boilerplate Go code (structs, interfaces, simple functions, test stubs)
+- Simple Python utilities and scripts
+- Straightforward transformations (parsing, formatting, serialization)
+
+**After receiving local model output, evaluate it explicitly:**
+- `ACCEPTED` — used as-is (note the prompt that worked)
+- `IMPROVED` — used with modifications (note what changed and why)
+- `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task)
+
+**Do NOT use local models for:**
+- Architectural decisions or multi-file reasoning
+- Security-sensitive code
+- Tasks requiring understanding of large context (>400 tokens of output needed)
+
+Every call is automatically logged to `~/.local/share/ollama-bridge/calls.jsonl`
+(prompt, response, model, latency). The (prompt, local_response, your_verdict) pattern
+is the raw material for future DPO fine-tuning.
+
 ## Current Status
 
 - **Layers 0-4:** Complete (archived in `.claude/archive/`). Full roadmap: `.claude/plan-v2.md` (10 layers).

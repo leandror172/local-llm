@@ -195,27 +195,48 @@ Key decisions:
 **Goal:** Local model classifies expenses from text, learns from corrections, calls Go tool.
 **Depends on:** Layer 0 (classification model), Layer 4 (evaluation helps but not required)
 
+**Domain boundary:** Classification logic lives in expense-reporter (Go) — it's a product
+feature. The llm repo provides the platform (Ollama, MCP, personas) and scaffolding patterns.
+The MCP server is a thin wrapper; the Go tool does the actual Ollama HTTP calls.
+
+**Development approach:** Claude Code uses local models for boilerplate during Layer 5 work.
+Every call is logged to `~/.local/share/ollama-bridge/calls.jsonl`. Claude Code evaluates
+each local response (ACCEPTED / IMPROVED / REJECTED) to build distillation training data.
+
+### Pre-work (complete before Layer 5.1)
+
+| ID | Task | Effort | Status |
+|----|------|--------|--------|
+| 5.0a | ollama-bridge JSONL call logging (config.py + client.py) | 2 hrs | ✅ Done (session 32) |
+| 5.0b | CLAUDE.md: Layer 5+ local-model-first instruction | 30 min | ✅ Done (session 32) |
+
 ### Tasks
 
 | ID | Task | Effort |
 |----|------|--------|
-| 5.1 | Define expense categories and classification schema | 1 hr |
-| 5.2 | Build Go tool: add expense to spreadsheet via API | 1-2 days |
-| 5.3 | Build classification pipeline: text → local model → category + confidence | 1 day |
-| 5.4 | Correction logging: store input/predicted/actual for learning | 1 day |
-| 5.5 | Few-shot injection: use correction log as examples in prompt | 2 hrs |
-| 5.6 | (Later) Telegram integration — direct input, or via OpenClaw | deferred to Layer 6 |
+| 5.1 | Port training data + feature dictionary into expense-reporter data/ dir | 1 hr |
+| 5.2 | Build classify command: 3-field input → Ollama → {subcategory, confidence, alternatives} | 1 day |
+| 5.3 | Build auto command: classify + insert if HIGH confidence, else prompt | 2 hrs |
+| 5.4 | Build batch-auto command: classify CSV, split classified.csv + review.csv | 2 hrs |
+| 5.5 | Correction logging: {input, predicted, actual, confidence} appended on override | 2 hrs |
+| 5.6 | Expense persistence: hash ID (sha256[:12] of item+date+value), JSON Lines log on insert | 2 hrs |
+| 5.7 | Few-shot injection: keyword pre-match training data → inject top-K examples per request | 3 hrs |
+| 5.8 | MCP thin wrapper: classify_expense / add_expense / auto_add tools in llm repo | 2 hrs |
+
+**Note on 5.2:** Go tool (expense-reporter) already exists and is production-ready.
+Tasks 5.1–5.7 extend it; 5.8 is the MCP bridge layer.
 
 ### Closing-the-gap integration
-- Structured output (JSON schema) for classification response
-- Context injection (fact grounding) with category definitions
+- Structured output (`format` param) for classification response — 100% reliable
+- Context injection: feature dictionary + correction rules + top-K few-shot per request
 - Low temperature (0.1) for deterministic classification
-- Correction log → eventual QLoRA fine-tuning data
+- Correction log → distillation training data → eventual QLoRA fine-tuning (Layer 7)
 
 ### Unlocks
 - First end-to-end local AI product
 - Proves the pattern: model → tool → feedback → improvement
 - Classification pipeline reusable for routing decisions
+- Training data accumulation begins for Layer 7 distillation
 
 ---
 
@@ -248,10 +269,12 @@ Key decisions:
 
 ---
 
-## Layer 7: Memory System
+## Layer 7: Memory + Learning System
 
-**Goal:** Per-persona persistent memory that enables learning from use.
-**Depends on:** Layer 3 (personas), Layer 4 (evaluator), Layer 5 (correction logging pattern)
+**Goal:** Per-persona memory, distillation pipeline from accumulated call logs, and
+optional RAG/fine-tuning to continuously improve local model quality.
+**Depends on:** Layer 3 (personas), Layer 4 (evaluator), Layer 5 (correction logging),
+ollama-bridge call log (starts accumulating from Layer 5 onwards)
 
 ### Tasks
 
@@ -262,18 +285,47 @@ Key decisions:
 | 7.3 | Build memory read pipeline: inject relevant memory into prompts (simple RAG) | 1 day |
 | 7.4 | Summarization agent: compress old memory entries | 1 day |
 | 7.5 | Bloat prevention: usage metrics, archival policy, memory size limits | 1 day |
-| 7.6 | (Advanced) Full RAG with embeddings + vector store | 2-3 days |
-| 7.7 | (Advanced) QLoRA fine-tuning from correction logs | 2-3 days |
+| 7.6 | Call log reader: parse calls.jsonl, filter by model/date/quality signal | 2 hrs |
+| 7.7 | SFT dataset builder: call log → (prompt, response) pairs in Alpaca/ChatML format | 1 day |
+| 7.8 | DPO dataset builder: (prompt, chosen, rejected) triples from Claude-improved local outputs | 1-2 days |
+| 7.9 | QLoRA fine-tuning pipeline: dataset → train adapter → evaluate vs baseline | 2-3 days |
+| 7.10 | Prompt pre-processor: local model compresses/enriches context before Claude calls | 1 day |
+| 7.11 | (Advanced) Full RAG with embeddings: nomic-embed-text + cosine similarity retrieval | 2-3 days |
+
+### Notes on distillation approach
+
+**SFT (Supervised Fine-Tuning, task 7.7):** Use call log entries where Claude accepted
+or improved a local model response. (prompt, good_response) pairs teach the model to
+produce better outputs on known task types. Effective for fixing mechanical patterns.
+
+**DPO (Direct Preference Optimization, task 7.8):** Needs (prompt, chosen, rejected)
+triples. "Chosen" = Claude's final output or accepted local response. "Rejected" = local
+model's initial output that was discarded/improved. DPO is often more alignment-effective
+than SFT because it teaches *preference* rather than just imitation.
+⚠️ **DPO caveat:** Anthropic's ToS prohibits using Claude outputs to train competing
+commercial models. This use case is personal local model improvement for personal
+productivity — a different context — but review ToS before any broader use.
+
+**What fine-tuning can and cannot fix:**
+- ✅ Mechanical patterns (quoting, syntax, style) — fully addressable
+- ✅ Instruction format compliance (baking in persona constraints, JSON schemas)
+- ✅ Domain vocabulary (expense categories, project conventions)
+- ❌ Output budget limit (~400 tokens for 8B) — architectural, not fixable by fine-tuning
+- ❌ Multi-step reasoning failures — parameter count ceiling, not addressable at 7-8B
+- ❌ Novel complex tasks not in training data — no generalization beyond seen patterns
+
+**When to start fine-tuning:** Wait until correction log has 500+ entries. At ~40/month
+from expense classifier alone, that's ~1 year. Accelerated by Layer 5 Claude Code usage.
 
 ### Closing-the-gap integration
-- RAG (#8, #12 from closing-the-gap) is the technical foundation
-- Few-shot examples evolve: manually curated → auto-extracted from high-scoring outputs
-- Fine-tuning (#13) is the "batch learning" step
+- RAG (#8, #12 from closing-the-gap): task 7.11
+- Few-shot examples evolve: manually curated → auto-extracted from high-scoring call logs
+- Fine-tuning (#13): tasks 7.7-7.9 — the "batch learning" step
 
 ### Unlocks
 - Agents that improve with use
-- Organizational knowledge accumulates (not just in the user's head)
-- Fine-tuning creates genuinely specialized models
+- Local models that "know" your codebase and task patterns
+- Reduced frontier model dependency over time
 
 ---
 

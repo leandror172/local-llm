@@ -72,6 +72,25 @@ REGISTRY_PATH: str | None = (
 )
 
 # ---------------------------------------------------------------------------
+# Call logging (for distillation / training data collection)
+# ---------------------------------------------------------------------------
+
+# Path to the JSONL file where every Ollama call is logged.
+# Each line is a JSON object: {ts, model, prompt_hash, prompt, system,
+# response, eval_count, eval_duration_ms, total_duration_ms, temperature,
+# think, had_format}.
+# Override with OLLAMA_CALL_LOG env var; set to "" to disable logging.
+_default_log = os.path.join(
+    os.path.expanduser("~"), ".local", "share", "ollama-bridge", "calls.jsonl"
+)
+CALL_LOG_PATH: str = os.environ.get("OLLAMA_CALL_LOG", _default_log)
+
+# When True, log full prompt + response text. When False, log 200-char previews.
+# Full content is needed for distillation/fine-tuning; previews are enough for
+# latency and error analysis. Default True to start collecting training data.
+LOG_FULL_CONTENT: bool = os.environ.get("OLLAMA_LOG_FULL_CONTENT", "true").lower() == "true"
+
+# ---------------------------------------------------------------------------
 # Available models (informational)
 # ---------------------------------------------------------------------------
 

@@ -1,8 +1,48 @@
 # Session Log
 
-**Current Layer:** Layer 4 deferred — all complete; Layer 5 is next
-**Current Session:** 2026-02-25 — Session 31: Phase 1 validators (Python + Java) + prompt decomposition
+**Current Layer:** Layer 5 — Expense Classifier (pre-work complete)
+**Current Session:** 2026-02-26 — Session 32: Layer 5 design + ollama-bridge logging + distillation plan
 **Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`
+
+---
+
+## 2026-02-26 - Session 32: Layer 5 Design + Distillation Strategy
+
+### Context
+Layer 4 fully complete. Session focused on designing Layer 5 (expense classifier) and
+the broader distillation/learning infrastructure. No code was written for expense-reporter
+itself — session was architecture + pre-work.
+
+### What Was Done
+- **Layer 5 deep design:** Read all expense-reporter source (Go v2.1.0, 190+ tests) and
+  all auto-category analysis artifacts (694-expense training set, algorithm spec, correction
+  rules). Established domain boundary: classification logic in expense-reporter (product),
+  MCP thin wrapper in llm repo (platform).
+- **Distillation strategy designed:** Full plan for using Claude/local model interaction
+  logs as training data. SFT from accepted responses, DPO from (Claude-improved, local-rejected)
+  triples. DPO caveat documented: personal local use vs Anthropic ToS. Fine-tuning scope
+  clarified: fixes mechanical patterns, can't raise 8B reasoning ceiling.
+- **RAG with embeddings explained:** nomic-embed-text via Ollama, vector similarity retrieval,
+  deferred to Layer 7 (not needed at current scale — 90% accuracy with keyword matching already).
+- **Prompt pre-processor concept:** Local model compresses/enriches context before Claude calls.
+  Added as Layer 7.10.
+- **ollama-bridge JSONL logging (5.0a):** `config.py` (CALL_LOG_PATH, LOG_FULL_CONTENT env vars) +
+  `client.py` (_log_call method). Appends JSON Lines to `~/.local/share/ollama-bridge/calls.jsonl`
+  after every successful chat() call. Full content by default. Silent failure. Zero new dependencies.
+- **CLAUDE.md updated (5.0b):** Layer 5+ local-model-first instruction. Try local for boilerplate,
+  evaluate response (ACCEPTED/IMPROVED/REJECTED), record verdict. Creates distillation training data.
+- **plan-v2.md updated:** Layer 5 fully redesigned (pre-work tasks, domain boundary note, 5.1–5.8).
+  Layer 7 renamed + expanded (7.1–7.11 including SFT, DPO, QLoRA, prompt pre-processor).
+- **tasks.md updated:** Layer 5 section with all pre-work done + 5.1–5.8 pending.
+- **Vision docs created:** `docs/vision/expense-classifier-vision.md` (verbatim user scenario +
+  5-phase iterative plan), `docs/vision/expense-classifier-data-inventory.md` (all artifact files,
+  what to read for each phase).
+
+### Next
+- Begin Layer 5.1: port `feature_dictionary_enhanced.json` + `training_data_complete.json`
+  into expense-reporter `data/` directory (read files first, understand format).
+- Then 5.2: `classify` command in Go (Ollama HTTP client, structured output, feature dict context).
+- Use local models for boilerplate during this work — logging is now active.
 
 ---
 

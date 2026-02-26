@@ -41,6 +41,8 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Model inventory & VRAM budgets | `docs/model-strategy.md` | Which models for which roles, quantization choices |
 | Closing-the-gap techniques | `docs/closing-the-gap.md` | 14 techniques to narrow local vs frontier quality gap |
 | Routing patterns (A/B/C) | `docs/vision-and-intent.md` | Local-first, frontier-delegates, chat-routes-both |
+| Expense classifier vision | `docs/vision/expense-classifier-vision.md` | End-to-end Telegram→classify→Excel goal, iterative phases, domain boundaries |
+| Expense classifier data inventory | `docs/vision/expense-classifier-data-inventory.md` | What exists: auto-category analysis artifacts, expense-reporter architecture, what to read |
 
 ---
 
@@ -185,6 +187,12 @@ Other infrastructure:
 | `benchmarks/lib/extract-html.py` | Extract HTML from LLM markdown output |
 | `benchmarks/lib/extract-code.py` | Extract code blocks from LLM output |
 | `benchmarks/lib/generate-report.py` | Generate comparison reports from results |
+
+**Data files (runtime artifacts, not scripts):**
+
+| Path | Content |
+|------|---------|
+| `~/.local/share/ollama-bridge/calls.jsonl` | All Ollama calls logged by MCP bridge. Fields: ts, model, prompt_hash, prompt, system, response, eval_count, eval_duration_ms, total_duration_ms, temperature, think, had_format. Training data for Layer 7 distillation. |
 <!-- /ref:bash-wrappers -->
 
 ---

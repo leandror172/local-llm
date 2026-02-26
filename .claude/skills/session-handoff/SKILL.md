@@ -1,7 +1,7 @@
 ---
 name: session-handoff
 description: End-of-session workflow that updates all tracking files for continuity across Claude Code sessions. Use when wrapping up a session or when the user says they're done for now.
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: "[optional summary of session focus]"
 ---
 

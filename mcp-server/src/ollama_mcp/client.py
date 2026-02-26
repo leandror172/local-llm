@@ -10,11 +10,22 @@ Key design choices:
 - Returns a structured dict, not raw JSON, so callers get consistent fields
 """
 
+import datetime
+import hashlib
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 
-from ollama_mcp.config import DEFAULT_MODEL, DEFAULT_THINK, DEFAULT_TIMEOUT, OLLAMA_BASE_URL
+from ollama_mcp.config import (
+    CALL_LOG_PATH,
+    DEFAULT_MODEL,
+    DEFAULT_THINK,
+    DEFAULT_TIMEOUT,
+    LOG_FULL_CONTENT,
+    OLLAMA_BASE_URL,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -155,13 +166,72 @@ class OllamaClient:
 
         # Parse the response JSON into our structured dataclass.
         data = response.json()
-        return ChatResponse(
+        result = ChatResponse(
             content=data["message"]["content"],
             model=data.get("model", model),
             eval_count=data.get("eval_count", 0),
             eval_duration_ms=data.get("eval_duration", 0) / 1_000_000,
             total_duration_ms=data.get("total_duration", 0) / 1_000_000,
         )
+
+        # Log the call for distillation / training data collection.
+        self._log_call(prompt, system, model, temperature, think, format is not None, result)
+
+        return result
+
+    def _log_call(
+        self,
+        prompt: str,
+        system: str | None,
+        model: str,
+        temperature: float | None,
+        think: bool,
+        had_format: bool,
+        response: "ChatResponse",
+    ) -> None:
+        """Append a JSONL record for this call to CALL_LOG_PATH.
+
+        Runs synchronously — file I/O is fast (~1ms) vs the Ollama call (~1s),
+        so the overhead is negligible. Failures are silently swallowed so a
+        log error never breaks the actual tool call.
+
+        The log is the raw material for future distillation / fine-tuning:
+        - prompt_hash allows deduplication without storing sensitive text
+        - Full prompt/response stored by default (LOG_FULL_CONTENT=true)
+        - Set OLLAMA_LOG_FULL_CONTENT=false to store 200-char previews only
+        - Set OLLAMA_CALL_LOG="" to disable logging entirely
+        """
+        if not CALL_LOG_PATH:
+            return
+        try:
+            log_path = Path(CALL_LOG_PATH)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()[:12]
+
+            entry = {
+                "ts": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
+                "model": response.model,
+                "prompt_hash": prompt_hash,
+                "prompt": prompt if LOG_FULL_CONTENT else prompt[:200],
+                "system": (
+                    system if LOG_FULL_CONTENT else (system[:100] if system else None)
+                ),
+                "response": (
+                    response.content if LOG_FULL_CONTENT else response.content[:200]
+                ),
+                "eval_count": response.eval_count,
+                "eval_duration_ms": round(response.eval_duration_ms),
+                "total_duration_ms": round(response.total_duration_ms),
+                "temperature": temperature,
+                "think": think,
+                "had_format": had_format,
+            }
+
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception:
+            pass  # Never let logging break a tool call
 
     async def list_models(self) -> list[dict]:
         """Fetch the list of models available in Ollama.
