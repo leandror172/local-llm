@@ -52,9 +52,9 @@
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
-- **Last checkpoint:** Session 31 (2026-02-25) — Python validator, Java validator, sh-01/sh-02 decomposition, timeout bump, PR #8 merged
-- **Branch:** `master` (clean)
-- **Next:** All Layer 4 deferred items done. Read `.claude/plan-v2.md` to scope Layer 5.
+- **Last checkpoint:** Session 33 (2026-02-26) — Layer 5 deep design complete: read expense-reporter source + auto-category analysis, domain boundaries finalized, vision docs created, expense hash ID + status lifecycle designed
+- **Branch:** `master` (session-log.md modified, uncommitted)
+- **Next:** Layer 5 implementation — start with task 5.1 (port training data) then task 5.2 (`classify` command in expense-reporter)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
 
