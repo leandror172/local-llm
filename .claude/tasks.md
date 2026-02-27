@@ -194,9 +194,13 @@ Items identified but not yet prioritized — evaluate when relevant layer work b
 **Data inventory:** `docs/vision/expense-classifier-data-inventory.md`
 **External data:** `I:\workspaces\expenses\` (auto-category analysis + expense-reporter source)
 
-### Pre-work — COMPLETE (session 32)
+### Pre-work — COMPLETE (sessions 32–34)
 - [x] **5.0a** ollama-bridge JSONL logging: `config.py` (CALL_LOG_PATH, LOG_FULL_CONTENT) + `client.py` (_log_call method). Logs to `~/.local/share/ollama-bridge/calls.jsonl`.
 - [x] **5.0b** CLAUDE.md: Layer 5+ local-model-first instruction (try local, evaluate, record ACCEPTED/IMPROVED/REJECTED verdict)
+- [x] **5.0c** Model audit + new pulls (session 34): qwen2.5-coder:14b, qwen3:8b-q8_0, qwen3:30b-a3b; personas my-go-q25c14 (ACCEPTED), my-go-q3-q8 (IMPROVED), my-go-q3-30b (REJECTED)
+- [x] **5.0d** Multi-model comparison tooling: `run-compare-models.sh` + `run-record-verdicts.sh`; first DPO pairs in `benchmarks/results/compare-runs.jsonl`
+- [ ] **5.0e (BLOCKING)** Fix `think: false` in `ollama_client.py` — move from `options{}` to top-level payload; verify qwen3:8b no longer spirals. **Do this before any Layer 5 code gen.**
+- [ ] **5.0f** Reduce `num_ctx` in `go-qwen25c14.Modelfile` from 16384 → 8192 (KV cache overflow fix)
 
 ### Layer 5 Tasks (next)
 - [ ] **5.1** Port training data into expense-reporter: copy `feature_dictionary_enhanced.json` + `training_data_complete.json` to `data/` in expense-reporter; document format

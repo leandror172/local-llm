@@ -52,15 +52,18 @@
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
-- **Last checkpoint:** Sessions 32+33 (2026-02-26, forked) — Layer 5 design + pre-work complete:
-  - Pre-work 5.0a: ollama-bridge JSONL call logging active (`~/.local/share/ollama-bridge/calls.jsonl`)
-  - Pre-work 5.0b: CLAUDE.md updated with local-model-first instruction for Layer 5+
-  - Layer 7 expanded: SFT/DPO/QLoRA pipeline (7.6–7.11) + prompt pre-processor (7.10) planned; DPO caveat documented (personal use vs ToS); see `plan-v2.md`
-  - Vision docs: `docs/vision/expense-classifier-vision.md`, `docs/vision/expense-classifier-data-inventory.md`
-  - Educational ref: `docs/findings/LoRA.md` — LoRA/RAG/distillation concepts from session Q&A
-  - (Session 33 handoff was done in a fork; Session 32 log has distillation details)
-- **Branch:** `master` (clean — commits 8666c0e, 532c862, f6d2d7c)
-- **Next:** Layer 5 implementation — task 5.1: port `feature_dictionary_enhanced.json` + `training_data_complete.json` into expense-reporter `data/`; then 5.2: `classify` command in Go
+- **Last checkpoint:** Session 34 (2026-02-26) — Model audit + comparison tooling complete:
+  - New base models: qwen2.5-coder:14b, qwen3:8b-q8_0, qwen3:30b-a3b (all pulled + personas created)
+  - New comparison personas: my-go-q25c14 (ACCEPTED), my-go-q3-q8 (IMPROVED), my-go-q3-30b (REJECTED - dropped field)
+  - Multi-model tooling: `run-compare-models.sh` + `run-record-verdicts.sh` in `benchmarks/lib/`
+  - `ollama_client.py` gained `keep_alive` param for VRAM eviction between comparison runs
+  - First DPO pairs collected: `benchmarks/results/compare-runs.jsonl` (3 runs, 4-model final with verdicts)
+  - **Preferred codegen model for Layer 5: my-go-q25c14 (qwen2.5-coder:14b)** — best output quality, ~32s acceptable
+- **Branch:** `master` (UNCOMMITTED CHANGES — see below)
+- **MUST FIX BEFORE LAYER 5:**
+  1. `think: false` via `options{}` not suppressing Qwen3 thinking — qwen3:8b timed out at 600s on trivial prompt. Fix: move `think` to top-level payload in `ollama_client.py`, verify token counts drop.
+  2. `num_ctx=16384` in `go-qwen25c14.Modelfile` causes KV cache overflow (15GB needed on 12GB card). Reduce to 8192.
+- **Next after fixes:** Layer 5 task 5.1 (port training data), 5.2 (`classify` command in Go)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
 
@@ -144,6 +147,13 @@ Or manually:
 - **`python3 -u` in wrapper:** When stdout is a pipe, Python uses full buffering. Subprocess output (raw fd) appears before Python's buffered `print()`. Fix: `-u` flag in wrapper makes stdout unbuffered.
 - **`./script.sh` not `bash script.sh`:** Claude Code can whitelist `./specific-script.sh` per-script. `bash script.sh` shows as a generic `bash` invocation — no per-script whitelist option. Convention: always use `./`.
 - **29 active personas:** `my-rust-async-q3` added during live e2e test (kept as valid persona).
+
+### Layer 5 Model Decisions (decided 2026-02-26, session 34)
+- **Preferred codegen model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~32s, ACCEPTED quality. Speed tradeoff acceptable ("free tokens" philosophy).
+- **qwen3:30b-a3b not recommended for focused tasks:** Dropped `id` field from constructor on first real test. Larger ≠ better for narrow coding prompts.
+- **qwen3:8b think:false broken:** Passing via `options{}` doesn't suppress thinking. Must fix before Layer 5 (risk of timeout spirals at any time).
+- **Multi-model comparison → DPO pairs:** Pattern established. Use `run-compare-models.sh` for each code gen task, collect verdicts with `run-record-verdicts.sh` in terminal. Results feed Layer 7 pipeline.
+- **Future candidates deferred:** qwen3.5:35b-a3b (released 2026-02-24, too new + 24GB tight on this system); qwen3-coder:30b (pull after qwen3:30b-a3b validated on more tasks).
 
 ### Historical decisions (Phases 0-6, Layer 0)
 Archived → `.claude/archive/phases-0-6.md` (setup decisions, gotchas, artifact tables)

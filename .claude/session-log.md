@@ -1,8 +1,60 @@
 # Session Log
 
-**Current Layer:** Layer 5 — Expense Classifier (design complete, ready to build)
-**Current Session:** 2026-02-26 — Session 33: Layer 5 deep design + vision documentation
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`
+**Current Layer:** Layer 5 — Expense Classifier (pre-work complete, ready to build)
+**Current Session:** 2026-02-26 — Session 34: Model audit, new model pulls, comparison tooling
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`
+
+---
+
+## 2026-02-26 - Session 34: Model Audit, New Pulls, Multi-Model Comparison Tooling
+
+### Context
+Pre-Layer 5 model audit. User had explored LM Studio (WSL version causes BSoD; Windows app is fine),
+discovered VRAM+RAM hybrid loading. Session focused on researching new models, pulling them, building
+multi-model comparison tooling, and establishing qwen2.5-coder:14b as preferred codegen model for Layer 5.
+
+### What Was Done
+- **Model audit:** Researched 2026 model landscape. Found Qwen3.5 (released 2026-02-17/24), Qwen3-Coder:30b,
+  Qwen3:30b-a3b. Updated CLAUDE.md and index.md model selection tables with current + future candidates.
+- **Pulled 3 new base models:**
+  - `qwen2.5-coder:14b` (9.0GB Q4_K_M) — fits in VRAM, code-specialized
+  - `qwen3:8b-q8_0` (8.9GB Q8) — same model, higher quantization fidelity
+  - `qwen3:30b-a3b` (19GB Q4_K_M MoE) — 30B total / 3B activated, hybrid VRAM+RAM
+- **Re-pulled `qwen3:8b`** — already current (manifest-only download)
+- **Created 3 Modelfiles + personas:**
+  - `my-go-q25c14` (`go-qwen25c14.Modelfile` → `qwen2.5-coder:14b`) — comparison partner
+  - `my-go-q3-q8` (`go-qwen3-q8.Modelfile` → `qwen3:8b-q8_0`) — quantization comparison
+  - `my-go-q3-30b` (`go-qwen3-30b.Modelfile` → `qwen3:30b-a3b`, num_ctx=8192) — quality ceiling
+- **Updated registry files:**
+  - `personas/registry.yaml` — new "comparison personas" section + future model notes (qwen3.5:35b-a3b, qwen3-coder:30b) as YAML comments
+  - `personas/models.py` — added code-14b, code-30b, code-q8 entries; new MODEL_TAG_TO_SUFFIX/Q_SUFFIX entries
+- **Built multi-model comparison tooling:**
+  - `benchmarks/lib/compare-models.py` + `run-compare-models.sh` — same prompt → N models → side-by-side output → verdict → JSONL
+  - `benchmarks/lib/record-verdicts.py` + `run-record-verdicts.sh` — post-hoc verdict collection for non-interactive runs; `--list`/`--entry N` flags
+  - `personas/lib/ollama_client.py` — added `keep_alive` param (set to `"0"` in comparison calls to evict models between runs)
+- **Ran 3 comparison tests** (cold, warm, 4-model with eviction); results in `benchmarks/results/compare-runs.jsonl`
+- **Recorded verdicts for 4-model run:**
+  - `my-go-q3` → REJECTED (timed out at 600s — Qwen3 thinking spiral)
+  - `my-go-q3-q8` → IMPROVED (correct, but missing json tags/field comments)
+  - `my-go-q25c14` → ACCEPTED (best: json tags, file header, idiomatic `errors.New`, field comments)
+  - `my-go-q3-30b` → REJECTED (dropped `id` field from constructor — silent logic error)
+
+### Decisions Made
+- **`my-go-q25c14` (qwen2.5-coder:14b) is preferred for Go codegen in Layer 5** — best output quality; ~32s is acceptable given zero token cost
+- **Speed philosophy confirmed:** "Some speed loss acceptable for correctness and free local tokens" — user's explicit view
+- **qwen3:30b-a3b underperforms on focused tasks** — larger model doesn't mean better; 14B code-specialized beats 30B general on constructor generation
+- **Future model watch list in registry.yaml:** qwen3.5:35b-a3b (too new + tight memory), qwen3-coder:30b (same size as 30b-a3b, pull after 30b-a3b validated)
+- **Model duplication noted:** Models listed in CLAUDE.md, index.md, registry.yaml, models.py — user flagged for future consolidation
+
+### Open / Unresolved (must fix before Layer 5)
+- **`think: false` via `options{}` not working** — qwen3:8b timed out at 600s on trivial prompt (thinking spiral). Token counts 1960-1995 for 25-line output confirm massive hidden thinking. May need `think` at top level of payload, not inside `options`. **Fix this first next session.**
+- **`num_ctx=16384` in `go-qwen25c14.Modelfile` causes KV cache overflow** — 14B at 16K ctx needs ~15GB (9GB weights + 6GB KV cache), overflows 12GB VRAM. Reduce to 8192 (cuts KV cache to ~3GB → better speed consistency).
+
+### Next
+- Fix `think: false` placement in `ollama_client.py` (top-level vs `options{}`) — test both, verify token counts drop
+- Reduce `num_ctx` in `go-qwen25c14.Modelfile` from 16384 → 8192
+- **Then start Layer 5:** task 5.1 (port training data), 5.2 (`classify` command in Go)
+- For Layer 5 classification model: benchmark `my-go-q25c14` (qwen2.5-coder:14b) vs `my-classifier-q3` (qwen3:8b) on expense inputs
 
 ---
 
@@ -113,51 +165,6 @@ Resumed from session 30. javac confirmed installed by user at session start — 
 
 ### Next
 - **All Layer 4 deferred items complete.** Next: read `.claude/plan-v2.md` to identify Layer 5 scope and discuss first tasks.
-
----
-
-## 2026-02-25 - Session 30: Doc Infrastructure + Context Comparison Experiment
-
-### Context
-Resumed from session 29 handoff. PRs #6 and #7 already merged to master. Session began with meta-work: auditing whether ref-lookup was being used, diagnosing session-log bloat, then building the infrastructure to fix both.
-
-### What Was Done
-
-**Ref lookup + session tooling (commit cf57a6e)**
-- Extended `ref-lookup.sh` to scan all `*.md` project-wide (was `.claude/` only) + added `--list` flag (exits 0, MCP-friendly)
-- Built `.claude/tools/resume.sh` — ~40-line session-start summary replacing reading 3+ files
-- Built `.claude/tools/rotate-session-log.sh` — archives old entries, keeps last 3; ran immediately (1062 → 170 lines, 16 sessions archived to `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`)
-- Built `.claude/tools/benchmark-status.sh` — rubrics/prompts/personas/results overview before benchmark sessions
-- Added 5 new ref blocks (9 → 15 keys): `current-status`, `resume-steps`, `user-prefs`, `active-decisions` in session-context.md; `layer4-status`, `layer3-inventory`, `deferred-infra` in tasks.md; `indexing-convention` in index.md
-- Added Documentation Rules to CLAUDE.md (hard requirements: new scripts → ref:bash-wrappers, new runtime docs → ref blocks, new files → index.md)
-- Updated session-handoff skill: rotation step added before log entry
-- Updated CLAUDE.md resume instruction to point to `resume.sh`
-
-**MCP ref_lookup tool (commit cf57a6e)**
-- Added `ref_lookup(key)` as 10th MCP tool in `server.py` — calls ref-lookup.sh via subprocess_exec (safe, same pattern as detect_persona). Enables Claude Desktop / non-CLI instances to query project knowledge by key.
-
-**Context comparison experiment**
-- Ran 3-way comparison (8B Ollama, 14B architect Ollama, Claude Sonnet subagents) with resume-only vs full-file context to measure information loss
-- Key findings: (1) environment ground truth (`javac` not installed) beats all documentation; (2) full-file context better at mapping codebase changes (extend validate-code.py, not new file; reuse `compiles` branch); (3) resume-only loses codebase structure but recovers it by reading code; (4) jakarta.* gotcha in active-decisions but missed by both contexts — too buried
-- Added `[ref:java-validator-design]` to tasks.md pre-implementation note with classpath decision, scaffolding strategy, 4-file change list, fixture convention
-
-**Deferred items saved**
-- Hook-based auto-resume and ref-integrity checker added to `[ref:deferred-infra]` in tasks.md
-
-### Decisions Made
-- **Session-log rotation:** rotate-session-log.sh called by session-handoff skill; keeps 3 most recent, archives rest
-- **ref-lookup scope:** all `*.md` project-wide — ref blocks may live anywhere in the project, not just `.claude/`
-- **Two-tier indexing confirmed:** `ref:KEY` for runtime lookups, `§ "Heading"` for navigation — documented in `[ref:indexing-convention]`
-- **Documentation Rules (hard requirements):** new scripts → ref:bash-wrappers; new runtime docs → ref block; new files → index.md. Applies every session.
-- **Java validator: Python first.** `py_compile` is unblocked (stdlib). Java needs `javac` installed + classpath design decision before coding.
-- **Classpath strategy (decided):** scope Phase 1 to JDK-only syntax; classify Spring import failures as `missing_dependency` warnings, not errors.
-
-### Next
-- **Ask user to install javac:** `sudo apt-get install default-jdk-headless` (cannot run via Claude Code)
-- **Python Phase 1 validator first** (unblocked): `validate_python()` in validate-code.py, `syntax_valid` criterion in code-python.yaml, case in evaluate.py, 5 fixtures in benchmarks/test-fixtures/python/
-- **Java Phase 1 validator** (after javac confirmed): see `ref-lookup.sh java-validator-design` for full pre-implementation checklist
-- **Default timeout bump:** 300s → 600s in `run-benchmark.sh`
-- **sh-01/sh-02 decomposition** for 8B benchmarking
 
 ---
 
