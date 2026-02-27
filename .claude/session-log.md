@@ -1,8 +1,50 @@
 # Session Log
 
-**Current Layer:** Layer 5 — Expense Classifier (pre-work complete, ready to build)
-**Current Session:** 2026-02-26 — Session 34: Model audit, new model pulls, comparison tooling
+**Current Layer:** Layer 5 — Expense Classifier (blockers resolved, ready for 5.1)
+**Current Session:** 2026-02-27 — Session 35: Fix blockers + Java workspace setup
 **Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`
+
+---
+
+## 2026-02-27 - Session 35: Fix Layer 5 Blockers + Java Workspace Setup
+
+### Context
+Resumed from session 34. Two blocking issues identified before Layer 5 could begin:
+`think: false` not suppressing Qwen3 thinking (options{} placement), and `num_ctx=16384`
+causing KV cache overflow on 12GB card. Also prepared a separate Spring Boot exercise workspace.
+
+### What Was Done
+- **Fixed `think: false` placement (5.0e):** Moved from `options{}` to top-level payload in both
+  `personas/lib/ollama_client.py` and `mcp-server/src/ollama_mcp/client.py`. Verified with
+  before/after tests: 701→124 tokens (82% reduction), 16.7s→2.6s (6.4x speedup), chars/token
+  ratio normalized from 1.51→3.65 (matches Qwen2.5 baseline ~3.5). Root cause confirmed via
+  Ollama docs: `think` is a top-level API parameter, silently ignored inside `options{}`.
+- **Reduced `num_ctx` to 10240 (5.0f):** Changed `go-qwen25c14.Modelfile` from 16384→10240.
+  User chose 10240 over 8192 for more context headroom. Confirmed: `num_ctx` does NOT require
+  powers of 2 (arbitrary integers accepted). Rebuilt persona, tested successfully (no OOM).
+- **Created `my-java-q25c14` persona:** New `modelfiles/java-qwen25c14.Modelfile` (qwen2.5-coder:14b,
+  num_ctx=10240, Java 21 + Spring Boot 3.x constraints). Registered in `registry.yaml` and `index.md`.
+  Smoke-tested: clean Spring Boot controller with jakarta.*, constructor injection, records.
+- **Set up todaytix-test workspace:** `/home/leandror/workspaces/todaytix-test/` with git init,
+  `.mcp.json` (ollama-bridge), and `CLAUDE.md` (local LLM usage instructions, Spring Boot conventions,
+  mandatory review checklist for local model output).
+- **Strengthened local model review instruction:** CLAUDE.md includes HARD REQUIREMENT for Claude
+  to review model output (compile check, conventions check, correctness check) and state explicit
+  ACCEPTED/IMPROVED/REJECTED verdict before writing to files.
+
+### Decisions Made
+- **`num_ctx` can be any integer** — not restricted to powers of 2. Chose 10240 (10K) as balance
+  between context capacity and VRAM pressure on 12GB card.
+- **Java persona on 14B only** — user chose `my-java-q25c14` (qwen2.5-coder:14b) over `my-java-q3`
+  (qwen3:8b) for the exercise. Quality over speed for a learning exercise.
+- **Local model output review is a HARD REQUIREMENT** — strengthened from passive "evaluate explicitly"
+  to mandatory checklist + verdict before writing files. Better instruction-following behavior.
+- **MCP bridge had same `think` bug** — fixed in both `personas/lib/ollama_client.py` (scripts) and
+  `mcp-server/src/ollama_mcp/client.py` (MCP server). All Ollama callers now correct.
+
+### Next
+- **Layer 5.1:** Port training data into expense-reporter (all blockers now resolved)
+- **todaytix-test:** User will open Claude Code in that folder for Spring Boot exercise (independent work)
 
 ---
 
@@ -141,30 +183,6 @@ itself — session was architecture + pre-work.
   into expense-reporter `data/` directory (read files first, understand format).
 - Then 5.2: `classify` command in Go (Ollama HTTP client, structured output, feature dict context).
 - Use local models for boilerplate during this work — logging is now active.
-
----
-
-## 2026-02-25 - Session 31: Phase 1 Validators + Prompt Decomposition
-
-### Context
-Resumed from session 30. javac confirmed installed by user at session start — unblocked Java validator work.
-
-### What Was Done
-- **Python Phase 1 syntax validator:** `validate_python()` using built-in `compile()` (in-process, ~3ms/file, no subprocess, no temp files). `syntax_valid` criterion added to `code-python.yaml` (phase 1, weight 3.0). New scoring branch in `evaluate.py`. 5 test fixtures: `valid-complete.py`, `valid-snippet.py`, `invalid-syntax.py`, `invalid-indent.py`, `invalid-unclosed.py`. All pass/fail as expected.
-- **Java Phase 1 compile validator:** `validate_java()` using `javac` subprocess with scaffolding (class-name→filename matching, bare-snippet wrapper). Two-pass `missing_dependency` classifier: Spring/Jakarta import failures → warnings (score 3), not errors (score 1). `compiles` criterion reused in `code-java.yaml` — no `evaluate.py` change needed. 5 test fixtures: `valid-standalone.java` (clean, score 5), `valid-spring-snippet.java` (missing-dep warnings, score 3), plus 3 invalid (syntax/type/undefined, score 1). Confirmed with javac 25.0.2.
-- **sh-01/sh-02 decomposition:** Both prompts exceeded 8B ~400-token output budget at any timeout. Split into 4 focused sub-tasks: `01a-log-stats.md` (stats 1–5), `01b-log-histogram.md` (histogram only), `02a-backup-create.md` (mktemp+trap), `02b-backup-rotate.md` (keep-N rotation). Each targets ~150–250 tokens. Findings doc follow-up items marked complete.
-- **Default timeout bump:** `benchmark.py` `DEFAULT_TIMEOUT` 300s → 600s (empirically required from session 29 data).
-- **4 commits on `feature/phase1-code-validators`**, PR #8 opened and merged to master.
-- **`.claude/index.md`** updated: validate-code.py description now lists all 4 languages.
-
-### Decisions Made
-- **Python uses `compile()` not `py_compile`:** Built-in compile() is cleaner — no .pyc side effects, catches all SyntaxError subclasses, in-process speed.
-- **Java `missing_dependency` = warning not error:** Scopes Phase 1 to JDK syntax only; correct Spring Boot code scores 3 (not 1) when deps are absent from classpath.
-- **`compiles` criterion reused for Java:** No evaluate.py change needed — the existing branch already handles the 5/3/1 scoring via error/warning counts.
-- **Decomposed prompts keep `decomposed_from:` frontmatter field** linking back to original — preserves traceability without renaming the originals.
-
-### Next
-- **All Layer 4 deferred items complete.** Next: read `.claude/plan-v2.md` to identify Layer 5 scope and discuss first tasks.
 
 ---
 

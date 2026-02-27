@@ -52,18 +52,14 @@
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
-- **Last checkpoint:** Session 34 (2026-02-26) — Model audit + comparison tooling complete:
-  - New base models: qwen2.5-coder:14b, qwen3:8b-q8_0, qwen3:30b-a3b (all pulled + personas created)
-  - New comparison personas: my-go-q25c14 (ACCEPTED), my-go-q3-q8 (IMPROVED), my-go-q3-30b (REJECTED - dropped field)
-  - Multi-model tooling: `run-compare-models.sh` + `run-record-verdicts.sh` in `benchmarks/lib/`
-  - `ollama_client.py` gained `keep_alive` param for VRAM eviction between comparison runs
-  - First DPO pairs collected: `benchmarks/results/compare-runs.jsonl` (3 runs, 4-model final with verdicts)
-  - **Preferred codegen model for Layer 5: my-go-q25c14 (qwen2.5-coder:14b)** — best output quality, ~32s acceptable
-- **Branch:** `master` (UNCOMMITTED CHANGES — see below)
-- **MUST FIX BEFORE LAYER 5:**
-  1. `think: false` via `options{}` not suppressing Qwen3 thinking — qwen3:8b timed out at 600s on trivial prompt. Fix: move `think` to top-level payload in `ollama_client.py`, verify token counts drop.
-  2. `num_ctx=16384` in `go-qwen25c14.Modelfile` causes KV cache overflow (15GB needed on 12GB card). Reduce to 8192.
-- **Next after fixes:** Layer 5 task 5.1 (port training data), 5.2 (`classify` command in Go)
+- **Last checkpoint:** Session 35 (2026-02-27) — All Layer 5 blockers resolved:
+  - Fixed `think: false` placement: top-level payload (not options{}). 82% token reduction, 6.4x speedup.
+  - Fixed `num_ctx` overflow: 16384→10240 in `go-qwen25c14.Modelfile`. No OOM, good performance.
+  - Both `personas/lib/ollama_client.py` and `mcp-server/src/ollama_mcp/client.py` fixed.
+  - New persona: `my-java-q25c14` (qwen2.5-coder:14b, Java 21 + Spring Boot 3.x, num_ctx=10240)
+  - External workspace: `/home/leandror/workspaces/todaytix-test/` (Spring Boot exercise, CLAUDE.md + .mcp.json)
+- **Branch:** `master` (uncommitted: new Modelfile, registry + index updates)
+- **Next:** Layer 5 task 5.1 (port training data), 5.2 (`classify` command in Go)
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
 
@@ -148,11 +144,13 @@ Or manually:
 - **`./script.sh` not `bash script.sh`:** Claude Code can whitelist `./specific-script.sh` per-script. `bash script.sh` shows as a generic `bash` invocation — no per-script whitelist option. Convention: always use `./`.
 - **29 active personas:** `my-rust-async-q3` added during live e2e test (kept as valid persona).
 
-### Layer 5 Model Decisions (decided 2026-02-26, session 34)
-- **Preferred codegen model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~32s, ACCEPTED quality. Speed tradeoff acceptable ("free tokens" philosophy).
+### Layer 5 Model Decisions (decided 2026-02-26/27, sessions 34-35)
+- **Preferred codegen model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~25-32s, ACCEPTED quality. Speed tradeoff acceptable ("free tokens" philosophy).
 - **qwen3:30b-a3b not recommended for focused tasks:** Dropped `id` field from constructor on first real test. Larger ≠ better for narrow coding prompts.
-- **qwen3:8b think:false broken:** Passing via `options{}` doesn't suppress thinking. Must fix before Layer 5 (risk of timeout spirals at any time).
+- **qwen3:8b think:false FIXED (session 35):** Was broken because `think` was inside `options{}` — Ollama silently ignores it there. Fix: top-level payload parameter. Verified: 701→124 tokens, 16.7s→2.6s, chars/token 1.51→3.65.
+- **num_ctx doesn't require powers of 2:** Chose 10240 for 14B models (balances context vs VRAM). KV cache formula: `2 × layers × kv_heads × head_dim × ctx × 2bytes`.
 - **Multi-model comparison → DPO pairs:** Pattern established. Use `run-compare-models.sh` for each code gen task, collect verdicts with `run-record-verdicts.sh` in terminal. Results feed Layer 7 pipeline.
+- **Java persona on 14B:** `my-java-q25c14` created for Spring Boot exercise. Same constraints as `my-java-q3`, different base model.
 - **Future candidates deferred:** qwen3.5:35b-a3b (released 2026-02-24, too new + 24GB tight on this system); qwen3-coder:30b (pull after qwen3:30b-a3b validated on more tasks).
 
 ### Historical decisions (Phases 0-6, Layer 0)

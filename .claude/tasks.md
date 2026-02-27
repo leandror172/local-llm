@@ -1,6 +1,6 @@
 # Task Progress
 
-**Last Updated:** 2026-02-26 (session 32)
+**Last Updated:** 2026-02-27 (session 35)
 **Active Layer:** Layer 5 — Expense Classifier
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
 
@@ -199,8 +199,10 @@ Items identified but not yet prioritized — evaluate when relevant layer work b
 - [x] **5.0b** CLAUDE.md: Layer 5+ local-model-first instruction (try local, evaluate, record ACCEPTED/IMPROVED/REJECTED verdict)
 - [x] **5.0c** Model audit + new pulls (session 34): qwen2.5-coder:14b, qwen3:8b-q8_0, qwen3:30b-a3b; personas my-go-q25c14 (ACCEPTED), my-go-q3-q8 (IMPROVED), my-go-q3-30b (REJECTED)
 - [x] **5.0d** Multi-model comparison tooling: `run-compare-models.sh` + `run-record-verdicts.sh`; first DPO pairs in `benchmarks/results/compare-runs.jsonl`
-- [ ] **5.0e (BLOCKING)** Fix `think: false` in `ollama_client.py` — move from `options{}` to top-level payload; verify qwen3:8b no longer spirals. **Do this before any Layer 5 code gen.**
-- [ ] **5.0f** Reduce `num_ctx` in `go-qwen25c14.Modelfile` from 16384 → 8192 (KV cache overflow fix)
+- [x] **5.0e** Fix `think: false` in `ollama_client.py` — moved from `options{}` to top-level payload in both `personas/lib/ollama_client.py` and `mcp-server/src/ollama_mcp/client.py`. Verified: 82% token reduction, 6.4x speedup. (session 35)
+- [x] **5.0f** Reduce `num_ctx` in `go-qwen25c14.Modelfile` from 16384 → 10240 (user chose 10240 over 8192). Rebuilt persona, no OOM. (session 35)
+- [x] **5.0g** Create `my-java-q25c14` persona (qwen2.5-coder:14b, Java 21 + Spring Boot 3.x, num_ctx=10240). Registered + smoke-tested. (session 35)
+- [x] **5.0h** Set up todaytix-test workspace (`/home/leandror/workspaces/todaytix-test/`) with CLAUDE.md + .mcp.json for Spring Boot exercise. (session 35)
 
 ### Layer 5 Tasks (next)
 - [ ] **5.1** Port training data into expense-reporter: copy `feature_dictionary_enhanced.json` + `training_data_complete.json` to `data/` in expense-reporter; document format

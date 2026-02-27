@@ -254,6 +254,7 @@ Other infrastructure:
 | Persona | Modelfile | Base Model | Role |
 |---------|-----------|------------|------|
 | my-go-q25c14 | `modelfiles/go-qwen25c14.Modelfile` | Qwen2.5-Coder-14B | Go comparison partner — code-specialized 14B, full VRAM |
+| my-java-q25c14 | `modelfiles/java-qwen25c14.Modelfile` | Qwen2.5-Coder-14B | Java 21 + Spring Boot 3.x — code-specialized 14B, full VRAM |
 | my-go-q3-q8 | `modelfiles/go-qwen3-q8.Modelfile` | Qwen3-8B-Q8 | Go Q4 vs Q8 quantization comparison |
 | my-go-q3-30b | `modelfiles/go-qwen3-30b.Modelfile` | Qwen3-30B-A3B | Go quality ceiling — hybrid VRAM+RAM, ~10-20 tok/s |
 <!-- /ref:personas -->
