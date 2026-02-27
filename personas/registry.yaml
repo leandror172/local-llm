@@ -351,3 +351,61 @@ my-rust-async-q3:
   num_ctx: 16384
   tier: full
   status: active
+
+# ──────────────────────────────────────────────
+# Layer 5+ comparison personas (multi-model DPO data collection)
+# These run the same system prompts as their qwen3:8b counterparts but on
+# larger/different base models. Used in benchmarks/lib/run-compare-models.sh
+# to generate chosen/rejected pairs for Layer 7 fine-tuning.
+# ──────────────────────────────────────────────
+
+my-go-q25c14:
+  modelfile: modelfiles/go-qwen25c14.Modelfile
+  base_model: qwen2.5-coder:14b
+  role: Go 1.22+ backend developer (code-specialized 14B, fits in VRAM)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+  note: Comparison pair for my-go-q3. Code-specialized previous-gen 14B, no hybrid loading.
+
+my-go-q3-q8:
+  modelfile: modelfiles/go-qwen3-q8.Modelfile
+  base_model: qwen3:8b-q8_0
+  role: Go 1.22+ backend developer (Q8 quantization quality test)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+  note: Quantization comparison vs my-go-q3 (Q4_K_M). Same model family, higher fidelity.
+
+my-go-q3-30b:
+  modelfile: modelfiles/go-qwen3-30b.Modelfile
+  base_model: qwen3:30b-a3b
+  role: Go 1.22+ backend developer (quality ceiling — 30B MoE, hybrid VRAM+RAM)
+  temperature: 0.3
+  num_ctx: 8192
+  tier: full
+  status: active
+  note: |
+    Quality ceiling reference. 19GB MoE on 12GB VRAM+RAM hybrid. Expect ~10-20 tok/s.
+    Known Ollama issue: MoE models may show low GPU utilization (github.com/ollama/ollama/issues/10458).
+    Used to establish upper-quality bound for DPO pair selection.
+
+# ──────────────────────────────────────────────
+# Future model candidates (not yet pulled — watch and wait)
+# ──────────────────────────────────────────────
+
+# qwen3.5:35b-a3b (24GB Q4_K_M, MoE — released 2026-02-24, 2 days old as of last audit)
+#   - New architecture: Gated Delta Networks + sparse MoE
+#   - Reportedly outperforms Qwen3-235B on many benchmarks
+#   - Memory: 12GB VRAM + ~12GB RAM — very tight on this system (16GB total RAM)
+#   - TODO: Revisit in 2-4 weeks once Ollama integration stabilizes and community
+#     benchmarks appear. Check: ollama.com/library/qwen3.5
+#
+# qwen3-coder:30b (19GB Q4_K_M, MoE — code-specialized, 70% code pretraining, 256K ctx)
+#   - Same size as qwen3:30b-a3b so same hybrid loading constraints apply
+#   - May be better than qwen3:30b-a3b for code generation specifically
+#   - TODO: Pull and benchmark after qwen3:30b-a3b is validated in production
+#     (compare side-by-side on the Go comparison test prompts)
+#   - ollama pull qwen3-coder:30b

@@ -52,14 +52,21 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 ### Model Selection Rules
 Detailed benchmarks and selection rules → `.claude/archive/layer-0-findings.md`
 
-| Scenario | Model |
-|----------|-------|
-| Quick code gen, boilerplate | 8B think:false |
-| Medium algorithms | 8B think:false |
-| Complex architecture | 14B think:false |
-| Multi-file / long context | 8B (14B can't fit ~4K ctx) |
-| Retry after 8B failure | 14B think:true |
-| Classification / routing | 8B or 4B |
+| Scenario | Model | Notes |
+|----------|-------|-------|
+| Quick code gen, boilerplate | 8B think:false | my-go-q3, my-python-q3 etc. |
+| Medium algorithms | 8B think:false | |
+| Complex architecture | 14B think:false | my-architect-q3 (qwen3:14b) |
+| Multi-file / long context | 8B (14B can't fit ~4K ctx) | |
+| Retry after 8B failure | 14B think:true | |
+| Classification / routing | 8B or 4B | my-classifier-q3 |
+| Code gen (DPO comparison A) | qwen2.5-coder:14b | my-go-q25c14 — code-specialized, full VRAM |
+| Code gen (DPO comparison B) | qwen3:8b-q8_0 | my-go-q3-q8 — same model, higher quant |
+| Code gen (quality ceiling) | qwen3:30b-a3b | my-go-q3-30b — hybrid, ~10-20 tok/s |
+
+**Future candidates (not yet pulled):**
+- `qwen3.5:35b-a3b` (24GB) — released 2026-02-24, architecture update. Revisit in ~4 weeks.
+- `qwen3-coder:30b` (19GB) — code-specialized MoE. Pull after qwen3:30b-a3b is validated.
 <!-- /ref:model-selection -->
 
 <!-- ref:thinking-mode -->
@@ -176,6 +183,8 @@ Other infrastructure:
 | `benchmarks/lib/run-validate-code.sh` | `validate-code.py` | Code compilation/syntax gate: Go (build+vet), Shell (shellcheck), Python (compile()), Java (javac) |
 | `benchmarks/lib/run-structured-tests.sh` | `ollama-probe.py` | JSON schema compliance testing |
 | `benchmarks/lib/run-fewshot-test.sh` | `ollama-probe.py` | A/B test: baseline vs few-shot on same prompt |
+| `benchmarks/lib/run-compare-models.sh` | `compare-models.py` | Multi-model comparison: same prompt → N models → verdict → DPO pairs |
+| `benchmarks/lib/run-record-verdicts.sh` | `record-verdicts.py` | Record verdicts after the fact (when compare ran non-interactively); supports `--list`, `--entry N` |
 
 ### Benchmark Python/JS Libraries (never call directly)
 | Library | Purpose |
@@ -240,6 +249,13 @@ Other infrastructure:
 |---------|-----------|------------|-----------|
 | my-aider | `modelfiles/aider-qwen25.Modelfile` | Qwen2.5-Coder-7B | Aider |
 | my-opencode | `modelfiles/opencode-qwen3.Modelfile` | Qwen3-8B | OpenCode |
+
+### Layer 5+ Comparison Personas (DPO data collection)
+| Persona | Modelfile | Base Model | Role |
+|---------|-----------|------------|------|
+| my-go-q25c14 | `modelfiles/go-qwen25c14.Modelfile` | Qwen2.5-Coder-14B | Go comparison partner — code-specialized 14B, full VRAM |
+| my-go-q3-q8 | `modelfiles/go-qwen3-q8.Modelfile` | Qwen3-8B-Q8 | Go Q4 vs Q8 quantization comparison |
+| my-go-q3-30b | `modelfiles/go-qwen3-30b.Modelfile` | Qwen3-30B-A3B | Go quality ceiling — hybrid VRAM+RAM, ~10-20 tok/s |
 <!-- /ref:personas -->
 
 ---

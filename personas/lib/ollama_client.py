@@ -27,6 +27,7 @@ def ollama_chat(
     think: bool = False,
     format_schema: dict | None = None,
     timeout: int = DEFAULT_TIMEOUT,
+    keep_alive: str | None = None,
 ) -> dict:
     """
     Send a chat request to Ollama and return the response.
@@ -39,6 +40,9 @@ def ollama_chat(
         think: Enable Qwen3 thinking mode.
         format_schema: JSON schema dict for structured output.
         timeout: Max seconds to wait.
+        keep_alive: How long to keep the model in VRAM after response.
+                    "0" evicts immediately (use in multi-model comparisons to
+                    avoid VRAM contention). None = Ollama default (5 minutes).
 
     Returns:
         Dict with keys: content (str), model (str), eval_count (int),
@@ -64,6 +68,8 @@ def ollama_chat(
         payload["options"]["temperature"] = temperature
     if format_schema is not None:
         payload["format"] = format_schema
+    if keep_alive is not None:
+        payload["keep_alive"] = keep_alive
 
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(

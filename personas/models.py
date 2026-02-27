@@ -21,6 +21,9 @@ Used by:
 
 MODEL_MATRIX = {
     "code":           ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
+    "code-14b":       ("Qwen2.5-Coder-14B",     "qwen2.5-coder:14b",            16384, "quality"),
+    "code-30b":       ("Qwen3-30B-A3B",         "qwen3:30b-a3b",                 8192, "quality"),
+    "code-q8":        ("Qwen3-8B-Q8",           "qwen3:8b-q8_0",               16384, "quality"),
     "reasoning":      ("Qwen3-14B",             "qwen3:14b",                     4096, "quality"),
     "classification": ("Qwen3-4B",              "qwen3:4b-q8_0",                 4096, "correctness"),
     "writing":        ("Llama-3.1-8B",          "llama3.1:8b-instruct-q5_K_M", 16384, "quality"),
@@ -28,7 +31,7 @@ MODEL_MATRIX = {
     "other":          ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
 }
 
-DOMAIN_CHOICES = ["code", "reasoning", "classification", "writing", "translation", "other"]
+DOMAIN_CHOICES = ["code", "code-14b", "code-30b", "code-q8", "reasoning", "classification", "writing", "translation", "other"]
 
 
 def get_model(domain: str) -> tuple:
@@ -100,18 +103,24 @@ def get_temperature_description(name: str) -> str:
 # Model-tag → Modelfile filename suffix
 MODEL_TAG_TO_SUFFIX = {
     "qwen3:8b": "qwen3",
+    "qwen3:8b-q8_0": "qwen3-q8",
     "qwen3:14b": "qwen3",
     "qwen3:4b-q8_0": "qwen3",
+    "qwen3:30b-a3b": "qwen3-30b",
     "qwen2.5-coder:7b": "qwen25",
+    "qwen2.5-coder:14b": "qwen25c14",
     "llama3.1:8b-instruct-q5_K_M": "llama31",
 }
 
 # Model-tag → persona name q-suffix (appended to "my-<slug>")
 MODEL_TAG_TO_Q_SUFFIX = {
     "qwen3:8b": "-q3",
+    "qwen3:8b-q8_0": "-q3-q8",
     "qwen3:14b": "-q3",
     "qwen3:4b-q8_0": "-q3",
+    "qwen3:30b-a3b": "-q3-30b",
     "qwen2.5-coder:7b": "",
+    "qwen2.5-coder:14b": "-q25c14",
     "llama3.1:8b-instruct-q5_K_M": "",
 }
 

@@ -37,8 +37,10 @@ Local AI infrastructure on RTX 3060 12GB: multiple specialized models, benchmark
 - **12GB VRAM** — 7-8B models for full context; 14B fits but ~4K context limit [ref:model-selection]
 - **Never install Linux NVIDIA drivers in WSL2** — uses Windows driver's `libcuda.so`
 - **Flash Attention** enabled (`OLLAMA_FLASH_ATTENTION=1`)
-- **Models:** Qwen2.5-Coder-7B, Qwen3-8B, Qwen3-14B, Qwen3-4B, Llama3.1, DeepSeek variants [ref:personas]
-- **Performance:** 63-67 tok/s (Qwen2.5-7B), 51-56 tok/s (Qwen3-8B), 32 tok/s (Qwen3-14B)
+- **Models (VRAM-only):** Qwen2.5-Coder-7B (4.7GB), Qwen3-4B-q8 (4.4GB), Qwen3-8B (5.2GB), Qwen3-8B-q8 (8.5GB), Qwen2.5-Coder-14B (9.0GB), Qwen3-14B (9.3GB), DeepSeek-R1-14B (9.0GB), DeepSeek-Coder-V2-16B (8.9GB) [ref:personas]
+- **Models (hybrid VRAM+RAM):** Qwen3-30B-A3B (19GB MoE — 12GB VRAM + ~7GB RAM; expect ~10-20 tok/s, Ollama MoE offload has known perf issues)
+- **Future candidates:** Qwen3.5-35B-A3B (24GB, released 2026-02-24, too new + tight memory fit); Qwen3-Coder-30B (19GB, code-specialized MoE, same size as 30B-A3B)
+- **Performance:** 63-67 tok/s (Qwen2.5-7B), 51-56 tok/s (Qwen3-8B), 32 tok/s (Qwen3-14B), ~10-20 tok/s (Qwen3-30B-A3B hybrid est.)
 - **Qwen3 thinking:** Use API `think: false` (default off; `/no_think` doesn't work) [ref:thinking-mode]
 - **Structured output:** Always use `format` param for JSON — 100% reliable, no speed penalty [ref:structured-output]
 - **Benchmarks:** Always invoke via bash wrappers (`lib/run-*.sh`), never `python3` directly [ref:bash-wrappers]
