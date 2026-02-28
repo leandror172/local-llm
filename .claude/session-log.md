@@ -1,8 +1,66 @@
 # Session Log
 
-**Current Layer:** Layer 5 — Expense Classifier (blockers resolved, ready for 5.1)
-**Current Session:** 2026-02-27 — Session 35: Fix blockers + Java workspace setup
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`
+**Current Layer:** Layer 5 — Expense Classifier (scaffolding complete, ready for 5.1)
+**Current Session:** 2026-02-27 — Session 36: Portable scaffolding + expense repo bootstrap
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`
+
+---
+
+## 2026-02-27 - Session 36: Portable Scaffolding + Expense Repo Bootstrap
+
+### Context
+Resumed from session 35 (all Layer 5 blockers resolved). Before starting 5.1, implemented the
+two-repo workflow plan: make this repo's `.claude/` scaffolding portable, then bootstrap the
+expense-reporter repo with it as the first consumer. Full plan executed across both repos.
+
+### What Was Done
+
+**Phase 1 — LLM repo (branch: `feature/portable-scaffolding`, commit: `cab902c`):**
+- `resume.sh`: replaced hardcoded key hints with dynamic `ref-lookup.sh list` discovery.
+  Any new `<!-- ref:KEY -->` block auto-appears with zero maintenance.
+- `docs/scaffolding-template.md`: created reusable 10-step bootstrap guide describing directory
+  structure, file purposes, ref:KEY two-tier convention, session log format, tool dependencies.
+- `~/.claude/.mcp.json`: global MCP config — ollama-bridge now available in every Claude Code
+  project, not just this repo. LLM repo `.mcp.json` kept as harmless redundancy.
+- `tasks.md`: added two-repo workflow note under Layer 5 header.
+- `session-context.md`: updated `current-status` ref block for session 36.
+
+**Phase 2 — Expense repo scaffolding (branch: `feature/claude-code-scaffolding`, commit: `7c49e75`):**
+- `.claude/tools/`: copied resume.sh, ref-lookup.sh, rotate-session-log.sh (fully portable).
+- `.claude/skills/session-handoff/SKILL.md`: copied session-handoff skill.
+- `CLAUDE.md`: project identity, Go structure, workflow rules, local model rules (try-local-first),
+  domain facts (BR date/decimal format), resume guide.
+- `.claude/index.md`: knowledge index with ref:go-structure, ref:testing, ref:classification,
+  ref:indexing-convention blocks; classification data table, archive table, tools table.
+- `.claude/session-context.md`: ref blocks for user-prefs, current-status, resume-steps,
+  active-decisions (domain boundary, classification strategy, Go conventions).
+- `.claude/session-log.md`: Session 1 entry with pre-history summary (Phases 1–11, 190+ tests).
+- `.claude/tasks.md`: Layer 5 tasks 5.1–5.8 verbatim from plan-v2.md + pre-work status.
+- Verified: `resume.sh` in expense repo finds 7 ref keys dynamically, zero config required.
+
+**Phase 3 — Expense repo data & doc migration (same branch, commit: `ed055a1`):**
+- `data/classification/`: 8 algorithm docs copied from `~/workspaces/expenses/auto-category/`
+  (tracked); 15 personal data JSONs/CSVs also copied (gitignored).
+- `docs/archive/`: 21 Desktop-era planning docs moved via git rename (history preserved).
+- `docs/archive/transients/`: 12 root transient files moved (gitignored subfolder, per user).
+- `.claude/settings.local.json`: backed up Windows Git Bash permissions to `.claude/local/`;
+  replaced with WSL2-appropriate permissions (go test/build/run/vet, resume.sh, ref-lookup.sh).
+- `.gitignore`: added `data/classification/*.json|csv`, `.claude/local/`, `docs/archive/transients/`.
+- Verified: `git add -n data/classification/` confirms only 8 docs staged (no personal data).
+- Verified: `cd expense-reporter && go test ./...` — all 190+ tests still passing.
+
+### Decisions Made
+- **Two-repo workflow is now live:** Feature work (5.1–5.7) in expense repo; MCP wrapper (5.8) in this repo.
+- **Global MCP config pattern:** `~/.claude/.mcp.json` is the right place for tools needed in all projects; project-level `.mcp.json` kept for project-specific overrides.
+- **Transient files → gitignored subfolder:** `docs/archive/transients/` pattern — move one-time scripts/reports there instead of tracking them or deleting them.
+- **`confusion_analysis.json` gitignored** — user couldn't confirm whether it contains real expense descriptions; safe default.
+- **`~/workspaces/expenses/auto-category/` left in place** — `data/classification/` is a copy, not a move.
+
+### Next
+- **Layer 5.1 (expense repo):** Verify `feature_dictionary_enhanced.json` + `training_data_complete.json`
+  are in `data/classification/`; document their JSON schema in `.claude/index.md`
+- **Layer 5.2 (expense repo):** `classify` command — 3-field input → Ollama HTTP → structured JSON → top-N subcategories
+- **PRs to merge:** `feature/portable-scaffolding` (LLM repo) + `feature/claude-code-scaffolding` (expense repo)
 
 ---
 
@@ -143,46 +201,6 @@ logging (5.0a), CLAUDE.md local-model-first (5.0b), Layer 7 distillation expansi
   to understand format, then port into expense-reporter `data/` directory (task 5.1)
 - Build `classify` command in expense-reporter (task 5.2): Go HTTP call to Ollama, structured output
 - Benchmark Qwen3-8B (`my-classifier-q3`) vs Qwen2.5-Coder-7B on sample expense classification
-
----
-
-## 2026-02-26 - Session 32: Layer 5 Design + Distillation Strategy
-
-### Context
-Layer 4 fully complete. Session focused on designing Layer 5 (expense classifier) and
-the broader distillation/learning infrastructure. No code was written for expense-reporter
-itself — session was architecture + pre-work.
-
-### What Was Done
-- **Layer 5 deep design:** Read all expense-reporter source (Go v2.1.0, 190+ tests) and
-  all auto-category analysis artifacts (694-expense training set, algorithm spec, correction
-  rules). Established domain boundary: classification logic in expense-reporter (product),
-  MCP thin wrapper in llm repo (platform).
-- **Distillation strategy designed:** Full plan for using Claude/local model interaction
-  logs as training data. SFT from accepted responses, DPO from (Claude-improved, local-rejected)
-  triples. DPO caveat documented: personal local use vs Anthropic ToS. Fine-tuning scope
-  clarified: fixes mechanical patterns, can't raise 8B reasoning ceiling.
-- **RAG with embeddings explained:** nomic-embed-text via Ollama, vector similarity retrieval,
-  deferred to Layer 7 (not needed at current scale — 90% accuracy with keyword matching already).
-- **Prompt pre-processor concept:** Local model compresses/enriches context before Claude calls.
-  Added as Layer 7.10.
-- **ollama-bridge JSONL logging (5.0a):** `config.py` (CALL_LOG_PATH, LOG_FULL_CONTENT env vars) +
-  `client.py` (_log_call method). Appends JSON Lines to `~/.local/share/ollama-bridge/calls.jsonl`
-  after every successful chat() call. Full content by default. Silent failure. Zero new dependencies.
-- **CLAUDE.md updated (5.0b):** Layer 5+ local-model-first instruction. Try local for boilerplate,
-  evaluate response (ACCEPTED/IMPROVED/REJECTED), record verdict. Creates distillation training data.
-- **plan-v2.md updated:** Layer 5 fully redesigned (pre-work tasks, domain boundary note, 5.1–5.8).
-  Layer 7 renamed + expanded (7.1–7.11 including SFT, DPO, QLoRA, prompt pre-processor).
-- **tasks.md updated:** Layer 5 section with all pre-work done + 5.1–5.8 pending.
-- **Vision docs created:** `docs/vision/expense-classifier-vision.md` (verbatim user scenario +
-  5-phase iterative plan), `docs/vision/expense-classifier-data-inventory.md` (all artifact files,
-  what to read for each phase).
-
-### Next
-- Begin Layer 5.1: port `feature_dictionary_enhanced.json` + `training_data_complete.json`
-  into expense-reporter `data/` directory (read files first, understand format).
-- Then 5.2: `classify` command in Go (Ollama HTTP client, structured output, feature dict context).
-- Use local models for boilerplate during this work — logging is now active.
 
 ---
 
