@@ -52,14 +52,16 @@
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
-- **Last checkpoint:** Session 35 (2026-02-27) — All Layer 5 blockers resolved:
-  - Fixed `think: false` placement: top-level payload (not options{}). 82% token reduction, 6.4x speedup.
-  - Fixed `num_ctx` overflow: 16384→10240 in `go-qwen25c14.Modelfile`. No OOM, good performance.
-  - Both `personas/lib/ollama_client.py` and `mcp-server/src/ollama_mcp/client.py` fixed.
-  - New persona: `my-java-q25c14` (qwen2.5-coder:14b, Java 21 + Spring Boot 3.x, num_ctx=10240)
-  - External workspace: `/home/leandror/workspaces/todaytix-test/` (Spring Boot exercise, CLAUDE.md + .mcp.json)
-- **Branch:** `master` (uncommitted: new Modelfile, registry + index updates)
-- **Next:** Layer 5 task 5.1 (port training data), 5.2 (`classify` command in Go)
+- **Last checkpoint:** Session 36 (2026-02-27) — Portable scaffolding + expense repo bootstrap:
+  - `resume.sh` now discovers ref keys dynamically (no hardcoded list)
+  - `docs/scaffolding-template.md` created — reusable bootstrap guide for any project
+  - `~/.claude/.mcp.json` created — ollama-bridge MCP available globally
+  - Expense repo (`~/workspaces/expenses/code/`) bootstrapped with `.claude/` scaffolding
+  - Classification data migrated to `data/classification/` in expense repo
+  - Desktop-era docs archived to `docs/archive/` in expense repo
+- **Branch:** `feature/portable-scaffolding` (LLM repo) / `feature/claude-code-scaffolding` (expense repo)
+- **Next:** Layer 5 task 5.1 (port training data into expense-reporter), 5.2 (`classify` command in Go)
+- **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
 

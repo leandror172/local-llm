@@ -193,8 +193,9 @@ Items identified but not yet prioritized — evaluate when relevant layer work b
 **Context:** `docs/vision/expense-classifier-vision.md` (full vision + iterative plan)
 **Data inventory:** `docs/vision/expense-classifier-data-inventory.md`
 **External data:** `I:\workspaces\expenses\` (auto-category analysis + expense-reporter source)
+**Two-repo workflow (session 36):** Layer 5 feature work lives in `~/workspaces/expenses/code/` (expense-reporter repo). This repo holds the MCP thin wrapper (5.8) only. Scaffolding template: `docs/scaffolding-template.md`. Expense repo branch: `feature/claude-code-scaffolding`.
 
-### Pre-work — COMPLETE (sessions 32–34)
+### Pre-work — COMPLETE (sessions 32–35)
 - [x] **5.0a** ollama-bridge JSONL logging: `config.py` (CALL_LOG_PATH, LOG_FULL_CONTENT) + `client.py` (_log_call method). Logs to `~/.local/share/ollama-bridge/calls.jsonl`.
 - [x] **5.0b** CLAUDE.md: Layer 5+ local-model-first instruction (try local, evaluate, record ACCEPTED/IMPROVED/REJECTED verdict)
 - [x] **5.0c** Model audit + new pulls (session 34): qwen2.5-coder:14b, qwen3:8b-q8_0, qwen3:30b-a3b; personas my-go-q25c14 (ACCEPTED), my-go-q3-q8 (IMPROVED), my-go-q3-30b (REJECTED)

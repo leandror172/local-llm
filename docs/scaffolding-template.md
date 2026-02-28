@@ -1,0 +1,148 @@
+# Claude Code Scaffolding Template
+
+This document describes the `.claude/` convention used in this project.
+Any new project can follow this checklist to gain session continuity, ref-lookup,
+and the session-handoff skill from day one.
+
+---
+
+## Directory Structure
+
+```
+.claude/
+├── tools/
+│   ├── resume.sh              # Session-start summary (run this at start of every session)
+│   ├── ref-lookup.sh          # Resolve [ref:KEY] tags to their content
+│   └── rotate-session-log.sh  # Archive old session entries
+├── skills/
+│   └── session-handoff/
+│       └── SKILL.md           # End-of-session workflow skill
+├── archive/                   # Historical session logs and completed phase notes
+├── local/                     # Gitignored: secrets, personal data, local overrides
+├── index.md                   # Knowledge index — every topic mapped to a file
+├── session-log.md             # Running log: one entry per session (most recent first)
+├── session-context.md         # Ref blocks: user-prefs, current-status, resume-steps, active-decisions
+└── tasks.md                   # Layer/phase task list with checkboxes
+```
+
+---
+
+## File Purposes
+
+| File | Purpose |
+|---|---|
+| `tools/resume.sh` | Prints current-status ref block, last session "Next" pointer, recent commits, and available ref keys. Run at session start. |
+| `tools/ref-lookup.sh` | Searches all `*.md` files for `<!-- ref:KEY -->` blocks and prints the content. Use `list` to enumerate available keys. |
+| `tools/rotate-session-log.sh` | Moves old session entries to `.claude/archive/session-log-YYYY-MM-DD.md`, keeps the 3 most recent in `session-log.md`. |
+| `skills/session-handoff/SKILL.md` | Claude Code skill invoked at session end. Updates `session-log.md`, `session-context.md`, and `tasks.md` for continuity. |
+| `index.md` | Quick reference: one-line description of every file/directory, organized by category. Update whenever a file is added. |
+| `session-log.md` | Chronological record. Most recent entry first. Each entry has: What was done, Key decisions, Blockers, and Next pointer. |
+| `session-context.md` | Stable reference context wrapped in `<!-- ref:KEY -->` blocks. Loaded by agents via `ref-lookup.sh`. |
+| `tasks.md` | Layer/phase progress. Checkboxes. Archive completed layers rather than deleting them. |
+| `local/` | Personal data, API keys, local settings. Always gitignored. |
+| `archive/` | Old session logs, completed phase notes. Reference-only. |
+
+---
+
+## ref:KEY Two-Tier Documentation Convention
+
+The project uses `[ref:KEY]` tags in `CLAUDE.md` to point agents to detailed
+runtime-relevant content, and `§ "Heading"` for background navigation pointers.
+
+### Ref blocks in Markdown files
+
+Wrap runtime-relevant content with HTML comment markers:
+
+```markdown
+<!-- ref:current-status -->
+## Current Status
+
+- **Active layer:** Layer N — Description
+- **Next:** Task N.1
+
+<!-- /ref:current-status -->
+```
+
+Rules:
+- One concept per block (don't mix current-status and user-prefs in one block)
+- Use lowercase-kebab-case keys: `current-status`, `bash-wrappers`, `go-structure`
+- Closing tag is optional but strongly recommended (enables accurate extraction)
+- `ref-lookup.sh list` auto-discovers all blocks in `*.md` files — no registration needed
+
+### CLAUDE.md ref pointers
+
+```markdown
+## Environment Context
+[ref:go-structure] — Go package layout and conventions
+```
+
+This tells agents: "for detail, run `ref-lookup.sh go-structure`".
+
+### When to use ref vs § pointer
+
+| Use | When |
+|---|---|
+| `[ref:KEY]` | Agent needs the content at runtime (current status, conventions, schemas) |
+| `§ "Heading"` | Background/archive reading (historical decisions, research) |
+
+---
+
+## Session Log Entry Format
+
+```markdown
+## YYYY-MM-DD — Session N
+
+### Done
+- Bullet point of what was completed
+
+### Key decisions
+- Decision made and why
+
+### Blockers
+- Any unresolved issues (or "none")
+
+### Next
+- [ ] Task N.X — description
+- [ ] Task N.Y — description
+
+---
+```
+
+---
+
+## Setup Checklist (10 steps)
+
+Bootstrap a new project with this scaffolding in ~15 minutes:
+
+1. **Copy tools** — `cp llm-repo/.claude/tools/{resume,ref-lookup,rotate-session-log}.sh .claude/tools/`
+2. **Copy skill** — `cp -r llm-repo/.claude/skills/session-handoff/ .claude/skills/`
+3. **Create directories** — `.claude/{archive,local}/`, `docs/archive/`
+4. **Create `CLAUDE.md`** — project identity, build commands, workflow rules, resume instruction
+5. **Create `index.md`** — table of all files with one-line descriptions; add ref:indexing-convention block
+6. **Create `session-context.md`** — ref blocks: `user-prefs`, `current-status`, `resume-steps`, `active-decisions`
+7. **Create `session-log.md`** — first entry: pre-history summary + current session goals
+8. **Create `tasks.md`** — current layer tasks; archive any pre-history work as "completed"
+9. **Add `.gitignore` entries** — `.claude/local/`, personal data, build artifacts
+10. **Verify** — run `resume.sh`, check it prints status + dynamic key list; run `ref-lookup.sh list`
+
+---
+
+## Tool Dependencies
+
+All tools use only POSIX-standard utilities:
+
+- `bash` ≥ 4.0
+- `git` (for `resume.sh` git log/status)
+- `grep`, `sed`, `awk` — standard POSIX implementations (GNU or BSD)
+- `sort` — for `ref-lookup.sh list` deduplication
+
+No Python, Node, or external packages required. Tools are safe to whitelist
+per-script in Claude Code (use `./script.sh` form, not `bash script.sh`).
+
+---
+
+## Source
+
+This scaffolding was developed iteratively over sessions 1–35 of the LLM
+infrastructure project at `/mnt/i/workspaces/llm/`. Full context:
+`.claude/session-context.md` § "Context Optimization".
