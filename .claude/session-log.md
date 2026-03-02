@@ -6,6 +6,47 @@
 
 ---
 
+## 2026-02-28 - Session 37: Recontextualization + ref_lookup inference observation
+
+### Context
+First session in expense-reporter after scaffolding bootstrap. No code changes — session was
+diagnostic/reflective. Effort level: medium.
+
+### Observed behavior: emergent cross-repo inference via ref_lookup
+
+During recontextualization, Claude called three tools in parallel:
+1. `Read` → memory file (didn't exist yet)
+2. `Bash` → `resume.sh` (expense repo's current status)
+3. `mcp__ollama-bridge__ref_lookup("current-status")` ← the interesting one
+
+**The inference chain that led to call 3:**
+- CLAUDE.md (expense repo) flags a two-repo setup: "MCP thin wrapper lives in the LLM infra repo"
+- The `ollama-bridge` MCP server is described as the LLM repo's tooling
+- Therefore: calling `ref_lookup` via that MCP server = querying the LLM repo's index
+- Therefore: `current-status` from that tool = "the other repo's view of cross-repo state"
+
+The inference was directionally correct and the call returned useful triangulating data.
+**But it was fragile:** it only worked because the LLM repo's `current-status` block happened
+to contain notes about the expense repo (written during session 36). If that convention
+weren't maintained, the call would have returned purely LLM-repo-internal state.
+
+**The real limitation:** `ref_lookup` is intra-repo by design. Cross-repo usefulness was
+a side effect of content, not tool capability. Logged as deferred task in tasks.md:
+`ref_lookup` could accept an optional `path` param to make cross-repo lookups explicit.
+
+**Why this matters for training data / agent design:**
+The inference pattern (MCP server identity → repo scope → content scope) is a legitimate
+form of context-window reasoning about tool semantics. The fragility is worth noting:
+agents that reason about tool scope from indirect signals (server name, CLAUDE.md mentions)
+can produce correct-but-lucky results. Making the tool's scope explicit in its description
+would eliminate the ambiguity.
+
+### Next
+- No tasks advanced this session
+- Next: 5.1 (verify training data), then 5.2 (`classify` command)
+
+---
+
 ## 2026-02-27 - Session 36: Portable Scaffolding + Expense Repo Bootstrap
 
 ### Context

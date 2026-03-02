@@ -172,6 +172,7 @@ Items identified but not yet prioritized — evaluate when relevant layer work b
 
 - [ ] **Hook-based auto-resume:** `UserPromptSubmit` Claude Code hook that injects `resume.sh` output as context on session start. Eliminates need for CLAUDE.md instruction to run resume manually. Needs investigation: hook fires every message (not just first), so would need a `.claude/local/session-started` flag to gate it.
 - [ ] **ref-integrity checker:** Script that validates all `[ref:KEY]` tags in CLAUDE.md and docs have corresponding `<!-- ref:KEY -->` blocks in `*.md` files, and all blocks are properly closed. Maintenance/QA tool — run after large doc restructures.
+- [ ] **ref_lookup cross-repo support:** The MCP `ref_lookup` tool currently reads only from this repo's `.claude/index.md`. Extending it to accept an optional `path` parameter (pointing at another repo's `.claude/` directory) would make cross-repo ref lookups explicit and intentional — rather than relying on one repo's `current-status` block containing notes about the other. Triggered by: observed emergent behavior where Claude inferred the MCP tool could provide "the other repo's perspective" — the inference was directionally correct but fragile (it only worked because the LLM repo's `current-status` block happened to document expense repo state).
 <!-- /ref:deferred-infra -->
 
 ---
