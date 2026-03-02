@@ -131,7 +131,8 @@ class OllamaClient:
             "model": model,
             "messages": messages,
             "stream": False,
-            "options": {"think": think},
+            "think": think,
+            "options": {},
         }
         if temperature is not None:
             payload["options"]["temperature"] = temperature

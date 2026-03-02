@@ -43,6 +43,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Routing patterns (A/B/C) | `docs/vision-and-intent.md` | Local-first, frontier-delegates, chat-routes-both |
 | Expense classifier vision | `docs/vision/expense-classifier-vision.md` | End-to-end Telegram→classify→Excel goal, iterative phases, domain boundaries |
 | Expense classifier data inventory | `docs/vision/expense-classifier-data-inventory.md` | What exists: auto-category analysis artifacts, expense-reporter architecture, what to read |
+| Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
 
 ---
 
@@ -254,6 +255,7 @@ Other infrastructure:
 | Persona | Modelfile | Base Model | Role |
 |---------|-----------|------------|------|
 | my-go-q25c14 | `modelfiles/go-qwen25c14.Modelfile` | Qwen2.5-Coder-14B | Go comparison partner — code-specialized 14B, full VRAM |
+| my-java-q25c14 | `modelfiles/java-qwen25c14.Modelfile` | Qwen2.5-Coder-14B | Java 21 + Spring Boot 3.x — code-specialized 14B, full VRAM |
 | my-go-q3-q8 | `modelfiles/go-qwen3-q8.Modelfile` | Qwen3-8B-Q8 | Go Q4 vs Q8 quantization comparison |
 | my-go-q3-30b | `modelfiles/go-qwen3-30b.Modelfile` | Qwen3-30B-A3B | Go quality ceiling — hybrid VRAM+RAM, ~10-20 tok/s |
 <!-- /ref:personas -->

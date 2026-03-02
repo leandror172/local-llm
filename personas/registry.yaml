@@ -364,7 +364,7 @@ my-go-q25c14:
   base_model: qwen2.5-coder:14b
   role: Go 1.22+ backend developer (code-specialized 14B, fits in VRAM)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 10240
   tier: full
   status: active
   note: Comparison pair for my-go-q3. Code-specialized previous-gen 14B, no hybrid loading.
@@ -378,6 +378,16 @@ my-go-q3-q8:
   tier: full
   status: active
   note: Quantization comparison vs my-go-q3 (Q4_K_M). Same model family, higher fidelity.
+
+my-java-q25c14:
+  modelfile: modelfiles/java-qwen25c14.Modelfile
+  base_model: qwen2.5-coder:14b
+  role: Java 21 backend developer, Spring Boot 3.x (code-specialized 14B, fits in VRAM)
+  temperature: 0.3
+  num_ctx: 10240
+  tier: full
+  status: active
+  note: Java counterpart of my-go-q25c14. Used for Spring Boot development where quality justifies ~25-30s latency.
 
 my-go-q3-30b:
   modelfile: modelfiles/go-qwen3-30b.Modelfile

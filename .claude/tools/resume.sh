@@ -52,5 +52,10 @@ fi
 
 echo "═══════════════════════════════════════════════════"
 echo "  Use: .claude/tools/ref-lookup.sh <KEY>"
-echo "  Keys: active-decisions | layer4-status | layer3-inventory | bash-wrappers | ..."
+KEYS=$("$SCRIPT_DIR/ref-lookup.sh" list 2>/dev/null | tr '\n' ' ')
+if [ -n "$KEYS" ]; then
+  echo "  Keys: $KEYS"
+else
+  echo "  (no ref:KEY blocks found)"
+fi
 echo "═══════════════════════════════════════════════════"
