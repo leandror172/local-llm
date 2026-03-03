@@ -1,7 +1,7 @@
 # Persona Registry
 # Source of truth for all Ollama personas managed by this project.
 # Updated by: persona creator (Task 3.2) or manually.
-# Last updated: 2026-02-17
+# Last updated: 2026-03-03
 
 # ──────────────────────────────────────────────
 # Specialized coding personas
@@ -403,19 +403,73 @@ my-go-q3-30b:
     Used to establish upper-quality bound for DPO pair selection.
 
 # ──────────────────────────────────────────────
+# Qwen3.5 and Qwen3-Coder personas (added 2026-03-03)
+# ──────────────────────────────────────────────
+
+my-go-q35:
+  modelfile: modelfiles/go-qwen35.Modelfile
+  base_model: qwen3.5:9b
+  role: Go 1.22+ backend developer (Qwen3.5:9b, VRAM-only)
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+  note: Replaces my-go-q3 as the VRAM-only Go option. Qwen3.5:9b fits fully in 12GB VRAM (~8GB weights).
+
+my-classifier-q35:
+  modelfile: modelfiles/classifier-qwen35.Modelfile
+  base_model: qwen3.5:9b
+  role: Text classifier (single-category assignment, Qwen3.5:9b VRAM-only)
+  temperature: 0.1
+  num_ctx: 16384
+  tier: full
+  status: active
+  note: Replaces my-classifier-q3 as the VRAM-only classifier. Benchmark against my-classifier-q3 for expense classification.
+
+my-go-q35-27b:
+  modelfile: modelfiles/go-qwen35-27b.Modelfile
+  base_model: qwen3.5:27b
+  role: Go 1.22+ backend developer (Qwen3.5:27b dense, hybrid VRAM+RAM)
+  temperature: 0.3
+  num_ctx: 10240
+  tier: full
+  status: active
+  note: |
+    Dense 27B model — quality benchmark against my-go-q25c14 (code-specialized 14B).
+    17GB hybrid: ~12GB VRAM + ~5GB RAM. Expect similar latency to my-go-q25c14 (~25-35s).
+
+my-go-qcoder:
+  modelfile: modelfiles/go-qwen3coder.Modelfile
+  base_model: qwen3-coder:30b
+  role: Go 1.22+ backend developer (Qwen3-Coder:30b, agentic + 256K ctx, hybrid VRAM+RAM)
+  temperature: 0.3
+  num_ctx: 32768
+  tier: full
+  status: active
+  note: |
+    Code-specialized MoE (30B total / 3.3B active). Same 19GB hybrid footprint as my-go-q3-30b
+    but trained on agentic coding tasks and tool calling. 32K ctx (vs 8K for my-go-q3-30b).
+    Primary candidate to replace my-go-q25c14 in expense-reporter sessions after benchmarking.
+
+my-classifier-qcoder:
+  modelfile: modelfiles/classifier-qwen3coder.Modelfile
+  base_model: qwen3-coder:30b
+  role: Text classifier (single-category assignment, Qwen3-Coder:30b, 32K ctx for few-shot)
+  temperature: 0.1
+  num_ctx: 32768
+  tier: full
+  status: active
+  note: |
+    Long-context classifier for task 5.7 (few-shot injection): 32K ctx allows prepending
+    top-K training examples alongside the full taxonomy list without crowding.
+
+# ──────────────────────────────────────────────
 # Future model candidates (not yet pulled — watch and wait)
 # ──────────────────────────────────────────────
 
-# qwen3.5:35b-a3b (24GB Q4_K_M, MoE — released 2026-02-24, 2 days old as of last audit)
-#   - New architecture: Gated Delta Networks + sparse MoE
-#   - Reportedly outperforms Qwen3-235B on many benchmarks
-#   - Memory: 12GB VRAM + ~12GB RAM — very tight on this system (16GB total RAM)
-#   - TODO: Revisit in 2-4 weeks once Ollama integration stabilizes and community
-#     benchmarks appear. Check: ollama.com/library/qwen3.5
+# qwen3.5:35b (24GB — tight: 12GB VRAM + ~12GB RAM on 32GB total system RAM)
+#   - Worth revisiting if memory profiling shows headroom after 27b usage.
 #
-# qwen3-coder:30b (19GB Q4_K_M, MoE — code-specialized, 70% code pretraining, 256K ctx)
-#   - Same size as qwen3:30b-a3b so same hybrid loading constraints apply
-#   - May be better than qwen3:30b-a3b for code generation specifically
-#   - TODO: Pull and benchmark after qwen3:30b-a3b is validated in production
-#     (compare side-by-side on the Go comparison test prompts)
-#   - ollama pull qwen3-coder:30b
+# Qwen3-Coder-Next (80B MoE, 3B active — ~46GB at 4-bit, ~24GB at 3-bit)
+#   - 3-bit fits on 12GB VRAM + ~26GB RAM in theory, but margins are very thin.
+#   - TODO: investigate native Linux (no WSL2 overhead) to recover ~4-6GB RAM headroom.

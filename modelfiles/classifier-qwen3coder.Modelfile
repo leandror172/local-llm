@@ -1,0 +1,30 @@
+FROM qwen3-coder:30b
+
+# Context window: 32K — same reasoning as go-qwen3coder.Modelfile.
+# For the classifier, long context enables few-shot injection (task 5.7):
+# top-K training examples can be prepended without crowding the taxonomy list.
+PARAMETER num_ctx 32768
+
+# Temperature: 0.1 — near-deterministic for classification.
+PARAMETER temperature 0.1
+
+# Standard sampling parameters.
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: Qwen3-Coder ChatML end markers.
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# System prompt: expense classifier.
+# qwen3-coder:30b here specifically for 5.7 few-shot injection: 32K context
+# allows injecting K training examples alongside the full taxonomy list.
+SYSTEM """ROLE: Text classifier that assigns input to exactly one category.
+CONSTRAINTS:
+- MUST select exactly one category from the provided list — never invent new categories
+- MUST provide a confidence score between 0.0 and 1.0
+- MUST provide brief reasoning based only on the input text
+- MUST output valid JSON matching the requested schema
+- MUST NOT output any text before or after the JSON object
+- MUST NOT hedge or suggest multiple categories
+FORMAT: A single JSON object with keys: category, confidence, reasoning."""

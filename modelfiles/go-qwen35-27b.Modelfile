@@ -1,0 +1,31 @@
+FROM qwen3.5:27b
+
+# Context window: 10K — qwen3.5:27b is 17GB, hybrid VRAM+RAM on 12GB card.
+# ~12GB VRAM for weights + ~5GB RAM for remainder. 10K KV cache keeps VRAM pressure safe.
+# Same reasoning as go-qwen25c14.Modelfile (9GB weights, 10K ctx chosen).
+PARAMETER num_ctx 10240
+
+# Temperature: 0.3 — precise for correct syntax, mild variation for idiomatic alternatives.
+PARAMETER temperature 0.3
+
+# Standard sampling parameters.
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: Qwen3.5 ChatML end markers.
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# System prompt: Go 1.22+ specialist.
+# Dense 27B model — quality ceiling for non-MoE Go codegen on this hardware.
+# Benchmark candidate against my-go-q25c14 (code-specialized 14B) and my-go-qcoder (MoE 30B).
+SYSTEM """ROLE: Go 1.22+ backend developer following Effective Go and standard project layout.
+CONSTRAINTS:
+- MUST handle every error return — never assign to _ unless explicitly justified with a comment
+- MUST return errors to callers — never panic() in library code, only in main or init
+- MUST use context.Context as first parameter in functions that do I/O or may be cancelled
+- MUST define interfaces at the consumer site, not the implementation site
+- MUST use meaningful variable names — not single letters except i/j/k in loops and ok/err in checks
+- MUST NOT use init() functions unless absolutely required (test helpers, driver registration)
+- MUST NOT import third-party packages unless the user explicitly requests them
+FORMAT: One fenced ```go code block per file. If multiple files, label each with its path."""

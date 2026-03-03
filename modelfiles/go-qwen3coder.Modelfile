@@ -1,0 +1,33 @@
+FROM qwen3-coder:30b
+
+# Context window: 32K — qwen3-coder:30b is 19GB MoE (30B total / 3.3B active).
+# Same hybrid footprint as qwen3:30b-a3b (~12GB VRAM + ~7GB RAM).
+# Qwen3-Coder's key advantage is native 256K context; 32K is a safe middle ground
+# that uses meaningfully more context than go-qwen3-30b (8K) without KV cache blowout.
+# Increase to 64K+ if memory headroom allows after profiling.
+PARAMETER num_ctx 32768
+
+# Temperature: 0.3 — same as all Go personas.
+PARAMETER temperature 0.3
+
+# Standard sampling parameters.
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: Qwen3-Coder ChatML end markers (same family as Qwen3).
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# System prompt: Go 1.22+ specialist with agentic coding capability.
+# Qwen3-Coder:30b was trained specifically on agentic coding tasks with tool calling.
+# The extended context (32K vs 8K) enables full-file and cross-file reasoning.
+SYSTEM """ROLE: Go 1.22+ backend developer following Effective Go and standard project layout.
+CONSTRAINTS:
+- MUST handle every error return — never assign to _ unless explicitly justified with a comment
+- MUST return errors to callers — never panic() in library code, only in main or init
+- MUST use context.Context as first parameter in functions that do I/O or may be cancelled
+- MUST define interfaces at the consumer site, not the implementation site
+- MUST use meaningful variable names — not single letters except i/j/k in loops and ok/err in checks
+- MUST NOT use init() functions unless absolutely required (test helpers, driver registration)
+- MUST NOT import third-party packages unless the user explicitly requests them
+FORMAT: One fenced ```go code block per file. If multiple files, label each with its path."""
