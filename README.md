@@ -19,7 +19,7 @@ This project documents the complete setup process, from GPU passthrough configur
 |-------|------------|---------|
 | **Runtime** | WSL2 (Ubuntu 22.04) | Linux environment with GPU passthrough |
 | **Inference Engine** | Ollama | Model serving with OpenAI-compatible API |
-| **Model** | Qwen2.5-Coder 7B (Q4_K_M) | Code-focused LLM, 4-bit quantized |
+| **Model** | Qwen2.5-Coder 7B (Q4_K_M) | Code-focused LLM, 4-bit quantized [outdated: other models are being added]|
 | **Containerization** | Docker Compose | Portable deployment option |
 | **GPU** | NVIDIA RTX 3060 12GB | CUDA-accelerated inference |
 
