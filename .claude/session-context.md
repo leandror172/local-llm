@@ -60,7 +60,8 @@
   - Classification data migrated to `data/classification/` in expense repo
   - Desktop-era docs archived to `docs/archive/` in expense repo
 - **Branch:** `feature/portable-scaffolding` (LLM repo) / `feature/claude-code-scaffolding` (expense repo)
-- **Next:** Layer 5 task 5.1 (port training data into expense-reporter), 5.2 (`classify` command in Go)
+- **Next in THIS repo:** Task 5.8 (MCP thin wrapper) — after 5.1–5.7 complete in expense repo
+- **Tracking only (execute in `~/workspaces/expenses/code/`):** 5.1 (training data), 5.2 (`classify`), 5.3–5.7
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->

@@ -43,7 +43,8 @@ would eliminate the ambiguity.
 
 ### Next
 - No tasks advanced this session
-- Next: 5.1 (verify training data), then 5.2 (`classify` command)
+- Next in THIS repo: 5.8 (MCP thin wrapper) — blocked until 5.1–5.7 complete in expense repo
+- Tasks 5.1–5.7 are tracked here but executed in `~/workspaces/expenses/code/`
 
 ---
 
