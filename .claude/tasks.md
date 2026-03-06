@@ -200,6 +200,10 @@ Items identified but not yet prioritized — evaluate when relevant layer work b
 **External data:** `I:\workspaces\expenses\` (auto-category analysis + expense-reporter source)
 **Two-repo workflow (session 36):** Layer 5 feature work lives in `~/workspaces/expenses/code/` (expense-reporter repo). This repo holds the MCP thin wrapper (5.8) only. Scaffolding template: `docs/scaffolding-template.md`. Expense repo branch: `feature/claude-code-scaffolding`.
 
+> **REPO BOUNDARY:** Tasks 5.1–5.7 are executed in `~/workspaces/expenses/code/` (expense-reporter repo).
+> This file tracks their status only — do NOT execute them here.
+> Only task **5.8** (MCP thin wrapper) runs in this repo.
+
 ### Pre-work — COMPLETE (sessions 32–35)
 - [x] **5.0a** ollama-bridge JSONL logging: `config.py` (CALL_LOG_PATH, LOG_FULL_CONTENT) + `client.py` (_log_call method). Logs to `~/.local/share/ollama-bridge/calls.jsonl`.
 - [x] **5.0b** CLAUDE.md: Layer 5+ local-model-first instruction (try local, evaluate, record ACCEPTED/IMPROVED/REJECTED verdict)
