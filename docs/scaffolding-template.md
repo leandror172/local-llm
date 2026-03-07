@@ -141,6 +141,27 @@ per-script in Claude Code (use `./script.sh` form, not `bash script.sh`).
 
 ---
 
+## Local Model Usage Convention
+
+Projects using the ollama-bridge MCP server should follow this verdict pattern
+whenever a local model generates code (via `mcp__ollama-bridge__generate_code`
+or `mcp__ollama-bridge__ask_ollama`):
+
+**Evaluate every local model response explicitly:**
+- `ACCEPTED` — used as-is (note the prompt that worked)
+- `IMPROVED` — used with modifications (note what changed and why)
+- `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task)
+
+**On ACCEPTED or IMPROVED verdicts, add a rough token estimate — do NOT read files or write code to compute it:**
+- Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
+- Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`
+- Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
+
+This pattern generates (prompt, local_response, verdict) triples that feed future
+DPO fine-tuning pipelines.
+
+---
+
 ## Source
 
 This scaffolding was developed iteratively over sessions 1–35 of the LLM
