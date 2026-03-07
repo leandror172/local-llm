@@ -20,6 +20,16 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/i/workspaces/llm/.claude/hooks/verdict-capture.py"
+          }
+        ]
+      }
     ]
   }
 }
