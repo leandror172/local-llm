@@ -2,16 +2,38 @@
 # Resolve a [ref:KEY] tag to its reference content.
 # Searches all *.md files in the project for <!-- ref:KEY --> markers.
 #
-# Usage: .claude/tools/ref-lookup.sh <KEY>
-# Example: .claude/tools/ref-lookup.sh bash-wrappers
+# Usage: .claude/tools/ref-lookup.sh <KEY> [--root /abs/path/to/repo]
+#        .claude/tools/ref-lookup.sh --list [--root /abs/path/to/repo]
+#
+# --root overrides the default project root (repo containing this script).
+# Use it to look up refs from a different repository.
 
 set -euo pipefail
 
-# Resolve project root (one level above .claude/tools/)
+# Resolve default project root (one level above .claude/tools/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-KEY="${1:-}"
+# Parse arguments: extract optional --root before processing KEY
+KEY=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --root)
+      PROJECT_ROOT="$2"
+      shift 2
+      ;;
+    *)
+      KEY="$1"
+      shift
+      ;;
+  esac
+done
+
+# Validate root directory
+if [ ! -d "$PROJECT_ROOT" ]; then
+  echo "Error: --root directory not found: $PROJECT_ROOT"
+  exit 1
+fi
 
 # --list mode: print all available keys and exit 0 (MCP-friendly)
 if [ "$KEY" = "--list" ] || [ "$KEY" = "list" ]; then
@@ -21,7 +43,7 @@ if [ "$KEY" = "--list" ] || [ "$KEY" = "list" ]; then
 fi
 
 if [ -z "$KEY" ]; then
-  echo "Usage: $0 <KEY>"
+  echo "Usage: $0 <KEY> [--root /abs/path/to/repo]"
   echo "Available keys:"
   grep -roh --include="*.md" '<!-- ref:[a-z-]* -->' "$PROJECT_ROOT" 2>/dev/null \
     | sed 's/<!-- ref://;s/ -->//' | sort -u

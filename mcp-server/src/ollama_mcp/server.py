@@ -722,7 +722,7 @@ async def build_persona(
 
 
 @mcp.tool()
-async def ref_lookup(key: str) -> str:
+async def ref_lookup(key: str, path: str | None = None) -> str:
     """Look up a named reference block from the project's documentation index.
 
     The project uses a two-tier documentation system. Active reference blocks
@@ -736,6 +736,10 @@ async def ref_lookup(key: str) -> str:
     Args:
         key: The reference key to look up (e.g. "current-status", "bash-wrappers",
              "model-selection"). Pass "list" to enumerate all available keys.
+        path: Absolute path to a different repo root to search instead of the
+              default LLM repo. Use this to look up refs from another project
+              (e.g. the expense reporter repo). The target repo must contain
+              *.md files with <!-- ref:KEY --> markers.
 
     Returns:
         The content of the reference block, or a list of available keys if
@@ -752,6 +756,9 @@ async def ref_lookup(key: str) -> str:
     # Pass args as array — no shell involved, no injection risk.
     # key="list" maps to --list flag (exits 0); any other key is looked up directly.
     args = [script, "--list"] if key == "list" else [script, key]
+
+    if path is not None:
+        args += ["--root", path]
 
     try:
         proc = await asyncio.create_subprocess_exec(
