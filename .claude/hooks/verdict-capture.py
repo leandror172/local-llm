@@ -22,7 +22,15 @@ CALLS_LOG = pathlib.Path.home() / ".local/share/ollama-bridge/calls.jsonl"
 
 # --- Load hook input ---
 data = json.load(sys.stdin)
-transcript_path = data.get("transcript_path", "")
+
+# SubagentStop provides agent_transcript_path (the subagent's own transcript).
+# Stop provides transcript_path (the main session transcript).
+# Always prefer the transcript that contains the assistant messages with verdicts.
+if data.get("hook_event_name") == "SubagentStop":
+    transcript_path = data.get("agent_transcript_path", "")
+else:
+    transcript_path = data.get("transcript_path", "")
+
 if not transcript_path:
     sys.exit(0)
 
