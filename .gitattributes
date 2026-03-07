@@ -1,0 +1,12 @@
+# Enforce LF line endings for all text files tracked by git.
+# Prevents Windows editors (accessing /mnt/i/ directly) from adding CRLFs
+# to scripts, which breaks shebangs and causes hook failures.
+* text=auto eol=lf
+
+# Explicitly mark executables as LF — critical for shebangs
+*.sh    text eol=lf
+*.py    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
