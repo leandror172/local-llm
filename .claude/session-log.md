@@ -1,8 +1,66 @@
 # Session Log
 
-**Current Layer:** Deferred infra — verdict capture hooks (feature/verdict-capture-hook)
-**Current Session:** 2026-03-07 — Session 38: Token logging + verdict capture hooks
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`
+**Current Layer:** Deferred infra (clearing backlog — items 2, 3, 4 complete this session)
+**Current Session:** 2026-03-07 — Session 39: Verdict capture fixes + deferred infra sweep
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`
+
+---
+
+## 2026-03-07 - Session 39: Verdict capture fixes + deferred infra sweep
+
+### Context
+Resumed from session 38. Completed verdict-capture pipeline testing (PostToolUse bug),
+then swept three deferred infra tasks in one session.
+
+### What Was Done
+
+**Verdict capture hook pipeline — COMPLETE (PR #11):**
+- Diagnosed `additionalContext` bug: PostToolUse requires `hookSpecificOutput` wrapper,
+  not top-level key. Fixed `ollama-post-tool.py`.
+- Diagnosed SubagentStop bug: `verdict-capture.py` used `transcript_path` (main session);
+  subagent verdicts are in `agent_transcript_path`. Fixed with event-type detection.
+- Hooks promoted to `~/.claude/settings.json` (user-level, fires in all Claude Code sessions).
+- Deferred task added: backup `~/.claude/settings.json` + `.mcp.json` (not in any repo).
+- Also discovered: `SubagentStart` hook can inject context into subagents; `updatedMCPToolOutput`
+  can replace MCP tool output in PostToolUse; Claude Code docs confirmed `additionalContext`
+  is documented for PostToolUse but requires correct JSON structure.
+- PR #11: `feature/verdict-capture-hook` → `feature/ollama-token-logging`.
+
+**context_files for generate_code/ask_ollama — COMPLETE (PR #12):**
+- `ContextFile` Pydantic model, `_build_context_block()`, `context_files` param on both tools.
+- Files read server-side; Claude pays zero tokens for file content. Absolute paths enforced.
+- PR #12: `feature/context-files-param` → `master` (also includes ref_lookup cross-repo).
+
+**ref_lookup cross-repo — COMPLETE (rides PR #12):**
+- `ref-lookup.sh --root /abs/path` + `server.py ref_lookup(path=...)`.
+- Validated against expense repo: finds that repo's keys, correct error on bad path.
+
+**ref integrity checker — COMPLETE (branch: feature/ref-integrity-checker, PR pending):**
+- `check-ref-integrity.py`: 4 checks (dangling refs, unclosed blocks, duplicate defs, orphans).
+  Fence-aware (skips ``` blocks). Excludes `.git/`, `node_modules/`, `.venv/`. `--root` flag.
+- `check-ref-integrity.sh`: thin bash wrapper.
+- `.githooks/pre-commit`: gates on staged `*.md` files. Install: `git config core.hooksPath .githooks`.
+- LLM repo: exit 0, 8 orphaned (expected). Expense repo: 1 dangling ref, 3 duplicate defs found.
+
+**CRLF normalization (discovered during session-log edit):**
+- `session-log.md` and other tracked `.md` files had CRLF despite `.gitattributes eol=lf`.
+- Root cause: `--renormalize` only stages the LF version; doesn't update working tree.
+- Fix: `sed -i 's/\r//'` to convert in-place. Applied to all tracked `.md` files.
+
+### Decisions Made
+- `hookSpecificOutput` wrapper required for PostToolUse `additionalContext` — not top-level
+- User-level `~/.claude/settings.json` for hooks that must fire in all projects
+- Absolute paths only for `context_files` (no cwd ambiguity)
+- Repo root (not `.claude/` dir) for `--root` param — consistent with `PROJECT_ROOT` convention
+- Python (not bash) for ref integrity checker — fence-aware parsing too fragile in bash pipes
+
+### Next
+- Push `feature/ref-integrity-checker` and open PR → master
+- Commit CRLF normalization + session-log update
+- Optional: fix expense repo issues found by checker (run with `--root ~/workspaces/expenses/code`)
+- Optional: `git config core.hooksPath .githooks` to activate pre-commit hook locally
+- Remaining open deferred tasks: hook-based auto-resume, user-config backup,
+  Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix
 
 ---
 
@@ -180,48 +238,6 @@ expense-reporter repo with it as the first consumer. Full plan executed across b
   are in `data/classification/`; document their JSON schema in `.claude/index.md`
 - **Layer 5.2 (expense repo):** `classify` command — 3-field input → Ollama HTTP → structured JSON → top-N subcategories
 - **PRs to merge:** `feature/portable-scaffolding` (LLM repo) + `feature/claude-code-scaffolding` (expense repo)
-
----
-
-## 2026-02-27 - Session 35: Fix Layer 5 Blockers + Java Workspace Setup
-
-### Context
-Resumed from session 34. Two blocking issues identified before Layer 5 could begin:
-`think: false` not suppressing Qwen3 thinking (options{} placement), and `num_ctx=16384`
-causing KV cache overflow on 12GB card. Also prepared a separate Spring Boot exercise workspace.
-
-### What Was Done
-- **Fixed `think: false` placement (5.0e):** Moved from `options{}` to top-level payload in both
-  `personas/lib/ollama_client.py` and `mcp-server/src/ollama_mcp/client.py`. Verified with
-  before/after tests: 701→124 tokens (82% reduction), 16.7s→2.6s (6.4x speedup), chars/token
-  ratio normalized from 1.51→3.65 (matches Qwen2.5 baseline ~3.5). Root cause confirmed via
-  Ollama docs: `think` is a top-level API parameter, silently ignored inside `options{}`.
-- **Reduced `num_ctx` to 10240 (5.0f):** Changed `go-qwen25c14.Modelfile` from 16384→10240.
-  User chose 10240 over 8192 for more context headroom. Confirmed: `num_ctx` does NOT require
-  powers of 2 (arbitrary integers accepted). Rebuilt persona, tested successfully (no OOM).
-- **Created `my-java-q25c14` persona:** New `modelfiles/java-qwen25c14.Modelfile` (qwen2.5-coder:14b,
-  num_ctx=10240, Java 21 + Spring Boot 3.x constraints). Registered in `registry.yaml` and `index.md`.
-  Smoke-tested: clean Spring Boot controller with jakarta.*, constructor injection, records.
-- **Set up todaytix-test workspace:** `/home/leandror/workspaces/todaytix-test/` with git init,
-  `.mcp.json` (ollama-bridge), and `CLAUDE.md` (local LLM usage instructions, Spring Boot conventions,
-  mandatory review checklist for local model output).
-- **Strengthened local model review instruction:** CLAUDE.md includes HARD REQUIREMENT for Claude
-  to review model output (compile check, conventions check, correctness check) and state explicit
-  ACCEPTED/IMPROVED/REJECTED verdict before writing to files.
-
-### Decisions Made
-- **`num_ctx` can be any integer** — not restricted to powers of 2. Chose 10240 (10K) as balance
-  between context capacity and VRAM pressure on 12GB card.
-- **Java persona on 14B only** — user chose `my-java-q25c14` (qwen2.5-coder:14b) over `my-java-q3`
-  (qwen3:8b) for the exercise. Quality over speed for a learning exercise.
-- **Local model output review is a HARD REQUIREMENT** — strengthened from passive "evaluate explicitly"
-  to mandatory checklist + verdict before writing files. Better instruction-following behavior.
-- **MCP bridge had same `think` bug** — fixed in both `personas/lib/ollama_client.py` (scripts) and
-  `mcp-server/src/ollama_mcp/client.py` (MCP server). All Ollama callers now correct.
-
-### Next
-- **Layer 5.1:** Port training data into expense-reporter (all blockers now resolved)
-- **todaytix-test:** User will open Claude Code in that folder for Spring Boot exercise (independent work)
 
 ---
 
