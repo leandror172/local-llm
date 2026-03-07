@@ -52,16 +52,17 @@
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
-- **Last checkpoint:** Session 36 (2026-02-27) — Portable scaffolding + expense repo bootstrap:
-  - `resume.sh` now discovers ref keys dynamically (no hardcoded list)
-  - `docs/scaffolding-template.md` created — reusable bootstrap guide for any project
-  - `~/.claude/.mcp.json` created — ollama-bridge MCP available globally
-  - Expense repo (`~/workspaces/expenses/code/`) bootstrapped with `.claude/` scaffolding
-  - Classification data migrated to `data/classification/` in expense repo
-  - Desktop-era docs archived to `docs/archive/` in expense repo
-- **Branch:** `feature/portable-scaffolding` (LLM repo) / `feature/claude-code-scaffolding` (expense repo)
-- **Next in THIS repo:** Task 5.8 (MCP thin wrapper) — after 5.1–5.7 complete in expense repo
-- **Tracking only (execute in `~/workspaces/expenses/code/`):** 5.1 (training data), 5.2 (`classify`), 5.3–5.7
+- **Last checkpoint:** Session 38 (2026-03-07) — Token logging + verdict capture hooks:
+  - `calls.jsonl` now logs `prompt_eval_count`, `prompt_chars`, `response_chars`, `claude_tokens_est`
+  - CLAUDE.md + scaffolding-template + expense repo CLAUDE.md: verdict instruction requires mental chars/4 estimate, no file reads
+  - `.claude/hooks/ollama-post-tool.py` + `verdict-capture.py` + `settings.json` created
+  - PostToolUse hook injects `[VERDICT prompt_hash=N]` template; Stop/SubagentStop hook captures filled verdicts to `calls.jsonl`
+  - Subagent test revealed SubagentStop was missing — added; PostToolUse additionalContext reach to subagents TBD
+  - PR #10 open: `feature/ollama-token-logging` → master (token logging, complete)
+- **Active branch:** `feature/verdict-capture-hook` (forked from `feature/ollama-token-logging`)
+- **Uncommitted:** `.claude/settings.json` (SubagentStop addition)
+- **Next in THIS repo:** Test hook pipeline (main session + subagent), then PR verdict-capture-hook → ollama-token-logging
+- **Tracking only (execute in `~/workspaces/expenses/code/`):** 5.1–5.7
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
