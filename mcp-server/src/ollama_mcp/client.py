@@ -39,12 +39,14 @@ class ChatResponse:
     Attributes:
         content: The model's text reply (thinking tokens are stripped by Ollama).
         model: Which model actually handled the request.
-        eval_count: Total tokens evaluated (includes hidden thinking tokens).
+        prompt_eval_count: Tokens consumed by the input prompt (input tokens).
+        eval_count: Total tokens generated (includes hidden thinking tokens for Qwen3).
         eval_duration_ms: Time spent generating tokens, in milliseconds.
         total_duration_ms: Wall-clock time for the entire request, in milliseconds.
     """
     content: str
     model: str
+    prompt_eval_count: int
     eval_count: int
     eval_duration_ms: float
     total_duration_ms: float
@@ -170,6 +172,7 @@ class OllamaClient:
         result = ChatResponse(
             content=data["message"]["content"],
             model=data.get("model", model),
+            prompt_eval_count=data.get("prompt_eval_count", 0),
             eval_count=data.get("eval_count", 0),
             eval_duration_ms=data.get("eval_duration", 0) / 1_000_000,
             total_duration_ms=data.get("total_duration", 0) / 1_000_000,
@@ -210,6 +213,15 @@ class OllamaClient:
 
             prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()[:12]
 
+            # Rough estimate of how many Claude API tokens the same task would cost.
+            # Formula: (prompt + system + response chars) / 4 — the standard
+            # chars-per-token approximation for English/code content. Intentionally
+            # imprecise; good enough for ballpark ACCEPTED/IMPROVED savings reports.
+            system_chars = len(system) if system else 0
+            claude_tokens_est = (
+                len(prompt) + system_chars + len(response.content)
+            ) // 4
+
             entry = {
                 "ts": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
                 "model": response.model,
@@ -221,9 +233,13 @@ class OllamaClient:
                 "response": (
                     response.content if LOG_FULL_CONTENT else response.content[:200]
                 ),
+                "prompt_chars": len(prompt),
+                "response_chars": len(response.content),
+                "prompt_eval_count": response.prompt_eval_count,
                 "eval_count": response.eval_count,
                 "eval_duration_ms": round(response.eval_duration_ms),
                 "total_duration_ms": round(response.total_duration_ms),
+                "claude_tokens_est": claude_tokens_est,
                 "temperature": temperature,
                 "think": think,
                 "had_format": had_format,
