@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__ollama-bridge__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/i/workspaces/llm/.claude/hooks/ollama-post-tool.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/i/workspaces/llm/.claude/hooks/verdict-capture.py"
+          }
+        ]
+      }
+    ]
+  }
+}
