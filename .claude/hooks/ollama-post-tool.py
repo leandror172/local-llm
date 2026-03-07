@@ -42,4 +42,9 @@ template = (
     "[/VERDICT]"
 )
 
-print(json.dumps({"additionalContext": template}))
+print(json.dumps({
+    "hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": template,
+    }
+}))
