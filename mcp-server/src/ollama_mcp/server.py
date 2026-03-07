@@ -15,15 +15,77 @@ The server uses a "lifespan" pattern to manage the Ollama HTTP client:
 import asyncio
 import json
 import os
+import pathlib
 import sys
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import BaseModel
 
 from ollama_mcp.client import OllamaClient, OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError
 from ollama_mcp.config import DEFAULT_MODEL, MODELS, REGISTRY_PATH, REPO_ROOT, TEMPS
 from ollama_mcp import registry
+
+# ---------------------------------------------------------------------------
+# context_files support
+# ---------------------------------------------------------------------------
+
+class ContextFile(BaseModel):
+    """A file (or slice of a file) to inject into the Ollama prompt server-side.
+
+    The server reads the file at `path` and prepends its content as a fenced
+    code block to the prompt. This avoids passing file content through Claude's
+    context (which costs tokens twice: once to read, once to embed in the prompt).
+
+    Attributes:
+        path: Absolute path to the file. Must exist and be readable.
+        start_line: First line to include (1-based, inclusive). Omit for full file.
+        end_line: Last line to include (1-based, inclusive). Omit for full file.
+    """
+    path: str
+    start_line: int | None = None
+    end_line: int | None = None
+
+
+def _build_context_block(context_files: list[ContextFile]) -> str:
+    """Read each file (with optional line slice) and format as a fenced block.
+
+    Returns a <context>...</context> string ready to prepend to the prompt,
+    or an error string if any file cannot be read.
+    """
+    sections: list[str] = []
+
+    for cf in context_files:
+        p = pathlib.Path(cf.path)
+        if not p.is_absolute():
+            return f"Error: context_files path must be absolute: {cf.path!r}"
+        if not p.exists():
+            return f"Error: context_files path not found: {cf.path!r}"
+        if not p.is_file():
+            return f"Error: context_files path is not a file: {cf.path!r}"
+
+        try:
+            lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError as e:
+            return f"Error: cannot read {cf.path!r}: {e}"
+
+        # Apply line slice (1-based, inclusive → 0-based slice)
+        if cf.start_line is not None or cf.end_line is not None:
+            start = max(0, (cf.start_line or 1) - 1)
+            end = cf.end_line if cf.end_line is not None else len(lines)
+            lines = lines[start:end]
+            label = f"{cf.path} (lines {cf.start_line or 1}–{cf.end_line or len(lines) + start})"
+        else:
+            label = cf.path
+
+        # Infer language hint from extension for the fenced block
+        suffix = p.suffix.lstrip(".") or "text"
+        content = "\n".join(lines)
+        sections.append(f"### {label}\n```{suffix}\n{content}\n```")
+
+    return "<context>\n" + "\n\n".join(sections) + "\n</context>"
+
 
 # ---------------------------------------------------------------------------
 # Language → persona routing for generate_code
@@ -150,6 +212,7 @@ async def ask_ollama(
     model: str = DEFAULT_MODEL,
     temperature: float | None = None,
     persona: str | None = None,
+    context_files: list[ContextFile] | None = None,
 ) -> str:
     """Ask a question to a local Ollama model.
 
@@ -172,6 +235,11 @@ async def ask_ollama(
                  Overrides the model parameter. Use query_personas to discover
                  available personas. Returns an error if the persona is not
                  found in the registry.
+        context_files: Files to inject into the prompt server-side. Each entry
+                       requires an absolute `path`; optional `start_line` and
+                       `end_line` (1-based, inclusive) select a slice. Content
+                       is prepended as fenced code blocks — avoids passing file
+                       content through Claude's context (saves tokens).
 
     Returns:
         The model's text response. If Ollama is unreachable, returns an error
@@ -192,9 +260,17 @@ async def ask_ollama(
 
     client = _get_client()
 
+    # Prepend file context if provided (server reads files — no Claude token cost)
+    full_prompt = prompt
+    if context_files:
+        context_block = _build_context_block(context_files)
+        if context_block.startswith("Error:"):
+            return context_block
+        full_prompt = f"{context_block}\n\n{prompt}"
+
     try:
         response = await client.chat(
-            prompt=prompt,
+            prompt=full_prompt,
             model=model,
             temperature=temperature,
         )
@@ -282,6 +358,7 @@ async def generate_code(
     prompt: str,
     language: str | None = None,
     model: str | None = None,
+    context_files: list[ContextFile] | None = None,
 ) -> str:
     """Generate code using a local Ollama model with smart persona routing.
 
@@ -300,6 +377,12 @@ async def generate_code(
                   Used for persona routing and prepended as a hint to the prompt.
                   If omitted, the model infers the language from context.
         model: Override automatic persona routing with a specific model name.
+        context_files: Existing files to inject into the prompt server-side.
+                       Each entry requires an absolute `path`; optional
+                       `start_line` and `end_line` (1-based, inclusive) select
+                       a slice. Content is prepended as fenced code blocks —
+                       avoids passing file content through Claude's context
+                       (saves tokens). Use for "modify this existing file" tasks.
 
     Returns:
         Generated code (typically in a fenced code block). Returns an error
@@ -326,6 +409,13 @@ async def generate_code(
         full_prompt = f"[Language: {language}]\n{prompt}"
     else:
         full_prompt = prompt
+
+    # Prepend file context if provided (server reads files — no Claude token cost)
+    if context_files:
+        context_block = _build_context_block(context_files)
+        if context_block.startswith("Error:"):
+            return context_block
+        full_prompt = f"{context_block}\n\n{full_prompt}"
 
     try:
         response = await client.chat(
