@@ -1,7 +1,7 @@
 # Session Log
 
-**Current Layer:** Deferred infra (clearing backlog — items 2, 3, 4 complete this session)
-**Current Session:** 2026-03-07 — Session 39: Verdict capture fixes + deferred infra sweep
+**Current Layer:** Deferred infra + overlay system design
+**Current Session:** 2026-03-09 — Session 39b: Overlay system design
 **Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`
 
 ---
@@ -55,12 +55,53 @@ then swept three deferred infra tasks in one session.
 - Python (not bash) for ref integrity checker — fence-aware parsing too fragile in bash pipes
 
 ### Next
-- Push `feature/ref-integrity-checker` and open PR → master
-- Commit CRLF normalization + session-log update
-- Optional: fix expense repo issues found by checker (run with `--root ~/workspaces/expenses/code`)
+- Push `feature/ref-integrity-checker` and open PR → master (done: PR #13)
 - Optional: `git config core.hooksPath .githooks` to activate pre-commit hook locally
+- Optional: fix expense repo issues found by checker
 - Remaining open deferred tasks: hook-based auto-resume, user-config backup,
   Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix
+
+---
+
+## 2026-03-09 - Session 39b: Overlay system design
+
+### Context
+Continued from session 39 (same branch `feature/ref-integrity-checker`). The ref integrity
+checker exposed that patterns developed in this repo (ref indexing, session tracking, ollama
+scaffolding) need a portable packaging mechanism to apply to other repos like the expense reporter.
+
+### What Was Done
+
+**Overlay system design — COMPLETE (plan only, no implementation):**
+- Defined the concept: "repo augmentation" / "project overlay" — packages of files, config
+  sections, and AI-agent instructions that layer onto an existing repository
+- Identified the hard problems: merge semantics for shared files (CLAUDE.md), idempotency
+  via markers, detecting existing installations (retrofit), update versioning
+- Designed three execution modes: manual (TODO list), AI-assisted interactive, AI-assisted
+  unattended (with auto-detect backend: Ollama → `claude -p` → manual)
+- Defined marker format: `<!-- overlay:NAME vN -->` / `<!-- /overlay:NAME -->` — verified
+  no conflict with `<!-- ref:KEY -->` patterns in ref-lookup.sh and integrity checker
+- Designed manifest format (YAML) with: files, templates, append_lines, merge_sections,
+  manual_if_exists, agent_targets (Claude Code paths for v1)
+- Designed structured report system: every action logged with rationale, stdout/file/JSON output
+- Wrote full implementation plan: `docs/plans/overlay-system-plan.md` (4 phases)
+- Chose ref-indexing as first overlay; expense repo as test target (retrofit/update case)
+
+### Decisions Made
+- `<!-- overlay:NAME vN -->` markers for managed sections in shared files (CLAUDE.md etc.)
+- YAML manifest (pyyaml available; supports comments; Python installer anyway)
+- Python installer (bash too fragile for parsing — ref integrity checker lesson)
+- AI merge uses Ollama locally (free) with fallback to `claude -p`
+- `agent_targets` block (renamed from "integrations") declares AI-tool config paths
+- Files themselves are the unit for scripts (no in-file markers); markers only for sections
+  injected into shared files
+
+### Next
+- **Execute the overlay system plan** (`docs/plans/overlay-system-plan.md`):
+  - Phase 1: overlay directory structure + manifest + extract ref-indexing files
+  - Phase 2: `install-overlay.py` with deterministic + AI-merge + report
+  - Phase 3: test against expense repo (retrofit case)
+  - Phase 4: document the template for future overlays
 
 ---
 
