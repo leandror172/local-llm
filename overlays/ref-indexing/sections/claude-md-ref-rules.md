@@ -5,7 +5,7 @@ stored as `<!-- ref:KEY -->` blocks in `*.md` files.
 
 **To look up a ref:** `.claude/tools/ref-lookup.sh KEY` — prints that section.
 Run with no args to list all known keys.
-**To check integrity:** `.claude/tools/check-ref-integrity.sh` — finds broken `[ref:KEY]`
+**To check integrity:** `.claude/tools/check-ref-integrity.py` — finds broken `[ref:KEY]`
 tags and malformed blocks across the repo.
 
 ### Two-Tier Notation
