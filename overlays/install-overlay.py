@@ -282,27 +282,28 @@ def _ai_merge(
         )
         return
 
-    prompt = f"""You are merging a new section into an existing file. Output ONLY the complete merged file — no explanation, no markdown fences.
+    prompt = f"""You are merging a new section into an existing file. Output ONLY the complete merged file — no explanation, no markdown fences, no separator lines.
 
 EXISTING FILE:
----
+<<<EXISTING_START>>>
 {existing_content}
----
+<<<EXISTING_END>>>
 
-SECTION TO INSERT (wrapped with these exact markers):
----
+SECTION TO INSERT (use these exact markers, verbatim):
+<<<SECTION_START>>>
 {open_marker}
 {section_content}
 {close_marker}
----
+<<<SECTION_END>>>
 
 PLACEMENT HINT: {merge_hint}
 
 RULES:
 - Do not remove or reorder any existing content.
+- Do not add any lines that are not in the existing file or the section to insert.
 - Do not modify content outside the overlay markers.
 - If the section content (without markers) already exists verbatim, wrap it with the markers instead of duplicating it.
-- Output the complete merged file and nothing else.
+- Output the complete merged file and nothing else. No preamble, no explanation.
 """
 
     print(f"\n  Calling AI backend ({resolved[0]}) for merge of {dest_rel}...")
@@ -335,7 +336,15 @@ RULES:
             print(f"\n  ... ({len(diff) - 80} more diff lines)")
         print("--- end diff ---\n")
 
-        ans = input("Apply this merge? [y/N] ").strip().lower()
+        try:
+            ans = input("Apply this merge? [y/N] ").strip().lower()
+        except EOFError:
+            record(
+                "TODO", dest_rel,
+                "AI merge ready but no interactive stdin — re-run with --yes to apply",
+                f"or apply the diff above manually",
+            )
+            return
         if ans == "y":
             backup(dest)
             dest.write_text(merged)
