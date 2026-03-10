@@ -1,11 +1,12 @@
 This file is not directly about the project: it is an output about something that I learned about, and questioned Claude.
 
- About RAG with embeddings: that thecnique is (or sounds like) exactly what I've been thinking that "there must be a way to inject 'extra training' into the existing model, with a way that is cheaper
-  than inputing a textual description (including the SYSTEM propmt in personas), so that we can better 'parameterize' a model/persona with more detail of the behavior we want, while using up less
+ About RAG with embeddings: that technique is (or sounds like) exactly what I've been thinking that "there must be a way to inject 'extra training' into the existing model, with a way that is cheaper
+  than inputing a textual description (including the SYSTEM prompt in personas), so that we can better 'parameterize' a model/persona with more detail of 
+ the behavior we want, while using up less
   context/tokens; in fact, since the models themselves work through vectors/matrixes multiplications and whatnot, injecting this directly into the model - or an extra layer incorporated into the model
-  on-demannd, seems to be the way, and something that should theoretically be possible... so an 8B model could, over time, be 'trained' to get better at what we want to do, by improving and injecting this
+  on-demand, seems to be the way, and something that should theoretically be possible... so an 8B model could, over time, be 'trained' to get better at what we want to do, by improving and injecting this
    layer, and have it be the customization and learning layer... and extra layers could be added to different processing (and even reused when upgrading to another model)". And it just occurred to me,
-  that is this could trully be an extra "layer", it could process a result from a model (before output), when perhaps not "all" of the "model" needs to be loaded into memory, when applying this (or a
+  that is this could truly be an extra "layer", it could process a result from a model (before output), when perhaps not "all" of the "model" needs to be loaded into memory, when applying this (or a
   different) extra layer. But this is starting to sound like how AirLLM might work (and also not the most important point).
   So, could this be used to enhance the local models we've been testing, improving their benchmark (and real use) results, in the way that I was thinking? And/or how limited this would be?
 
