@@ -1,0 +1,46 @@
+name: ref-indexing
+version: 1
+description: >
+  Ref block documentation system: [ref:KEY] tags in CLAUDE.md point to
+  <!-- ref:KEY --> blocks in *.md files. Includes ref-lookup tool,
+  integrity checker, pre-commit hook guidance, and a starter index.md.
+
+# Files to copy verbatim to target repo.
+# Source paths are relative to this overlay's files/ directory.
+# Dest paths are relative to the target repo root.
+# On update: dest is backed up (.bak) before overwrite.
+files:
+  ref-lookup.sh: .claude/tools/ref-lookup.sh
+  check-ref-integrity.py: .claude/tools/check-ref-integrity.py
+  check-ref-integrity.sh: .claude/tools/check-ref-integrity.sh
+
+# Files to instantiate from templates — only if dest does not exist.
+# Never overwrites an existing file (user-managed after creation).
+templates:
+  index.md.tmpl: .claude/index.md
+
+# Lines to append to existing files, idempotent (grep before append).
+append_lines:
+  .gitignore:
+    - ".claude/local/"
+
+# Sections to inject into shared files using overlay markers.
+# The installer wraps injected content with:
+#   <!-- overlay:ref-indexing v1 --> ... <!-- /overlay:ref-indexing -->
+# merge_hint is passed to the AI backend when manual placement is needed.
+merge_sections:
+  CLAUDE.md:
+    file: sections/claude-md-ref-rules.md
+    merge_hint: "insert near the top of the file, before project-specific rules"
+
+# Files that require manual merge if the dest already exists.
+# The installer reports [TODO] and prints the source path.
+manual_if_exists:
+  - .githooks/pre-commit
+
+# Which AI-tool configurations this overlay targets.
+# Used by the installer to know where to find rules_file and tools_dir.
+agent_targets:
+  claude-code:
+    tools_dir: .claude/tools
+    rules_file: CLAUDE.md
