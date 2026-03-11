@@ -373,11 +373,16 @@ def _call_backend(resolved: tuple, prompt: str) -> str | None:
 def _call_ollama(prompt: str, model: str) -> str | None:
     import urllib.request
 
+    # stream:true keeps the socket active (tokens arrive incrementally),
+    # avoiding socket-timeout on long generations with stream:false.
+    # num_ctx must cover prompt + full merged output. Default Ollama context
+    # (4096) is too small for file-merge tasks; 8192 is a safe minimum.
     payload = json.dumps({
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
+        "stream": True,
         "think": False,
+        "options": {"num_ctx": 8192},
     }).encode()
 
     try:
@@ -386,9 +391,17 @@ def _call_ollama(prompt: str, model: str) -> str | None:
             data=payload,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read())
-            return data["message"]["content"]
+        chunks = []
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            for line in resp:
+                if not line.strip():
+                    continue
+                chunk = json.loads(line)
+                if chunk.get("message", {}).get("content"):
+                    chunks.append(chunk["message"]["content"])
+                if chunk.get("done"):
+                    break
+        return "".join(chunks)
     except Exception as e:
         print(f"  WARNING: Ollama call failed: {e}", file=sys.stderr)
         return None
