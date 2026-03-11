@@ -23,7 +23,7 @@ backends:
   - id: claude-code
     type: cli                  # subprocess via Claude Code CLI — no API key needed
     command: claude
-    args: ["-p", "--model", "claude-haiku-4-5"]
+    args: ["-p", "--model", "haiku", "--output-format", "json"]
     schema_mode: prompt_injection  # schema embedded as text in prompt
     priority: 3
 

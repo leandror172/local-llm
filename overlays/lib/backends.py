@@ -112,17 +112,36 @@ class OllamaApiBackend(Backend):
 class CliBackend(Backend):
 
     def is_available(self) -> bool:
-        return shutil.which(self.config["command"]) is not None
+        if not shutil.which(self.config["command"]):
+            return False
+        # claude CLI cannot be nested inside an active Claude Code session
+        if self.config["command"] == "claude" and os.environ.get("CLAUDECODE"):
+            return False
+        return True
 
     def call(self, prompt: str, fmt: dict | None = None,
              model_override: str | None = None) -> str | None:
         command = [self.config["command"]] + self.config.get("args", []) + [prompt]
         try:
             result = subprocess.run(command, capture_output=True, text=True, timeout=120)
-            if result.returncode == 0:
-                return result.stdout
-            print(f"  WARNING: CLI call failed: {result.stderr}", file=sys.stderr)
-            return None
+            if result.returncode != 0:
+                print(f"  WARNING: CLI call failed: {result.stderr}", file=sys.stderr)
+                return None
+            stdout = result.stdout.strip()
+            if not stdout:
+                print("  WARNING: CLI call returned empty output", file=sys.stderr)
+                return None
+            # If --output-format json is in args, unwrap the envelope
+            if "--output-format" in self.config.get("args", []):
+                try:
+                    envelope = json.loads(stdout)
+                    if envelope.get("is_error"):
+                        print(f"  WARNING: CLI returned error: {envelope.get('result', '')}", file=sys.stderr)
+                        return None
+                    return envelope.get("result", stdout)
+                except json.JSONDecodeError:
+                    pass  # not a JSON envelope — return raw
+            return stdout
         except Exception as e:
             print(f"  WARNING: CLI call failed: {e}", file=sys.stderr)
             return None
