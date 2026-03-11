@@ -52,6 +52,7 @@ def ai_merge(
     yes: bool,
     dry_run: bool,
     do_backup: bool,
+    debug: bool = False,
 ):
     dest_rel = dest.name
 
@@ -89,14 +90,14 @@ def ai_merge(
 
     print(f"\n  Calling AI backend ({backend.id}) for merge plan of {dest_rel}...")
     fmt = schema if backend.schema_mode == SchemaMode.FORMAT_PARAM else None
-    plan_text = backend.call(prompt, fmt=fmt, model_override=model_override)
+    plan_text = backend.call(prompt, fmt=fmt, model_override=model_override, debug=debug)
 
     if plan_text is None:
         record("TODO", dest_rel, "AI merge failed — add section manually per APPLY.md")
         return
 
     try:
-        plan = json.loads(plan_text)
+        plan = json.loads(_extract_json(plan_text))
     except json.JSONDecodeError as e:
         record("TODO", dest_rel, f"AI returned invalid JSON: {e}",
                "add section manually per APPLY.md")
@@ -145,6 +146,18 @@ def ai_merge(
             record("MERGE:AI", dest_rel, f"merged via {backend.id} (confirmed by user)")
         else:
             record("TODO", dest_rel, "AI merge rejected by user — add section manually")
+
+
+def _extract_json(text: str) -> str:
+    """Strip markdown code fences if present, then return the JSON text."""
+    text = text.strip()
+    # Strip ```json ... ``` or ``` ... ```
+    if text.startswith("```"):
+        lines = text.splitlines()
+        # Drop first line (```json or ```) and last line (```)
+        inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+        return "\n".join(inner).strip()
+    return text
 
 
 def _backup(path: Path) -> Path:

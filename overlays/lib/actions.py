@@ -102,6 +102,7 @@ def handle_merge_sections(
     backends: list[Backend],
     dry_run: bool,
     do_backup: bool,
+    debug: bool = False,
 ):
     overlay_name = manifest["name"]
     overlay_version = manifest["version"]
@@ -158,7 +159,7 @@ def handle_merge_sections(
                 ai_merge(
                     dest, existing, section_content, open_marker, close_marker,
                     merge_hint, backend_id, model_override, backends,
-                    prompts_dir, yes, dry_run, do_backup,
+                    prompts_dir, yes, dry_run, do_backup, debug,
                 )
             else:
                 record("TODO", dest_rel,
