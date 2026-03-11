@@ -342,8 +342,15 @@ def _ai_merge(
         record("TODO", dest_rel, f"AI returned invalid JSON: {e}", "add section manually per APPLY.md")
         return
 
+    delete_ranges = plan.get("delete_ranges", [])
     print(f"  Plan: insert after line {plan['insert_after_line']}, "
-          f"delete {len(plan.get('delete_ranges', []))} range(s) — {plan.get('reasoning', '')}")
+          f"delete {len(delete_ranges)} range(s) — {plan.get('reasoning', '')}")
+    if not delete_ranges:
+        record(
+            "WARN", dest_rel,
+            "AI inserted section but removed nothing — verify no superseded content remains",
+            "check for older/simpler versions of this section and remove manually if found",
+        )
 
     merged = _apply_plan(plan, existing_content, open_marker, section_content, close_marker)
 
