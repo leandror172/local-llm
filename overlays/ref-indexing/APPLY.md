@@ -23,8 +23,13 @@ exists, place it immediately before or merge into it.
 
 **Retrofit rule:** If the target CLAUDE.md already contains `[ref:KEY]` usage or
 `ref-lookup.sh` mentions without overlay markers, that content was manually installed.
-Wrap the existing content block with the markers (do not duplicate it). Report what
-you wrapped so the human can verify.
+Two cases:
+- If the existing content is a *simpler or partial version* of the section (e.g., a
+  "Reference Lookup Convention" with just the lookup command and no two-tier table or
+  hard requirements), **remove it** and insert the full overlay section in its place.
+- If the existing content is substantially the same as the overlay section, wrap it
+  with the overlay markers instead of duplicating it.
+Report what you removed or wrapped so the human can verify.
 
 **Do not:**
 - Remove or reorder any existing CLAUDE.md content
