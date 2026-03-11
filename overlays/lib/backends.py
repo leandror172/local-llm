@@ -46,7 +46,7 @@ class Backend(ABC):
 
     @abstractmethod
     def call(self, prompt: str, fmt: dict | None = None,
-             model_override: str | None = None) -> str | None: ...
+             model_override: str | None = None, debug: bool = False) -> str | None: ...
 
 
 class OllamaApiBackend(Backend):
@@ -61,7 +61,7 @@ class OllamaApiBackend(Backend):
             return False
 
     def call(self, prompt: str, fmt: dict | None = None,
-             model_override: str | None = None) -> str | None:
+             model_override: str | None = None, debug: bool = False) -> str | None:
         import urllib.request
 
         # model_override may carry +think suffix (CLI convenience)
@@ -120,10 +120,17 @@ class CliBackend(Backend):
         return True
 
     def call(self, prompt: str, fmt: dict | None = None,
-             model_override: str | None = None) -> str | None:
-        command = [self.config["command"]] + self.config.get("args", []) + [prompt]
+             model_override: str | None = None, debug: bool = False) -> str | None:
+        # Pass prompt via stdin — more robust than positional arg for long prompts
+        command = [self.config["command"]] + self.config.get("args", [])
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+            result = subprocess.run(
+                command, input=prompt, capture_output=True, text=True, timeout=120
+            )
+            if debug:
+                print(f"  DEBUG stdout: {result.stdout[:500]!r}", file=sys.stderr)
+                print(f"  DEBUG stderr: {result.stderr[:200]!r}", file=sys.stderr)
+                print(f"  DEBUG exit:   {result.returncode}", file=sys.stderr)
             if result.returncode != 0:
                 print(f"  WARNING: CLI call failed: {result.stderr}", file=sys.stderr)
                 return None
@@ -138,7 +145,11 @@ class CliBackend(Backend):
                     if envelope.get("is_error"):
                         print(f"  WARNING: CLI returned error: {envelope.get('result', '')}", file=sys.stderr)
                         return None
-                    return envelope.get("result", stdout)
+                    result_text = envelope.get("result", "")
+                    if not result_text:
+                        print("  WARNING: CLI envelope has empty result field", file=sys.stderr)
+                        return None
+                    return result_text
                 except json.JSONDecodeError:
                     pass  # not a JSON envelope — return raw
             return stdout
@@ -156,7 +167,7 @@ class ClaudeApiBackend(Backend):
         return bool(key_spec)
 
     def call(self, prompt: str, fmt: dict | None = None,
-             model_override: str | None = None) -> str | None:
+             model_override: str | None = None, debug: bool = False) -> str | None:
         import urllib.request
         key_spec = self.config.get("api_key", "")
         api_key = os.environ.get(key_spec[4:]) if str(key_spec).startswith("env:") else key_spec

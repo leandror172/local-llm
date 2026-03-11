@@ -61,6 +61,8 @@ def main():
     )
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be done without making changes")
+    parser.add_argument("--debug", action="store_true",
+                        help="Print raw backend responses for troubleshooting")
     args = parser.parse_args()
 
     script_dir = Path(__file__).parent
@@ -100,7 +102,7 @@ def main():
     handle_merge_sections(
         manifest, overlay_dir, target_root, prompts_dir,
         args.mode, args.yes, args.backend, args.model,
-        backends, args.dry_run, args.backup,
+        backends, args.dry_run, args.backup, args.debug,
     )
     handle_manual_if_exists(manifest, overlay_dir, target_root, args.dry_run)
 
