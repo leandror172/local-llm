@@ -353,6 +353,10 @@ def _ai_merge(
     if schema_mode == SchemaMode.PROMPT_INJECTION:
         prompt += f"\n\nRespond with a JSON object matching this schema:\n{json.dumps(schema, indent=2)}"
 
+    if dry_run:
+        record("MERGE:AI", dest_rel, f"would call {resolved['id']} for merge plan (dry-run — no AI call made)")
+        return
+
     print(f"\n  Calling AI backend ({resolved['id']}) for merge plan of {dest_rel}...")
     fmt = schema if schema_mode == SchemaMode.FORMAT_PARAM else None
     plan_text = _call_backend(resolved, prompt, fmt=fmt)
@@ -376,12 +380,6 @@ def _ai_merge(
             "AI inserted section but removed nothing — verify no superseded content remains",
             "check for older/simpler versions of this section and remove manually if found",
         )
-
-    merged = _apply_plan(plan, existing_content, open_marker, section_content, close_marker)
-
-    if dry_run:
-        record("MERGE:AI", dest_rel, f"would apply plan via {resolved['id']} (dry-run)")
-        return
 
     diff = list(difflib.unified_diff(
         existing_content.splitlines(keepends=True),
