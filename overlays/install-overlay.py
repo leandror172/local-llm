@@ -415,19 +415,24 @@ def _call_backend(resolved: tuple, prompt: str, fmt: dict | None = None) -> str 
 def _call_ollama(prompt: str, model: str, fmt: dict | None = None) -> str | None:
     import urllib.request
 
+    # +think suffix enables Qwen3 thinking mode; strip before sending to API.
+    # deepseek-r1 always thinks; think param is Qwen3-specific.
+    think = model.endswith("+think")
+    actual_model = model.removesuffix("+think")
+
     # stream:true keeps the socket active (tokens arrive incrementally),
     # avoiding socket-timeout on long generations with stream:false.
-    # num_ctx=4096 (Ollama default) is too small for file-merge tasks.
-    # For the planner, output is a small JSON plan — 4096 is fine.
+    # For the planner (fmt set), output is small JSON — 4096 ctx is fine.
     # For full-file merges, 8192 is the safe minimum.
     num_ctx = 4096 if fmt is not None else 8192
     payload_dict = {
-        "model": model,
+        "model": actual_model,
         "messages": [{"role": "user", "content": prompt}],
         "stream": True,
-        "think": False,
         "options": {"num_ctx": num_ctx},
     }
+    if not actual_model.startswith("deepseek"):
+        payload_dict["think"] = think
     if fmt is not None:
         payload_dict["format"] = fmt
     payload = json.dumps(payload_dict).encode()
@@ -513,8 +518,8 @@ def main():
                         help="Auto-accept AI decisions (unattended)")
     parser.add_argument("--backend", choices=["ollama", "claude", "auto"], default="auto",
                         help="AI backend for --mode ai (default: auto-detect)")
-    parser.add_argument("--ollama-model", default="qwen2.5-coder:14b", metavar="MODEL",
-                        help="Ollama model for AI merge (default: qwen2.5-coder:14b)")
+    parser.add_argument("--ollama-model", default="qwen3:14b+think", metavar="MODEL",
+                        help="Ollama model for AI merge; append +think for Qwen3 thinking mode (default: qwen3:14b+think)")
     parser.add_argument("--report", metavar="FILE",
                         help="Write summary report to file (default: stdout)")
     parser.add_argument("--report-format", choices=["text", "json"], default="text",
