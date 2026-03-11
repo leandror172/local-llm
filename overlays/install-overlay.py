@@ -303,6 +303,15 @@ def _ai_merge(
         record("TODO", dest_rel, "AI merge failed — add section manually per APPLY.md")
         return
 
+    # Validate that the AI preserved the required overlay markers
+    if open_marker not in merged or close_marker not in merged:
+        record(
+            "TODO", dest_rel,
+            "AI merge rejected — output missing overlay markers (model dropped HTML comments)",
+            "add section manually per APPLY.md, or retry with a different model",
+        )
+        return
+
     if dry_run:
         record("MERGE:AI", dest_rel, f"would merge via {resolved[0]} (dry-run)")
         return
