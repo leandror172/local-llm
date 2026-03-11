@@ -267,6 +267,13 @@ def _apply_plan(plan: dict, existing_content: str, open_marker: str, section_con
     for r in sorted(plan.get("delete_ranges", []), key=lambda r: r["start"], reverse=True):
         start_idx = r["start"] - 1   # 1-indexed → 0-indexed
         end_idx = r["end"]            # end is inclusive, slice end is exclusive
+        removed = "".join(lines[start_idx:end_idx]).rstrip()
+        preview = removed.splitlines()[0][:60] if removed else ""
+        record(
+            "DELETE", dest_rel,
+            f"lines {r['start']}–{r['end']}: {r.get('reason', 'no reason given')}",
+            f"first line: {preview!r}" if preview else "",
+        )
         del lines[start_idx:end_idx]
         # Adjust insert point for lines removed before it
         deleted_before = sum(
