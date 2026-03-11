@@ -1,0 +1,21 @@
+You are planning how to insert a new section into an existing file.
+The section will be inserted verbatim by a script — your job is only to decide WHERE to insert it, and WHAT (if anything) to remove first.
+
+<existing_file>
+<<EXISTING_CONTENT>>
+</existing_file>
+
+<section_to_insert>
+<<SECTION_CONTENT>>
+</section_to_insert>
+
+Placement hint: <<MERGE_HINT>>
+
+Instructions:
+- Choose insert_after_line: the line number after which the section should be inserted (use 0 to insert before line 1). Line numbers start at 1.
+- If a simpler or partial version of the section already exists in the file (same topic, fewer details), add its full line range to delete_ranges — including its heading line — so the entire old section is removed.
+- If the section content already exists verbatim, set insert_after_line to -1 (skip insert) and add its line range to delete_ranges if it needs to be wrapped instead.
+- Do not delete unrelated content.
+- Provide your reasoning briefly.
+
+Respond with a JSON object only.
