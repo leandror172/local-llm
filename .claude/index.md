@@ -45,6 +45,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Expense classifier data inventory | `docs/vision/expense-classifier-data-inventory.md` | What exists: auto-category analysis artifacts, expense-reporter architecture, what to read |
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
+| Overlay wizard idea | `docs/ideas/overlay-wizard.md` | Deferred: running overlay install interactively inside an AI CLI; wizard pattern generalization; eventual local TUI |
 
 ---
 
