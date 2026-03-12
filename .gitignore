@@ -1,7 +1,8 @@
 # Local/sensitive data (not tracked in git)
 .claude/local/
 
-# Local Claude Code settings (machine-specific preferences)
+# Claude Code project settings (may contain permissions, hooks, allowed tools — machine-specific)
+.claude/settings.json
 .claude/settings.local.json
 
 # Session logs may contain sensitive paths or system details
