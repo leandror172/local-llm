@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "insert_after_line": {
+      "type": "integer",
+      "description": "Line number (1-indexed) after which to insert the section. Use 0 to insert before line 1."
+    },
+    "delete_ranges": {
+      "type": "array",
+      "description": "Line ranges to delete before inserting. Use for superseded or duplicate sections. Applied before the insert.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "integer",
+            "description": "First line of the range to delete, 1-indexed, inclusive."
+          },
+          "end": {
+            "type": "integer",
+            "description": "Last line of the range to delete, 1-indexed, inclusive."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why these lines are being removed."
+          }
+        },
+        "required": ["start", "end", "reason"]
+      }
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Brief explanation of placement and deletion decisions."
+    }
+  },
+  "required": ["insert_after_line", "delete_ranges", "reasoning"]
+}

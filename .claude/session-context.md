@@ -63,16 +63,16 @@
   - PR #11: `feature/verdict-capture-hook` → `feature/ollama-token-logging`
   - PR #12: `feature/context-files-param` → `master`
   - PR pending: `feature/ref-integrity-checker` → `master`
-- **Session 39b** (2026-03-09) — Overlay system design:
-  - Designed portable "repo overlay" packaging system for applying patterns to other repos
-  - Full plan written: `docs/plans/overlay-system-plan.md` (4 phases)
-  - First overlay: `ref-indexing`; test target: expense repo (retrofit/update case)
-  - Marker format: `<!-- overlay:NAME vN -->` (no conflict with `<!-- ref:KEY -->`)
-  - Three modes: manual, AI-assisted (Ollama → claude -p fallback), unattended
-- **Active branch:** `feature/ref-integrity-checker`
-- **Open PRs:** #10 (token logging → master), #11 (verdict hooks → #10), #12 (context-files → master), #13 (ref-integrity → master)
-- **Open deferred tasks:** hook-based auto-resume, user-config backup, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix
-- **Next in THIS repo:** Execute overlay system plan (`docs/plans/overlay-system-plan.md`)
+- **Session 40** (2026-03-11) — Overlay system fully implemented (all 4 phases):
+  - `overlays/install-overlay.py` + `lib/` package (report, backends, planner, actions)
+  - `overlays/ai-backends.yaml` — declarative backends with `Backend` ABC
+  - AI planner: JSON plan → deterministic script execution; markers always script-generated
+  - Tested: fresh install (overlay-test), retrofit (expense repo, Ollama + claude-code haiku)
+  - PR open: `feature/overlay-system` → master
+- **Active branch:** `feature/overlay-system` (PR open)
+- **Open PRs:** overlay-system (new), #10 (token logging), #11 (verdict hooks→#10), #12 (context-files), #13 (ref-integrity)
+- **Open deferred tasks:** hook-based auto-resume, user-config backup, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv
+- **Next:** Merge open PRs; resume Layer 5 in `~/workspaces/expenses/code/` (tasks 5.1–5.7)
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->

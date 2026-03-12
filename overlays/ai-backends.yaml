@@ -1,0 +1,36 @@
+# AI backends for overlay merge operations.
+# The installer tries backends in priority order, skipping unavailable ones.
+# Override at runtime with --backend <id>.
+
+backends:
+
+  - id: local-qwen3-14b
+    type: ollama_api
+    address: http://localhost:11434/api/chat
+    model: qwen3:14b
+    think: true                # Qwen3-specific; ignored by non-Qwen3 models
+    schema_mode: format_param  # JSON schema passed as 'format' API field (100% reliable)
+    priority: 1
+
+  - id: local-deepseek-r1
+    type: ollama_api
+    address: http://localhost:11434/api/chat
+    model: deepseek-r1:14b
+    think: null                # deepseek-r1 always thinks; param not sent
+    schema_mode: format_param
+    priority: 2
+
+  - id: claude-code
+    type: cli                  # subprocess via Claude Code CLI — no API key needed
+    command: claude
+    args: ["-p", "--model", "haiku", "--output-format", "json"]
+    schema_mode: prompt_injection  # schema embedded as text in prompt
+    priority: 3
+
+  - id: claude-api
+    type: claude_api
+    address: https://api.anthropic.com/v1/messages
+    model: claude-haiku-4-5
+    api_key: env:ANTHROPIC_API_KEY   # never inline — always an env var reference
+    schema_mode: tool_use      # use Claude's native tool/function calling
+    priority: 4

@@ -1,8 +1,69 @@
 # Session Log
 
-**Current Layer:** Deferred infra + overlay system design
-**Current Session:** 2026-03-09 — Session 39b: Overlay system design
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`
+**Current Layer:** Overlay system — implementation complete, PR open
+**Current Session:** 2026-03-11 — Session 40: Overlay system implementation
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`
+
+---
+
+## 2026-03-11 - Session 40: Overlay system implementation (Phases 1–4 complete)
+
+### Context
+Resumed from session 39b where the overlay system was designed but not implemented.
+Branch: `feature/overlay-system`. All four phases executed in a single session.
+
+### What Was Done
+
+**Phase 1 — Directory structure + manifest:**
+- `overlays/ref-indexing/` with `manifest.yaml`, `files/`, `templates/`, `sections/`, `prompts/`
+- `sections/claude-md-ref-rules.md` — Scenario A (full content, not pointer)
+- `templates/index.md.tmpl`, `sections/gitignore-lines.txt`, `APPLY.md`, `README.md`
+- Decided: `§` heading pointer vs fuller content in CLAUDE.md → chose fuller (Scenario A)
+- Decided: `.sh` wrappers redundant — `./script.py` is whitelistable in Claude Code directly
+
+**Phase 2 — Installer (`install-overlay.py`):**
+- All action handlers: files (sha256 diff), templates (no-overwrite), append_lines (idempotent), merge_sections (marker-driven versioning), manual_if_exists
+- AI merge: prompt→schema→plan→apply pipeline; Ollama structured output (`format` param)
+- Fixed: stream:false timeout (→ stream:true); num_ctx 4096→8192; XML prompt delimiters; EOFError on stdin; dry-run fires AI call (moved short-circuit before call)
+- `--backup` / `--no-backup` flag (BooleanOptionalAction, default on)
+- Refactored: prompts extracted to files (`merge-section.txt` → `merge-plan.txt`); JSON schema in `merge-plan-schema.json`
+- Planner approach: AI returns `{insert_after_line, delete_ranges, reasoning}` — script applies deterministically, always adds markers itself
+- `[WARN]` when AI inserts without deleting; `[DELETE]` record per range applied
+
+**Backends — declarative config (`ai-backends.yaml`):**
+- `BackendType` + `SchemaMode` enums (`str, Enum` mixin, Python 3.10 compat)
+- `Backend` ABC with `is_available()` + `call()` abstract methods
+- `OllamaApiBackend` (format_param, +think suffix), `CliBackend` (stdin, JSON envelope), `ClaudeApiBackend` (tool_use)
+- `CliBackend`: CLAUDECODE env var detection (nested session guard); `--output-format json` envelope parsing; `_extract_json()` strips markdown fences
+- `--backend ID` (by id from yaml or 'auto'), `--model` override, `--debug` flag
+
+**Split into `lib/` package:** `report.py`, `backends.py`, `planner.py`, `actions.py`
+Install entry point reduced to ~90 lines.
+
+**Phase 3 — Tests:**
+- overlay-test (fresh): all SKIP/COPY, idempotency confirmed
+- expense repo (retrofit): qwen3:14b+think → correct merge with markers; claude-code (haiku) → perfect result (delete lines 5–9 exact, replace old section cleanly, interactive confirm worked)
+- Model comparison (test-merge-plan.py): 7 variants tested; think:false → zero deletes; think:true → identifies delete range; 30b-a3b+think most accurate; haiku best via prompt_injection
+
+**Phase 4 — Docs:** `overlays/README.md` authoring guide
+
+**Deferred tasks added:** Python 3.10→3.12 upgrade via uv (enables StrEnum)
+
+### Decisions Made
+- `§` pointer vs fuller content in CLAUDE.md: chose fuller (Scenario A) — always-loaded rules are more reliable than "read on demand"
+- Prompts in files, not code — independent git history, editable without touching Python
+- JSON schema in separate file — same principle; passed to Ollama `format` param directly
+- AI as planner (not file generator) — script owns markers and file writes; AI only decides WHERE
+- Default AI model: `qwen3:14b+think` (Ollama); `haiku` (claude-code CLI)
+- `str, Enum` mixin over `StrEnum` — Python 3.10 compat; upgrade deferred to tasks.md
+- `lib/` split before PR — cleaner to review than monolith
+- claude-code backend: prompt via stdin (not positional arg), `--output-format json` envelope, `_extract_json()` for markdown fence stripping
+
+### Next
+- Merge PR `feature/overlay-system` → master (PR opened this session)
+- Merge pending PRs: #10 (token logging), #11 (verdict hooks→#10), #12 (context-files), #13 (ref-integrity)
+- Resume Layer 5 in `~/workspaces/expenses/code/` (tasks 5.1–5.7: classify command pipeline)
+- Overlay system follow-ups (low priority): Python 3.12 upgrade; `session-tracking` overlay candidate
 
 ---
 
@@ -179,106 +240,6 @@ structured verdict capture. All work on branch `feature/verdict-capture-hook`
   `feature/ollama-token-logging` (not master — layered PRs).
 - **Longer term:** `feature/ollama-token-logging` PR #10 → master can be merged once
   the hook work is validated.
-
----
-
-## 2026-02-28 - Session 37: Recontextualization + ref_lookup inference observation
-
-### Context
-First session in expense-reporter after scaffolding bootstrap. No code changes — session was
-diagnostic/reflective. Effort level: medium.
-
-### Observed behavior: emergent cross-repo inference via ref_lookup
-
-During recontextualization, Claude called three tools in parallel:
-1. `Read` → memory file (didn't exist yet)
-2. `Bash` → `resume.sh` (expense repo's current status)
-3. `mcp__ollama-bridge__ref_lookup("current-status")` ← the interesting one
-
-**The inference chain that led to call 3:**
-- CLAUDE.md (expense repo) flags a two-repo setup: "MCP thin wrapper lives in the LLM infra repo"
-- The `ollama-bridge` MCP server is described as the LLM repo's tooling
-- Therefore: calling `ref_lookup` via that MCP server = querying the LLM repo's index
-- Therefore: `current-status` from that tool = "the other repo's view of cross-repo state"
-
-The inference was directionally correct and the call returned useful triangulating data.
-**But it was fragile:** it only worked because the LLM repo's `current-status` block happened
-to contain notes about the expense repo (written during session 36). If that convention
-weren't maintained, the call would have returned purely LLM-repo-internal state.
-
-**The real limitation:** `ref_lookup` is intra-repo by design. Cross-repo usefulness was
-a side effect of content, not tool capability. Logged as deferred task in tasks.md:
-`ref_lookup` could accept an optional `path` param to make cross-repo lookups explicit.
-
-**Why this matters for training data / agent design:**
-The inference pattern (MCP server identity → repo scope → content scope) is a legitimate
-form of context-window reasoning about tool semantics. The fragility is worth noting:
-agents that reason about tool scope from indirect signals (server name, CLAUDE.md mentions)
-can produce correct-but-lucky results. Making the tool's scope explicit in its description
-would eliminate the ambiguity.
-
-### Next
-- No tasks advanced this session
-- Next in THIS repo: 5.8 (MCP thin wrapper) — blocked until 5.1–5.7 complete in expense repo
-- Tasks 5.1–5.7 are tracked here but executed in `~/workspaces/expenses/code/`
-
----
-
-## 2026-02-27 - Session 36: Portable Scaffolding + Expense Repo Bootstrap
-
-### Context
-Resumed from session 35 (all Layer 5 blockers resolved). Before starting 5.1, implemented the
-two-repo workflow plan: make this repo's `.claude/` scaffolding portable, then bootstrap the
-expense-reporter repo with it as the first consumer. Full plan executed across both repos.
-
-### What Was Done
-
-**Phase 1 — LLM repo (branch: `feature/portable-scaffolding`, commit: `cab902c`):**
-- `resume.sh`: replaced hardcoded key hints with dynamic `ref-lookup.sh list` discovery.
-  Any new `<!-- ref:KEY -->` block auto-appears with zero maintenance.
-- `docs/scaffolding-template.md`: created reusable 10-step bootstrap guide describing directory
-  structure, file purposes, ref:KEY two-tier convention, session log format, tool dependencies.
-- `~/.claude/.mcp.json`: global MCP config — ollama-bridge now available in every Claude Code
-  project, not just this repo. LLM repo `.mcp.json` kept as harmless redundancy.
-- `tasks.md`: added two-repo workflow note under Layer 5 header.
-- `session-context.md`: updated `current-status` ref block for session 36.
-
-**Phase 2 — Expense repo scaffolding (branch: `feature/claude-code-scaffolding`, commit: `7c49e75`):**
-- `.claude/tools/`: copied resume.sh, ref-lookup.sh, rotate-session-log.sh (fully portable).
-- `.claude/skills/session-handoff/SKILL.md`: copied session-handoff skill.
-- `CLAUDE.md`: project identity, Go structure, workflow rules, local model rules (try-local-first),
-  domain facts (BR date/decimal format), resume guide.
-- `.claude/index.md`: knowledge index with ref:go-structure, ref:testing, ref:classification,
-  ref:indexing-convention blocks; classification data table, archive table, tools table.
-- `.claude/session-context.md`: ref blocks for user-prefs, current-status, resume-steps,
-  active-decisions (domain boundary, classification strategy, Go conventions).
-- `.claude/session-log.md`: Session 1 entry with pre-history summary (Phases 1–11, 190+ tests).
-- `.claude/tasks.md`: Layer 5 tasks 5.1–5.8 verbatim from plan-v2.md + pre-work status.
-- Verified: `resume.sh` in expense repo finds 7 ref keys dynamically, zero config required.
-
-**Phase 3 — Expense repo data & doc migration (same branch, commit: `ed055a1`):**
-- `data/classification/`: 8 algorithm docs copied from `~/workspaces/expenses/auto-category/`
-  (tracked); 15 personal data JSONs/CSVs also copied (gitignored).
-- `docs/archive/`: 21 Desktop-era planning docs moved via git rename (history preserved).
-- `docs/archive/transients/`: 12 root transient files moved (gitignored subfolder, per user).
-- `.claude/settings.local.json`: backed up Windows Git Bash permissions to `.claude/local/`;
-  replaced with WSL2-appropriate permissions (go test/build/run/vet, resume.sh, ref-lookup.sh).
-- `.gitignore`: added `data/classification/*.json|csv`, `.claude/local/`, `docs/archive/transients/`.
-- Verified: `git add -n data/classification/` confirms only 8 docs staged (no personal data).
-- Verified: `cd expense-reporter && go test ./...` — all 190+ tests still passing.
-
-### Decisions Made
-- **Two-repo workflow is now live:** Feature work (5.1–5.7) in expense repo; MCP wrapper (5.8) in this repo.
-- **Global MCP config pattern:** `~/.claude/.mcp.json` is the right place for tools needed in all projects; project-level `.mcp.json` kept for project-specific overrides.
-- **Transient files → gitignored subfolder:** `docs/archive/transients/` pattern — move one-time scripts/reports there instead of tracking them or deleting them.
-- **`confusion_analysis.json` gitignored** — user couldn't confirm whether it contains real expense descriptions; safe default.
-- **`~/workspaces/expenses/auto-category/` left in place** — `data/classification/` is a copy, not a move.
-
-### Next
-- **Layer 5.1 (expense repo):** Verify `feature_dictionary_enhanced.json` + `training_data_complete.json`
-  are in `data/classification/`; document their JSON schema in `.claude/index.md`
-- **Layer 5.2 (expense repo):** `classify` command — 3-field input → Ollama HTTP → structured JSON → top-N subcategories
-- **PRs to merge:** `feature/portable-scaffolding` (LLM repo) + `feature/claude-code-scaffolding` (expense repo)
 
 ---
 
