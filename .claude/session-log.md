@@ -1,8 +1,44 @@
 # Session Log
 
-**Current Layer:** Overlay system — implementation complete, PR open
-**Current Session:** 2026-03-11 — Session 40: Overlay system implementation
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`
+**Current Layer:** Deferred infra cleanup + dotfiles backup
+**Current Session:** 2026-03-13 — Session 41: All PRs merged; dotfiles backup system
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`
+
+---
+
+## 2026-03-13 - Session 41: All PRs merged; dotfiles backup system
+
+### Context
+All pending PRs (#10, #11, #12, #13, #14) were merged to master by the user before the session.
+Entry point: recontextualize + discuss next steps from remaining deferred infra tasks.
+
+### What Was Done
+
+**All open PRs merged to master** (by user, pre-session):
+- #10 token logging, #11 verdict hooks, #12 context-files, #13 ref-integrity, #14 overlay-system
+
+**Dotfiles backup system — COMPLETE:**
+- Created private GitHub repo `leandror172/dotfiles` at `~/workspaces/dotfiles/`
+- Three-way folder structure: `claude-code/` (user-level `~/.claude/`), `claude-projects/` (memory only), `claude-desktop/` (Windows AppData config)
+- `backup.sh`: OS-aware (WSL2 vs Linux via `/proc/version`), copies all three areas, `git commit` if changed
+- `install.sh`: restore script with top-of-file variables (`WINDOWS_USER`, `LLM_PROJECT_PATH`) for machine-specific paths; derives `~/.claude/projects/` slug from project path
+- `SessionStart` hook added to `~/.claude/settings.json` — auto-runs `backup.sh` on every Claude Code session start
+- First backup committed + pushed: 10 files (settings.json, .mcp.json, keybindings.json, installed_plugins.json, MEMORY.md, debugging.md, claude_desktop_config.json)
+- Deferred infra task "Claude Code user-config backup/tracking" marked complete in tasks.md
+
+### Decisions Made
+- Dotfiles repo location: `~/workspaces/dotfiles/` (consistent with workspace convention)
+- Scope: Claude files only (not full dotfiles — can expand later)
+- `claude-projects/` backs up `memory/` subdirs only — transcript UUIDs excluded (ephemeral)
+- OS detection via `/proc/version` grep — reliable in non-interactive shells (hooks, cron)
+- `install.sh` uses explicit top-of-file variables for machine-specific paths (not convention/manifest) — honest about what needs human attention on a new machine
+- No `SessionFinish` hook (doesn't exist in Claude Code); `SessionStart` + manual `backup.sh` on demand
+- Conversations NOT backed up — ephemeral, large, Claude already maintains `~/.claude/backups/`
+
+### Next
+- Remaining deferred infra tasks: hook-based auto-resume, IMPROVED verdict workflow codification, Python 3.10→3.12 upgrade (do before next standalone script)
+- Layer 4 stragglers: Phase 3 frontier judge (4.x), Claude Desktop insights tool (4.6)
+- Layer 5 continues in `~/workspaces/expenses/code/` (separate sessions, tasks 5.1–5.7)
 
 ---
 
@@ -163,83 +199,6 @@ scaffolding) need a portable packaging mechanism to apply to other repos like th
   - Phase 2: `install-overlay.py` with deterministic + AI-merge + report
   - Phase 3: test against expense repo (retrofit case)
   - Phase 4: document the template for future overlays
-
----
-
-## 2026-03-07 - Session 38: Token logging + verdict capture hooks
-
-### Context
-Resumed from session 37 (recontextualization only). Two deferred infra items addressed:
-token logging completeness (item 5) and a new PostToolUse+Stop hook pipeline for
-structured verdict capture. All work on branch `feature/verdict-capture-hook`
-(forked from `feature/ollama-token-logging`, which has PR #10 open to master).
-
-### What Was Done
-
-**Token logging (deferred item 5 — COMPLETE):**
-- `ChatResponse` dataclass: added `prompt_eval_count` field (Ollama input tokens)
-- `_log_call`: now records `prompt_chars`, `response_chars`, `prompt_eval_count`,
-  `eval_count`, `claude_tokens_est` ((prompt+system+response chars)/4)
-- `personas/lib/ollama_client.py`: return dict gains `prompt_eval_count`
-- `CLAUDE.md` + `docs/scaffolding-template.md` + expense repo `CLAUDE.md`:
-  verdict instruction updated — ACCEPTED/IMPROVED now require a rough mental
-  chars/4 estimate inline; explicitly prohibits file reads or code execution to compute it
-- Subagent test confirmed the instruction is interpreted correctly
-- PR #10 open: `feature/ollama-token-logging` → master
-
-**Branch/PR management:**
-- Work branched off master: `feature/ollama-token-logging` (PR #10)
-- Working branch forked from it: `feature/verdict-capture-hook` (current)
-- Master has the two commits; PRs are the proper delivery path going forward
-
-**Verdict capture hooks (PARTIALLY COMPLETE — needs testing):**
-- `.claude/hooks/ollama-post-tool.py` (PostToolUse): fires after every
-  `mcp__ollama-bridge__*` call; reads last `calls.jsonl` entry for `prompt_hash`;
-  injects `[VERDICT prompt_hash=N]` template via `additionalContext`
-- `.claude/hooks/verdict-capture.py` (Stop/SubagentStop): fires at turn end;
-  scans transcript for filled VERDICT blocks; appends typed verdict records
-  `{type:"verdict", prompt_hash, verdict, reason, est_claude_tokens}` to `calls.jsonl`;
-  deduplicates by prompt_hash
-- `.claude/settings.json`: wires PostToolUse (matcher: `mcp__ollama-bridge__.*`),
-  Stop, and SubagentStop to the two scripts
-- Subagent test revealed two issues: (1) SubagentStop was missing from settings.json
-  (fixed in session), (2) unclear if PostToolUse `additionalContext` reaches subagent
-  context — needs investigation
-
-**tasks.md updated:**
-- Deferred item 5 marked `[x]` complete
-- New deferred item added: PostToolUse hook for verdict capture (this work)
-
-### Decisions Made
-- **Option C for verdict storage:** verdict records written as typed entries
-  (`{type:"verdict", ...}`) in the existing `calls.jsonl` — append-only, no rewrites,
-  join by `prompt_hash`. Splitting to a separate file is easy later if needed.
-- **Stop + SubagentStop:** both hooks point to the same `verdict-capture.py` script.
-  `SubagentStop` was added after the first subagent test revealed it was missing.
-- **Token estimate in CLAUDE.md is "mental, no file reads":** subagent test confirmed
-  the instruction works as intended after rewriting from "read the log" to "apply chars/4 mentally".
-- **`/mcp reconnect` is the right restart path:** killing the Python process and using
-  `/mcp reconnect` is the reliable way to reload server code changes; `/mcp disable`+`/mcp enable`
-  does NOT kill the OS process.
-
-### Next
-- **Start by testing the hook pipeline on `feature/verdict-capture-hook`:**
-  1. **Main session test (local):** call `mcp__ollama-bridge__generate_code` directly in
-     the main session; verify (a) PostToolUse hook injects `[VERDICT prompt_hash=N]`
-     template into context, (b) fill the template, (c) end the turn, (d) check
-     `calls.jsonl` for a new `{type:"verdict", ...}` record.
-  2. **Subagent test:** spawn a subagent that calls the ollama tool; verify whether
-     `SubagentStop` fires and captures the verdict; separately determine if
-     PostToolUse `additionalContext` reaches subagent context (it may not — if not,
-     the subagent will use CLAUDE.md-trained narrative format, not the template).
-  3. **Fix as needed:** if PostToolUse additionalContext doesn't reach subagents,
-     decide whether to (a) accept narrative-only verdicts from subagents or (b) add
-     explicit verdict instruction to subagent prompts when spawning them.
-- **After hook pipeline confirmed working:** commit `settings.json` change (SubagentStop
-  addition is uncommitted), push `feature/verdict-capture-hook`, open PR to
-  `feature/ollama-token-logging` (not master — layered PRs).
-- **Longer term:** `feature/ollama-token-logging` PR #10 → master can be merged once
-  the hook work is validated.
 
 ---
 
