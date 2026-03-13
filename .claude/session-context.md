@@ -52,27 +52,15 @@
 - **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
-- **Last checkpoint:** Session 39 (2026-03-07) — Verdict capture fixes + deferred infra sweep:
-  - `ollama-post-tool.py`: fixed `additionalContext` — must be inside `hookSpecificOutput` for PostToolUse
-  - `verdict-capture.py`: SubagentStop now reads `agent_transcript_path` (not `transcript_path`)
-  - Hooks promoted to `~/.claude/settings.json` (user-level, fires in all Claude Code sessions)
-  - `context_files` param added to `generate_code` + `ask_ollama` (server reads files; zero Claude tokens)
-  - `ref_lookup` + `ref-lookup.sh`: `path` / `--root` for cross-repo ref lookups
-  - `check-ref-integrity.py` + `.githooks/pre-commit`: fence-aware ref integrity checker
-  - CRLF bug: `--renormalize` doesn't update working tree; fix is `sed -i 's/\r//'` in-place
-  - PR #11: `feature/verdict-capture-hook` → `feature/ollama-token-logging`
-  - PR #12: `feature/context-files-param` → `master`
-  - PR pending: `feature/ref-integrity-checker` → `master`
-- **Session 40** (2026-03-11) — Overlay system fully implemented (all 4 phases):
-  - `overlays/install-overlay.py` + `lib/` package (report, backends, planner, actions)
-  - `overlays/ai-backends.yaml` — declarative backends with `Backend` ABC
-  - AI planner: JSON plan → deterministic script execution; markers always script-generated
-  - Tested: fresh install (overlay-test), retrofit (expense repo, Ollama + claude-code haiku)
-  - PR open: `feature/overlay-system` → master
-- **Active branch:** `feature/overlay-system` (PR open)
-- **Open PRs:** overlay-system (new), #10 (token logging), #11 (verdict hooks→#10), #12 (context-files), #13 (ref-integrity)
-- **Open deferred tasks:** hook-based auto-resume, user-config backup, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv
-- **Next:** Merge open PRs; resume Layer 5 in `~/workspaces/expenses/code/` (tasks 5.1–5.7)
+- **Sessions 39-40** — Verdict capture, context-files, ref-integrity, overlay system; all PRs merged to master
+- **Session 41** (2026-03-13) — All PRs merged; dotfiles backup system built:
+  - Private repo `leandror172/dotfiles` at `~/workspaces/dotfiles/`
+  - `backup.sh` + `install.sh` + `SessionStart` hook wired in `~/.claude/settings.json`
+  - Backs up: claude-code (user-level), claude-projects/llm/memory, claude-desktop (Windows)
+- **Active branch:** `master` (clean)
+- **Open PRs:** none
+- **Open deferred tasks:** hook-based auto-resume, IMPROVED verdict workflow codification, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6)
+- **Next:** Remaining deferred infra tasks (Python 3.12 upgrade highest priority — needed before next standalone script); Layer 5 in `~/workspaces/expenses/code/` (separate sessions)
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
