@@ -325,6 +325,98 @@ async def list_models() -> str:
     return "Available Ollama models:\n" + "\n".join(lines)
 
 
+@mcp.tool()
+async def warm_model(
+    model: str,
+    force: bool = False,
+) -> str:
+    """Pre-load a model into VRAM to avoid cold-start timeouts on the next call.
+
+    Checks if the target model is already loaded. If not, safely evicts the
+    current model (checking for in-flight requests first) and sends a trivial
+    prompt to force-load the target model.
+
+    Use at session start or before switching between models (e.g., switching
+    from a coding persona to a summarizer). Prevents the first real call from
+    timing out due to model loading.
+
+    Args:
+        model: The Ollama model/persona name to pre-load (e.g., "my-coder-q3").
+        force: If True, skip the in-flight safety check and evict anyway.
+               Use only when you're certain no other calls are active.
+
+    Returns:
+        Status message describing what was done.
+    """
+    client = _get_client()
+
+    try:
+        running = await client.list_running()
+    except OllamaConnectionError:
+        return (
+            "Error: Cannot connect to Ollama. "
+            "Is it running? Start with: ollama serve"
+        )
+
+    # Check if target model is already loaded
+    running_names = [m.get("name", "") for m in running]
+    # Ollama uses "model:tag" format; match with or without ":latest"
+    target_loaded = any(
+        name == model or name == f"{model}:latest" or model == name.split(":")[0]
+        for name in running_names
+    )
+
+    if target_loaded:
+        return f"Model '{model}' is already loaded in VRAM. No action needed."
+
+    # Check if any currently loaded model has in-flight requests
+    if running and not force:
+        busy_models = []
+        for m in running:
+            name = m.get("name", "")
+            # Check all name variations against in-flight tracker
+            if client.is_busy(name) or client.is_busy(name.split(":")[0]):
+                busy_models.append(name)
+
+        if busy_models:
+            return (
+                f"Cannot warm '{model}': model(s) {', '.join(busy_models)} "
+                f"have in-flight requests. Use force=True to override, "
+                f"or wait for current requests to complete."
+            )
+
+    # Evict currently loaded model(s)
+    evicted = []
+    for m in running:
+        name = m.get("name", "")
+        try:
+            await client.unload_model(name)
+            evicted.append(name)
+        except Exception as e:
+            return f"Error evicting '{name}': {e}"
+
+    # Send a trivial prompt to force-load the target model.
+    # num_predict: 1 ensures minimal generation (just load the model).
+    # keep_alive: 5m keeps it loaded for subsequent real calls.
+    try:
+        await client._http.post(
+            "/api/chat",
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": "."}],
+                "stream": False,
+                "keep_alive": "5m",
+                "options": {"num_predict": 1},
+            },
+            timeout=120,  # Cold load can take a while on 12GB GPU
+        )
+    except Exception as e:
+        return f"Error loading '{model}': {e}"
+
+    evict_msg = f" Evicted: {', '.join(evicted)}." if evicted else ""
+    return f"Model '{model}' is now loaded and warm.{evict_msg}"
+
+
 # ---------------------------------------------------------------------------
 # Shared error handler
 # ---------------------------------------------------------------------------
