@@ -58,10 +58,10 @@
   - warm_model MCP tool: in-flight tracking, safe eviction, trivial-prompt warm-up (pending manual test)
   - ollama-scaffolding overlay: tested 3 backends, redesigned to short CLAUDE.md pointer + full ref file
   - Installed in expense repo (PR #8), new persona `my-api-docs-q3`
-- **Active branch:** `feature/verdict-retry-policy` (PR #15)
-- **Open PRs:** #15 (LLM repo — verdict policy + warm_model + overlay), #8 (expense repo — overlay install)
+- **Active branch:** `master` (clean)
+- **Open PRs:** #8 (expense repo — overlay install)
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload
-- **Next:** Merge PR #15 + PR #8; manual test warm_model; Python 3.12 upgrade (highest priority before next standalone script)
+- **Next:** Merge PR #8 (expense repo); Python 3.12 upgrade (highest priority before next standalone script)
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
