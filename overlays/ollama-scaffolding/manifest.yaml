@@ -19,7 +19,7 @@ templates:
 merge_sections:
   CLAUDE.md:
     file: sections/claude-md-ollama-rules.md
-    merge_hint: "insert after any existing 'Environment' or 'Key Technical Facts' section, before project-specific workflow rules"
+    merge_hint: "insert immediately after any existing 'Local Model Usage' section (do NOT replace it); if none exists, insert after environment sections"
 
 # Which AI-tool configurations this overlay targets.
 agent_targets:
