@@ -357,6 +357,12 @@ async def warm_model(
     from a coding persona to a summarizer). Prevents the first real call from
     timing out due to model loading.
 
+    NOTE: The in-flight safety check is single-session only. Each Claude Code
+    session has its own MCP server process with its own in-flight counter, so
+    calls from a different session (e.g., the expense repo) are not visible.
+    Cross-session protection requires the file-based coordination layer
+    described in docs/ideas/ollama-coordination-layer.md (Option 2).
+
     Args:
         model: The Ollama model/persona name to pre-load (e.g., "my-coder-q3").
         force: If True, skip the in-flight safety check and evict anyway.
