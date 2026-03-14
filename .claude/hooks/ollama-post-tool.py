@@ -20,6 +20,23 @@ CALLS_LOG = pathlib.Path.home() / ".local/share/ollama-bridge/calls.jsonl"
 
 data = json.load(sys.stdin)
 
+# Only generation tools produce output worth a verdict.
+# Infrastructure/management tools (warm_model, list_models, ref_lookup,
+# query_personas) are fire-and-forget — no verdict needed.
+GENERATION_TOOLS = {
+    "mcp__ollama-bridge__ask_ollama",
+    "mcp__ollama-bridge__generate_code",
+    "mcp__ollama-bridge__summarize",
+    "mcp__ollama-bridge__translate",
+    "mcp__ollama-bridge__classify_text",
+    "mcp__ollama-bridge__build_persona",
+    "mcp__ollama-bridge__detect_persona",
+}
+tool_name = data.get("tool_name", "")
+if tool_name not in GENERATION_TOOLS:
+    print(json.dumps({}))
+    sys.exit(0)
+
 # Find the most recent *call* record (skip any verdict records at the tail).
 prompt_hash = "unknown"
 if CALLS_LOG.exists():
