@@ -80,6 +80,8 @@ When Ollama output is imperfect, classify by **defect type × fix scope × promp
 
 Stubs-then-Ollama: write stub signatures, call Ollama with stubs in `context_files`. First call = REJECTED triple; second call gets its own verdict (often ACCEPTED). Both are clean DPO signal.
 
+Cold-start timeouts → `TIMEOUT_COLD_START`, not REJECTED. No DPO triple recorded. Retry immediately. Use `warm_model` MCP tool to eliminate cold starts.
+
 Full decision tree: `docs/scaffolding-template.md` § "Handling Imperfect Output: Decision Tree"
 <!-- /ref:local-model-retry-patterns -->
 
