@@ -90,6 +90,38 @@ class OllamaClient:
         self._base_url = base_url.rstrip("/")
         self._http = httpx.AsyncClient(base_url=self._base_url)
 
+        # In-flight request tracking. Counts active requests per model.
+        # Used by warm_model to avoid evicting a model mid-generation.
+        # Designed for easy extraction to directory-based coordination
+        # (Option 2) — swap these 3 methods to use file ops instead.
+        self._inflight: dict[str, int] = {}
+
+    # -- In-flight tracking (Option 1: in-process dict) --------------------
+    # Future extraction point: replace dict ops with directory lock files
+    # per docs/ideas/ollama-coordination-layer.md
+
+    def mark_inflight(self, model: str) -> None:
+        """Register an in-flight request for the given model."""
+        self._inflight[model] = self._inflight.get(model, 0) + 1
+
+    def mark_complete(self, model: str) -> None:
+        """Deregister an in-flight request for the given model."""
+        count = self._inflight.get(model, 0)
+        if count <= 1:
+            self._inflight.pop(model, None)
+        else:
+            self._inflight[model] = count - 1
+
+    def is_busy(self, model: str | None = None) -> bool:
+        """Check if a model (or any model) has in-flight requests."""
+        if model is not None:
+            return self._inflight.get(model, 0) > 0
+        return any(v > 0 for v in self._inflight.values())
+
+    def get_inflight(self) -> dict[str, int]:
+        """Return a copy of the in-flight request counts."""
+        return dict(self._inflight)
+
     async def chat(
         self,
         prompt: str,
@@ -141,7 +173,8 @@ class OllamaClient:
         if format is not None:
             payload["format"] = format
 
-        # Make the HTTP request with error handling for each failure mode.
+        # Track in-flight requests so warm_model can check before evicting.
+        self.mark_inflight(model)
         try:
             response = await self._http.post(
                 "/api/chat",
@@ -158,6 +191,8 @@ class OllamaClient:
                 f"Ollama did not respond within {timeout}s. "
                 "The model may be loading (cold start) — try again."
             )
+        finally:
+            self.mark_complete(model)
 
         # Check for HTTP errors. Ollama returns 404 when a model isn't found.
         if response.status_code == 404:
@@ -268,6 +303,48 @@ class OllamaClient:
             )
         response.raise_for_status()
         return response.json().get("models", [])
+
+    async def list_running(self) -> list[dict]:
+        """Fetch models currently loaded in Ollama's VRAM.
+
+        Returns:
+            List of model info dicts from /api/ps (name, size, size_vram,
+            expires_at, details). Empty list if none loaded.
+
+        Raises:
+            OllamaConnectionError: Can't reach Ollama.
+        """
+        try:
+            response = await self._http.get("/api/ps", timeout=10)
+        except httpx.ConnectError:
+            raise OllamaConnectionError(
+                f"Cannot connect to Ollama at {self._base_url}. "
+                "Is Ollama running? Start it with: ollama serve"
+            )
+        response.raise_for_status()
+        return response.json().get("models", [])
+
+    async def unload_model(self, model: str) -> None:
+        """Unload a model from VRAM by sending keep_alive: 0.
+
+        Uses the /api/chat endpoint with empty messages array and
+        keep_alive: 0, which tells Ollama to release the model immediately.
+
+        Raises:
+            OllamaConnectionError: Can't reach Ollama.
+        """
+        try:
+            response = await self._http.post(
+                "/api/chat",
+                json={"model": model, "messages": [], "keep_alive": 0},
+                timeout=30,
+            )
+            response.raise_for_status()
+        except httpx.ConnectError:
+            raise OllamaConnectionError(
+                f"Cannot connect to Ollama at {self._base_url}. "
+                "Is Ollama running? Start it with: ollama serve"
+            )
 
     async def close(self) -> None:
         """Close the underlying HTTP client and release connections."""
