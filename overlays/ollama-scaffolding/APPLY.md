@@ -2,29 +2,31 @@
 
 ## Goal
 
-Inject local model usage conventions into the target repo's CLAUDE.md so that Claude
-Code knows to try local models first, how to evaluate output, and how to handle
-imperfect results.
+Inject a short pointer section into the target repo's CLAUDE.md that directs agents
+to read the full verdict/retry policy in `.claude/overlays/local-model-retry-patterns.md`.
+
+The CLAUDE.md section is intentionally small (~6 lines). The full policy lives in the
+reference file, not in CLAUDE.md.
 
 ## Placement rule
 
-Insert the section **after** any existing environment/infrastructure sections (like
-"Environment Context", "Key Technical Facts", or "Build Commands") and **before**
-project-specific workflow rules or task-specific instructions.
+Insert the section **near** any existing "Local Model Usage" section. If one exists,
+place it immediately **after** that section (do not replace it — the existing section
+has repo-specific model tier lists and conventions).
 
-If the file has no clear structure yet, insert after the first heading.
+If no local model section exists, insert after any environment/infrastructure sections
+and before project-specific workflow rules.
 
 ## Retrofit rule
 
-- If a simpler version exists (e.g., just "try local models first" without the verdict
-  protocol or decision tree): **delete** the old section (including its heading) and
-  insert the full overlay section in its place.
-- If a verbatim or near-verbatim match exists: wrap with overlay markers instead of
-  duplicating.
+- If an older version of this overlay section exists (identified by overlay markers):
+  replace it with the new version.
+- Do NOT delete any existing "Local Model Usage" content that is not inside overlay
+  markers — it contains repo-specific model choices and tier lists.
 
 ## Do not
 
 - Do not remove unrelated content from CLAUDE.md
+- Do not delete repo-specific local model tier lists or cascade rules
 - Do not add the section twice
 - Do not modify the section content — it is injected as-is by the installer
-- Do not place inside a ref block (the section is CLAUDE.md-level, not a ref block)
