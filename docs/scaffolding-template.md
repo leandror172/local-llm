@@ -227,6 +227,29 @@ model escalation (8B→14B) rather than stubs-then-Ollama. Stubs anchor structur
 semantics — they won't fix a model that misunderstood the task. Evaluate this when
 enough REJECTED-conceptual triples exist to measure escalation success rates.
 
+### Cold Start Grace Period
+
+When Ollama loads a model into VRAM for the first time (cold start), the load time
+is added to the request timeout. On a 12GB GPU, cold starts can take 10-30 seconds
+depending on model size. This causes false timeouts that are infrastructure artifacts,
+not quality judgments on the model's output.
+
+**Policy:** A timeout on the **first call to a model in a session** should not be
+recorded as `REJECTED`. Instead:
+
+- Label it `TIMEOUT_COLD_START` — this is not a verdict on output quality
+- Do not record it as a DPO training triple (no output was produced)
+- Retry the same prompt immediately — the model is now loaded and will respond normally
+
+**How to identify cold starts vs real timeouts:**
+- First call to a model after session start or model switch → likely cold start
+- Subsequent calls to the same model time out → real timeout (model is struggling)
+- If using `warm_model` tool: cold starts are eliminated; all timeouts are real
+
+**Mitigation:** Use the `warm_model` MCP tool at session start or before switching
+models. This pre-loads the model with a trivial prompt, ensuring the first real call
+doesn't pay the cold-start penalty. See `warm_model` tool in ollama-bridge.
+
 ---
 
 ## Source
