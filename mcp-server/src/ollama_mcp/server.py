@@ -325,6 +325,23 @@ async def list_models() -> str:
     return "Available Ollama models:\n" + "\n".join(lines)
 
 
+async def _check_model_exists(client: OllamaClient, model: str) -> str | None:
+    try:
+        models = await client.list_models()
+    except OllamaConnectionError:
+        return "Error: Cannot connect to Ollama. Is it running? Start with: ollama serve"
+
+    available_names = [m.get("name", "") for m in models]
+    found = any(
+        name == model or name == f"{model}:latest" or model == name.split(":")[0]
+        for name in available_names
+    )
+
+    if not found:
+        base_names = [n.split(":")[0] for n in available_names]
+        return f"Error: Model '{model}' not found. Available: {', '.join(base_names)}"
+
+
 @mcp.tool()
 async def warm_model(
     model: str,
@@ -369,6 +386,10 @@ async def warm_model(
     if target_loaded:
         return f"Model '{model}' is already loaded in VRAM. No action needed."
 
+    # Validate target exists BEFORE evicting — prevents "evict then 404" bug.
+    if err := await _check_model_exists(client, model):
+        return err
+
     # Check if any currently loaded model has in-flight requests
     if running and not force:
         busy_models = []
@@ -399,7 +420,7 @@ async def warm_model(
     # num_predict: 1 ensures minimal generation (just load the model).
     # keep_alive: 5m keeps it loaded for subsequent real calls.
     try:
-        await client._http.post(
+        resp = await client._http.post(
             "/api/chat",
             json={
                 "model": model,
@@ -410,6 +431,7 @@ async def warm_model(
             },
             timeout=120,  # Cold load can take a while on 12GB GPU
         )
+        resp.raise_for_status()
     except Exception as e:
         return f"Error loading '{model}': {e}"
 
