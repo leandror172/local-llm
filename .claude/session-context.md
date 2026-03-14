@@ -53,6 +53,10 @@
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
 - **Sessions 39-40** — Verdict capture, context-files, ref-integrity, overlay system; all PRs merged to master
+- **Session 41** (2026-03-13) — All PRs merged; dotfiles backup system built:
+  - Private repo `leandror172/dotfiles` at `~/workspaces/dotfiles/`
+  - `backup.sh` + `install.sh` + `SessionStart` hook wired in `~/.claude/settings.json`
+  - Backs up: claude-code (user-level), claude-projects/llm/memory, claude-desktop (Windows)
 - **Session 42** (2026-03-14) — Verdict retry policy + warm_model MCP tool + ollama-scaffolding overlay:
   - Verdict policy: 3-dimension heuristic (defect type / fix scope / prompt cost) replaces "3 lines"
   - warm_model MCP tool: in-flight tracking, safe eviction, trivial-prompt warm-up (pending manual test)
