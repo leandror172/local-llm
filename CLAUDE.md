@@ -85,6 +85,8 @@ code generation tasks. This generates training data for future distillation.
 - Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`
 - Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
 
+**When output is imperfect:** Classify by defect type / fix scope / prompt cost — not line count. [ref:local-model-retry-patterns]
+
 **Do NOT use local models for:**
 - Architectural decisions or multi-file reasoning
 - Security-sensitive code
