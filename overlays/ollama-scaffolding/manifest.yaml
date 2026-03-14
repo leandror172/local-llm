@@ -1,0 +1,27 @@
+name: ollama-scaffolding
+version: 1
+description: >
+  Local model usage conventions for projects using the ollama-bridge MCP server.
+  Includes: local-model-first rules, verdict protocol (ACCEPTED/IMPROVED/REJECTED),
+  imperfect output decision tree, stubs-then-Ollama retry pattern, cold-start grace
+  period policy, and training data logging convention.
+
+# No files to copy — ollama-bridge is global (user-level ~/.claude/.mcp.json).
+# The warm_model tool lives in the MCP server, not per-repo.
+files: {}
+
+# Ref block template for runtime lookup of retry patterns.
+# Created only if missing — user-managed after first install.
+templates:
+  local-model-retry-patterns.md.tmpl: .claude/overlays/local-model-retry-patterns.md
+
+# Sections to inject into shared files using overlay markers.
+merge_sections:
+  CLAUDE.md:
+    file: sections/claude-md-ollama-rules.md
+    merge_hint: "insert immediately after any existing 'Local Model Usage' section (do NOT replace it); if none exists, insert after environment sections"
+
+# Which AI-tool configurations this overlay targets.
+agent_targets:
+  claude-code:
+    rules_file: CLAUDE.md

@@ -53,19 +53,38 @@
 - **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
 - **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
 - **Sessions 39-40** — Verdict capture, context-files, ref-integrity, overlay system; all PRs merged to master
-- **Session 41** (2026-03-13) — All PRs merged; dotfiles backup system built:
-  - Private repo `leandror172/dotfiles` at `~/workspaces/dotfiles/`
-  - `backup.sh` + `install.sh` + `SessionStart` hook wired in `~/.claude/settings.json`
-  - Backs up: claude-code (user-level), claude-projects/llm/memory, claude-desktop (Windows)
-- **Active branch:** `master` (clean)
-- **Open PRs:** none
-- **Open deferred tasks:** hook-based auto-resume, IMPROVED verdict workflow codification, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6)
-- **Next:** Remaining deferred infra tasks (Python 3.12 upgrade highest priority — needed before next standalone script); Layer 5 in `~/workspaces/expenses/code/` (separate sessions)
+- **Session 42** (2026-03-14) — Verdict retry policy + warm_model MCP tool + ollama-scaffolding overlay:
+  - Verdict policy: 3-dimension heuristic (defect type / fix scope / prompt cost) replaces "3 lines"
+  - warm_model MCP tool: in-flight tracking, safe eviction, trivial-prompt warm-up (pending manual test)
+  - ollama-scaffolding overlay: tested 3 backends, redesigned to short CLAUDE.md pointer + full ref file
+  - Installed in expense repo (PR #8), new persona `my-api-docs-q3`
+- **Active branch:** `feature/verdict-retry-policy` (PR #15)
+- **Open PRs:** #15 (LLM repo — verdict policy + warm_model + overlay), #8 (expense repo — overlay install)
+- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload
+- **Next:** Merge PR #15 + PR #8; manual test warm_model; Python 3.12 upgrade (highest priority before next standalone script)
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
 
 ---
+
+<!-- ref:local-model-retry-patterns -->
+## Local Model Retry Patterns
+
+When Ollama output is imperfect, classify by **defect type × fix scope × prompt cost**:
+
+- **Mechanical** (syntax, typo, wrong import) → IMPROVED, inline always
+- **Structural, 1–2 isolated sites** → inline (IMPROVED or REJECTED based on effort)
+- **Structural, 3+ sites or interdependent** → REJECTED + stubs-then-Ollama if interface definable; scratch if not
+- **Conceptual** (correct syntax, wrong behavior) → REJECTED, write from scratch
+- **Prompt cost tiebreaker:** if explaining > fixing → inline regardless of scope
+
+Stubs-then-Ollama: write stub signatures, call Ollama with stubs in `context_files`. First call = REJECTED triple; second call gets its own verdict (often ACCEPTED). Both are clean DPO signal.
+
+Cold-start timeouts → `TIMEOUT_COLD_START`, not REJECTED. No DPO triple recorded. Retry immediately. Use `warm_model` MCP tool to eliminate cold starts.
+
+Full decision tree: `docs/scaffolding-template.md` § "Handling Imperfect Output: Decision Tree"
+<!-- /ref:local-model-retry-patterns -->
 
 <!-- ref:resume-steps -->
 ## Quick Resume

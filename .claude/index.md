@@ -46,6 +46,8 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
 | Overlay wizard idea | `docs/ideas/overlay-wizard.md` | Deferred: running overlay install interactively inside an AI CLI; wizard pattern generalization; eventual local TUI |
+| ollama-scaffolding overlay | `overlays/ollama-scaffolding/` | Local model usage conventions: verdict protocol, decision tree, stubs-then-Ollama, cold-start policy |
+| Ollama coordination layer | `docs/ideas/ollama-coordination-layer.md` | Deferred: shared directory contract for multi-process VRAM coordination; migration path from bundled Option 1 |
 
 ---
 

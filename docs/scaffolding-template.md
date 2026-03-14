@@ -160,6 +160,96 @@ or `mcp__ollama-bridge__ask_ollama`):
 This pattern generates (prompt, local_response, verdict) triples that feed future
 DPO fine-tuning pipelines.
 
+### Handling Imperfect Output: Decision Tree
+
+When Ollama output isn't perfect, classify the defect before deciding how to proceed.
+The goal is to pick the action that produces the best outcome *and* the cleanest DPO
+training signal (ACCEPTED triples > IMPROVED triples > REJECTED triples).
+
+```
+Ollama returns output
+│
+├─ Is the defect mechanical (slip, syntax, typo, wrong import)?
+│  └─ IMPROVED — fix inline always
+│
+├─ Is the defect structural (missing sections, wrong interface, wrong pattern)?
+│  │
+│  ├─ Fix scope: 1–2 isolated sites?
+│  │  └─ Inline (IMPROVED if trivial, REJECTED if effort > describing it)
+│  │
+│  ├─ Fix scope: 3+ sites or interdependent?
+│  │  │
+│  │  ├─ Is the interface/signature definable?
+│  │  │  └─ REJECTED + stubs-then-Ollama retry
+│  │  │     (stubs embed context structurally; second call gets own verdict)
+│  │  │
+│  │  └─ NO → REJECTED, write from scratch
+│  │
+│  └─ Prompt cost tiebreaker: would explaining the fix to Ollama
+│     take more effort than the fix itself?
+│     └─ YES → inline regardless of scope
+│
+└─ Is the defect conceptual (correct syntax, wrong behavior/mental model)?
+   └─ REJECTED, write from scratch
+      (stubs won't help — the model misunderstood the task, not the structure)
+```
+
+**Three classification dimensions** (replaces a simple line-count threshold):
+
+| Dimension | What it measures | Inline signal | Escalate signal |
+|---|---|---|---|
+| **Defect type** | What kind of mistake Ollama made | Mechanical (slip) | Structural or conceptual |
+| **Fix scope** | How many sites need changing | 1–2 isolated | 3+ or interdependent |
+| **Prompt cost** | Effort to explain vs effort to fix | Explaining > fixing | Explaining < fixing |
+
+### Stubs-then-Ollama Retry Pattern
+
+A retry strategy for **distributed structural defects** where Ollama got the shape wrong
+but the interface is definable. This is prompt decomposition applied to code generation —
+analogous to decomposing monolithic benchmark prompts.
+
+**When to use:** Ollama missed entire test cases, generated wrong method signatures,
+or omitted required interface implementations across 3+ sites.
+
+**How it works:**
+1. Verdict the first call as `REJECTED` (with reason)
+2. Write stub signatures / interface definitions that anchor the structure
+3. Call Ollama again with the stub file provided via `context_files`
+4. The second call gets its own independent verdict (often ACCEPTED)
+
+**Why it improves DPO data quality:** The first call produces a clean REJECTED triple.
+The second call uses an anchored prompt (stubs carry context structurally rather than
+through natural language), so it's more likely to produce an ACCEPTED triple. Both
+triples are high-quality training signal.
+
+**Future refinement:** Conceptual defects (correct syntax, wrong behavior) may warrant
+model escalation (8B→14B) rather than stubs-then-Ollama. Stubs anchor structure, not
+semantics — they won't fix a model that misunderstood the task. Evaluate this when
+enough REJECTED-conceptual triples exist to measure escalation success rates.
+
+### Cold Start Grace Period
+
+When Ollama loads a model into VRAM for the first time (cold start), the load time
+is added to the request timeout. On a 12GB GPU, cold starts can take 10-30 seconds
+depending on model size. This causes false timeouts that are infrastructure artifacts,
+not quality judgments on the model's output.
+
+**Policy:** A timeout on the **first call to a model in a session** should not be
+recorded as `REJECTED`. Instead:
+
+- Label it `TIMEOUT_COLD_START` — this is not a verdict on output quality
+- Do not record it as a DPO training triple (no output was produced)
+- Retry the same prompt immediately — the model is now loaded and will respond normally
+
+**How to identify cold starts vs real timeouts:**
+- First call to a model after session start or model switch → likely cold start
+- Subsequent calls to the same model time out → real timeout (model is struggling)
+- If using `warm_model` tool: cold starts are eliminated; all timeouts are real
+
+**Mitigation:** Use the `warm_model` MCP tool at session start or before switching
+models. This pre-loads the model with a trivial prompt, ensuring the first real call
+doesn't pay the cold-start penalty. See `warm_model` tool in ollama-bridge.
+
 ---
 
 ## Source

@@ -1,8 +1,51 @@
 # Session Log
 
-**Current Layer:** Deferred infra cleanup + dotfiles backup
-**Current Session:** 2026-03-13 — Session 41: All PRs merged; dotfiles backup system
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`
+**Current Layer:** Deferred infra — verdict policy, warm_model, ollama overlay
+**Current Session:** 2026-03-14 — Session 42: Verdict retry policy + warm_model + ollama-scaffolding overlay
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`
+
+---
+
+## 2026-03-14 - Session 42: Verdict retry policy + warm_model + ollama-scaffolding overlay
+
+### Context
+Resumed from session 41. All PRs merged, master clean. Chose "IMPROVED verdict workflow codification" from deferred tasks, which expanded into a full architecture session.
+
+### What Was Done
+
+**Verdict retry policy — COMPLETE:**
+- Replaced "3 lines" threshold with 3-dimension heuristic (defect type / fix scope / prompt cost)
+- Stubs-then-Ollama codified as named retry pattern; conceptual defects named as category
+- Cold-start grace period: first-call timeouts → `TIMEOUT_COLD_START`, not REJECTED
+- Added to `docs/scaffolding-template.md` and `ref:local-model-retry-patterns`
+
+**warm_model MCP tool — COMPLETE (pending manual test):**
+- In-flight tracking wraps `chat()` in try/finally; `list_running()`, `unload_model()` on client
+- `warm_model` tool: check loaded → check in-flight → evict if safe → warm with trivial prompt
+- Design doc for future directory-based coordination: `docs/ideas/ollama-coordination-layer.md`
+
+**ollama-scaffolding overlay — COMPLETE:**
+- `overlays/ollama-scaffolding/` — packages verdict/retry policy for any ollama-bridge project
+- Tested 3 AI backends against expense repo; all over-deleted with long section
+- Redesigned: short pointer in CLAUDE.md (~6 lines) + full reference file
+- Installed in expense repo worktree, PR #8 opened
+
+**New persona:** `my-api-docs-q3` (API doc analyst, deterministic). Found: MCP server caches registry — new personas invisible until restart.
+
+**New deferred tasks:** MCP `create_persona` tool, raw temperature values, registry hot-reload
+
+### Decisions Made
+- Defect type / fix scope / prompt cost replaces line-count threshold
+- Stubs-then-Ollama is REJECTED retry, not IMPROVED — cleaner DPO signal
+- warm_model: bundled Option 1 now; directory-based Option 2 when second consumer emerges
+- Overlay CLAUDE.md sections must be short pointers — all AI backends over-delete long sections
+- "Do NOT use for security" removed — code is reviewed; "Training Data" removed — implementation detail
+
+### Next
+- Merge PR #15 (LLM repo) and PR #8 (expense repo)
+- Manual test warm_model after MCP server restart
+- Remaining deferred: Python 3.10→3.12, auto-resume hook, registry hot-reload
+- Layer 4 stragglers: Phase 3 frontier judge, Claude Desktop insights tool
 
 ---
 

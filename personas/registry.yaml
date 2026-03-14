@@ -473,3 +473,12 @@ my-classifier-qcoder:
 # Qwen3-Coder-Next (80B MoE, 3B active — ~46GB at 4-bit, ~24GB at 3-bit)
 #   - 3-bit fits on 12GB VRAM + ~26GB RAM in theory, but margins are very thin.
 #   - TODO: investigate native Linux (no WSL2 overhead) to recover ~4-6GB RAM headroom.
+
+my-api-docs-q3:
+  modelfile: modelfiles/api-docs-qwen3.Modelfile
+  base_model: qwen3:8b
+  role: API documentation analyst
+  temperature: 0.1
+  num_ctx: 16384
+  tier: full
+  status: active
