@@ -1,23 +1,44 @@
 # Ollama Coordination Layer
 
 **Status:** Design only (session 42, 2026-03-14). Not yet implemented.
+**Updated:** session 43 (2026-03-15) — threat model revised after empirical testing.
 **Related:** warm-up MCP tool (bundled Option 1 built first), deferred-infra tasks.
+**Findings:** `docs/findings/ollama-eviction-concurrency-findings.md`
 
 ## Problem
 
 Multiple independent processes (MCP bridge instances, Aider, scripts, hooks) share
 Ollama's VRAM. No single process owns the resource. Without coordination:
 
-- Warm-up evicts a model mid-generation from another session
-- Two Claude Code sessions load different models simultaneously, thrashing VRAM
+- ~~Warm-up evicts a model mid-generation from another session~~ **NOT a risk** — see below
+- Two Claude Code sessions load different models simultaneously, thrashing VRAM (performance only)
 - A `SessionStart` hook can't safely pre-warm a model without knowing if Ollama is busy
+
+## Ollama's Native Protection (tested 2026-03-15)
+
+`keep_alive: 0` (unload) sent while a model is actively generating does **not** interrupt
+generation. Ollama queues the unload until the current request completes — the internal
+`refCount` in `server/sched.go` prevents eviction while a request is active. Tested
+empirically: evict fired 2s into a 30s generation; generation completed fully with all
+300 tokens and coherent content. See `docs/findings/ollama-eviction-concurrency-findings.md`.
+
+**Revised risk:** coordination layer addresses VRAM thrash (performance) only, not
+correctness. No output will ever be truncated or corrupted by a concurrent evict.
+
+## Upstream: PR #9392 (watch before implementing)
+
+[PR #9392](https://github.com/ollama/ollama/pull/9392) adds an `ACTIVE` field to `/api/ps`
+using the same internal `refCount`. If it ships, `warm_model` can check `/api/ps` directly
+for `active: true` — making the file-based layer unnecessary for the busy-check use case.
+Also: [issue #3144](https://github.com/ollama/ollama/issues/3144) requests a `/metrics`
+endpoint. Watch both before implementing Option 2.
 
 ## Current State (Ollama API limitations)
 
 - **`GET /api/ps`** returns loaded models with `name`, `size`, `size_vram`, `expires_at`
-- **No field indicates active processing** — only what's loaded, not what's busy
+- **No `active` field yet** — pending PR #9392
 - **Unload:** `POST /api/chat` with `messages: []` and `keep_alive: 0`
-- **Concurrent behavior is undocumented** — unknown what happens if you unload during generation
+- **Eviction during generation:** safe — Ollama queues until refCount drops to 0
 
 ## Proposed Design: Shared Directory Contract
 
@@ -79,13 +100,16 @@ def is_busy(model: str = None) -> bool:
 | `SessionStart` hook | No | Yes — checks before pre-warming |
 | bash scripts / cron | Optional | Optional |
 
-## Why Not Yet
+## Why Not Yet (updated 2026-03-15)
 
-- Only the MCP bridge is a regular Ollama consumer today
-- Aider usage is sporadic; no concurrent sessions observed yet
-- The bundled Option 1 (in-process tracking inside MCP bridge) covers 95% of cases
-- Extracting from Option 1 to this design is straightforward — the `_call_ollama()`
-  register/deregister calls just switch from dict ops to file ops
+- **Correctness risk is off the table** — Ollama's native `refCount` protects all generation
+- **Remaining concern is performance only** — VRAM thrash between sessions, not corruption
+- **PR #9392 may eliminate the need entirely** — watch before implementing; if it ships,
+  `is_busy()` becomes a single `/api/ps` field check instead of a file scan
+- The "second consumer" trigger (two Claude Code sessions) is now routine, but the risk
+  profile is much lower than originally assumed
+- Implementation is still trivial when needed: swap 3 methods in `client.py` from dict → file ops
+- **Build trigger:** VRAM thrash becomes an observed pain point AND PR #9392 has not shipped
 
 ## Alternatives Considered
 

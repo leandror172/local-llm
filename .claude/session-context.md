@@ -59,13 +59,19 @@
   - Backs up: claude-code (user-level), claude-projects/llm/memory, claude-desktop (Windows)
 - **Session 42** (2026-03-14) — Verdict retry policy + warm_model MCP tool + ollama-scaffolding overlay:
   - Verdict policy: 3-dimension heuristic (defect type / fix scope / prompt cost) replaces "3 lines"
-  - warm_model MCP tool: in-flight tracking, safe eviction, trivial-prompt warm-up (pending manual test)
+  - warm_model MCP tool: in-flight tracking, safe eviction, trivial-prompt warm-up
   - ollama-scaffolding overlay: tested 3 backends, redesigned to short CLAUDE.md pointer + full ref file
   - Installed in expense repo (PR #8), new persona `my-api-docs-q3`
-- **Active branch:** `master` (clean)
-- **Open PRs:** #8 (expense repo — overlay install)
-- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload
-- **Next:** Merge PR #8 (expense repo); Python 3.12 upgrade (highest priority before next standalone script)
+- **Session 43** (2026-03-15) — warm_model testing + bug fix + Ollama coordination research:
+  - warm_model fully tested; "evict then 404" bug fixed via `_check_model_exists()` pre-validation
+  - Hook fix: verdict template skipped for non-generation tools
+  - Ollama eviction-during-generation: safe (queues unload, doesn't interrupt) — empirically tested
+  - PR #9392 discovered: adds `ACTIVE` to `/api/ps`; watch before building Option 2 file layer
+  - PR #15 merged; findings documented in `docs/findings/ollama-eviction-concurrency-findings.md`
+- **Active branch:** `feature/session-43-handoff` (PR open, master pending reset)
+- **Open PRs:** #8 (expense repo — overlay install), session-43-handoff (this session's docs)
+- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392)
+- **Next:** Merge session-43-handoff PR; merge PR #8 (expense repo); Python 3.12 upgrade
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
