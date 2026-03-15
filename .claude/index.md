@@ -48,6 +48,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Overlay wizard idea | `docs/ideas/overlay-wizard.md` | Deferred: running overlay install interactively inside an AI CLI; wizard pattern generalization; eventual local TUI |
 | ollama-scaffolding overlay | `overlays/ollama-scaffolding/` | Local model usage conventions: verdict protocol, decision tree, stubs-then-Ollama, cold-start policy |
 | Ollama coordination layer | `docs/ideas/ollama-coordination-layer.md` | Deferred: shared directory contract for multi-process VRAM coordination; migration path from bundled Option 1 |
+| Ollama eviction/concurrency findings | `docs/findings/ollama-eviction-concurrency-findings.md` | Empirical test results: Ollama queues unloads (no correctness risk); PR #9392 may replace file layer |
 
 ---
 
