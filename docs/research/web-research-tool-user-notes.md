@@ -3,6 +3,8 @@
 
 *Captured 2026-03-16, session 44. Raw thinking from the user about use cases, agent architecture, and testing.*
 
+**Naming key (added session 44b):** Agent A → **Conductor**, Agent Tool → **Dispatcher**, Agent B → **Auditor**, Agent A2 → **Lens**. Original designations preserved in text below.
+
 ---
 
 ## Use Cases That Shape the Tool
