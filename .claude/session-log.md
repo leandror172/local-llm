@@ -1,8 +1,40 @@
 # Session Log
 
-**Current Layer:** Deferred infra — warm_model testing + Ollama coordination research
-**Current Session:** 2026-03-15 — Session 43: warm_model testing, bug fix, Ollama eviction research
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`
+**Current Layer:** Web research tool — vision, research, architecture design
+**Current Session:** 2026-03-17 — Session 44: Web research tool genesis
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`
+
+---
+
+## 2026-03-17 - Session 44: Web research tool genesis
+
+### Context
+User wanted to build an AI-powered web research tool that uses local models for processing. Had saved many URLs of tools/techniques to evaluate. Started from a broad idea and iterated through research, architecture design, and existing tool assessment.
+
+### What Was Done
+- **4 parallel research agents** launched: self-hosted scrapers, event sourcing for AI agents, language/framework comparison, existing research architectures
+- **Comprehensive analysis** produced (10-part document): scrapers (Crawl4AI standout), languages (Python/Go/TS viable, Java+Axon overkill), state management (JSONL+SQLite sweet spot), existing tools (12 compared)
+- **Key discoveries:** Local Deep Research (Ollama+SearXNG, MIT, 4.5K commits), SearXNG as consensus search backend, Crawl4AI as best self-hosted scraper, Jina DeepResearch's token budget pattern
+- **User architecture vision** captured: Agent A/B/Tool/A2 multi-agent design, DDD-as-agent-modeling insight, progressive autonomy, testing strategy
+- **Vision document** synthesized from user notes + research
+- **Deep assessment of Local Deep Research:** Sonnet agent examined repo — verdict: build new, borrow patterns (LangChain coupling, 2-3GB deps, no structured output, no multi-model, no progressive autonomy)
+- **Research folder organization:** INDEX.md, QUICK-MEMORY.md, ref blocks on all docs, exploration agenda with fork angles
+- **MCP subagent integration** gap analysis (separate finding)
+- **Work size estimated:** MVP ~4-5 sessions, usable tool ~8-10, full vision ~15-18
+
+### Decisions Made
+- **Build new, informed by LDR** — patterns (BaseSearchEngine, two-phase retrieval, strategy registry, ReAct loop) more valuable than code
+- **Language question reopened** — not inheriting Python from LDR; Python/Go/TS all viable
+- **Session named "genesis"** — serves as root for forked exploration sessions
+- **Research folder convention:** `*-MEMORY.md` files, `INDEX.md` per folder, ref blocks for machine lookup, folder-per-topic scaffolding (future)
+- **Deferred:** ref-lookup.sh prefix search enhancement
+
+### Next
+- Fork sessions for angles A-E (see `docs/research/exploration-agenda.md`)
+- Most impactful next: **MVP spike** (Angle A) — wire SearXNG + Crawl4AI + Ollama, test 14B on 5 URLs
+- Or **SearXNG setup** (Angle E) — prerequisite for any pipeline
+- Language decision needed before significant coding starts
+- Merge this branch's PR, then branch per angle
 
 ---
 
@@ -128,67 +160,6 @@ Entry point: recontextualize + discuss next steps from remaining deferred infra 
 - Remaining deferred infra tasks: hook-based auto-resume, IMPROVED verdict workflow codification, Python 3.10→3.12 upgrade (do before next standalone script)
 - Layer 4 stragglers: Phase 3 frontier judge (4.x), Claude Desktop insights tool (4.6)
 - Layer 5 continues in `~/workspaces/expenses/code/` (separate sessions, tasks 5.1–5.7)
-
----
-
-## 2026-03-11 - Session 40: Overlay system implementation (Phases 1–4 complete)
-
-### Context
-Resumed from session 39b where the overlay system was designed but not implemented.
-Branch: `feature/overlay-system`. All four phases executed in a single session.
-
-### What Was Done
-
-**Phase 1 — Directory structure + manifest:**
-- `overlays/ref-indexing/` with `manifest.yaml`, `files/`, `templates/`, `sections/`, `prompts/`
-- `sections/claude-md-ref-rules.md` — Scenario A (full content, not pointer)
-- `templates/index.md.tmpl`, `sections/gitignore-lines.txt`, `APPLY.md`, `README.md`
-- Decided: `§` heading pointer vs fuller content in CLAUDE.md → chose fuller (Scenario A)
-- Decided: `.sh` wrappers redundant — `./script.py` is whitelistable in Claude Code directly
-
-**Phase 2 — Installer (`install-overlay.py`):**
-- All action handlers: files (sha256 diff), templates (no-overwrite), append_lines (idempotent), merge_sections (marker-driven versioning), manual_if_exists
-- AI merge: prompt→schema→plan→apply pipeline; Ollama structured output (`format` param)
-- Fixed: stream:false timeout (→ stream:true); num_ctx 4096→8192; XML prompt delimiters; EOFError on stdin; dry-run fires AI call (moved short-circuit before call)
-- `--backup` / `--no-backup` flag (BooleanOptionalAction, default on)
-- Refactored: prompts extracted to files (`merge-section.txt` → `merge-plan.txt`); JSON schema in `merge-plan-schema.json`
-- Planner approach: AI returns `{insert_after_line, delete_ranges, reasoning}` — script applies deterministically, always adds markers itself
-- `[WARN]` when AI inserts without deleting; `[DELETE]` record per range applied
-
-**Backends — declarative config (`ai-backends.yaml`):**
-- `BackendType` + `SchemaMode` enums (`str, Enum` mixin, Python 3.10 compat)
-- `Backend` ABC with `is_available()` + `call()` abstract methods
-- `OllamaApiBackend` (format_param, +think suffix), `CliBackend` (stdin, JSON envelope), `ClaudeApiBackend` (tool_use)
-- `CliBackend`: CLAUDECODE env var detection (nested session guard); `--output-format json` envelope parsing; `_extract_json()` strips markdown fences
-- `--backend ID` (by id from yaml or 'auto'), `--model` override, `--debug` flag
-
-**Split into `lib/` package:** `report.py`, `backends.py`, `planner.py`, `actions.py`
-Install entry point reduced to ~90 lines.
-
-**Phase 3 — Tests:**
-- overlay-test (fresh): all SKIP/COPY, idempotency confirmed
-- expense repo (retrofit): qwen3:14b+think → correct merge with markers; claude-code (haiku) → perfect result (delete lines 5–9 exact, replace old section cleanly, interactive confirm worked)
-- Model comparison (test-merge-plan.py): 7 variants tested; think:false → zero deletes; think:true → identifies delete range; 30b-a3b+think most accurate; haiku best via prompt_injection
-
-**Phase 4 — Docs:** `overlays/README.md` authoring guide
-
-**Deferred tasks added:** Python 3.10→3.12 upgrade via uv (enables StrEnum)
-
-### Decisions Made
-- `§` pointer vs fuller content in CLAUDE.md: chose fuller (Scenario A) — always-loaded rules are more reliable than "read on demand"
-- Prompts in files, not code — independent git history, editable without touching Python
-- JSON schema in separate file — same principle; passed to Ollama `format` param directly
-- AI as planner (not file generator) — script owns markers and file writes; AI only decides WHERE
-- Default AI model: `qwen3:14b+think` (Ollama); `haiku` (claude-code CLI)
-- `str, Enum` mixin over `StrEnum` — Python 3.10 compat; upgrade deferred to tasks.md
-- `lib/` split before PR — cleaner to review than monolith
-- claude-code backend: prompt via stdin (not positional arg), `--output-format json` envelope, `_extract_json()` for markdown fence stripping
-
-### Next
-- Merge PR `feature/overlay-system` → master (PR opened this session)
-- Merge pending PRs: #10 (token logging), #11 (verdict hooks→#10), #12 (context-files), #13 (ref-integrity)
-- Resume Layer 5 in `~/workspaces/expenses/code/` (tasks 5.1–5.7: classify command pipeline)
-- Overlay system follow-ups (low priority): Python 3.12 upgrade; `session-tracking` overlay candidate
 
 ---
 
