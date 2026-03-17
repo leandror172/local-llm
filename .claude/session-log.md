@@ -36,6 +36,14 @@ User wanted to build an AI-powered web research tool that uses local models for 
 - Language decision needed before significant coding starts
 - Merge this branch's PR, then branch per angle
 
+### Fork: Session 44a — MVP Spike Plan
+- **Branch:** `feature/mvp-spike-plan`
+- Wrote concrete spike plan (`docs/research/mvp-spike-plan.md`): httpx + trafilatura + Ollama HTTP
+- Environment audit: Ollama running, no SearXNG/Firecrawl/Crawl4AI setup needed for spike
+- Simplified approach: validate extraction hypothesis before setting up infra
+- Updated INDEX.md, exploration-agenda.md
+- Established **forked session pattern:** append fork notes, don't rotate logs
+
 ---
 
 ## 2026-03-15 - Session 43: warm_model testing, bug fix, Ollama eviction research
