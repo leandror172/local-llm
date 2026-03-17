@@ -44,6 +44,15 @@ User wanted to build an AI-powered web research tool that uses local models for 
 - Updated INDEX.md, exploration-agenda.md
 - Established **forked session pattern:** append fork notes, don't rotate logs
 
+### Fork: Session 44b — DDD Agent Modeling
+- **Branch:** `feature/mvp-spike-plan` (continued)
+- Formalized "DDD as agent/model modeling" as reusable design pattern (`docs/research/ddd-agent-modeling.md`)
+- Strategic patterns: bounded contexts → agent domains, context maps → data contracts, subdomain classification → model tier selection
+- Tactical patterns: aggregates → agent consistency units, domain events → event sourcing, sagas → orchestration
+- Expanded companion doc (`docs/research/ddd-agent-decisions.md`): anti-pattern detection heuristics with RTX 3060 cost calculations, split/merge decision flowchart, cost/benefit template, two worked examples for the web research tool
+- Key actionable output: only 3 justified model swap points in the web research architecture; Agent Tool should be code not LLM; Agent A2 deferred until context pressure measured
+- Updated INDEX.md with Design Patterns section
+
 ---
 
 ## 2026-03-15 - Session 43: warm_model testing, bug fix, Ollama eviction research
