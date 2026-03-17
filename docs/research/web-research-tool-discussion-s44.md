@@ -31,12 +31,12 @@ The user's agent breakdown maps to distinct **roles**, not necessarily distinct 
 ┌─────────────────────────────────────────────────────────┐
 │  ORCHESTRATION LAYER                                     │
 │                                                          │
-│  Agent A (Research Manager)                              │
+│  Conductor (Research Manager)                            │
 │  - Receives initial query                                │
 │  - Decides what tools/pipelines needed                   │
 │  - Iterates until criteria met                           │
 │  - Can optionally enrich the initial prompt              │
-│  - Delegates sifting to Agent A2 (context proxy)         │
+│  - Delegates sifting to Lens (context proxy)             │
 │    to avoid polluting own context                        │
 └─────────┬───────────────────────────────────────────────┘
           │ delegates to
@@ -44,7 +44,7 @@ The user's agent breakdown maps to distinct **roles**, not necessarily distinct 
 ┌─────────────────────────────────────────────────────────┐
 │  TOOL LAYER                                              │
 │                                                          │
-│  Agent Tool (Pipeline Builder + Executor)                │
+│  Dispatcher (Pipeline Builder + Executor)                │
 │  - Knows available tools and how to call them            │
 │  - Builds pipelines: what to call, in what order         │
 │  - Decides parallelization (from config + history)       │
@@ -64,7 +64,7 @@ The user's agent breakdown maps to distinct **roles**, not necessarily distinct 
 ┌─────────────────────────────────────────────────────────┐
 │  REVIEW LAYER                                            │
 │                                                          │
-│  Agent B (Sufficiency Reviewer)                          │
+│  Auditor (Sufficiency Reviewer)                          │
 │  - First pass: is the research enough?                   │
 │  - Should more be explored? Different tools?             │
 │  - "More" signal decreases iteratively (avoid loops)     │
@@ -88,9 +88,9 @@ The user's agent breakdown maps to distinct **roles**, not necessarily distinct 
 
 ### What's Strong in This Design
 
-**1. Agent Tool as language-flexibility layer.** This is a key insight. If Agent Tool knows how to call tools via their APIs (REST, CLI, MCP), then tools can be in any language. The decision about "what language do we build in" applies only to the orchestration/agent layer, not to the tools themselves. A SearXNG Docker container, a Crawl4AI Docker container, and Ollama are all just HTTP endpoints. You don't need them in the same language.
+**1. Dispatcher as language-flexibility layer.** This is a key insight. If Dispatcher knows how to call tools via their APIs (REST, CLI, MCP), then tools can be in any language. The decision about "what language do we build in" applies only to the orchestration/agent layer, not to the tools themselves. A SearXNG Docker container, a Crawl4AI Docker container, and Ollama are all just HTTP endpoints. You don't need them in the same language.
 
-**2. Context proxy (Agent A2).** Avoiding context pollution is a real problem with local models. A 7B model with 8K context can't hold a research session's worth of findings AND reason about them. Having a separate "sifter" that reads results and answers specific questions from Agent A is a practical pattern. It's essentially RAG without the R — you're querying your own research output.
+**2. Context proxy (Lens).** Avoiding context pollution is a real problem with local models. A 7B model with 8K context can't hold a research session's worth of findings AND reason about them. Having a separate "sifter" that reads results and answers specific questions from Conductor is a practical pattern. It's essentially RAG without the R — you're querying your own research output.
 
 **3. Decreasing "more" signal.** This is Jina's approach formalized. Their token budget naturally decreases the "explore more" pressure. The user's framing as a configurable, iteratively-decreasing signal is more explicit and tunable.
 
@@ -106,15 +106,15 @@ The user's agent breakdown maps to distinct **roles**, not necessarily distinct 
 
 For this to be net-positive, the focused context advantage must outweigh the swapping overhead. The DDD insight applies here — same-domain agents should share a model (no swap), cross-domain transitions justify swaps.
 
-**2. Tool calling by local models.** The user correctly identified this as a known weakness. Benchmarks showed tool calling is hard for local models. This means Agent Tool might need to be the most capable model (14B?), or the tool-calling logic might need to be more structured than "LLM decides what to call." Options:
+**2. Tool calling by local models.** The user correctly identified this as a known weakness. Benchmarks showed tool calling is hard for local models. This means Dispatcher might need to be the most capable model (14B?), or the tool-calling logic might need to be more structured than "LLM decides what to call." Options:
 - **Structured routing**: if-else/match on query type rather than LLM tool selection
 - **Template pipelines**: predefined sequences for common research patterns, LLM only decides parameters
 - **Hybrid**: Claude (frontier) decides the pipeline, local models execute the steps
 
 **3. Over-engineering risk.** The user flagged this too. The 4-agent architecture is the long-term vision. The MVP might be:
-- Agent A + Agent Tool collapsed into one pipeline script
-- Agent B as a simple quality check prompt
-- No Agent A2 (context proxy) until context pressure is real
+- Conductor + Dispatcher collapsed into one pipeline script
+- Auditor as a simple quality check prompt
+- No Lens (context proxy) until context pressure is real
 - Knowledge layer as JSONL + markdown files
 
 ---
@@ -140,7 +140,7 @@ Map this to agents:
 
 **The practical implication:** When two agents are in the same bounded context (same domain), use the same model — no swap. When crossing context boundaries, that's where model swaps are justified and where explicit data translation (anti-corruption layer) is needed.
 
-**This DDD-as-agent-modeling framing also clarifies the language question.** In DDD, different bounded contexts can use different technologies (polyglot persistence, different services). The same applies here: Agent Tool's "integration layer" could call tools written in any language, as long as the context boundary (REST API, MCP, CLI) is clean. You don't need one language to rule them all — you need clean interfaces between domains.
+**This DDD-as-agent-modeling framing also clarifies the language question.** In DDD, different bounded contexts can use different technologies (polyglot persistence, different services). The same applies here: Dispatcher's "integration layer" could call tools written in any language, as long as the context boundary (REST API, MCP, CLI) is clean. You don't need one language to rule them all — you need clean interfaces between domains.
 
 ---
 
@@ -169,11 +169,11 @@ The "longshot" architecture has clear layers that map to an iterative build:
 
 | Phase | What | Agents Involved |
 |-------|------|----------------|
-| **MVP** | Single pipeline: query → search → fetch → extract → store | Agent A + Tool collapsed. No Agent B. Files as storage. |
-| **+Review** | Add sufficiency check and iteration | Agent B as a prompt. Decreasing "more" signal. |
-| **+Pipeline flexibility** | Agent Tool layer, multiple tool backends, parallelization | Agent Tool split out. Plugin architecture for scrapers. |
+| **MVP** | Single pipeline: query → search → fetch → extract → store | Conductor + Dispatcher collapsed. No Auditor. Files as storage. |
+| **+Review** | Add sufficiency check and iteration | Auditor as a prompt. Decreasing "more" signal. |
+| **+Pipeline flexibility** | Dispatcher layer, multiple tool backends, parallelization | Dispatcher split out. Plugin architecture for scrapers. |
 | **+Knowledge** | Graph relationships, cross-session persistence, post-research queries | Knowledge layer. SQLite graph. |
-| **+Context management** | Agent A2 proxy, model-per-domain routing | DDD context boundaries. Model swapping. |
+| **+Context management** | Lens proxy, model-per-domain routing | DDD context boundaries. Model swapping. |
 | **+Learning** | Historical pipeline data, improved routing, distillation | Feeds back into Layer 7 (memory/learning) of the main project. |
 
 The MVP tests the core hypothesis: **can a local-model-powered pipeline produce useful web research output?** Everything else layers on top once that's validated.

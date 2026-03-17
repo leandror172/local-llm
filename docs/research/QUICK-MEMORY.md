@@ -26,7 +26,7 @@
 | Search engine abstraction | 1-2 | Borrow LDR pattern, simpler |
 | JSONL event log | 0.5 | Same as calls.jsonl |
 | SQLite knowledge store | 1-2 | Schema + node/edge graph |
-| Sufficiency check (Agent B) | 1 | LLM prompt + iteration logic |
+| Sufficiency check (Auditor) | 1 | LLM prompt + iteration logic |
 | CLI | 1 | Language-dependent |
 | MCP integration | 1 | Same pattern as task 5.8 |
 | SearXNG Docker setup | 0.5 | Straightforward |
@@ -39,7 +39,7 @@
 1. **MVP spike** — Wire SearXNG + Crawl4AI + Ollama, test with 14B on 5 URLs (~2 hours)
 2. **DDD agent modeling** — Formalize "DDD as agent/model modeling" as reusable pattern
 3. **Mastra deep-dive** — Suspend/resume + workflow engine for progressive autonomy
-4. **Tool calling benchmarks** — Retest current models for Agent Tool feasibility
+4. **Tool calling benchmarks** — Retest current models for Dispatcher feasibility
 5. **SearXNG setup** — Docker deploy, test search quality (prerequisite)
 
 ## Key Documents
