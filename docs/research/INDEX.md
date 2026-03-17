@@ -31,6 +31,7 @@
 | File | Ref Key | Purpose |
 |------|---------|---------|
 | `ddd-agent-modeling.md` | `ddd-agent-modeling` | DDD as agent/model modeling: strategic + tactical patterns, anti-patterns, split/merge heuristics |
+| `ddd-agent-decisions.md` | `ddd-agent-decisions` | Expanded anti-patterns (detection, cost, remediation), split/merge flowchart, worked examples |
 
 ## Implementation Plans
 
