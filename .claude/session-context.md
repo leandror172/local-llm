@@ -68,10 +68,16 @@
   - Ollama eviction-during-generation: safe (queues unload, doesn't interrupt) — empirically tested
   - PR #9392 discovered: adds `ACTIVE` to `/api/ps`; watch before building Option 2 file layer
   - PR #15 merged; findings documented in `docs/findings/ollama-eviction-concurrency-findings.md`
-- **Active branch:** `feature/session-43-handoff` (PR open, master pending reset)
-- **Open PRs:** #8 (expense repo — overlay install), session-43-handoff (this session's docs)
-- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392)
-- **Next:** Merge session-43-handoff PR; merge PR #8 (expense repo); Python 3.12 upgrade
+- **Session 44** (2026-03-17) — Web research tool genesis session:
+  - Extensive research: scrapers (Crawl4AI, Firecrawl, SearXNG), languages (Python/Go/TS/Java/Kotlin), event sourcing (Axon vs lightweight), existing tools (GPT-Researcher, STORM, Jina, Local Deep Research, Mastra)
+  - User architecture vision: multi-agent (Agent A/Tool/B/A2), DDD-as-agent-modeling, progressive autonomy, pluggable scrapers, context-efficient design
+  - Deep assessment of Local Deep Research: MIT, modular, but LangChain-coupled, no structured output, no multi-model, 2-3GB deps → verdict: **build new, informed by LDR patterns**
+  - Work estimate: MVP ~4-5 sessions, usable tool ~8-10, full vision ~15-18
+  - Research docs in `docs/research/` with INDEX.md, ref keys, QUICK-MEMORY pattern
+  - Deferred: ref-lookup prefix search for `*-MEMORY.md` convention
+- **Active branch:** `feature/web-research-tool-analysis`
+- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search
+- **Next:** Commit session 44 work; open PR; decide next angle (MVP spike vs Mastra vs SearXNG setup); language decision still open
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
