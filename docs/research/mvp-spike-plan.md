@@ -282,7 +282,7 @@ If the spike **fails** (extraction quality is too low):
 
 The spike result informs:
 - **Language decision**: If Python spike works well, momentum favors Python for MVP
-- **DDD agent modeling**: Extraction quality determines whether Agent A needs to evaluate/retry
+- **DDD agent modeling**: Extraction quality determines whether Conductor needs to evaluate/retry
 - **Tool calling benchmarks**: If extraction needs retries, the orchestration layer matters more
 - **Mastra deep-dive**: Only relevant if progressive autonomy is needed (spike validates basic extraction first)
 <!-- /ref:mvp-spike-plan -->
