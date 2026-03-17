@@ -86,7 +86,13 @@
   - Models: qwen2.5-coder:14b first, then qwen3:14b, qwen3:8b
   - Branch: `feature/mvp-spike-plan`
   - **Forked session pattern:** Fork notes appended, no log rotation (genesis session owns rotation)
-- **Next:** Execute MVP spike (session 44b); merge PR #17; decide next angle post-spike (Mastra vs SearXNG setup still open); language decision still open
+- **Session 44b** (2026-03-17) — DDD agent modeling (fork of session 44):
+  - Formalized "DDD as agent/model modeling" pattern: `docs/research/ddd-agent-modeling.md` (`ref:ddd-agent-modeling`)
+  - Strategic patterns (bounded contexts, context maps, subdomain classification) + tactical patterns (aggregates, events, sagas)
+  - Expanded companion: `docs/research/ddd-agent-decisions.md` (`ref:ddd-agent-decisions`) — anti-pattern detection with RTX 3060 cost numbers, split/merge flowchart, cost/benefit template, worked examples
+  - Key finding: only 3 justified model swap points; Agent Tool should be code; Agent A2 deferred
+  - Branch: `feature/mvp-spike-plan` (continued)
+- **Next:** Execute MVP spike; merge PR #17; decide next angle post-spike (Mastra vs SearXNG setup still open); language decision still open
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
