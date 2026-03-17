@@ -374,15 +374,15 @@ Use case 2 inverts the typical pattern — Claude Code is the *caller*, delegati
 
 | Agent | Role | Domain (DDD bounded context) | Model Tier |
 |-------|------|-----|------------|
-| **Agent A** | Research manager — decides what tools needed, iterates until done | Research strategy | 14B (needs planning ability) |
-| **Agent Tool** | Pipeline builder + executor — knows how to call tools, routes data | Tool integration | Could be deterministic code, or 7-8B |
-| **Agent B** | Sufficiency reviewer — is the research enough? | Quality assessment | 14B (needs evaluation ability) |
-| **Agent A2** | Context proxy — sifts through results for Agent A | Knowledge retrieval | 7-8B (focused extraction) |
+| **Conductor** | Research manager — decides what tools needed, iterates until done | Research strategy | 14B (needs planning ability) |
+| **Dispatcher** | Pipeline builder + executor — knows how to call tools, routes data | Tool integration | Could be deterministic code, or 7-8B |
+| **Auditor** | Sufficiency reviewer — is the research enough? | Quality assessment | 14B (needs evaluation ability) |
+| **Lens** | Context proxy — sifts through results for Conductor | Knowledge retrieval | 7-8B (focused extraction) |
 
 #### Strengths of the Design
 
-1. **Agent Tool as language-flexibility layer** — tools behind REST APIs can be in any language. Language decision applies only to orchestration layer.
-2. **Context proxy (Agent A2)** — practical pattern for local models with limited context. Avoids loading full research output into the manager's context.
+1. **Dispatcher as language-flexibility layer** — tools behind REST APIs can be in any language. Language decision applies only to orchestration layer.
+2. **Context proxy (Lens)** — practical pattern for local models with limited context. Avoids loading full research output into the manager's context.
 3. **Decreasing "more" signal** — formalizes Jina's token budget approach. Configurable, prevents loops.
 4. **Pipeline from historical data** — log which patterns worked → improve selection over time.
 5. **DDD agent modeling** — same-domain agents share model (no swap), cross-domain justifies swap + data translation.
@@ -391,17 +391,17 @@ Use case 2 inverts the typical pattern — Claude Code is the *caller*, delegati
 
 1. **Context swapping cost** — model unload/load is 2-10s. Must be net-positive vs. focused context advantage.
 2. **Tool calling by local models** — benchmarks showed this is hard for 7-8B. Options: structured routing (if-else), template pipelines, hybrid (Claude decides pipeline, local executes).
-3. **Over-engineering risk** — MVP should collapse Agent A + Tool into one pipeline. Agent B as a simple prompt. No A2 until context pressure is real.
+3. **Over-engineering risk** — MVP should collapse Conductor + Dispatcher into one pipeline. Auditor as a simple prompt. No Lens until context pressure is real.
 
 #### MVP Path
 
 | Phase | Agents Active | What Changes |
 |-------|--------------|-------------|
-| MVP | A+Tool collapsed | Single pipeline script |
-| +Review | +B | Sufficiency check prompt added |
-| +Pipeline | A, Tool split out | Plugin architecture, parallelization |
+| MVP | Conductor+Dispatcher collapsed | Single pipeline script |
+| +Review | +Auditor | Sufficiency check prompt added |
+| +Pipeline | Conductor, Dispatcher split out | Plugin architecture, parallelization |
 | +Knowledge | All + persistence | SQLite graph, cross-session |
-| +Context mgmt | +A2 | Model-per-domain, DDD boundaries |
+| +Context mgmt | +Lens | Model-per-domain, DDD boundaries |
 | +Learning | All + feedback loop | Historical pipeline data, distillation |
 
 #### Testing Strategy

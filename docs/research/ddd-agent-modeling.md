@@ -49,8 +49,8 @@ The mapping is not metaphorical — it's **structural**. DDD patterns directly i
 
 | DDD Relationship | Agent Relationship | When to Use |
 |-----------------|-------------------|-------------|
-| **Shared Kernel** | Two agents share state directly (same DB/file) | Tightly coupled agents in same domain; e.g., Agent A and A2 share the research session state |
-| **Customer-Supplier** | Agent B consumes Agent Tool's output | One agent produces, another evaluates. Output format defined by producer. |
+| **Shared Kernel** | Two agents share state directly (same DB/file) | Tightly coupled agents in same domain; e.g., Conductor and Lens share the research session state |
+| **Customer-Supplier** | Auditor consumes Dispatcher's output | One agent produces, another evaluates. Output format defined by producer. |
 | **Conformist** | Agent consumes tool output as-is | When the tool's output format is good enough. E.g., Crawl4AI returns markdown, agent uses it directly. |
 | **Anti-Corruption Layer** | Translation layer between agents | When tool output doesn't match agent's domain model. E.g., translating SearXNG JSON into the research pipeline's internal format. |
 | **Published Language** | Shared JSON schema / structured output format | When multiple agents need to exchange structured data. The `format` param in Ollama API acts as a published language. |
@@ -73,7 +73,7 @@ The mapping is not metaphorical — it's **structural**. DDD patterns directly i
 
 | Subdomain Type | Agent Example | Model Strategy |
 |---------------|--------------|----------------|
-| **Core** | Research orchestration (Agent A), quality review (Agent B) | Best available model (14B). Custom prompts. Most iteration. |
+| **Core** | Research orchestration (Conductor), quality review (Auditor) | Best available model (14B). Custom prompts. Most iteration. |
 | **Supporting** | Extraction, summarization, query generation | Adequate model (7-8B). Standardized prompts. |
 | **Generic** | Tool calling, data transformation, file I/O | Deterministic code. No LLM needed. |
 
@@ -111,15 +111,15 @@ The mapping is not metaphorical — it's **structural**. DDD patterns directly i
 **DDD:** An aggregate is a cluster of domain objects treated as a single unit for data changes. Changes to the aggregate go through the aggregate root, which enforces invariants.
 
 **Agent equivalent:** Each agent manages a primary entity:
-- Agent A → Research Session (the session is the aggregate root)
-- Agent Tool → Pipeline Execution (one execution is atomic)
-- Agent B → Review Decision (one review cycle is atomic)
+- Conductor → Research Session (the session is the aggregate root)
+- Dispatcher → Pipeline Execution (one execution is atomic)
+- Auditor → Review Decision (one review cycle is atomic)
 - Knowledge Layer → Knowledge Entry (one fact + its relationships)
 
 **Practical implication:**
 - An agent should manage ONE primary entity at a time
 - Consistency is maintained within the agent's scope, not across agents
-- "Eventual consistency" between agents is natural — Agent B reviews results AFTER Agent Tool finishes, not during
+- "Eventual consistency" between agents is natural — Auditor reviews results AFTER Dispatcher finishes, not during
 - This maps to event sourcing: each aggregate produces events
 
 ### 6. Domain Events → Event Sourcing for Agent Communication
@@ -148,15 +148,15 @@ ResearchRequested(query, focus, timestamp)
 **DDD:** A repository provides the illusion of an in-memory collection of domain objects, hiding the storage mechanism.
 
 **Agent equivalent:** The knowledge store is a repository:
-- Agent A asks "what do I know about topic X?" — doesn't care if it's SQLite, files, or Neo4j
-- Agent A2 (context proxy) IS a repository accessor — it reads the store and returns relevant items
+- Conductor asks "what do I know about topic X?" — doesn't care if it's SQLite, files, or Neo4j
+- Lens (context proxy) IS a repository accessor — it reads the store and returns relevant items
 - The storage mechanism can evolve (files → SQLite → graph DB) without changing agent logic
 
 ### 8. Saga / Process Manager → Multi-Step Agent Orchestration
 
 **DDD:** A saga (or process manager) coordinates a long-running business process across multiple aggregates/services, reacting to events and issuing commands.
 
-**Agent equivalent:** Agent A IS a saga/process manager:
+**Agent equivalent:** Conductor IS a saga/process manager:
 - Reacts to events (search completed, extraction done, review verdict)
 - Issues commands (search for X, fetch URL Y, review these results)
 - Maintains state across steps (what's been searched, what's pending)
@@ -166,7 +166,7 @@ ResearchRequested(query, focus, timestamp)
 **Practical implication:**
 - The orchestration agent doesn't DO the work — it COORDINATES
 - Its context should contain the process state, not the content being processed
-- This is why Agent A delegates content sifting to Agent A2 — the saga manager shouldn't load raw data
+- This is why Conductor delegates content sifting to Lens — the saga manager shouldn't load raw data
 - Saga state should be persisted — enables resume after interruption (model swap, session end, human break)
 
 ---
@@ -219,10 +219,10 @@ Full decision flowchart, cost/benefit template, and worked examples for the web 
 
 | Context | Agent(s) | Core Concepts | Model Tier |
 |---------|----------|---------------|------------|
-| **Research Strategy** | Agent A (manager) | Sessions, queries, goals, progress, criteria | 14B (planning) |
-| **Tool Integration** | Agent Tool (executor) | Pipelines, tools, APIs, routing, parallelization | Code (deterministic) or 7-8B |
+| **Research Strategy** | **Conductor** (manager) | Sessions, queries, goals, progress, criteria | 14B (planning) |
+| **Tool Integration** | **Dispatcher** (executor) | Pipelines, tools, APIs, routing, parallelization | Code (deterministic) or 7-8B |
 | **Content Processing** | Extraction agents | Pages, facts, links, summaries, relevance | 7-8B (focused tasks) |
-| **Quality Assessment** | Agent B (reviewer) | Sufficiency, coverage, depth, gaps | 14B (evaluation) |
+| **Quality Assessment** | **Auditor** (reviewer) | Sufficiency, coverage, depth, gaps | 14B (evaluation) |
 | **Knowledge Management** | Knowledge layer | Entities, relationships, sources, temporal validity | Code + 7-8B for integration |
 
 ### Context Map
@@ -252,7 +252,7 @@ Only THREE justified swap points:
 2. **Content Processing → Quality Assessment** (7-8B → 14B): Evaluation needs stronger model
 3. **Any → Tool Integration**: Only if Tool Integration uses an LLM (could be pure code)
 
-Within a context, NO swaps. Agent A and Agent A2 share the Research Strategy context → same model.
+Within a context, NO swaps. Conductor and Lens share the Research Strategy context → same model.
 
 ---
 
