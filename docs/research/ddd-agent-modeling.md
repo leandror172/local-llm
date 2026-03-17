@@ -176,17 +176,12 @@ ResearchRequested(query, focus, timestamp)
 <!-- ref:ddd-anti-patterns -->
 ## Anti-Patterns (What NOT to Do)
 
-### 1. God Agent (= God Object)
-One agent that does everything. Symptoms: huge system prompt, conflated concerns, needs the most context, makes all decisions. Just like a God Object in code, this defeats the purpose of decomposition.
+Summary of each anti-pattern (expanded with detection heuristics, cost calculations, remediation steps, and worked examples in § `ddd-agent-decisions.md`):
 
-### 2. Anemic Agents (= Anemic Domain Model)
-Agents that are just pass-throughs — they receive data, forward it to a tool, and return the result without any domain logic. If an agent adds no judgment, reasoning, or transformation, it shouldn't be an agent — it should be a function call.
-
-### 3. Chatty Agents (= Chatty Services)
-Too many fine-grained agents that constantly exchange messages. Each exchange has overhead (data serialization, potential model swap, context construction). If two agents always communicate in lock-step, they should probably be one agent.
-
-### 4. Shared Database (= Shared Kernel Overuse)
-All agents reading/writing the same state directly. This creates tight coupling and race conditions. Better: events as communication, each agent has its own view of the data.
+1. **God Agent** — one agent does everything; conflated concerns, overflowing context
+2. **Anemic Agents** — pass-throughs that add no judgment; should be functions
+3. **Chatty Agents** — too many round-trips between agents; 3-4x latency for no quality gain
+4. **Shared Database** — multiple agents writing same state; race conditions, unclear ownership
 
 ---
 
@@ -210,6 +205,8 @@ The DDD heuristic for bounded contexts also applies to agents:
 - Splitting doesn't improve output quality
 
 **The litmus test:** Does splitting this agent into two produce BETTER output? Not "is it architecturally purer" — does the actual output improve? If not, don't split.
+
+Full decision flowchart, cost/benefit template, and worked examples for the web research tool in § `ddd-agent-decisions.md`.
 
 ---
 
