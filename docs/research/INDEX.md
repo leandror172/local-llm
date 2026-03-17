@@ -26,6 +26,12 @@
 | `web-research-tool-analysis.md` | `analysis-web-research` | 10-part analysis: scrapers, languages, state mgmt, existing tools, architecture |
 | `local-deep-research-assessment.md` | `ldr-assessment` | Deep assessment of Local Deep Research repo (architecture, gaps, verdict) |
 
+## Design Patterns
+
+| File | Ref Key | Purpose |
+|------|---------|---------|
+| `ddd-agent-modeling.md` | `ddd-agent-modeling` | DDD as agent/model modeling: strategic + tactical patterns, anti-patterns, split/merge heuristics |
+
 ## Implementation Plans
 
 | File | Ref Key | Purpose |
