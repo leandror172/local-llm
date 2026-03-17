@@ -68,19 +68,19 @@ After research is stored, a user (or Claude) asks questions about accumulated kn
            │
            ▼
 ┌──────────────────────────────────────────────┐
-│  ORCHESTRATION (Agent A)                      │
+│  ORCHESTRATION (Conductor)                      │
 │  - Receives query, enriches prompt            │
 │  - Determines what tools/pipelines needed     │
 │  - Saves context (no auto-conversation like   │
 │    Claude Code — must be explicit)            │
 │  - Iterates until criteria met                │
 │  - Delegates context-heavy sifting to proxy   │
-│    (Agent A2) to avoid context pollution      │
+│    (Lens) to avoid context pollution      │
 └──────────┬───────────────────────────────────┘
            │
            ▼
 ┌──────────────────────────────────────────────┐
-│  TOOL EXECUTION (Agent Tool)                  │
+│  TOOL EXECUTION (Dispatcher)                  │
 │  - Knows available tools and how to call them │
 │  - Builds execution pipelines                 │
 │  - Decides parallelization                    │
@@ -92,7 +92,7 @@ After research is stored, a user (or Claude) asks questions about accumulated kn
            │
            ▼
 ┌──────────────────────────────────────────────┐
-│  REVIEW (Agent B)                             │
+│  REVIEW (Auditor)                             │
 │  - Is the research sufficient?                │
 │  - Should more be explored?                   │
 │  - "More" signal decreases iteratively        │
@@ -117,7 +117,7 @@ After research is stored, a user (or Claude) asks questions about accumulated kn
 "Agent" in this architecture means **a role with a bounded context**, not necessarily:
 - A separate model (same-domain agents can share a model)
 - A separate process (agents can be function calls within one process)
-- An AI at all (Agent Tool's integration layer could be deterministic code)
+- An AI at all (Dispatcher's integration layer could be deterministic code)
 
 The split into agents happens when the **context benefit** (focused prompt, appropriate model, cleaner reasoning) outweighs the **swapping cost** (VRAM reload, lost conversational state, data translation).
 
@@ -148,7 +148,7 @@ Four viable paths (see `web-research-tool-analysis.md` Part 7):
 - **TypeScript**: Emmett (event sourcing), Mastra (agent framework), Firecrawl primary SDK
 - **Go**: Single binary, best concurrency, long-term maintainability
 - **Kotlin**: Best type system + async, Axon if event sourcing is primary
-- Agent Tool's plugin architecture reduces language lock-in pressure
+- Dispatcher's plugin architecture reduces language lock-in pressure
 
 ### State Management
 - **JSONL event log** from day one (audit trail, replay, near-zero cost)
@@ -168,9 +168,9 @@ Four viable paths (see `web-research-tool-analysis.md` Part 7):
 |-------|------|-----------|
 | **MVP** | Single pipeline: query → search → fetch → extract → store to files | Can local models produce useful web research? |
 | **+Review** | Sufficiency check, iteration, decreasing "more" signal | Can the system self-assess quality? |
-| **+Pipeline** | Agent Tool layer, pluggable backends, parallelization | Does tool abstraction reduce language lock-in? |
+| **+Pipeline** | Dispatcher layer, pluggable backends, parallelization | Does tool abstraction reduce language lock-in? |
 | **+Knowledge** | Graph relationships, cross-session persistence, post-research queries | Does accumulated knowledge compound value? |
-| **+Context mgmt** | Agent A2 proxy, model-per-domain routing, DDD boundaries | Does context separation improve output quality? |
+| **+Context mgmt** | Lens proxy, model-per-domain routing, DDD boundaries | Does context separation improve output quality? |
 | **+Learning** | Historical pipeline data, improved routing, distillation | Does the system get better with use? |
 
 ---

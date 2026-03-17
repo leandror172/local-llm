@@ -69,7 +69,7 @@ The extraction step DOES need an agent because it requires judgment: what's rele
 ### 3. Chatty Agents (= Chatty Services)
 
 **What it looks like:**
-- Agent A sends partial result to Agent B, gets feedback, sends revised version, gets more feedback
+- Agent X sends partial result to Agent Y, gets feedback, sends revised version, gets more feedback
 - Multiple round-trips between agents for a single logical operation
 - Each round-trip incurs: context construction + model inference + response parsing + (possibly) model swap
 
@@ -106,9 +106,9 @@ If one agent could do it in a single 30s call, the chatty design costs 3-4x in l
 - Pipeline: if it's truly sequential, make it a pipeline (A output → B input, one direction, no back-and-forth)
 
 **Web research tool example:**
-Agent A asks Agent B: "Is this enough?" Agent B: "No, search more about X." Agent A searches. Agent A asks Agent B again: "Now?" Agent B: "Almost, but clarify Y." This is chatty.
+Conductor asks Auditor: "Is this enough?" Auditor: "No, search more about X." Conductor searches. Conductor asks Auditor again: "Now?" Auditor: "Almost, but clarify Y." This is chatty.
 
-Better: Agent A completes a full research iteration, then Agent B reviews the batch. One round-trip. If Agent B says "more needed," Agent A does another full iteration, not a single refinement.
+Better: Conductor completes a full research iteration, then Auditor reviews the batch. One round-trip. If Auditor says "more needed," Conductor does another full iteration, not a single refinement.
 
 ---
 
@@ -116,9 +116,9 @@ Better: Agent A completes a full research iteration, then Agent B reviews the ba
 
 **What it looks like:**
 - All agents read and write the same state file/database directly
-- Agent A writes half-processed data that Agent B reads mid-processing
+- Agent X writes half-processed data that Agent Y reads mid-processing
 - No clear ownership of which agent manages which data
-- Race conditions: Agent A updates a record while Agent B is reading it
+- Race conditions: Agent X updates a record while Agent Y is reading it
 
 **Detection heuristics:**
 - Multiple agents write to the same file/table without coordination
@@ -127,7 +127,7 @@ Better: Agent A completes a full research iteration, then Agent B reviews the ba
 - Removing one agent breaks another because they share implicit state
 
 **Why this is worse for AI agents than for microservices:**
-Microservices at least have transactions and locks. AI agents operating on files have neither. If Agent A writes to `research-state.json` while Agent B is reading it, the result is undefined.
+Microservices at least have transactions and locks. AI agents operating on files have neither. If Agent X writes to `research-state.json` while Agent Y is reading it, the result is undefined.
 
 **Remediation:**
 - **Event-based communication:** agents publish events, not shared state
@@ -136,9 +136,9 @@ Microservices at least have transactions and locks. AI agents operating on files
 - **The JSONL pattern:** append-only log means no overwrites, no conflicts
 
 **Web research tool example:**
-Bad: Both Agent A (orchestrator) and Agent Tool (executor) write to `session.json` — Agent A updates the research plan while Agent Tool updates the visited URLs list.
+Bad: Both Conductor (orchestrator) and Dispatcher (executor) write to `session.json` — Conductor updates the research plan while Dispatcher updates the visited URLs list.
 
-Good: Agent Tool emits `URLVisited` events. Agent A reads events to update its view of progress. Each agent owns its own state; they communicate through events.
+Good: Dispatcher emits `URLVisited` events. Conductor reads events to update its view of progress. Each agent owns its own state; they communicate through events.
 
 ---
 
@@ -202,59 +202,59 @@ NET ASSESSMENT:
 
 ### Worked Example: Web Research Tool
 
-**Proposal:** Split the MVP's collapsed "Agent A+Tool" into separate Agent A (orchestrator) and Agent Tool (executor).
+**Proposal:** Split the MVP's collapsed "Conductor+Dispatcher" into separate Conductor (orchestrator) and Dispatcher (executor).
 
 ```
 BENEFITS:
 - Context freed: ~2000 tokens (API docs, tool signatures, routing logic
-  removed from Agent A's prompt)
-- Model fit: Agent Tool could be deterministic code (no LLM needed)
+  removed from Conductor's prompt)
+- Model fit: Dispatcher could be deterministic code (no LLM needed)
   → saves a model call entirely
-- Prompt clarity: Agent A focuses on "what to research next" (strategy),
+- Prompt clarity: Conductor focuses on "what to research next" (strategy),
   not "how to call SearXNG" (mechanics)
-- Independent testing: yes — Agent Tool is testable with unit tests
+- Independent testing: yes — Dispatcher is testable with unit tests
   (deterministic inputs/outputs)
 
 COSTS:
-- Model swap: 0s (Agent Tool is code, not a model)
-- Data translation: Agent A outputs {action: "search", query: "..."} →
-  Agent Tool maps to SearXNG API call. Simple JSON contract.
-- Lost conversational state: none — Agent Tool doesn't need conversation
+- Model swap: 0s (Dispatcher is code, not a model)
+- Data translation: Conductor outputs {action: "search", query: "..."} →
+  Dispatcher maps to SearXNG API call. Simple JSON contract.
+- Lost conversational state: none — Dispatcher doesn't need conversation
   history, just the current command
 - Implementation complexity: moderate — need to define the action schema
   and build the executor
 
 NET ASSESSMENT:
-- Quality improvement: Agent A's output likely improves (cleaner prompt,
+- Quality improvement: Conductor's output likely improves (cleaner prompt,
   focused on strategy)
-- Latency impact: ~0s (code execution, no model call for Tool)
+- Latency impact: ~0s (code execution, no model call for Dispatcher)
 - Worth it? YES — but only when the MVP proves the core hypothesis.
   In MVP phase, keep collapsed.
 ```
 
-**Proposal:** Split Agent A into Agent A (manager) and Agent A2 (context proxy).
+**Proposal:** Split Conductor into Conductor (manager) and Lens (context proxy).
 
 ```
 BENEFITS:
-- Context freed: significant — Agent A doesn't load raw research content
+- Context freed: significant — Conductor doesn't load raw research content
   (potentially 10K+ tokens per page × multiple pages)
 - Model fit: same model, same tier (both 14B) → no swap needed
-- Prompt clarity: Agent A asks questions ("what did we find about X?"),
-  Agent A2 reads and answers
+- Prompt clarity: Conductor asks questions ("what did we find about X?"),
+  Lens reads and answers
 
 COSTS:
 - Model swap: 0s (same model, but need fresh context construction)
-- Data translation: Agent A's question → Agent A2 reads files → formatted answer
-- Lost conversational state: Agent A2 doesn't have Agent A's research plan
+- Data translation: Conductor's question → Lens reads files → formatted answer
+- Lost conversational state: Lens doesn't have Conductor's research plan
   context. Must include the question + enough framing.
 - Implementation complexity: moderate — need a "query your own research" pattern
 
 NET ASSESSMENT:
 - Quality improvement: likely YES on larger research sessions where
-  Agent A's context would otherwise overflow
+  Conductor's context would otherwise overflow
 - Latency impact: +3-10s per query (new inference call)
 - Worth it? DEFER until context pressure is measured.
-  If research sessions stay under 5 pages, Agent A can hold it all.
+  If research sessions stay under 5 pages, Conductor can hold it all.
   If they grow to 20+, this split becomes necessary.
 ```
 
