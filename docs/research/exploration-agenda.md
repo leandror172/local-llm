@@ -28,7 +28,7 @@ Formalize the "domain driven design as agent/model modeling" pattern as a reusab
 Examine Mastra's suspend/resume + workflow engine. Does it solve progressive autonomy off-the-shelf? What's the actual DX? Could it be the orchestration layer? (TypeScript — would pull language decision toward TS.)
 
 ### Angle D: Tool Calling Benchmarks
-Retest tool calling with current models (Qwen3-8B, Qwen2.5-Coder-14B, Qwen3-14B). Has it improved? Can a 14B model reliably route between 3-5 tools? This determines whether Agent Tool needs to be code or can be an LLM.
+Retest tool calling with current models (Qwen3-8B, Qwen2.5-Coder-14B, Qwen3-14B). Has it improved? Can a 14B model reliably route between 3-5 tools? This determines whether Dispatcher needs to be code or can be an LLM.
 
 ### Angle E: SearXNG Setup
 Deploy SearXNG in Docker. Test search quality. Understand configuration. This is a prerequisite for any research pipeline — independent of language/architecture decisions.

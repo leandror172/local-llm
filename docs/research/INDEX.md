@@ -16,7 +16,7 @@
 | File | Ref Key | Purpose |
 |------|---------|---------|
 | `web-research-tool-vision.md` | `vision-web-research` | Principles, architecture, DDD agent modeling, MVP path, differentiators |
-| `web-research-tool-user-notes.md` | `user-notes-web-research` | User's raw thinking: Agent A/B/Tool/A2, use cases, testing strategy |
+| `web-research-tool-user-notes.md` | `user-notes-web-research` | User's raw thinking: Conductor/Dispatcher/Auditor/Lens, use cases, testing strategy |
 | `web-research-tool-discussion-s44.md` | — | Full Claude response to user vision (session 44 conversation flow) |
 
 ## Technical Analysis
@@ -32,6 +32,7 @@
 |------|---------|---------|
 | `ddd-agent-modeling.md` | `ddd-agent-modeling` | DDD as agent/model modeling: strategic + tactical patterns, anti-patterns, split/merge heuristics |
 | `ddd-agent-decisions.md` | `ddd-agent-decisions` | Expanded anti-patterns (detection, cost, remediation), split/merge flowchart, worked examples |
+| `agent-naming-convention.md` | `agent-naming-convention` | Role-based agent names (Conductor/Dispatcher/Auditor/Lens), legacy mapping, usage notes |
 
 ## Implementation Plans
 

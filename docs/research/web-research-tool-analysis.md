@@ -422,6 +422,6 @@ Use case 2 inverts the typical pattern — Claude Code is the *caller*, delegati
 - Naming still unresolved — identity depends on how it differentiates from existing tools
 - Firecrawl cloud credits vs self-hosted Crawl4AI vs SearXNG — which combination for the default stack?
 - Can 7-8B models do reliable tool calling / pipeline routing? Or must that be deterministic code?
-- Where does prompt enrichment (Agent A enriching user query before pipeline) sit?
+- Where does prompt enrichment (Conductor enriching user query before pipeline) sit?
 - How does model swapping latency affect real-world usability?
 <!-- /ref:analysis-web-research -->
