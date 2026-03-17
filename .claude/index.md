@@ -348,6 +348,18 @@ Full research → `.claude/archive/layer-1-research.md`
 
 ---
 
+## Web Research Tool (Session 44+)
+
+| What | Where | Ref Key |
+|------|-------|---------|
+| **Start here** | `docs/research/QUICK-MEMORY.md` | `quick-memory-web-research` |
+| Full file catalogue | `docs/research/INDEX.md` | — |
+| Vision & architecture | `docs/research/web-research-tool-vision.md` | `vision-web-research` |
+| Technical analysis (10 parts) | `docs/research/web-research-tool-analysis.md` | `analysis-web-research` |
+| LDR assessment (build-vs-fork) | `docs/research/local-deep-research-assessment.md` | `ldr-assessment` |
+
+---
+
 ## Research & Background
 
 | Topic | File |

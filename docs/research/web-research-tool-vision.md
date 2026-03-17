@@ -1,3 +1,4 @@
+<!-- ref:vision-web-research -->
 # Vision: AI-Powered Web Research Tool
 
 *Synthesized 2026-03-16, session 44. Distilled from user thinking, research findings, and architectural analysis.*
@@ -213,3 +214,4 @@ The closest existing tool is **Local Deep Research** (Ollama + SearXNG, persiste
 
 - `web-research-tool-analysis.md` — Full technical analysis (scrapers, languages, state management, existing tools)
 - `web-research-tool-user-notes.md` — Raw user thinking (use cases, agent architecture, testing)
+<!-- /ref:vision-web-research -->
