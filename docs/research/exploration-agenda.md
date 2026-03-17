@@ -18,8 +18,8 @@ Questions to answer by reading the repo and testing:
 
 ## Fork Angles (for separate sessions)
 
-### Angle A: MVP Spike
-Skip all architecture. Wire SearXNG + Crawl4AI + Ollama manually. Give a 14B model 5 URLs, see if it extracts useful info. Validates core hypothesis in ~2 hours. No framework, no agents — just a script.
+### Angle A: MVP Spike — PLANNED
+**Plan:** `mvp-spike-plan.md` (`ref:mvp-spike-plan`). Simplified from original: uses `httpx` + `trafilatura` + direct Ollama HTTP (no SearXNG/Crawl4AI needed for spike). Python script, 5 test URLs, structured JSON extraction via `format` param. Tests Qwen2.5-Coder-14B first, then Qwen3-14B and Qwen3-8B. Estimated ~1-2 hours implementation + ~1 hour evaluation.
 
 ### Angle B: DDD Agent Modeling
 Formalize the "domain driven design as agent/model modeling" pattern as a reusable design framework. Map bounded contexts → agents, ubiquitous language → system prompts, anti-corruption layers → data translation between tools. Novel enough to write up independently.
