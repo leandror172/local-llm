@@ -1,3 +1,4 @@
+<!-- ref:user-notes-web-research -->
 # User Notes: Web Research Tool Architecture Thinking
 
 *Captured 2026-03-16, session 44. Raw thinking from the user about use cases, agent architecture, and testing.*
@@ -71,3 +72,4 @@ Non-determinism is a problem we have been facing a few times in this project, in
 - Ignore testing non-determinism that is not important/is backed up by lower layers/other tests
 
 We haven't added frontier judgment to the benchmark scripts, but that could play a role in evaluation, *as an option/extra layer*, for a few high level tests.
+<!-- /ref:user-notes-web-research -->

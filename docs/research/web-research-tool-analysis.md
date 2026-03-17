@@ -1,3 +1,4 @@
+<!-- ref:analysis-web-research -->
 ## Comprehensive Analysis: Web Research Tool
 
 ### Part 1: The Decision Dimensions
@@ -423,3 +424,4 @@ Use case 2 inverts the typical pattern — Claude Code is the *caller*, delegati
 - Can 7-8B models do reliable tool calling / pipeline routing? Or must that be deterministic code?
 - Where does prompt enrichment (Agent A enriching user query before pipeline) sit?
 - How does model swapping latency affect real-world usability?
+<!-- /ref:analysis-web-research -->
