@@ -86,7 +86,7 @@
   - Models: qwen2.5-coder:14b first, then qwen3:14b, qwen3:8b
   - Branch: `feature/mvp-spike-plan`
   - **Forked session pattern:** Fork notes appended, no log rotation (genesis session owns rotation)
-- **Next:** Execute MVP spike (session 44b); merge PR #17; decide next angle post-spike; language decision still open
+- **Next:** Execute MVP spike (session 44b); merge PR #17; decide next angle post-spike (Mastra vs SearXNG setup still open); language decision still open
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
