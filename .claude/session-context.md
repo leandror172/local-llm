@@ -77,7 +77,16 @@
   - Deferred: ref-lookup prefix search for `*-MEMORY.md` convention
 - **Active branch:** `feature/web-research-tool-analysis`
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search
-- **Next:** Commit session 44 work; open PR; decide next angle (MVP spike vs Mastra vs SearXNG setup); language decision still open
+- **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
+  - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
+  - Environment audit: Ollama running, httpx available, trafilatura needed, no SearXNG/Firecrawl/Crawl4AI yet
+  - Simplified spike: httpx + trafilatura + direct Ollama HTTP (no heavy infra for hypothesis validation)
+  - Two prompts: open extraction + focus-directed. JSON schema via `format` param
+  - Test URLs: 5 known pages from prior research (Crawl4AI, Stagehand, LDR, Jina, Crawl4AI docs)
+  - Models: qwen2.5-coder:14b first, then qwen3:14b, qwen3:8b
+  - Branch: `feature/mvp-spike-plan`
+  - **Forked session pattern:** Fork notes appended, no log rotation (genesis session owns rotation)
+- **Next:** Execute MVP spike (session 44b); merge PR #17; decide next angle post-spike; language decision still open
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
