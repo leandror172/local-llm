@@ -147,6 +147,4 @@ retrofits; `--mode ai` is best-effort.
 
 | Overlay | What it packages |
 |---------|-----------------|
-| `session-tracking` | session-log.md, session-context.md, tasks.md, resume.sh, rotate-session-log.sh, session-handoff skill |
-| `ollama-scaffolding` | CLAUDE.md local-model-first rules, verdict capture hooks, scaffolding template |
 | `verdict-hooks` | PostToolUse/Stop/SubagentStop hooks (user-level, not repo-level — different installer target) |
