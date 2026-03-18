@@ -13,7 +13,8 @@ Placement hint: <<MERGE_HINT>>
 
 Instructions:
 - Choose insert_after_line: the line number after which the section should be inserted (use 0 to insert before line 1). Line numbers start at 1.
-- If a simpler or partial version of the section already exists in the file (same topic, fewer details), add its full line range to delete_ranges — including its heading line — so the entire old section is removed.
+- IMPORTANT: Do NOT choose an insert_after_line that falls inside an existing `<!-- overlay:... -->` block. Your insert point must be before the block's opening tag or on/after its closing tag line.
+- If a simpler or partial version of the section already exists in the file (same topic, fewer details), you MUST add its full line range to delete_ranges — including its heading line. Leaving both the old and new versions in the file is always wrong.
 - If the section content already exists verbatim, set insert_after_line to -1 (skip insert) and add its line range to delete_ranges if it needs to be wrapped instead.
 - Do not delete unrelated content.
 - Provide your reasoning briefly.
