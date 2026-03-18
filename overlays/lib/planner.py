@@ -2,6 +2,7 @@
 
 import difflib
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -36,6 +37,23 @@ def apply_plan(plan: dict, existing_content: str, open_marker: str,
     section_block = f"{open_marker}\n{section_content}\n{close_marker}\n"
     lines.insert(max(0, insert_after), section_block)
     return "".join(lines)
+
+
+def _find_overlay_ranges(content: str) -> list[tuple[int, int]]:
+    """Return (start, end) 1-indexed line pairs for all existing overlay blocks.
+
+    Used to prevent the AI planner from choosing an insert_after_line that falls
+    inside an already-installed overlay block.
+    """
+    ranges, start = [], None
+    for i, line in enumerate(content.splitlines(), 1):
+        stripped = line.strip()
+        if re.match(r'^<!-- overlay:\S+ v\d+ -->$', stripped):
+            start = i
+        elif re.match(r'^<!-- /overlay:\S+ -->$', stripped) and start is not None:
+            ranges.append((start, i))
+            start = None
+    return ranges
 
 
 def ai_merge(
@@ -102,6 +120,19 @@ def ai_merge(
         record("TODO", dest_rel, f"AI returned invalid JSON: {e}",
                "add section manually per APPLY.md")
         return
+
+    # Validate insert_after_line is not inside an existing overlay block.
+    # The AI cannot reliably detect overlay boundaries from the raw file content,
+    # so we enforce this deterministically as a post-processing step.
+    overlay_ranges = _find_overlay_ranges(existing_content)
+    insert_line = plan.get("insert_after_line", 0)
+    for ov_start, ov_end in overlay_ranges:
+        if ov_start <= insert_line < ov_end:
+            plan["insert_after_line"] = ov_end
+            record("WARN", dest_rel,
+                   f"AI chose insert_after_line={insert_line} (inside overlay block "
+                   f"lines {ov_start}–{ov_end}); auto-corrected to {ov_end}")
+            break
 
     delete_ranges = plan.get("delete_ranges", [])
     print(f"  Plan: insert after line {plan['insert_after_line']}, "
