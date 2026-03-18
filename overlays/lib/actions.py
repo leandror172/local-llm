@@ -16,33 +16,66 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _copy_file(src: Path, dest: Path, display: str, executable: bool,
+               do_backup: bool, dry_run: bool):
+    if not src.exists():
+        record("ERROR", display, f"source missing in overlay: {src.name}")
+        return
+
+    if not dest.exists():
+        if not dry_run:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+            if executable:
+                dest.chmod(dest.stat().st_mode | 0o755)
+        record("COPY", display, "file missing")
+    elif sha256(src) == sha256(dest):
+        record("SKIP", display, "up to date")
+    else:
+        if not dry_run:
+            if do_backup:
+                _backup(dest)
+            shutil.copy2(src, dest)
+            if executable:
+                dest.chmod(dest.stat().st_mode | 0o755)
+        bak_note = f"backup: {display}.bak" if do_backup else "no backup (use --backup to enable)"
+        record("UPDATE", display, "differs from overlay source", bak_note)
+
+
 def handle_files(manifest: dict, overlay_dir: Path, target_root: Path,
                  dry_run: bool, do_backup: bool):
     files_dir = overlay_dir / "files"
     for src_name, dest_rel in manifest.get("files", {}).items():
         src = files_dir / src_name
         dest = target_root / dest_rel
+        _copy_file(src, dest, dest_rel, executable=True, do_backup=do_backup, dry_run=dry_run)
 
-        if not src.exists():
-            record("ERROR", dest_rel, f"source missing in overlay: {src_name}")
-            continue
 
-        if not dest.exists():
-            if not dry_run:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dest)
-                dest.chmod(dest.stat().st_mode | 0o755)
-            record("COPY", dest_rel, "file missing")
-        elif sha256(src) == sha256(dest):
-            record("SKIP", dest_rel, "up to date")
-        else:
-            if not dry_run:
-                if do_backup:
-                    _backup(dest)
-                shutil.copy2(src, dest)
-                dest.chmod(dest.stat().st_mode | 0o755)
-            bak_note = f"backup: {dest_rel}.bak" if do_backup else "no backup (use --backup to enable)"
-            record("UPDATE", dest_rel, "differs from overlay source", bak_note)
+def handle_user_files(manifest: dict, overlay_dir: Path, skill_level: str,
+                      target_root: Path, dry_run: bool, do_backup: bool):
+    """Install user_files to ~/.claude/ (user level) or .claude/ (project level).
+
+    user_files are things like skills that are generic enough to live at user level
+    but can be installed per-repo if needed (--skill-level project).
+    """
+    user_files = manifest.get("user_files", {})
+    if not user_files:
+        return
+
+    files_dir = overlay_dir / "files"
+
+    if skill_level == "user":
+        dest_root = Path.home() / ".claude"
+        level_label = "~/.claude"
+    else:
+        dest_root = target_root / ".claude"
+        level_label = ".claude"
+
+    for src_name, dest_rel in user_files.items():
+        src = files_dir / src_name
+        dest = dest_root / dest_rel
+        display = f"{level_label}/{dest_rel}"
+        _copy_file(src, dest, display, executable=False, do_backup=do_backup, dry_run=dry_run)
 
 
 def handle_templates(manifest: dict, overlay_dir: Path, target_root: Path, dry_run: bool):
