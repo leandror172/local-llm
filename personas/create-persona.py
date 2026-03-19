@@ -211,7 +211,8 @@ def _normalize_constraint(c: str) -> str:
 
 def build_system_prompt(role: str, constraints: list[str], output_format: str) -> str:
     """Assemble ROLE / CONSTRAINTS / FORMAT system prompt."""
-    parts = [f"ROLE: {role}."]
+    role_text = role.rstrip(".")
+    parts = [f"ROLE: {role_text}."]
     parts.append("CONSTRAINTS:")
     for c in constraints:
         parts.append(f"- {_normalize_constraint(c)}")
@@ -483,7 +484,7 @@ def collect_from_flags(args) -> dict:
     if language:
         defaults = [c.replace("{language}", language) for c in defaults]
     if args.constraints:
-        constraints = [c.strip() for c in args.constraints.split(",") if c.strip()]
+        constraints = [c.strip() for c in args.constraints if c.strip()]
     else:
         constraints = list(defaults)
 
@@ -541,8 +542,9 @@ def parse_args():
                    help="deterministic | balanced | creative.")
     p.add_argument("--name", metavar="TEXT",
                    help="Persona name (e.g., my-react-q3). Auto-suggested if omitted.")
-    p.add_argument("--constraints", metavar="TEXT",
-                   help="Comma-separated constraint list. Defaults to domain defaults if omitted.")
+    p.add_argument("--constraint", action="append", metavar="TEXT", dest="constraints",
+                   help="A single constraint (repeatable). E.g.: --constraint 'MUST use type hints' "
+                        "--constraint 'MUST NOT import *'. Defaults to domain defaults if omitted.")
     p.add_argument("--output-format", metavar="TEXT",
                    help="FORMAT line for the SYSTEM prompt.")
     p.add_argument("--tier", choices=["full", "bare"],
