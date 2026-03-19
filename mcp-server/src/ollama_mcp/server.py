@@ -842,6 +842,213 @@ async def build_persona(
 
 
 @mcp.tool()
+async def create_persona(
+    role: str,
+    base_model: str,
+    name: str | None = None,
+    language: str | None = None,
+    domain: str = "code",
+    temperature: str = "balanced",
+    constraints: str | None = None,
+    output_format: str | None = None,
+    tier: str = "full",
+    dry_run: bool = False,
+) -> str:
+    """Create an Ollama persona: generates a Modelfile, registers with Ollama, and updates the registry.
+
+    This is the "execute" counterpart to build_persona (which only proposes).
+    Use query_personas first to check for existing personas. Use copy_persona
+    to port an existing persona to a different base model.
+
+    Args:
+        role: One-line role description (e.g., "Python 3.11+ developer specializing in FastAPI").
+        base_model: Ollama model tag (e.g., "qwen3.5:9b", "qwen3:14b"). Must exist in models.yaml.
+        name: Persona name (e.g., "my-python-q35"). If omitted, auto-derived from role + language + model
+              using the naming convention in models.yaml (slug + model suffix).
+        language: Language or framework (e.g., "python", "react"). Used for naming and routing.
+        domain: Domain category (default "code"). Affects default constraints if none provided.
+        temperature: Temperature preset: "deterministic" (0.1), "balanced" (0.3), or "creative" (0.7).
+        constraints: Comma-separated constraint list. If omitted, domain defaults are used.
+        output_format: FORMAT line for the SYSTEM prompt. If omitted, domain default is used.
+        tier: "full" (with SYSTEM prompt) or "bare" (no SYSTEM, for host-tool use).
+        dry_run: If True, show what would be created without writing files.
+
+    Returns:
+        Success message with persona name and Modelfile path, or dry-run preview.
+    """
+    if not REPO_ROOT:
+        return "Error: LLM_REPO_ROOT not set — cannot locate create-persona script."
+
+    script = os.path.join(REPO_ROOT, "personas", "run-create-persona.sh")
+    if not os.path.isfile(script):
+        return f"Error: Creation script not found at {script}"
+
+    # create_subprocess_exec passes args as an array — no shell injection risk.
+    cmd = [
+        script, "--non-interactive",
+        "--role", role,
+        "--base-model", base_model,
+        "--domain", domain,
+        "--temperature", temperature,
+        "--tier", tier,
+    ]
+    if name:
+        cmd.extend(["--name", name])
+    if language:
+        cmd.extend(["--language", language])
+    if constraints:
+        cmd.extend(["--constraints", constraints])
+    if output_format:
+        cmd.extend(["--output-format", output_format])
+    if dry_run:
+        cmd.append("--dry-run")
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+
+        if proc.returncode != 0:
+            err_msg = stderr.decode().strip() if stderr else "Unknown error"
+            return f"Error: create-persona exited with code {proc.returncode}: {err_msg}"
+
+        # Reload registry so subsequent queries see the new persona
+        if not dry_run and REGISTRY_PATH:
+            registry.load_registry(REGISTRY_PATH)
+
+        return stdout.decode().strip()
+
+    except asyncio.TimeoutError:
+        proc.kill()
+        return "Error: create-persona timed out after 60 seconds."
+    except Exception as e:
+        return f"Error running create-persona: {e}"
+
+
+@mcp.tool()
+async def copy_persona(
+    source: str,
+    base_model: str,
+    name: str | None = None,
+    dry_run: bool = False,
+) -> str:
+    """Copy an existing persona to a different base model.
+
+    Reads the source persona's role, constraints, and output format from its
+    Modelfile, then creates a new persona with the same system prompt on the
+    target base model. Context size and naming suffix come from models.yaml.
+
+    Args:
+        source: Name of the existing persona to copy (e.g., "my-python-q3").
+        base_model: Target Ollama model tag (e.g., "qwen3.5:9b", "qwen2.5-coder:14b").
+        name: Name for the new persona. If omitted, auto-derived from source slug + model suffix.
+        dry_run: If True, show what would be created without writing files.
+
+    Returns:
+        Success message with new persona details, or dry-run preview.
+    """
+    if not REPO_ROOT:
+        return "Error: LLM_REPO_ROOT not set — cannot locate persona files."
+
+    # Look up source persona in registry
+    reg = registry.get_registry()
+    if source not in reg:
+        return f"Error: Source persona '{source}' not found in registry. Use query_personas to list available personas."
+
+    source_attrs = reg[source]
+    modelfile_rel = source_attrs.get("modelfile")
+    if not modelfile_rel:
+        return f"Error: Source persona '{source}' has no modelfile path in registry."
+
+    modelfile_path = os.path.join(REPO_ROOT, modelfile_rel)
+    if not os.path.isfile(modelfile_path):
+        return f"Error: Source Modelfile not found at {modelfile_path}"
+
+    # Parse the source Modelfile to extract SYSTEM prompt contents
+    try:
+        with open(modelfile_path, "r") as f:
+            modelfile_content = f.read()
+    except OSError as e:
+        return f"Error reading source Modelfile: {e}"
+
+    # Extract role, constraints, and format from SYSTEM block
+    import re as re_mod
+    system_match = re_mod.search(r'SYSTEM\s+"""(.+?)"""', modelfile_content, re_mod.DOTALL)
+    if not system_match:
+        return f"Error: Could not parse SYSTEM block from {modelfile_path}. Is this a 'bare' persona?"
+
+    system_text = system_match.group(1).strip()
+
+    # Parse ROLE line
+    role_match = re_mod.search(r'^ROLE:\s*(.+)$', system_text, re_mod.MULTILINE)
+    role = role_match.group(1).strip() if role_match else source_attrs.get("role", "")
+
+    # Parse CONSTRAINTS block (lines starting with "- MUST")
+    constraint_lines = re_mod.findall(r'^- (MUST.+)$', system_text, re_mod.MULTILINE)
+    constraints_str = ",".join(constraint_lines) if constraint_lines else None
+
+    # Parse FORMAT line
+    format_match = re_mod.search(r'^FORMAT:\s*(.+)$', system_text, re_mod.MULTILINE)
+    output_format = format_match.group(1).strip() if format_match else None
+
+    # Detect language from source registry entry or role
+    language = None
+    role_lower = role.lower()
+    for lang in ["python", "java", "go", "rust", "react", "angular", "bash", "shell"]:
+        if lang in role_lower or lang in source.lower():
+            language = lang
+            break
+
+    # Derive name if not provided: take slug from source, apply new model's suffix
+    if not name:
+        models_yaml_path = os.path.join(REPO_ROOT, "personas", "models.yaml")
+        try:
+            import yaml as yaml_mod
+            with open(models_yaml_path) as f:
+                models_config = yaml_mod.safe_load(f)
+            model_info = models_config.get("models", {}).get(base_model)
+            if not model_info:
+                return f"Error: base_model '{base_model}' not found in models.yaml"
+            suffix = model_info["name_suffix"]
+        except Exception as e:
+            return f"Error reading models.yaml: {e}"
+
+        # Extract slug: my-python-q3 → python, my-go-q25c14 → go
+        slug = source.removeprefix("my-")
+        # Remove the old model suffix (try longest suffixes first to avoid partial matches)
+        for old_suffix in ["-q3-30b", "-q3-q8", "-q3-14b", "-q35-27b", "-q25c14", "-qcoder", "-q35", "-q3", ""]:
+            if old_suffix and slug.endswith(old_suffix):
+                slug = slug[:-len(old_suffix)]
+                break
+        name = f"my-{slug}{suffix}"
+
+    # Determine temperature from source
+    source_temp = source_attrs.get("temperature", 0.3)
+    temp_name = "balanced"
+    if source_temp <= 0.1:
+        temp_name = "deterministic"
+    elif source_temp >= 0.7:
+        temp_name = "creative"
+
+    # Delegate to create_persona
+    return await create_persona(
+        role=role,
+        base_model=base_model,
+        name=name,
+        language=language,
+        domain="code",
+        temperature=temp_name,
+        constraints=constraints_str,
+        output_format=output_format,
+        tier=source_attrs.get("tier", "full"),
+        dry_run=dry_run,
+    )
+
+
+@mcp.tool()
 async def ref_lookup(key: str, path: str | None = None) -> str:
     """Look up a named reference block from the project's documentation index.
 

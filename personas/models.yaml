@@ -1,0 +1,149 @@
+# models.yaml — Model configuration data (single source of truth).
+#
+# Loaded by models.py. To add a new base model:
+#   1. Add it to `models` (tag mappings + defaults)
+#   2. Optionally add a `domains` entry if it should be a default for a domain
+#   3. Run create-persona or build-persona — no code changes needed.
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Base models: tag → display name, suffixes, defaults
+# ──────────────────────────────────────────────────────────────────────────────
+models:
+  # --- VRAM-only (fit entirely in 12GB) ---
+  qwen3:8b:
+    display_name: Qwen3-8B
+    file_suffix: qwen3          # Modelfile filename: <slug>-qwen3.Modelfile
+    name_suffix: "-q3"          # Persona name: my-<slug>-q3
+    num_ctx: 16384
+    default_temp: quality
+
+  qwen3:8b-q8_0:
+    display_name: Qwen3-8B-Q8
+    file_suffix: qwen3-q8
+    name_suffix: "-q3-q8"
+    num_ctx: 16384
+    default_temp: quality
+
+  qwen3.5:9b:
+    display_name: Qwen3.5-9B
+    file_suffix: qwen35
+    name_suffix: "-q35"
+    num_ctx: 32768              # Probed: 46 tok/s at 32K, no degradation
+    default_temp: quality
+
+  qwen3:4b-q8_0:
+    display_name: Qwen3-4B
+    file_suffix: qwen3
+    name_suffix: "-q3"
+    num_ctx: 4096
+    default_temp: correctness
+
+  qwen2.5-coder:7b:
+    display_name: Qwen2.5-Coder-7B
+    file_suffix: qwen25
+    name_suffix: ""
+    num_ctx: 16384
+    default_temp: quality
+
+  llama3.1:8b-instruct-q5_K_M:
+    display_name: Llama-3.1-8B
+    file_suffix: llama31
+    name_suffix: ""
+    num_ctx: 16384
+    default_temp: quality
+
+  # --- 14B models (VRAM-only, tighter KV budget) ---
+  qwen2.5-coder:14b:
+    display_name: Qwen2.5-Coder-14B
+    file_suffix: qwen25c14
+    name_suffix: "-q25c14"
+    num_ctx: 16384              # Probed: 35 tok/s at 16K, no degradation
+    default_temp: quality
+
+  qwen3:14b:
+    display_name: Qwen3-14B
+    file_suffix: qwen3-14b
+    name_suffix: "-q3-14b"
+    num_ctx: 16384              # Probed: 33.5 tok/s at 16K, no degradation
+    default_temp: quality
+
+  # --- Hybrid VRAM+RAM ---
+  qwen3:30b-a3b:
+    display_name: Qwen3-30B-A3B
+    file_suffix: qwen3-30b
+    name_suffix: "-q3-30b"
+    num_ctx: 8192
+    default_temp: quality
+
+  qwen3.5:27b:
+    display_name: Qwen3.5-27B
+    file_suffix: qwen35-27b
+    name_suffix: "-q35-27b"
+    num_ctx: 10240
+    default_temp: quality
+
+  qwen3-coder:30b:
+    display_name: Qwen3-Coder-30B
+    file_suffix: qwen3coder
+    name_suffix: "-qcoder"
+    num_ctx: 32768
+    default_temp: quality
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Domains: abstract task type → recommended base model
+# Used by create-persona.py interactive mode ("what domain?")
+# ──────────────────────────────────────────────────────────────────────────────
+domains:
+  code:
+    model: qwen3:8b
+    description: Default coding (8B, VRAM-only)
+  code-9b:
+    model: qwen3.5:9b
+    description: Coding (9B, VRAM-only, newer architecture)
+  code-14b:
+    model: qwen2.5-coder:14b
+    description: Higher quality coding (14B, code-specialized)
+  code-30b:
+    model: qwen3:30b-a3b
+    description: Quality ceiling coding (30B MoE, hybrid)
+  code-q8:
+    model: qwen3:8b-q8_0
+    description: Coding with higher quant fidelity (8B Q8)
+  reasoning:
+    model: qwen3:14b
+    description: Reasoning tasks (14B dense)
+  classification:
+    model: qwen3:4b-q8_0
+    description: Text classification (4B, fast)
+  writing:
+    model: llama3.1:8b-instruct-q5_K_M
+    description: Creative writing (Llama 3.1)
+  translation:
+    model: qwen3:8b
+    description: Translation tasks
+  other:
+    model: qwen3:8b
+    description: General fallback
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Temperature presets
+# ──────────────────────────────────────────────────────────────────────────────
+temperatures:
+  deterministic:
+    value: 0.1
+    description: "0.1 — same input → same output (classifier, codegen)"
+    use_case: "correctness: classifier, codegen"
+  balanced:
+    value: 0.3
+    description: "0.3 — accurate with mild variation (coder, translator)"
+    use_case: "quality: coder, translator, summarizer"
+  creative:
+    value: 0.7
+    description: "0.7 — diverse phrasing (writer, brainstormer)"
+    use_case: "creativity: writer, brainstormer"
+
+# Category aliases (domain default_temp → temperature name)
+temp_categories:
+  correctness: deterministic
+  quality: balanced
+  creativity: creative

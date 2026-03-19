@@ -2,36 +2,75 @@
 """
 models.py — Centralized model selection and configuration.
 
-Extracted from create-persona.py (Task 3.4 refactoring).
-Provides a single source of truth for:
-  - Domain → (display_name, ollama_tag, num_ctx, default_temp_category)
-  - Temperature metadata (value + description)
-  - Model tag → filename suffix mappings
-
-Used by:
+Loads all model data from models.yaml (single source of truth).
+Provides lookup functions and derived constants for:
   - personas/create-persona.py (interactive persona creator)
-  - Future: personas/detect-persona.py (codebase analyzer for model hints)
-  - Future: Task 3.5 conversational builder
+  - personas/build-persona.py (LLM-driven persona builder)
+
+To add a new base model: edit models.yaml, no code changes needed.
 """
 
+from pathlib import Path
+
+import yaml
+
 # ──────────────────────────────────────────────────────────────────────────────
-# Model Selection Matrix (Task 3.3)
-# Each entry: (display_name, ollama_tag, num_ctx, default_temp_category)
+# Load configuration from YAML
 # ──────────────────────────────────────────────────────────────────────────────
 
-MODEL_MATRIX = {
-    "code":           ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
-    "code-14b":       ("Qwen2.5-Coder-14B",     "qwen2.5-coder:14b",            16384, "quality"),
-    "code-30b":       ("Qwen3-30B-A3B",         "qwen3:30b-a3b",                 8192, "quality"),
-    "code-q8":        ("Qwen3-8B-Q8",           "qwen3:8b-q8_0",               16384, "quality"),
-    "reasoning":      ("Qwen3-14B",             "qwen3:14b",                     4096, "quality"),
-    "classification": ("Qwen3-4B",              "qwen3:4b-q8_0",                 4096, "correctness"),
-    "writing":        ("Llama-3.1-8B",          "llama3.1:8b-instruct-q5_K_M", 16384, "quality"),
-    "translation":    ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
-    "other":          ("Qwen3-8B",              "qwen3:8b",                     16384, "quality"),
-}
+_CONFIG_PATH = Path(__file__).resolve().parent / "models.yaml"
 
-DOMAIN_CHOICES = ["code", "code-14b", "code-30b", "code-q8", "reasoning", "classification", "writing", "translation", "other"]
+with open(_CONFIG_PATH) as f:
+    _config = yaml.safe_load(f)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Models: tag → metadata
+# ──────────────────────────────────────────────────────────────────────────────
+
+_MODELS = _config["models"]
+
+# Model-tag → Modelfile filename suffix
+MODEL_TAG_TO_SUFFIX = {tag: m["file_suffix"] for tag, m in _MODELS.items()}
+
+# Model-tag → persona name q-suffix (appended to "my-<slug>")
+MODEL_TAG_TO_Q_SUFFIX = {tag: m["name_suffix"] for tag, m in _MODELS.items()}
+
+
+def get_modelfile_suffix(model_tag: str) -> str:
+    """Get Modelfile filename suffix for a model tag."""
+    return MODEL_TAG_TO_SUFFIX.get(model_tag, "custom")
+
+
+def get_persona_name_suffix(model_tag: str) -> str:
+    """Get persona name q-suffix for a model tag (appended to 'my-<slug>')."""
+    return MODEL_TAG_TO_Q_SUFFIX.get(model_tag, "")
+
+
+def get_model_defaults(model_tag: str) -> dict | None:
+    """Get full model defaults (num_ctx, default_temp, display_name) for a tag."""
+    return _MODELS.get(model_tag)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Domains: abstract task type → recommended base model
+# ──────────────────────────────────────────────────────────────────────────────
+
+_DOMAINS = _config["domains"]
+
+# Build MODEL_MATRIX in the legacy format for backward compatibility:
+# domain → (display_name, ollama_tag, num_ctx, default_temp_category)
+MODEL_MATRIX = {}
+for domain_key, domain_info in _DOMAINS.items():
+    model_tag = domain_info["model"]
+    model_meta = _MODELS[model_tag]
+    MODEL_MATRIX[domain_key] = (
+        model_meta["display_name"],
+        model_tag,
+        model_meta["num_ctx"],
+        model_meta["default_temp"],
+    )
+
+DOMAIN_CHOICES = list(_DOMAINS.keys())
 
 
 def get_model(domain: str) -> tuple:
@@ -45,44 +84,20 @@ def get_model(domain: str) -> tuple:
         Tuple of (display_name, ollama_tag, num_ctx, default_temp_category)
     """
     if domain not in MODEL_MATRIX:
-        domain = "other"  # Fallback
+        domain = "other"
     return MODEL_MATRIX[domain]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Temperature Configuration (Consolidated in Task 3.4 refactoring)
-# Single source of truth for all temperature metadata
+# Temperatures
 # ──────────────────────────────────────────────────────────────────────────────
 
-TEMPERATURES = {
-    "deterministic": {
-        "value": 0.1,
-        "description": "0.1 — same input → same output (classifier, codegen)",
-        "use_case": "correctness: classifier, codegen",
-    },
-    "balanced": {
-        "value": 0.3,
-        "description": "0.3 — accurate with mild variation (coder, translator)",
-        "use_case": "quality: coder, translator, summarizer",
-    },
-    "creative": {
-        "value": 0.7,
-        "description": "0.7 — diverse phrasing (writer, brainstormer)",
-        "use_case": "creativity: writer, brainstormer",
-    },
-}
+TEMPERATURES = _config["temperatures"]
 
-# Mapping: default_temp_category (from MODEL_MATRIX) → temperature name
-TEMP_CATEGORY_TO_CHOICE = {
-    "correctness": "deterministic",
-    "quality": "balanced",
-    "creativity": "creative",
-}
+TEMP_CATEGORY_TO_CHOICE = _config["temp_categories"]
 
-# Mapping: temperature name → float value (for backward compatibility)
+# Derived mappings (backward compatibility)
 TEMPERATURE_MAP = {name: data["value"] for name, data in TEMPERATURES.items()}
-
-# Mapping: temperature value → description (for backward compatibility)
 TEMP_DESCRIPTIONS = {name: data["description"] for name, data in TEMPERATURES.items()}
 
 
@@ -97,47 +112,14 @@ def get_temperature_description(name: str) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Model Tag Mappings
+# Quick verification
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Model-tag → Modelfile filename suffix
-MODEL_TAG_TO_SUFFIX = {
-    "qwen3:8b": "qwen3",
-    "qwen3:8b-q8_0": "qwen3-q8",
-    "qwen3:14b": "qwen3",
-    "qwen3:4b-q8_0": "qwen3",
-    "qwen3:30b-a3b": "qwen3-30b",
-    "qwen2.5-coder:7b": "qwen25",
-    "qwen2.5-coder:14b": "qwen25c14",
-    "llama3.1:8b-instruct-q5_K_M": "llama31",
-}
-
-# Model-tag → persona name q-suffix (appended to "my-<slug>")
-MODEL_TAG_TO_Q_SUFFIX = {
-    "qwen3:8b": "-q3",
-    "qwen3:8b-q8_0": "-q3-q8",
-    "qwen3:14b": "-q3",
-    "qwen3:4b-q8_0": "-q3",
-    "qwen3:30b-a3b": "-q3-30b",
-    "qwen2.5-coder:7b": "",
-    "qwen2.5-coder:14b": "-q25c14",
-    "llama3.1:8b-instruct-q5_K_M": "",
-}
-
-
-def get_modelfile_suffix(model_tag: str) -> str:
-    """Get Modelfile filename suffix for a model tag."""
-    return MODEL_TAG_TO_SUFFIX.get(model_tag, "custom")
-
-
-def get_persona_name_suffix(model_tag: str) -> str:
-    """Get persona name q-suffix for a model tag (appended to 'my-<slug>')."""
-    return MODEL_TAG_TO_Q_SUFFIX.get(model_tag, "")
-
-
 if __name__ == "__main__":
-    # Quick verification
     print("Available domains:", DOMAIN_CHOICES)
     print("Available temperatures:", list(TEMPERATURES.keys()))
-    print("\nExample: code domain →", get_model("code"))
-    print("Example: balanced temp →", get_temperature_value("balanced"))
+    print(f"Models registered: {len(_MODELS)}")
+    print(f"\nExample: code domain → {get_model('code')}")
+    print(f"Example: balanced temp → {get_temperature_value('balanced')}")
+    print(f"Example: qwen3.5:9b suffix → {get_modelfile_suffix('qwen3.5:9b')}")
+    print(f"Example: qwen3.5:9b name → my-python{get_persona_name_suffix('qwen3.5:9b')}")
