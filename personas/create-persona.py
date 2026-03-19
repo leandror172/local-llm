@@ -37,6 +37,7 @@ from models import (
     MODEL_TAG_TO_SUFFIX,
     MODEL_TAG_TO_Q_SUFFIX,
     get_model,
+    get_model_defaults,
     get_temperature_value,
     get_temperature_description,
     get_modelfile_suffix,
@@ -183,9 +184,8 @@ def validate_persona_name(name: str, registry_path: Path) -> tuple[bool, str]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _ctx_comment(num_ctx: int) -> str:
-    if num_ctx == 16384:
-        return "16K tokens — fits full files with room for response."
-    return "4K tokens — reduced for 14B model VRAM budget (RTX 3060 12GB)."
+    size_label = f"{num_ctx // 1024}K"
+    return f"{size_label} tokens — context window sized for RTX 3060 12GB VRAM budget."
 
 
 def _temp_comment(temperature: float) -> str:
@@ -449,7 +449,16 @@ def collect_from_flags(args) -> dict:
             print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(2)
 
-    _, base_tag, num_ctx = select_model(domain)
+    # Base model: --base-model overrides the domain's default
+    if args.base_model:
+        model_defaults = get_model_defaults(args.base_model)
+        if model_defaults is None:
+            print(f"[ERROR] --base-model '{args.base_model}' not found in models.yaml", file=sys.stderr)
+            sys.exit(2)
+        base_tag = args.base_model
+        num_ctx = model_defaults["num_ctx"]
+    else:
+        _, base_tag, num_ctx = select_model(domain)
     language = args.language or None
 
     if not temp_choice:
@@ -540,6 +549,9 @@ def parse_args():
                    help="full (default) or bare (no SYSTEM prompt).")
     p.add_argument("--dry-run", action="store_true",
                    help="Print Modelfile + registry entry without writing any files.")
+    p.add_argument("--base-model", metavar="TAG",
+                   help="Override the base model tag (e.g., qwen3.5:9b). "
+                        "Bypasses the domain's default model. Must exist in models.yaml.")
     p.add_argument("--force", action="store_true",
                    help="Overwrite existing Modelfile if it already exists.")
     return p.parse_args()
