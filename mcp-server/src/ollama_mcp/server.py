@@ -849,7 +849,7 @@ async def create_persona(
     language: str | None = None,
     domain: str = "code",
     temperature: str = "balanced",
-    constraints: str | None = None,
+    constraints: list[str] | None = None,
     output_format: str | None = None,
     tier: str = "full",
     dry_run: bool = False,
@@ -868,7 +868,7 @@ async def create_persona(
         language: Language or framework (e.g., "python", "react"). Used for naming and routing.
         domain: Domain category (default "code"). Affects default constraints if none provided.
         temperature: Temperature preset: "deterministic" (0.1), "balanced" (0.3), or "creative" (0.7).
-        constraints: Comma-separated constraint list. If omitted, domain defaults are used.
+        constraints: List of constraint strings. Each is a separate MUST/MUST NOT rule. If omitted, domain defaults are used.
         output_format: FORMAT line for the SYSTEM prompt. If omitted, domain default is used.
         tier: "full" (with SYSTEM prompt) or "bare" (no SYSTEM, for host-tool use).
         dry_run: If True, show what would be created without writing files.
@@ -897,7 +897,8 @@ async def create_persona(
     if language:
         cmd.extend(["--language", language])
     if constraints:
-        cmd.extend(["--constraints", constraints])
+        for c in constraints:
+            cmd.extend(["--constraint", c])
     if output_format:
         cmd.extend(["--output-format", output_format])
     if dry_run:
@@ -988,7 +989,7 @@ async def copy_persona(
 
     # Parse CONSTRAINTS block (lines starting with "- MUST")
     constraint_lines = re_mod.findall(r'^- (MUST.+)$', system_text, re_mod.MULTILINE)
-    constraints_str = ",".join(constraint_lines) if constraint_lines else None
+    constraints = constraint_lines if constraint_lines else None
 
     # Parse FORMAT line
     format_match = re_mod.search(r'^FORMAT:\s*(.+)$', system_text, re_mod.MULTILINE)
@@ -1041,7 +1042,7 @@ async def copy_persona(
         language=language,
         domain="code",
         temperature=temp_name,
-        constraints=constraints_str,
+        constraints=constraints,
         output_format=output_format,
         tier=source_attrs.get("tier", "full"),
         dry_run=dry_run,
