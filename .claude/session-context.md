@@ -75,8 +75,17 @@
   - Work estimate: MVP ~4-5 sessions, usable tool ~8-10, full vision ~15-18
   - Research docs in `docs/research/` with INDEX.md, ref keys, QUICK-MEMORY pattern
   - Deferred: ref-lookup prefix search for `*-MEMORY.md` convention
-- **Active branch:** `feature/web-research-tool-analysis`
-- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), MCP create_persona tool, raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search
+- **Session 45** (2026-03-20) — Persona MCP tools & infrastructure overhaul:
+  - Extracted `models.yaml` (single source of truth for 13 base models); `models.py` loads from YAML
+  - Added `create_persona` / `copy_persona` MCP tools in ollama-bridge
+  - Created user-level `create-persona` skill (3 patterns: copy, create, LLM-assisted); added to ollama-scaffolding overlay
+  - Fixed `--constraint` (repeatable flag), double-period in role
+  - 5 new Python personas: qwen3.5:9b, qwen3:14b, qwen2.5-coder:14b, deepseek-coder-v2:16b, deepseek-r1:14b
+  - Context audit: 8B models upgraded 8K→32K (35 Modelfiles updated), 14B confirmed at 16K
+  - Added DeepSeek models to models.yaml; added timeout param to ask_ollama/generate_code
+  - PR #21 opened on `feature/persona-mcp-tools`
+- **Active branch:** `feature/persona-mcp-tools` (PR #21 open)
+- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
   - Environment audit: Ollama running, httpx available, trafilatura needed, no SearXNG/Firecrawl/Crawl4AI yet

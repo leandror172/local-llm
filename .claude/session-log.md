@@ -1,8 +1,40 @@
 # Session Log
 
-**Current Layer:** Web research tool — vision, research, architecture design
-**Current Session:** 2026-03-17 — Session 44: Web research tool genesis
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`
+**Current Layer:** Persona infrastructure + web research tool
+**Current Session:** 2026-03-20 — Session 45: Persona MCP tools & infrastructure overhaul
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`
+
+---
+
+## 2026-03-20 - Session 45: Persona MCP tools & infrastructure overhaul
+
+### Context
+Another session (web-research project) tried creating Python personas by hand-writing Modelfiles, bypassing the persona pipeline. This triggered a recontextualization: model config was hardcoded in Python, persona creation required CLI access to this repo, and the skill wasn't user-level. Session addressed all three architectural gaps.
+
+### What Was Done
+- **Extracted `models.yaml`** — Moved hardcoded model dicts from `models.py` into `personas/models.yaml` (13 base models: display names, suffixes, context sizes, temperatures). `models.py` now loads from YAML.
+- **Added `create_persona` / `copy_persona` MCP tools** — New endpoints in ollama-bridge enabling persona creation from any repo via MCP. `copy_persona` parses source Modelfile, extracts ROLE/CONSTRAINTS/FORMAT via regex.
+- **Created `create-persona` skill** — User-level skill (`~/.claude/skills/create-persona/`), teaching 3 patterns: copy, create-from-specs, LLM-assisted. Added to `ollama-scaffolding` overlay for distribution.
+- **Fixed CLI ergonomics** — `--constraints` (comma-delimited) → repeatable `--constraint` (action=append); fixed double-period in `build_system_prompt()`.
+- **Created 5 new Python personas** — `my-python-q35` (qwen3.5:9b), `my-python-q3-14b` (qwen3:14b), `my-python-q25c14` (qwen2.5-coder:14b), `my-python-dsc16` (deepseek-coder-v2:16b), `my-python-dsr14` (deepseek-r1:14b).
+- **Audited and upgraded context sizes** — Probed all model tiers: 8B models 8K→32K (6-7GB VRAM free), 14B confirmed at 16K. Updated 35 existing Modelfiles + registry.
+- **Added DeepSeek models** — `deepseek-coder-v2:16b` and `deepseek-r1:14b` in `models.yaml` (16K context).
+- **Added timeout parameter** — `ask_ollama` and `generate_code` accept optional `timeout` (default 120s) for 30B+ models.
+- **Opened PR #21** — All 7 commits on `feature/persona-mcp-tools`.
+
+### Decisions Made
+- **Model config is data, not code** — `models.yaml` is the single source of truth; `models.py` loads it
+- **Repeatable `--constraint` flag** over comma-delimited string — avoids splitting on commas within constraint text
+- **Skill is user-level** — installed to `~/.claude/skills/`, not per-repo; works from any project
+- **Always use MCP/skill for persona creation** — never bypass with direct CLI (saved as feedback memory)
+- **8B models safe at 32K context** — probed empirically (46-67 tok/s, no degradation, 6-7GB free VRAM)
+
+### Next
+- Merge PR #21
+- DeepSeek Python personas already created; consider creating personas for other roles on DeepSeek models
+- Deferred: extract `create-persona.py` core logic into importable library (avoid subprocess from MCP)
+- Deferred: `role_short = role.split(".")[0][:60]` truncates Modelfile comment (cosmetic)
+- Resume web-research MVP spike or Layer 5 work
 
 ---
 
@@ -141,42 +173,6 @@ Resumed from session 41. All PRs merged, master clean. Chose "IMPROVED verdict w
 - Manual test warm_model after MCP server restart
 - Remaining deferred: Python 3.10→3.12, auto-resume hook, registry hot-reload
 - Layer 4 stragglers: Phase 3 frontier judge, Claude Desktop insights tool
-
----
-
-## 2026-03-13 - Session 41: All PRs merged; dotfiles backup system
-
-### Context
-All pending PRs (#10, #11, #12, #13, #14) were merged to master by the user before the session.
-Entry point: recontextualize + discuss next steps from remaining deferred infra tasks.
-
-### What Was Done
-
-**All open PRs merged to master** (by user, pre-session):
-- #10 token logging, #11 verdict hooks, #12 context-files, #13 ref-integrity, #14 overlay-system
-
-**Dotfiles backup system — COMPLETE:**
-- Created private GitHub repo `leandror172/dotfiles` at `~/workspaces/dotfiles/`
-- Three-way folder structure: `claude-code/` (user-level `~/.claude/`), `claude-projects/` (memory only), `claude-desktop/` (Windows AppData config)
-- `backup.sh`: OS-aware (WSL2 vs Linux via `/proc/version`), copies all three areas, `git commit` if changed
-- `install.sh`: restore script with top-of-file variables (`WINDOWS_USER`, `LLM_PROJECT_PATH`) for machine-specific paths; derives `~/.claude/projects/` slug from project path
-- `SessionStart` hook added to `~/.claude/settings.json` — auto-runs `backup.sh` on every Claude Code session start
-- First backup committed + pushed: 10 files (settings.json, .mcp.json, keybindings.json, installed_plugins.json, MEMORY.md, debugging.md, claude_desktop_config.json)
-- Deferred infra task "Claude Code user-config backup/tracking" marked complete in tasks.md
-
-### Decisions Made
-- Dotfiles repo location: `~/workspaces/dotfiles/` (consistent with workspace convention)
-- Scope: Claude files only (not full dotfiles — can expand later)
-- `claude-projects/` backs up `memory/` subdirs only — transcript UUIDs excluded (ephemeral)
-- OS detection via `/proc/version` grep — reliable in non-interactive shells (hooks, cron)
-- `install.sh` uses explicit top-of-file variables for machine-specific paths (not convention/manifest) — honest about what needs human attention on a new machine
-- No `SessionFinish` hook (doesn't exist in Claude Code); `SessionStart` + manual `backup.sh` on demand
-- Conversations NOT backed up — ephemeral, large, Claude already maintains `~/.claude/backups/`
-
-### Next
-- Remaining deferred infra tasks: hook-based auto-resume, IMPROVED verdict workflow codification, Python 3.10→3.12 upgrade (do before next standalone script)
-- Layer 4 stragglers: Phase 3 frontier judge (4.x), Claude Desktop insights tool (4.6)
-- Layer 5 continues in `~/workspaces/expenses/code/` (separate sessions, tasks 5.1–5.7)
 
 ---
 
