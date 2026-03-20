@@ -4,11 +4,16 @@ description: >
   Local model usage conventions for projects using the ollama-bridge MCP server.
   Includes: local-model-first rules, verdict protocol (ACCEPTED/IMPROVED/REJECTED),
   imperfect output decision tree, stubs-then-Ollama retry pattern, cold-start grace
-  period policy, and training data logging convention.
+  period policy, training data logging convention, and create-persona skill.
 
-# No files to copy — ollama-bridge is global (user-level ~/.claude/.mcp.json).
-# The warm_model tool lives in the MCP server, not per-repo.
+# No repo-level files to copy — ollama-bridge is global (user-level ~/.claude/.mcp.json).
 files: {}
+
+# Installed to ~/.claude/ by default (--skill-level user).
+# Use --skill-level project to install per-repo instead.
+# Skipped if already present at the target level (idempotent).
+user_files:
+  create-persona/SKILL.md: skills/create-persona/SKILL.md
 
 # Ref block template for runtime lookup of retry patterns.
 # Created only if missing — user-managed after first install.
