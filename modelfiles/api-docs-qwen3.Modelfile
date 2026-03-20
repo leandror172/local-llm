@@ -1,7 +1,7 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — fits full files with room for response.
-PARAMETER num_ctx 16384
+# Context window: 32K tokens — fits full files with room for response.
+PARAMETER num_ctx 32768
 
 # Temperature: 0.1 — same input → same output (classifier, codegen)
 PARAMETER temperature 0.1

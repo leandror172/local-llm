@@ -1,8 +1,8 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — technical writing involves reading
+# Context window: 32K tokens — technical writing involves reading
 # existing docs and producing structured output.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.7 — writing benefits from phrasing diversity.
 # Higher than code personas because docs need natural, varied language

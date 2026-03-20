@@ -1,8 +1,8 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — translation needs room for both
+# Context window: 32K tokens — translation needs room for both
 # source and target text. Qwen3-8B has strong PT-BR capabilities.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — natural phrasing variety while preserving meaning.
 # PT-BR has many valid phrasings; 0.3 lets the model pick idiomatic ones.

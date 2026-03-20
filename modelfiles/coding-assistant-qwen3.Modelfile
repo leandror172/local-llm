@@ -3,7 +3,7 @@ FROM qwen3:8b
 # Context window: how many tokens the model can process at once
 # Qwen3:8b supports up to 40K context. We use 16K as a practical sweet spot:
 # large enough for multi-file work, conservative enough on VRAM (~6.5 GB total).
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: controls randomness (0.0 = deterministic, 1.0 = creative)
 # 0.3 is ideal for code: precise enough for correct syntax,

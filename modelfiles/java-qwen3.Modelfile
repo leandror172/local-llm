@@ -1,7 +1,7 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — fits full Java classes with room for response.
-PARAMETER num_ctx 16384
+# Context window: 32K tokens — fits full Java classes with room for response.
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — precise enough for correct syntax, mild variation
 # for suggesting alternative approaches (e.g., streams vs loops).

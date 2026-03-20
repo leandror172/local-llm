@@ -1,374 +1,260 @@
-# Persona Registry
-# Source of truth for all Ollama personas managed by this project.
-# Updated by: persona creator (Task 3.2) or manually.
-# Last updated: 2026-03-03
-
-# ──────────────────────────────────────────────
-# Specialized coding personas
-# ──────────────────────────────────────────────
-
 my-java-q3:
   modelfile: modelfiles/java-qwen3.Modelfile
   base_model: qwen3:8b
   role: Java 21 backend developer (Spring Boot 3.x, Jakarta EE)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-go-q3:
   modelfile: modelfiles/go-qwen3.Modelfile
   base_model: qwen3:8b
   role: Go 1.22+ backend developer (Effective Go)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-python-q3:
   modelfile: modelfiles/python-qwen3.Modelfile
   base_model: qwen3:8b
   role: Python 3.11+ developer (FastAPI, async, CLI tools)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-creative-coder:
   modelfile: modelfiles/creative-coder-qwen25.Modelfile
   base_model: qwen2.5-coder:7b
   role: Interactive browser visualizations (HTML/Canvas/SVG)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-creative-coder-q3:
   modelfile: modelfiles/creative-coder-qwen3.Modelfile
   base_model: qwen3:8b
   role: Interactive browser visualizations (HTML/Canvas/SVG)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-codegen-q3:
   modelfile: modelfiles/codegen-qwen3.Modelfile
   base_model: qwen3:8b
   role: General-purpose code generator (polyglot fallback)
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
-# ──────────────────────────────────────────────
-# LLM infrastructure personas
-# ──────────────────────────────────────────────
-
 my-shell-q3:
   modelfile: modelfiles/shell-qwen3.Modelfile
   base_model: qwen3:8b
   role: Bash/shell scripting specialist (Linux, WSL2)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-mcp-q3:
   modelfile: modelfiles/mcp-qwen3.Modelfile
   base_model: qwen3:8b
   role: MCP server/tool developer (Python FastMCP)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-prompt-eng-q3:
   modelfile: modelfiles/prompt-eng-qwen3.Modelfile
   base_model: qwen3:8b
   role: Prompt engineering specialist (7-14B local models)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
-# ──────────────────────────────────────────────
-# NLP / utility personas
-# ──────────────────────────────────────────────
-
 my-classifier-q3:
   modelfile: modelfiles/classifier-qwen3.Modelfile
   base_model: qwen3:8b
   role: Text classifier (single-category assignment)
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-summarizer-q3:
   modelfile: modelfiles/summarizer-qwen3.Modelfile
   base_model: qwen3:8b
   role: Text summarizer (bullet-point extraction)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-translator-q3:
   modelfile: modelfiles/translator-qwen3.Modelfile
   base_model: qwen3:8b
   role: Language translator (generic, any language pair)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-ptbr-q3:
   modelfile: modelfiles/ptbr-translator-qwen3.Modelfile
   base_model: qwen3:8b
   role: PT-BR ↔ English specialist translator
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-tech-writer-q3:
   modelfile: modelfiles/tech-writer-qwen3.Modelfile
   base_model: qwen3:8b
   role: Technical writer (docs, READMEs, API docs)
   temperature: 0.7
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
-# ──────────────────────────────────────────────
-# Legacy / fallback coding personas
-# ──────────────────────────────────────────────
-
 my-coder:
   modelfile: modelfiles/coding-assistant.Modelfile
   base_model: qwen2.5-coder:7b
   role: Backend code generator — Java 21+ and Go 1.22+ (polyglot fallback)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
   note: Kept as polyglot fallback. Prefer my-java-q3 or my-go-q3 for new work.
-
 my-coder-q3:
   modelfile: modelfiles/coding-assistant-qwen3.Modelfile
   base_model: qwen3:8b
   role: Backend code generator — Java 21+ and Go 1.22+ (polyglot fallback)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
   note: Kept as polyglot fallback. Prefer my-java-q3 or my-go-q3 for new work.
-
-# ──────────────────────────────────────────────
-# Bare personas (host tool controls the prompt)
-# ──────────────────────────────────────────────
-
 my-aider:
   modelfile: modelfiles/aider-qwen25.Modelfile
   base_model: qwen2.5-coder:7b
   role: Aider CLI integration
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: bare
   host_tool: aider
   status: active
-
 my-opencode:
   modelfile: modelfiles/opencode-qwen3.Modelfile
   base_model: qwen3:8b
   role: OpenCode CLI integration
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: bare
   host_tool: opencode
   status: active
-
-# ──────────────────────────────────────────────
-# Planned personas (not yet created)
-# ──────────────────────────────────────────────
-
-# my-react-q3:
-#   base_model: qwen3:8b
-#   role: React 18+ / TypeScript frontend developer
-#   status: planned
-
-# my-angular-q3:
-#   base_model: qwen3:8b
-#   role: Angular 17+ / TypeScript frontend developer
-#   status: planned
-
-# my-architect-q3:
-#   base_model: qwen3:14b
-#   role: High-level system design and architecture (14B for deeper reasoning)
-#   num_ctx: 4096
-#   status: planned
-
-# my-be-architect-q3:
-#   base_model: qwen3:8b
-#   role: Backend architecture (API design, data modeling, microservices)
-#   status: planned
-
-# my-fe-architect-q3:
-#   base_model: qwen3:8b
-#   role: Frontend architecture (component trees, state management)
-#   status: planned
-
-# my-aws-q3:
-#   base_model: qwen3:8b
-#   role: AWS consultant (services, IAM, cost patterns)
-#   status: planned
-
-# my-gcp-q3:
-#   base_model: qwen3:8b
-#   role: GCP consultant (services, IAM, cost patterns)
-#   status: planned
-
-# my-java-reviewer-q3:
-#   base_model: qwen3:8b
-#   role: Java-specific code review
-#   status: planned
-
-# my-go-reviewer-q3:
-#   base_model: qwen3:8b
-#   role: Go-specific code review
-#   status: planned
-
-# my-career-coach-q3:
-#   base_model: qwen3:8b
-#   role: Resume, LinkedIn, interview prep (PT-BR aware)
-#   status: planned
-
 my-react-q3:
   modelfile: modelfiles/react-qwen3.Modelfile
   base_model: qwen3:8b
   role: React 18+ TypeScript frontend developer
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-angular-q3:
   modelfile: modelfiles/angular-qwen3.Modelfile
   base_model: qwen3:8b
   role: Angular 17+ TypeScript frontend developer
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-architect-q3:
   modelfile: modelfiles/architect-qwen3.Modelfile
   base_model: qwen3:14b
-  role: High-level system architect for design patterns, scalability, and technology selection
+  role: High-level system architect for design patterns, scalability, and technology
+    selection
   temperature: 0.3
-  num_ctx: 4096
+  num_ctx: 16384
   tier: full
   status: active
-
 my-be-architect-q3:
   modelfile: modelfiles/be-architect-qwen3.Modelfile
   base_model: qwen3:8b
   role: Backend architecture specialist for API design, data modeling, and microservices
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-fe-architect-q3:
   modelfile: modelfiles/fe-architect-qwen3.Modelfile
   base_model: qwen3:8b
-  role: Frontend architecture specialist for component trees, state management, and performance
+  role: Frontend architecture specialist for component trees, state management, and
+    performance
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-aws-q3:
   modelfile: modelfiles/aws-qwen3.Modelfile
   base_model: qwen3:8b
   role: AWS consultant covering services, IAM policies, and cost optimization
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-gcp-q3:
   modelfile: modelfiles/gcp-qwen3.Modelfile
   base_model: qwen3:8b
   role: GCP consultant covering services, IAM policies, and cost optimization
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-java-reviewer-q3:
   modelfile: modelfiles/java-reviewer-qwen3.Modelfile
   base_model: qwen3:8b
   role: Java code reviewer focused on correctness, Spring Boot 3.x idioms, and security
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-go-reviewer-q3:
   modelfile: modelfiles/go-reviewer-qwen3.Modelfile
   base_model: qwen3:8b
   role: Go code reviewer focused on correctness, error handling, and idiomatic Go
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-career-coach-q3:
   modelfile: modelfiles/career-coach-qwen3.Modelfile
   base_model: qwen3:8b
-  role: Career coach for software engineers covering resume, LinkedIn, and interview prep
+  role: Career coach for software engineers covering resume, LinkedIn, and interview
+    prep
   temperature: 0.7
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-persona-designer-q3:
   modelfile: modelfiles/persona-designer-qwen3.Modelfile
   base_model: qwen3:8b
   role: Persona design specialist (analyzes requirements and proposes Modelfile specs)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-rust-async-q3:
   modelfile: modelfiles/rust-async-qwen3.Modelfile
   base_model: qwen3:8b
   role: Rust async systems programmer using Tokio and Axum
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
-# ──────────────────────────────────────────────
-# Layer 5+ comparison personas (multi-model DPO data collection)
-# These run the same system prompts as their qwen3:8b counterparts but on
-# larger/different base models. Used in benchmarks/lib/run-compare-models.sh
-# to generate chosen/rejected pairs for Layer 7 fine-tuning.
-# ──────────────────────────────────────────────
-
 my-go-q25c14:
   modelfile: modelfiles/go-qwen25c14.Modelfile
   base_model: qwen2.5-coder:14b
   role: Go 1.22+ backend developer (code-specialized 14B, fits in VRAM)
   temperature: 0.3
-  num_ctx: 10240
+  num_ctx: 16384
   tier: full
   status: active
-  note: Comparison pair for my-go-q3. Code-specialized previous-gen 14B, no hybrid loading.
-
+  note: Comparison pair for my-go-q3. Code-specialized previous-gen 14B, no hybrid
+    loading.
 my-go-q3-q8:
   modelfile: modelfiles/go-qwen3-q8.Modelfile
   base_model: qwen3:8b-q8_0
@@ -378,17 +264,17 @@ my-go-q3-q8:
   tier: full
   status: active
   note: Quantization comparison vs my-go-q3 (Q4_K_M). Same model family, higher fidelity.
-
 my-java-q25c14:
   modelfile: modelfiles/java-qwen25c14.Modelfile
   base_model: qwen2.5-coder:14b
-  role: Java 21 backend developer, Spring Boot 3.x (code-specialized 14B, fits in VRAM)
+  role: Java 21 backend developer, Spring Boot 3.x (code-specialized 14B, fits in
+    VRAM)
   temperature: 0.3
-  num_ctx: 10240
+  num_ctx: 16384
   tier: full
   status: active
-  note: Java counterpart of my-go-q25c14. Used for Spring Boot development where quality justifies ~25-30s latency.
-
+  note: Java counterpart of my-go-q25c14. Used for Spring Boot development where quality
+    justifies ~25-30s latency.
 my-go-q3-30b:
   modelfile: modelfiles/go-qwen3-30b.Modelfile
   base_model: qwen3:30b-a3b
@@ -397,35 +283,34 @@ my-go-q3-30b:
   num_ctx: 8192
   tier: full
   status: active
-  note: |
-    Quality ceiling reference. 19GB MoE on 12GB VRAM+RAM hybrid. Expect ~10-20 tok/s.
+  note: 'Quality ceiling reference. 19GB MoE on 12GB VRAM+RAM hybrid. Expect ~10-20
+    tok/s.
+
     Known Ollama issue: MoE models may show low GPU utilization (github.com/ollama/ollama/issues/10458).
+
     Used to establish upper-quality bound for DPO pair selection.
 
-# ──────────────────────────────────────────────
-# Qwen3.5 and Qwen3-Coder personas (added 2026-03-03)
-# ──────────────────────────────────────────────
-
+    '
 my-go-q35:
   modelfile: modelfiles/go-qwen35.Modelfile
   base_model: qwen3.5:9b
   role: Go 1.22+ backend developer (Qwen3.5:9b, VRAM-only)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-  note: Replaces my-go-q3 as the VRAM-only Go option. Qwen3.5:9b fits fully in 12GB VRAM (~8GB weights).
-
+  note: Replaces my-go-q3 as the VRAM-only Go option. Qwen3.5:9b fits fully in 12GB
+    VRAM (~8GB weights).
 my-classifier-q35:
   modelfile: modelfiles/classifier-qwen35.Modelfile
   base_model: qwen3.5:9b
   role: Text classifier (single-category assignment, Qwen3.5:9b VRAM-only)
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-  note: Replaces my-classifier-q3 as the VRAM-only classifier. Benchmark against my-classifier-q3 for expense classification.
-
+  note: Replaces my-classifier-q3 as the VRAM-only classifier. Benchmark against my-classifier-q3
+    for expense classification.
 my-go-q35-27b:
   modelfile: modelfiles/go-qwen35-27b.Modelfile
   base_model: qwen3.5:27b
@@ -434,10 +319,12 @@ my-go-q35-27b:
   num_ctx: 10240
   tier: full
   status: active
-  note: |
-    Dense 27B model — quality benchmark against my-go-q25c14 (code-specialized 14B).
+  note: 'Dense 27B model — quality benchmark against my-go-q25c14 (code-specialized
+    14B).
+
     17GB hybrid: ~12GB VRAM + ~5GB RAM. Expect similar latency to my-go-q25c14 (~25-35s).
 
+    '
 my-go-qcoder:
   modelfile: modelfiles/go-qwen3coder.Modelfile
   base_model: qwen3-coder:30b
@@ -446,43 +333,37 @@ my-go-qcoder:
   num_ctx: 32768
   tier: full
   status: active
-  note: |
-    Code-specialized MoE (30B total / 3.3B active). Same 19GB hybrid footprint as my-go-q3-30b
+  note: 'Code-specialized MoE (30B total / 3.3B active). Same 19GB hybrid footprint
+    as my-go-q3-30b
+
     but trained on agentic coding tasks and tool calling. 32K ctx (vs 8K for my-go-q3-30b).
+
     Primary candidate to replace my-go-q25c14 in expense-reporter sessions after benchmarking.
 
+    '
 my-classifier-qcoder:
   modelfile: modelfiles/classifier-qwen3coder.Modelfile
   base_model: qwen3-coder:30b
-  role: Text classifier (single-category assignment, Qwen3-Coder:30b, 32K ctx for few-shot)
+  role: Text classifier (single-category assignment, Qwen3-Coder:30b, 32K ctx for
+    few-shot)
   temperature: 0.1
   num_ctx: 32768
   tier: full
   status: active
-  note: |
-    Long-context classifier for task 5.7 (few-shot injection): 32K ctx allows prepending
+  note: 'Long-context classifier for task 5.7 (few-shot injection): 32K ctx allows
+    prepending
+
     top-K training examples alongside the full taxonomy list without crowding.
 
-# ──────────────────────────────────────────────
-# Future model candidates (not yet pulled — watch and wait)
-# ──────────────────────────────────────────────
-
-# qwen3.5:35b (24GB — tight: 12GB VRAM + ~12GB RAM on 32GB total system RAM)
-#   - Worth revisiting if memory profiling shows headroom after 27b usage.
-#
-# Qwen3-Coder-Next (80B MoE, 3B active — ~46GB at 4-bit, ~24GB at 3-bit)
-#   - 3-bit fits on 12GB VRAM + ~26GB RAM in theory, but margins are very thin.
-#   - TODO: investigate native Linux (no WSL2 overhead) to recover ~4-6GB RAM headroom.
-
+    '
 my-api-docs-q3:
   modelfile: modelfiles/api-docs-qwen3.Modelfile
   base_model: qwen3:8b
   role: API documentation analyst
   temperature: 0.1
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
-
 my-python-q35:
   modelfile: modelfiles/python-q35-qwen35.Modelfile
   base_model: qwen3.5:9b
@@ -491,7 +372,6 @@ my-python-q35:
   num_ctx: 32768
   tier: full
   status: active
-
 my-python-q3-14b:
   modelfile: modelfiles/python-q3-14b-qwen3-14b.Modelfile
   base_model: qwen3:14b
@@ -500,12 +380,27 @@ my-python-q3-14b:
   num_ctx: 16384
   tier: full
   status: active
-
 my-python-q25c14:
   modelfile: modelfiles/python-q25c14-qwen25c14.Modelfile
   base_model: qwen2.5-coder:14b
   role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
   temperature: 0.3
   num_ctx: 16384
+  tier: full
+  status: active
+my-python-q3c30:
+  modelfile: modelfiles/python-q3c30-qwen3coder.Modelfile
+  base_model: qwen3-coder:30b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 32768
+  tier: full
+  status: active
+my-python-q3-30a3b:
+  modelfile: modelfiles/python-q3-30a3b-qwen3-30b.Modelfile
+  base_model: qwen3:30b-a3b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 8192
   tier: full
   status: active

@@ -1,9 +1,9 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — consistent with other Qwen3 personas.
+# Context window: 32K tokens — consistent with other Qwen3 personas.
 # Summarization requires reading long inputs, so 16K gives enough room
 # for both the source text and the generated summary.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — balanced for summarization.
 # Slightly higher than code tasks because summaries benefit from some
