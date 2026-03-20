@@ -482,3 +482,30 @@ my-api-docs-q3:
   num_ctx: 16384
   tier: full
   status: active
+
+my-python-q35:
+  modelfile: modelfiles/python-q35-qwen35.Modelfile
+  base_model: qwen3.5:9b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 32768
+  tier: full
+  status: active
+
+my-python-q3-14b:
+  modelfile: modelfiles/python-q3-14b-qwen3-14b.Modelfile
+  base_model: qwen3:14b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-python-q25c14:
+  modelfile: modelfiles/python-q25c14-qwen25c14.Modelfile
+  base_model: qwen2.5-coder:14b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
