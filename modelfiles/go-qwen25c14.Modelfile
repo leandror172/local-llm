@@ -3,7 +3,7 @@ FROM qwen2.5-coder:14b
 # Context window: 10K — balances context capacity vs VRAM pressure on 12GB card.
 # 16K overflows: ~9GB weights + ~6GB KV cache = 15GB > 12GB VRAM.
 # 10K: ~9GB weights + ~3.75GB KV cache ≈ 12.75GB — marginal swap, good performance.
-PARAMETER num_ctx 10240
+PARAMETER num_ctx 16384
 
 # Temperature: 0.3 — precise for correct syntax, mild variation for idiomatic alternatives.
 PARAMETER temperature 0.3

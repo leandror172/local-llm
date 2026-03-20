@@ -1,9 +1,9 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — consistent with other Qwen3 personas.
+# Context window: 32K tokens — consistent with other Qwen3 personas.
 # General-purpose code generation can produce lengthy output (multi-function
 # modules, full classes), so 16K gives room without over-allocating VRAM.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.1 — near-deterministic for code.
 # Lower than my-coder-q3 (0.3) because this persona prioritizes correctness

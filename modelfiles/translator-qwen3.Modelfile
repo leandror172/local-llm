@@ -1,9 +1,9 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — consistent with other Qwen3 personas.
+# Context window: 32K tokens — consistent with other Qwen3 personas.
 # Translation needs room for both source and target text. Qwen3-8B has
 # strong multilingual capabilities across 100+ languages.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — balanced for translation.
 # Higher than code/classification because translations benefit from

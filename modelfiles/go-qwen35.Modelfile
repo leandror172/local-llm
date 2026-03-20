@@ -2,7 +2,7 @@ FROM qwen3.5:9b
 
 # Context window: 16K — Qwen3.5:9b fits fully in 12GB VRAM (~8GB weights),
 # leaving ~4GB for KV cache. 16K is comfortable without hybrid pressure.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — precise for correct syntax, mild variation for idiomatic alternatives.
 PARAMETER temperature 0.3

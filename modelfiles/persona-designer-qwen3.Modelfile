@@ -1,8 +1,8 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — needs room for codebase analysis context,
+# Context window: 32K tokens — needs room for codebase analysis context,
 # user description, and structured JSON output.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — needs JSON precision but creative constraint suggestions.
 PARAMETER temperature 0.3

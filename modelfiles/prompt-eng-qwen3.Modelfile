@@ -1,8 +1,8 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — prompt engineering work involves
+# Context window: 32K tokens — prompt engineering work involves
 # long system prompts, examples, and analysis text.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — needs precision for prompt structure but
 # creativity for crafting effective phrasings and examples.

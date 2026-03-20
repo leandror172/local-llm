@@ -4,7 +4,7 @@ FROM qwen2.5-coder:7b
 # Default is 2048. We bump to 16384 (16K) for working with larger code files.
 # On 12GB VRAM with a 7B model (~4.9GB), we have headroom for this.
 # Each doubling of context costs ~0.5-1GB extra VRAM at 7B scale.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: controls randomness (0.0 = deterministic, 1.0 = creative)
 # 0.3 is ideal for code: precise enough for correct syntax,

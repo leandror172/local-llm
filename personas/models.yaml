@@ -14,14 +14,14 @@ models:
     display_name: Qwen3-8B
     file_suffix: qwen3          # Modelfile filename: <slug>-qwen3.Modelfile
     name_suffix: "-q3"          # Persona name: my-<slug>-q3
-    num_ctx: 16384
+    num_ctx: 32768              # Probed: 58 tok/s at 32K, no degradation (6.8GB free)
     default_temp: quality
 
   qwen3:8b-q8_0:
     display_name: Qwen3-8B-Q8
     file_suffix: qwen3-q8
     name_suffix: "-q3-q8"
-    num_ctx: 16384
+    num_ctx: 16384              # 8.9GB weights, only 3.1GB free — keep at 16K
     default_temp: quality
 
   qwen3.5:9b:
@@ -35,21 +35,21 @@ models:
     display_name: Qwen3-4B
     file_suffix: qwen3
     name_suffix: "-q3"
-    num_ctx: 4096
+    num_ctx: 32768              # 4.4GB weights, 7.6GB free — plenty of headroom
     default_temp: correctness
 
   qwen2.5-coder:7b:
     display_name: Qwen2.5-Coder-7B
     file_suffix: qwen25
     name_suffix: ""
-    num_ctx: 16384
+    num_ctx: 32768              # Probed: 67 tok/s at 32K, no degradation (7.3GB free)
     default_temp: quality
 
   llama3.1:8b-instruct-q5_K_M:
     display_name: Llama-3.1-8B
     file_suffix: llama31
     name_suffix: ""
-    num_ctx: 16384
+    num_ctx: 32768              # 5.7GB weights, 6.3GB free — 32K safe
     default_temp: quality
 
   # --- 14B models (VRAM-only, tighter KV budget) ---
@@ -65,6 +65,20 @@ models:
     file_suffix: qwen3-14b
     name_suffix: "-q3-14b"
     num_ctx: 16384              # Probed: 33.5 tok/s at 16K, no degradation
+    default_temp: quality
+
+  deepseek-coder-v2:16b:
+    display_name: DeepSeek-Coder-V2-16B
+    file_suffix: dsc16
+    name_suffix: "-dsc16"
+    num_ctx: 16384              # 8.9GB weights, 3.1GB free — same as other 14B-class
+    default_temp: quality
+
+  deepseek-r1:14b:
+    display_name: DeepSeek-R1-14B
+    file_suffix: dsr14
+    name_suffix: "-dsr14"
+    num_ctx: 16384              # 9.0GB weights, 3.0GB free
     default_temp: quality
 
   # --- Hybrid VRAM+RAM ---

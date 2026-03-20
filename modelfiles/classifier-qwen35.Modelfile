@@ -2,7 +2,7 @@ FROM qwen3.5:9b
 
 # Context window: 16K — Qwen3.5:9b fits fully in VRAM. Classification inputs
 # are typically short; 16K handles edge cases like long descriptions.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.1 — near-deterministic for classification.
 # Same input must consistently produce the same category.

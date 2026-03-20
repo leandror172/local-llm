@@ -1,9 +1,9 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — consistent with other Qwen3 personas.
+# Context window: 32K tokens — consistent with other Qwen3 personas.
 # Classification inputs are typically short, but 16K handles edge cases
 # like classifying long documents or multi-paragraph descriptions.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.1 — near-deterministic for classification.
 # Classification must be consistent: the same input should always produce

@@ -1,8 +1,8 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — shell scripts are usually short,
+# Context window: 32K tokens — shell scripts are usually short,
 # but pipeline compositions with heredocs can get long.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — precise for correct syntax. Shell is unforgiving:
 # a missing quote or wrong operator silently does the wrong thing.

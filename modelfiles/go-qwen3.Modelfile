@@ -1,7 +1,7 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — fits full Go packages with room for response.
-PARAMETER num_ctx 16384
+# Context window: 32K tokens — fits full Go packages with room for response.
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — precise for correct syntax, mild variation for
 # idiomatic alternatives (e.g., channels vs mutexes).

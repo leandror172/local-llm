@@ -1,8 +1,8 @@
 FROM qwen3:8b
 
-# Context window: 16K tokens — MCP server code involves multiple
+# Context window: 32K tokens — MCP server code involves multiple
 # tool definitions and handler functions.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — MCP servers need precise protocol adherence
 # but benefit from variation in tool design suggestions.

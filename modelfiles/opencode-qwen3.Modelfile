@@ -2,4 +2,4 @@
 # OpenCode injects its own system prompt; a Modelfile SYSTEM would conflict.
 FROM qwen3:8b
 PARAMETER temperature 0.1
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
