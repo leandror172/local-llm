@@ -213,6 +213,7 @@ async def ask_ollama(
     temperature: float | None = None,
     persona: str | None = None,
     context_files: list[ContextFile] | None = None,
+    timeout: int = 120,
 ) -> str:
     """Ask a question to a local Ollama model.
 
@@ -240,6 +241,8 @@ async def ask_ollama(
                        `end_line` (1-based, inclusive) select a slice. Content
                        is prepended as fenced code blocks — avoids passing file
                        content through Claude's context (saves tokens).
+        timeout: Max seconds to wait for a response. Default 120. Increase for
+                 large models (30B+) or complex prompts (e.g., 300 for hybrid models).
 
     Returns:
         The model's text response. If Ollama is unreachable, returns an error
@@ -273,6 +276,7 @@ async def ask_ollama(
             prompt=full_prompt,
             model=model,
             temperature=temperature,
+            timeout=timeout,
         )
         return response.content
 
@@ -479,6 +483,7 @@ async def generate_code(
     language: str | None = None,
     model: str | None = None,
     context_files: list[ContextFile] | None = None,
+    timeout: int = 120,
 ) -> str:
     """Generate code using a local Ollama model with smart persona routing.
 
@@ -503,6 +508,8 @@ async def generate_code(
                        a slice. Content is prepended as fenced code blocks —
                        avoids passing file content through Claude's context
                        (saves tokens). Use for "modify this existing file" tasks.
+        timeout: Max seconds to wait for a response. Default 120. Increase for
+                 large models (30B+) or complex prompts (e.g., 300 for hybrid models).
 
     Returns:
         Generated code (typically in a fenced code block). Returns an error
@@ -542,6 +549,7 @@ async def generate_code(
             prompt=full_prompt,
             model=chosen_model,
             think=False,
+            timeout=timeout,
         )
         return response.content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
