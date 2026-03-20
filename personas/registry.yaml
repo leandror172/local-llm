@@ -404,3 +404,21 @@ my-python-q3-30a3b:
   num_ctx: 8192
   tier: full
   status: active
+
+my-python-dsc16:
+  modelfile: modelfiles/python-dsc16-dsc16.Modelfile
+  base_model: deepseek-coder-v2:16b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-python-dsr14:
+  modelfile: modelfiles/python-dsr14-dsr14.Modelfile
+  base_model: deepseek-r1:14b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
