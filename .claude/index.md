@@ -49,6 +49,8 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | ollama-scaffolding overlay | `overlays/ollama-scaffolding/` | Local model usage conventions: verdict protocol, decision tree, stubs-then-Ollama, cold-start policy |
 | Ollama coordination layer | `docs/ideas/ollama-coordination-layer.md` | Deferred: shared directory contract for multi-process VRAM coordination; migration path from bundled Option 1 |
 | Ollama eviction/concurrency findings | `docs/findings/ollama-eviction-concurrency-findings.md` | Empirical test results: Ollama queues unloads (no correctness risk); PR #9392 may replace file layer |
+| Portfolio document | `docs/portfolio/portfolio.md` | Unified overview of all 3 repos (llm, expense, web-research), AI/ML techniques, cross-cutting patterns |
+| AI-readable engineer profile | `docs/portfolio/engineer-profile.md` | Structured doc designed for LLM context — skills, philosophy, conversation starters |
 
 ---
 
