@@ -17,16 +17,25 @@ guidance: >
 
 ## Identity
 
-Software engineer building local AI infrastructure on consumer hardware (RTX 3060 12GB). Currently focused on making frontier and local LLMs work together — not replacing one with the other, but finding the boundary where each is most effective.
+Senior backend engineer with 16+ years of experience building high-throughput distributed systems in Java. Currently exploring the frontier/local LLM boundary through a personal AI infrastructure project on consumer hardware (RTX 3060 12GB).
 
-The work spans three interconnected repositories: an AI platform (Python/Bash), an expense classification CLI (Go), and a web research tool (Python) — all using local Ollama models with frontier-model (Claude) escalation.
+**Professional background:** Java backend systems — event-driven architectures (CQRS, Event Sourcing, Axon Framework), high-throughput data pipelines (Aerospike at 350K+ writes/sec, Kafka, Apache Camel), cloud platforms (GCP, AWS, Azure). Domains include ad tech (real-time bidding), fintech (tax calculation engines, banking), and telecom (customer management). Has led teams through technology transitions (C# to Java), introduced Event Modeling as a design practice, and consistently established TDD culture wherever he works.
+
+**Current AI work:** Three interconnected repositories — an AI platform (Python/Bash), an expense classification CLI (Go), and a web research tool (Python) — all using local Ollama models with frontier-model (Claude) escalation. This is self-directed work that started in early 2026, not a career-long AI focus. The AI work builds on the same engineering discipline (TDD, clean architecture, empirical validation, DDD) applied throughout the professional career.
 
 ---
 
 ## Technical Domains
 
+### Java Backend & Distributed Systems
+**Depth: 16+ years, primary professional skill**
+
+Core stack: Java, Spring Boot, Spring Cloud, Kafka, event-driven architecture (CQRS, Event Sourcing, DDD). Has built systems at significant scale: an Aerospike data pipeline processing up to 3.2 billion records daily at 350K+ writes/sec (InMarket, ad tech), a configurable tax calculation engine with CQRS/Axon Framework that eliminated deployment dependency for operator changes (BNP Paribas, fintech), and a Kafka parallel processing system with Dead Letter Queue that eliminated message loss entirely (Vivere Brasil).
+
+Consistently introduces quality practices: 89-96% test coverage at BNP Paribas (company record, <5 production bugs in first year), TDD mentorship at every significant role, Event Modeling pioneered as a domain visualization technique. Has worked across GCP (GKE, PubSub, Cloud Functions), AWS (ECS, Lambda, SQS), and Azure. Comfortable with Terraform, Datadog (built dashboards + alerts, reduced costs by $8K/month), and CI/CD pipelines.
+
 ### Local LLM Infrastructure
-**Depth: Deep, hands-on, empirical**
+**Depth: Deep, hands-on, empirical (self-directed, started 2026)**
 
 Operates a fleet of 13 base models (Qwen, DeepSeek families) configured into 35+ specialized personas on a 12GB VRAM budget. Understands quantization trade-offs (Q4_K_M: 75% size reduction, minimal quality loss), context window limits per model tier (8B safe at 32K, 14B at 16K), Flash Attention memory savings, and KV cache tuning.
 
@@ -37,7 +46,7 @@ Key insight discovered through benchmarking: prompt complexity has a hard ceilin
 ### Go Backend Development
 **Depth: Working proficiency, production-quality code**
 
-Built a CLI expense classifier (Go 1.25, Cobra) with 190+ unit tests, TDD discipline, clean package architecture (parser, classifier, resolver, excel layers), and acceptance tests. Uses Go's stdlib `net/http` for Ollama API calls — no unnecessary dependencies. Deterministic ID generation via SHA-256 hashing.
+Learned Go at InMarket to build an acceptance testing framework from scratch — catching a critical serialization bug before production; the framework was later adopted by the principal engineer for infrastructure validation. Continued with Go in the expense classifier project (Cobra CLI, 190+ unit tests, TDD, clean package architecture). Uses stdlib-first approach (`net/http` for Ollama API, no unnecessary dependencies).
 
 ### Python Tooling & Data Pipelines
 **Depth: Strong, primary language for AI tooling**
@@ -128,30 +137,44 @@ The expense classifier (product) and LLM infrastructure (platform) are separate 
 
 ## What This Person Can Speak Deeply About
 
+**Professional (16+ years):**
+- High-throughput data pipelines: Aerospike at 350K+ writes/sec, Kafka parallel processing, batch ingestion at billion-record scale
+- Event-driven architecture: CQRS, Event Sourcing, Axon Framework, Event Modeling as a design practice
+- Java ecosystem: Spring Boot, Spring Cloud, Apache Camel, testing strategy (TDD in practice, not just theory)
+- Cloud platforms: GCP and AWS in production, multi-cloud migration (AWS→GCP), Terraform, Kubernetes
+- Quality culture: establishing TDD practices, code review, mentoring — with measurable results (89-96% coverage, <5 production bugs)
+- DDD: bounded contexts, aggregates, domain events — applied both to traditional software and to agent architecture
+
+**AI infrastructure (self-directed, 2026):**
 - Running LLMs on consumer hardware: VRAM budgeting, quantization trade-offs, context window tuning, model selection per task
 - Making frontier and local models collaborate: MCP integration, delegation patterns, when to escalate
 - Persona engineering: system prompt design for small models, temperature tuning, structured output
-- AI/ML techniques for local models: QLoRA trade-offs, DPO training data collection, few-shot injection, prompt decomposition, cascade patterns, what fine-tuning can and cannot fix
+- AI/ML techniques: QLoRA trade-offs, DPO training data collection, few-shot injection, prompt decomposition, cascade patterns, what fine-tuning can and cannot fix
 - AI-assisted development workflows: session continuity, process discipline with AI tools, verdict-based quality control
-- Go CLI development: clean architecture, TDD, stdlib-first approach
 - Benchmarking methodology: multi-model comparison, rubric-based evaluation, empirical findings
-- DDD patterns applied to agent architecture: bounded contexts, data contracts, model routing as VRAM cost optimization
 
 ## What Would Require the Person Directly
 
-- Deep production system experience (this is a personal infrastructure project, not a production service)
-- Team-scale AI workflow design (current work is individual)
+- Team-scale AI workflow design (AI work is individual; professional team experience is in traditional backend systems)
 - Fine-tuning execution (Layer 7 — planned, not yet implemented)
-- Large-scale distributed systems (the constraints here are single-machine, single-GPU)
+- Frontend development (backend-focused career; React/frontend is not a strength)
 
 ## Conversation Starters
 
 If you're using this document as context for a conversation, these are productive areas to explore:
 
-1. "How do you decide when a task should use a local model vs. a frontier model?"
-2. "What surprised you most about running LLMs on consumer hardware?"
-3. "How does the persona system work, and what did you learn about prompt engineering for small models?"
-4. "Walk me through the verdict protocol — how does using the system generate training data?"
-5. "What's your understanding of fine-tuning trade-offs for small models — what can it fix and what can't it?"
-6. "What's the DDD connection to agent architecture?"
-7. "How do you maintain context across 50+ AI-assisted development sessions?"
+**Professional:**
+1. "Tell me about the Aerospike pipeline at InMarket — how did you design it to handle 3.2 billion records per day?"
+2. "How do you introduce TDD and quality practices into a team that doesn't have them?"
+3. "What's Event Modeling, and how did you use it at BNP Paribas?"
+4. "You applied DDD in traditional backend systems and in AI agent architecture — how does the pattern translate?"
+
+**AI infrastructure:**
+5. "How do you decide when a task should use a local model vs. a frontier model?"
+6. "What surprised you most about running LLMs on consumer hardware?"
+7. "Walk me through the verdict protocol — how does using the system generate training data?"
+8. "What's your understanding of fine-tuning trade-offs for small models — what can it fix and what can't it?"
+9. "How do you maintain context across 50+ AI-assisted development sessions?"
+
+**Bridging both:**
+10. "How does your backend engineering background inform the way you approach AI infrastructure?"
