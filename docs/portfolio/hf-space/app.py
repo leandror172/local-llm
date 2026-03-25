@@ -204,16 +204,78 @@ def respond(message: str, history: list[dict]) -> str:
             yield f"Sorry, the model is temporarily unavailable. Error: {type(e).__name__}. Please try again."
 
 
-demo = gr.ChatInterface(
-    fn=respond,
-    title="Leandro R. — Engineer Profile",
-    description=(
-        "Ask me about Leandro's engineering background, projects, and technical approach. "
-        "I have context about his 16+ years in Java backend systems and his current "
-        "local AI infrastructure work."
-    ),
-    examples=EXAMPLES,
-)
+PROFILE_PATH = os.path.join(os.path.dirname(__file__), "engineer-profile.md")
+PORTFOLIO_PATH = os.path.join(os.path.dirname(__file__), "portfolio.md")
+
+
+def read_file(path: str) -> str:
+    try:
+        with open(path) as f:
+            return f.read()
+    except FileNotFoundError:
+        return "*File not available.*"
+
+
+def strip_frontmatter(text: str) -> str:
+    """Remove YAML frontmatter (---...---) for rendering."""
+    if text.startswith("---"):
+        end = text.find("---", 3)
+        if end != -1:
+            return text[end + 3:].lstrip()
+    return text
+
+
+with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
+    gr.Markdown("# Leandro R. — Engineer Profile")
+    gr.Markdown(
+        "Senior backend engineer (16+ years, Java) · Local AI infrastructure builder · "
+        "[GitHub](https://github.com/leandror172)"
+    )
+
+    with gr.Tabs():
+        with gr.TabItem("Chat"):
+            gr.Markdown(
+                "Ask me about Leandro's engineering background, projects, and technical approach. "
+                "For a deeper conversation, download the profile doc below and paste it into Claude or ChatGPT."
+            )
+            chat = gr.ChatInterface(
+                fn=respond,
+                examples=EXAMPLES,
+            )
+
+        with gr.TabItem("Profile"):
+            gr.Markdown("### AI-Readable Engineer Profile")
+            gr.Markdown(
+                "This document is designed to be fed to an AI model for a richer, "
+                "more nuanced conversation about Leandro's background."
+            )
+            profile_content = read_file(PROFILE_PATH)
+            with gr.Row():
+                gr.File(
+                    value=PROFILE_PATH if os.path.exists(PROFILE_PATH) else None,
+                    label="Download",
+                )
+            gr.Markdown(
+                strip_frontmatter(profile_content),
+                buttons=["copy"],
+            )
+
+        with gr.TabItem("Portfolio"):
+            gr.Markdown("### Project Portfolio")
+            gr.Markdown(
+                "Detailed overview of three interconnected repositories: "
+                "AI platform, expense classifier, and web research tool."
+            )
+            portfolio_content = read_file(PORTFOLIO_PATH)
+            with gr.Row():
+                gr.File(
+                    value=PORTFOLIO_PATH if os.path.exists(PORTFOLIO_PATH) else None,
+                    label="Download",
+                )
+            gr.Markdown(
+                portfolio_content,
+                buttons=["copy"],
+            )
 
 if __name__ == "__main__":
     demo.launch()
