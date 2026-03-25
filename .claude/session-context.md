@@ -84,7 +84,14 @@
   - Context audit: 8B models upgraded 8K→32K (35 Modelfiles updated), 14B confirmed at 16K
   - Added DeepSeek models to models.yaml; added timeout param to ask_ollama/generate_code
   - PR #21 opened on `feature/persona-mcp-tools`
-- **Active branch:** `feature/persona-mcp-tools` (PR #21 open)
+- **Session 46** (2026-03-25) — Claude backend for HF Space chatbot:
+  - Added Claude (Haiku 4.5) as optional chat backend with per-session rate limiting (30/hr)
+  - Decomposed system prompt into composable parts (_PREAMBLE + _RULES + _PROFILE) — Claude gets relaxed grounding rules (synthesis allowed), HF keeps strict rules
+  - Self-referential context added (chatbot knows it's part of Leandro's portfolio)
+  - Fixed: Gradio additional_inputs examples format, .replace() bug with backslash continuations, HF Space stuck restart (factory reboot)
+  - Bash aliases: career_chat_start/stop/upload_hf in ~/.bashrc
+  - Branch: `feature/portfolio-docs`
+- **Active branch:** `feature/portfolio-docs` (HF Space + portfolio docs)
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
