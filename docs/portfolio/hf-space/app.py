@@ -212,6 +212,7 @@ CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE
 
 EXAMPLES = [
     ["Tell me about the LLM projects he's working on"],
+    ["Tell me about Leandro's practical knowledge on working with LLMs"],
     ["What local AI infrastructure has Leandro built, and why?"],
     ["How does Leandro decide when to use a local model vs. a frontier model?"],
     ["What surprised him most about running LLMs on consumer hardware?"],
