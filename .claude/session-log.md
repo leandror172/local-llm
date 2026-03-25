@@ -1,8 +1,37 @@
 # Session Log
 
-**Current Layer:** Persona infrastructure + web research tool
-**Current Session:** 2026-03-20 — Session 45: Persona MCP tools & infrastructure overhaul
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`
+**Current Layer:** Portfolio + HF Space chatbot
+**Current Session:** 2026-03-25 — Session 46: Claude backend for HF Space chatbot
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`
+
+---
+
+## 2026-03-25 - Session 46: Claude backend for HF Space chatbot
+
+### Context
+Compacted fork from an earlier session (same day) that built the portfolio docs, engineer profile, and HF Space chatbot (Level 2). This session focused on adding Claude as an optional backend model and iterating on the chatbot UX.
+
+### What Was Done
+- **Added Claude (Haiku) as optional chat backend** — dual-client architecture with HF Inference (free) and Anthropic API. Radio selector auto-appears when `ANTHROPIC_API_KEY` secret is set. Same code deploys with or without Claude.
+- **Per-session rate limiting** — in-memory rate limiter (30 calls/hour default, configurable via `CLAUDE_MAX_PER_HOUR`). Real backstop is Anthropic dashboard spend cap.
+- **Separate system prompts per backend** — Decomposed prompt into `_PREAMBLE + _RULES + _PROFILE`. HF gets strict grounding rules ("ONLY state facts"); Claude gets relaxed rules ("may synthesize and draw connections"). Fixed `.replace()` bug where backslash-continuation strings didn't match.
+- **Self-referential context** — Added NOTE to preamble telling models this chatbot is itself part of Leandro's portfolio work.
+- **Updated examples** — Consistent third-person tone ("How does Leandro..." not "How do you..."); added 2 new LLM-focused examples.
+- **Increased Claude max_tokens** — 512 → 2048 (Haiku is fast/cheap, no timeout risk).
+- **Fixed Gradio `additional_inputs` examples format** — Must be `list[list]` when `additional_inputs` is provided.
+- **Added `career_chat_upload_hf` alias** to `~/.bashrc`; fixed missing `cd` in `career_chat_start`; added `--with anthropic` to start alias.
+- **HF Space debugging** — Diagnosed stuck "Restarting" state; added startup logging; used factory reboot via API.
+
+### Decisions Made
+- **Anthropic API is separate from Claude Pro** — different account, billing, rate limits. API key needed independently.
+- **Haiku 4.5 as default** — cheapest Claude model, undated alias (`claude-haiku-4-5`) for auto-upgrades.
+- **Composable prompt architecture** — `_PREAMBLE + _RULES + _PROFILE` instead of `.replace()` string surgery. Avoids bugs from Python line continuation semantics.
+- **Rate limit HF = no, Claude = yes** — HF is free (their problem); Claude costs money (your problem).
+- **Local model used for code gen** — `my-python-q25c14` generated `respond_claude` function structure (IMPROVED verdict, ~400 tokens saved). 3 parallel calls timed out (GPU contention); sequential retry succeeded.
+
+### Next
+- Level 3 (local Ollama chatbot) deferred until post-Layer 7 fine-tuning
+- Resume main work: merge PR #21, Layer 5 expense classifier, or web research MVP spike
 
 ---
 
@@ -130,49 +159,6 @@ Resumed from session 42 (PR #15 pending merge). Switched to Sonnet 4.6. First ta
 - Merge PR #8 in expense repo (overlay install)
 - Python 3.10 → 3.12 upgrade via `uv` (highest priority before next standalone script)
 - Layer 4 stragglers: Phase 3 frontier judge, Claude Desktop insights tool 4.6
-
----
-
-## 2026-03-14 - Session 42: Verdict retry policy + warm_model + ollama-scaffolding overlay
-
-### Context
-Resumed from session 41. All PRs merged, master clean. Chose "IMPROVED verdict workflow codification" from deferred tasks, which expanded into a full architecture session.
-
-### What Was Done
-
-**Verdict retry policy — COMPLETE:**
-- Replaced "3 lines" threshold with 3-dimension heuristic (defect type / fix scope / prompt cost)
-- Stubs-then-Ollama codified as named retry pattern; conceptual defects named as category
-- Cold-start grace period: first-call timeouts → `TIMEOUT_COLD_START`, not REJECTED
-- Added to `docs/scaffolding-template.md` and `ref:local-model-retry-patterns`
-
-**warm_model MCP tool — COMPLETE (pending manual test):**
-- In-flight tracking wraps `chat()` in try/finally; `list_running()`, `unload_model()` on client
-- `warm_model` tool: check loaded → check in-flight → evict if safe → warm with trivial prompt
-- Design doc for future directory-based coordination: `docs/ideas/ollama-coordination-layer.md`
-
-**ollama-scaffolding overlay — COMPLETE:**
-- `overlays/ollama-scaffolding/` — packages verdict/retry policy for any ollama-bridge project
-- Tested 3 AI backends against expense repo; all over-deleted with long section
-- Redesigned: short pointer in CLAUDE.md (~6 lines) + full reference file
-- Installed in expense repo worktree, PR #8 opened
-
-**New persona:** `my-api-docs-q3` (API doc analyst, deterministic). Found: MCP server caches registry — new personas invisible until restart.
-
-**New deferred tasks:** MCP `create_persona` tool, raw temperature values, registry hot-reload
-
-### Decisions Made
-- Defect type / fix scope / prompt cost replaces line-count threshold
-- Stubs-then-Ollama is REJECTED retry, not IMPROVED — cleaner DPO signal
-- warm_model: bundled Option 1 now; directory-based Option 2 when second consumer emerges
-- Overlay CLAUDE.md sections must be short pointers — all AI backends over-delete long sections
-- "Do NOT use for security" removed — code is reviewed; "Training Data" removed — implementation detail
-
-### Next
-- Merge PR #15 (LLM repo) and PR #8 (expense repo)
-- Manual test warm_model after MCP server restart
-- Remaining deferred: Python 3.10→3.12, auto-resume hook, registry hot-reload
-- Layer 4 stragglers: Phase 3 frontier judge, Claude Desktop insights tool
 
 ---
 
