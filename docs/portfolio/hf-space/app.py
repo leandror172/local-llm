@@ -225,6 +225,7 @@ EXAMPLES = [
     ["Tell me about the Aerospike pipeline at InMarket"],
     ["What's the DDD connection to agent architecture?"],
     ["What LLM techniques and tools does Leandro work with?"],
+    ["Is this chat an example of Leandro's work?"]
 ]
 
 
