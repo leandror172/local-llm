@@ -1,23 +1,51 @@
 """
 Leandro R. — AI-Powered Engineer Profile
 A chatbot that can discuss Leandro's engineering background, skills, and projects.
-Powered by HF Inference API.
+Supports HF Inference API (free) and Claude API (higher quality).
 """
 
 import os
+import time
+from collections import defaultdict
 
 import gradio as gr
 from huggingface_hub import InferenceClient
 
+# ── HF backend (always available) ──────────────────────────
 MODEL_ID = os.environ.get("MODEL_ID", "Qwen/Qwen2.5-72B-Instruct")
-token = os.environ.get("HF_TOKEN") or None
-client = InferenceClient(model=MODEL_ID, token=token)
+hf_token = os.environ.get("HF_TOKEN") or None
+hf_client = InferenceClient(model=MODEL_ID, token=hf_token)
 
-SYSTEM_PROMPT = """\
+# ── Claude backend (optional — only active if key is set) ──
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5")
+claude_client = None
+if ANTHROPIC_API_KEY:
+    try:
+        import anthropic
+        claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        print(f"Claude backend enabled (model: {CLAUDE_MODEL})")
+    except Exception as e:
+        print(f"Claude backend failed to initialize: {e}")
+
+# ── Rate limiting (Claude only — HF is free) ───────────────
+CLAUDE_MAX_PER_HOUR = int(os.environ.get("CLAUDE_MAX_PER_HOUR", "30"))
+_claude_usage: dict[str, list[float]] = defaultdict(list)
+
+
+def _rate_limited(session_id: str) -> bool:
+    """Check if this session has exceeded Claude calls/hour."""
+    now = time.time()
+    calls = _claude_usage[session_id]
+    _claude_usage[session_id] = [t for t in calls if now - t < 3600]
+    return len(_claude_usage[session_id]) >= CLAUDE_MAX_PER_HOUR
+
+_PREAMBLE = """\
 You are an AI assistant that discusses the engineering profile of Leandro R., \
 a senior backend engineer with 16+ years of experience. Answer questions about \
-his skills, projects, and approach grounded ONLY in the profile data below.
+his skills, projects, and approach grounded in the profile data below."""
 
+_HF_RULES = """
 RULES:
 - ONLY state facts that appear in this profile. Do NOT invent details, \
 challenges, solutions, or achievements not listed here.
@@ -25,8 +53,19 @@ challenges, solutions, or achievements not listed here.
 I have — you'd need to ask Leandro directly."
 - Keep answers concise: 2-4 paragraphs max. Do not pad with generic filler.
 - Use concrete numbers and specifics from the profile when available.
-- Do NOT mix technologies between companies. Each role has its own tech stack listed.
+- Do NOT mix technologies between companies. Each role has its own tech stack listed."""
 
+_CLAUDE_RULES = """
+RULES:
+- Ground your answers in the profile data below. You may synthesize and draw \
+connections between different parts of the profile, but do NOT invent facts, \
+projects, or achievements not mentioned here.
+- If a question is entirely outside what the profile covers, say "That's not \
+covered in the profile I have — you'd need to ask Leandro directly."
+- Use concrete numbers and specifics from the profile when available.
+- Do NOT mix technologies between companies. Each role has its own tech stack listed."""
+
+_PROFILE = """
 ---
 
 # Engineer Profile: Leandro R.
@@ -168,17 +207,23 @@ engineering, QLoRA trade-offs, DPO data collection, prompt decomposition, benchm
 - Frontend development (backend-focused career)
 """
 
+SYSTEM_PROMPT = _PREAMBLE + _HF_RULES + _PROFILE
+CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE
+
 EXAMPLES = [
-    "What local AI infrastructure has Leandro built, and why?",
-    "How do you decide when to use a local model vs. a frontier model?",
-    "What surprised you most about running LLMs on consumer hardware?",
-    "How does your backend background inform your AI infrastructure work?",
-    "Tell me about the Aerospike pipeline at InMarket",
-    "What's the DDD connection to agent architecture?",
+    ["Tell me about the LLM projects he's working on"],
+    ["What local AI infrastructure has Leandro built, and why?"],
+    ["How does Leandro decide when to use a local model vs. a frontier model?"],
+    ["What surprised him most about running LLMs on consumer hardware?"],
+    ["How does his backend background inform his AI infrastructure work?"],
+    ["Tell me about the Aerospike pipeline at InMarket"],
+    ["What's the DDD connection to agent architecture?"],
+    ["What LLM techniques and tools does Leandro work with?"],
 ]
 
 
-def respond(message: str, history: list[dict]) -> str:
+def respond_hf(message: str, history: list[dict]) -> str:
+    """Stream response from HF Inference API."""
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for msg in history:
         messages.append({"role": msg["role"], "content": msg["content"]})
@@ -186,7 +231,7 @@ def respond(message: str, history: list[dict]) -> str:
 
     response = ""
     try:
-        for chunk in client.chat_completion(
+        for chunk in hf_client.chat_completion(
             messages=messages,
             max_tokens=512,
             temperature=0.7,
@@ -202,6 +247,51 @@ def respond(message: str, history: list[dict]) -> str:
             yield response + f"\n\n*[Response interrupted: {type(e).__name__}]*"
         else:
             yield f"Sorry, the model is temporarily unavailable. Error: {type(e).__name__}. Please try again."
+
+
+
+def respond_claude(message: str, history: list[dict]) -> str:
+    """Stream response from Claude API."""
+    if not claude_client:
+        yield "Claude backend is not configured."
+        return
+
+    # Simple session ID from first message in history
+    session_id = str(hash(str(history[:1])))
+    if _rate_limited(session_id):
+        yield ("Rate limit reached for Claude backend. "
+               "Please try again later, or switch to the open-source model.")
+        return
+    _claude_usage[session_id].append(time.time())
+
+    messages = [{"role": msg["role"], "content": msg["content"]} for msg in history]
+    messages.append({"role": "user", "content": message})
+
+    response = ""
+    try:
+        with claude_client.messages.stream(
+            model=CLAUDE_MODEL,
+            max_tokens=2048,
+            temperature=0.7,
+            system=CLAUDE_SYSTEM_PROMPT,
+            messages=messages,
+        ) as stream:
+            for text in stream.text_stream:
+                response += text
+                yield response
+    except Exception as e:
+        if response:
+            yield response + f"\n\n*[Response interrupted: {type(e).__name__}]*"
+        else:
+            yield f"Claude API error: {type(e).__name__}. Try the open-source model."
+
+
+def respond(message: str, history: list[dict], backend: str = "") -> str:
+    """Route to the selected backend."""
+    if backend == "Claude (Haiku)" and claude_client:
+        yield from respond_claude(message, history)
+    else:
+        yield from respond_hf(message, history)
 
 
 PROFILE_PATH = os.path.join(os.path.dirname(__file__), "engineer-profile.md")
@@ -236,10 +326,24 @@ with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
         with gr.TabItem("Chat"):
             gr.Markdown(
                 "Ask me about Leandro's engineering background, projects, and technical approach. "
-                "For a deeper conversation, download the profile doc below and paste it into Claude or ChatGPT."
+                "For a deeper conversation, download/copy the profile and portfolio docs from the tabs above, and add it to Claude, ChatGPT, "
+                "or your preferred tool."
             )
+
+            backend_choices = ["Open-source (Qwen 72B)"]
+            if claude_client:
+                backend_choices.append("Claude (Haiku)")
+
+            backend = gr.Radio(
+                choices=backend_choices,
+                value=backend_choices[0],
+                label="Model",
+                visible=len(backend_choices) > 1,
+            )
+
             chat = gr.ChatInterface(
                 fn=respond,
+                additional_inputs=[backend],
                 examples=EXAMPLES,
             )
 
@@ -278,4 +382,5 @@ with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
             )
 
 if __name__ == "__main__":
+    print("Launching Gradio app...")
     demo.launch()
