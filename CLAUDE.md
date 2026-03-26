@@ -13,6 +13,7 @@ Rules in this file may include `[ref:KEY]` tags pointing to detailed reference m
 2. **Step-by-step configuration** - Build config files incrementally, explaining each setting
 3. **Explanatory mode active** - Use "Explanatory" output style with Insight boxes
 4. **Licensing compliance** - When using or referencing external code/projects, always check and honor their license. If a license requires attribution, add it. Track attributions in `docs/ATTRIBUTIONS.md`.
+5. **Technology conventions** - Before making technology choices (language, framework, tooling), check `ref:patterns-index` for established conventions.
 
 ## Troubleshooting Approach
 
