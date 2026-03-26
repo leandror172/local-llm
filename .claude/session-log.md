@@ -1,8 +1,33 @@
 # Session Log
 
-**Current Layer:** Portfolio + HF Space chatbot
-**Current Session:** 2026-03-25 — Session 46: Claude backend for HF Space chatbot
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`
+**Current Layer:** Portfolio + HF Space chatbot + cross-repo patterns
+**Current Session:** 2026-03-26 — Session 47: Technology conventions pattern doc
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`
+
+---
+
+## 2026-03-26 - Session 47: Technology conventions pattern doc
+
+### Context
+User was working in the expense repo on MCP work and realized two questions kept surfacing ("which MCP framework?" and "which Python env?") that were already decided in this repo. Identified the gap: decisions are scattered across session-context, MEMORY.md, and findings — no portable reference.
+
+### What Was Done
+- **Created `docs/patterns/technology-conventions.md`** — self-indexed pattern doc with 7 sections: Python tooling (uv), MCP development (FastMCP), Ollama API, script conventions, git workflow, persona naming, licensing compliance
+- **Self-indexing design** — `ref:patterns-index` lists all patterns in a table; each section is a `ref:patterns-*` block. Two-level lookup: discover via index, drill into details. Split policy documented for when file exceeds ~400 lines.
+- **Added "Revisit when" conditions** — each contingent decision includes conditions under which it should be reconsidered. Two patterns marked as invariants (script conventions = security, licensing = hard requirement). Index table has `Revisit?` column for quick scanning.
+- **Wired cross-repo discovery** — memory entries added to all 3 project memory directories (llm, expenses, web-research) pointing to `ref_lookup(key="patterns-index", path="/mnt/i/workspaces/llm")`. Leverages existing `ref_lookup` MCP tool with `--root` support.
+- **Added CLAUDE.md rule #5** — "Before making technology choices, check `ref:patterns-index`" (this repo trigger)
+- **Updated `.claude/index.md`** — registered the new patterns doc
+
+### Decisions Made
+- **A+B mechanism for pattern discovery:** CLAUDE.md one-liner (this repo) + memory entries (cross-repo via MCP). Rejected SessionStart hook (high context cost, always-on) and overlay distribution (unnecessary given MCP ref_lookup already works cross-repo).
+- **Patterns are not overlays** — unlike scaffolding which copies files, patterns are queried remotely via MCP. No need to duplicate content across repos.
+- **"Revisit when" not universal** — some decisions are invariants (security model, legal requirements) and don't get revisit conditions.
+
+### Next
+- Resume expense repo MCP work (the questions that triggered this session are now answered)
+- Merge PR #21 (persona MCP tools, still open)
+- Consider adding patterns as new conventions are established
 
 ---
 
@@ -113,52 +138,6 @@ User wanted to build an AI-powered web research tool that uses local models for 
 - Expanded companion doc (`docs/research/ddd-agent-decisions.md`): anti-pattern detection heuristics with RTX 3060 cost calculations, split/merge decision flowchart, cost/benefit template, two worked examples for the web research tool
 - Key actionable output: only 3 justified model swap points in the web research architecture; Agent Tool should be code not LLM; Agent A2 deferred until context pressure measured
 - Updated INDEX.md with Design Patterns section
-
----
-
-## 2026-03-15 - Session 43: warm_model testing, bug fix, Ollama eviction research
-
-### Context
-Resumed from session 42 (PR #15 pending merge). Switched to Sonnet 4.6. First task: manually test `warm_model` MCP tool that was built last session.
-
-### What Was Done
-
-**warm_model — fully tested, bug found and fixed:**
-- Tests 1-4 passed: already-loaded no-op, evict+load, hook fix, cold start
-- Test 5 (invalid model): found "evict then 404" bug — `warm_model` evicted loaded model before validating target exists, leaving VRAM empty
-- Fix: `_check_model_exists()` helper (generated by local model, IMPROVED — return type annotation fixed) validates via `/api/tags` BEFORE any eviction
-- Also added `resp.raise_for_status()` to load call for defensive coverage
-- Hook fix: `ollama-post-tool.py` now skips verdict template for non-generation tools (warm_model, list_models, ref_lookup, query_personas); only 7 generation tools get verdict prompt
-- Deferred task added: refactor `server.py` separation of concerns
-
-**PR #15 merged to master:**
-- Merge conflict in session-context.md and session-log.md (session 41 vs session 42 content)
-- Resolved: took incoming for session 42 status; kept HEAD session 39b history; restored missing session 41 entry
-
-**Ollama coordination layer — researched and deferred:**
-- Proved in-process `_inflight` dict is per-MCP-server-process (cross-session calls invisible)
-- Researched Ollama extensibility: no plugin/hook system; all compiled-in Go
-- Discovered PR #9392: adds `ACTIVE` field to `/api/ps` via internal `refCount` — could replace file layer entirely
-- Ran empirical eviction-during-generation tests (two models):
-  - `keep_alive: 0` during active generation → Ollama **queues** unload, doesn't interrupt
-  - Generation ran to completion (300 tokens, 1477 chars) after evict signal
-  - Correctness risk is off the table; remaining concern is VRAM thrash (performance only)
-- Documented in `docs/findings/ollama-eviction-concurrency-findings.md`
-- Updated design doc + deferred task: build trigger = VRAM thrash observed AND PR #9392 not shipped
-
-**New deferred task:** File-based coordination layer (Option 2) — revised rationale, watch PR #9392 first
-
-### Decisions Made
-- `_check_model_exists()` extracted as helper (not inlined) — sets precedent for server.py refactor
-- Local model (`generate_code`) used for helper; IMPROVED (return type annotation fix)
-- File-based coordination layer deferred: correctness not at risk; PR #9392 may eliminate need
-- `git reset --hard` preferred over `git revert` for undoing accidental master commits (cleaner merge history)
-
-### Next
-- Checkout `feature/session-43-handoff`, open PR, then reset master to pre-accidental-commit state
-- Merge PR #8 in expense repo (overlay install)
-- Python 3.10 → 3.12 upgrade via `uv` (highest priority before next standalone script)
-- Layer 4 stragglers: Phase 3 frontier judge, Claude Desktop insights tool 4.6
 
 ---
 
