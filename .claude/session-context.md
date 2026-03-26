@@ -91,7 +91,13 @@
   - Fixed: Gradio additional_inputs examples format, .replace() bug with backslash continuations, HF Space stuck restart (factory reboot)
   - Bash aliases: career_chat_start/stop/upload_hf in ~/.bashrc
   - Branch: `feature/portfolio-docs`
-- **Active branch:** `feature/portfolio-docs` (HF Space + portfolio docs)
+- **Session 47** (2026-03-26) — Technology conventions pattern doc:
+  - Created `docs/patterns/technology-conventions.md` — self-indexed (7 patterns, `ref:patterns-*` keys)
+  - Added "Revisit when" conditions to contingent decisions; invariants marked with `—`
+  - Cross-repo discovery: memory entries in all 3 project dirs pointing to `ref_lookup` MCP tool
+  - CLAUDE.md rule #5: check `ref:patterns-index` before tech choices
+  - Branch: `feature/technology-conventions`
+- **Active branch:** `feature/technology-conventions`
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
