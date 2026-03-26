@@ -1,48 +1,58 @@
 <!-- ref:quick-memory-web-research -->
 # Quick Memory: Web Research Tool — Where We Are
 
-*Session 44 (genesis). Read this first to recontextualize any forked session.*
+*Updated 2026-03-26. Read this first to recontextualize any forked session.*
 
 ---
 
 ## Current Status
 
-**Decision: Build new, informed by Local Deep Research.** LDR is MIT-licensed, genuinely modular, extremely active — but its LangChain coupling, 2-3GB deps, multi-user web app design, and lack of structured output / multi-model / progressive autonomy mean the patterns are more valuable than the code. Language question is reopened.
+**Phase 1 (extraction spike) complete.** Local 7-14B models can reliably extract structured
+information from web pages. Pipeline validated, merged to main.
 
-**LDR patterns worth borrowing:**
+**Phase 2 (search integration) next.** Not yet started.
+
+**Key decisions made:**
+- Build new (not fork LDR) — LDR patterns worth borrowing, not the code
+- Language: Python, uv + pyproject.toml
+- Task-aware model selection — extraction and codegen need different models
+- Protocol-based pipeline — each step independently callable, swappable
+
+**LDR patterns still worth borrowing:**
 1. `BaseSearchEngine` + factory (plugin architecture)
 2. Two-phase retrieval (metadata preview → full content on demand)
-3. Strategy registry (named strategies, configurable)
-4. ReAct loop (search/read/reason cycle)
-5. Library as search source (past research queryable alongside live web)
+3. ReAct loop (search/read/reason cycle)
+4. Library as search source (past research queryable alongside live web)
 
-## Work Size Estimate (Build New)
+## Memory Architecture (cross-repo design)
+
+Per-folder `.memories/` with two tiers, modeled on human memory types:
+- **QUICK.md** (working + prospective) — injected into agents, ~30 lines max
+- **KNOWLEDGE.md** (semantic + consolidated episodic) — read on demand
+
+Procedural lives at repo level (CLAUDE.md/overlays). Episodic lives at repo level
+(session logs) and consolidates into folder semantic via "dream" passes.
+
+Full design: `/mnt/i/workspaces/web-research/docs/research/memory-architecture-design.md`
+First instance: `web-research/spike/.memories/`
+
+## Remaining Work Size Estimate
 
 | Component | Sessions | Notes |
 |-----------|----------|-------|
-| **MVP Core** (search→fetch→extract→save) | 2-3 | Validates core hypothesis |
-| Structured output + Pydantic models | 1 | Layer 0 patterns transfer |
-| Multi-model (config per stage) | 1 | Reuse warm_model + OllamaClient |
-| Search engine abstraction | 1-2 | Borrow LDR pattern, simpler |
+| Search engine abstraction | 1-2 | Borrow LDR BaseSearchEngine pattern |
+| Multi-model config per stage | 1 | Reuse warm_model + OllamaClient |
 | JSONL event log | 0.5 | Same as calls.jsonl |
 | SQLite knowledge store | 1-2 | Schema + node/edge graph |
 | Sufficiency check (Auditor) | 1 | LLM prompt + iteration logic |
-| CLI | 1 | Language-dependent |
+| CLI | 1 | argparse or click |
 | MCP integration | 1 | Same pattern as task 5.8 |
 | SearXNG Docker setup | 0.5 | Straightforward |
-| **Total MVP:** | **~4-5** | Core loop + files + CLI |
-| **Total usable tool:** | **~8-10** | + structured output, multi-model, search abstraction, events |
-| **Total full vision:** | **~15-18** | + knowledge graph, review, MCP, progressive autonomy |
-
-## Fork Angles (for separate sessions)
-
-1. **MVP spike** — Wire SearXNG + Crawl4AI + Ollama, test with 14B on 5 URLs (~2 hours)
-2. **DDD agent modeling** — Formalize "DDD as agent/model modeling" as reusable pattern
-3. **Mastra deep-dive** — Suspend/resume + workflow engine for progressive autonomy
-4. **Tool calling benchmarks** — Retest current models for Dispatcher feasibility
-5. **SearXNG setup** — Docker deploy, test search quality (prerequisite)
+| **Total to usable tool:** | **~6-8** | Search + pipeline + knowledge + CLI |
+| **Total full vision:** | **~12-15** | + knowledge graph, review, MCP, progressive autonomy |
 
 ## Key Documents
 
 See `INDEX.md` in this folder for full catalogue with ref keys.
+Web-research repo: `/mnt/i/workspaces/web-research/`
 <!-- /ref:quick-memory-web-research -->
