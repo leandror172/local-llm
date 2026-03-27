@@ -135,7 +135,7 @@ catching a critical serialization bug before production; the framework was later
 adopted by the principal engineer for infrastructure validation. Continued with Go \
 in the expense classifier project (Cobra CLI, 190+ unit tests, TDD).
 
-### Python Tooling & Data Pipelines (strong, primary language for AI tooling)
+### Python Tooling & Data Pipelines (Self-directed (early 2026), AI tooling focus only — not production engineering depth; primary professional language is Java.)
 MCP server implementation, benchmark framework, persona management tools, \
 extraction pipelines, overlay installer. Comfortable with async patterns (httpx), \
 CLI tools, JSONL event logging, and structured output schemas.
