@@ -49,7 +49,7 @@ Key insight discovered through benchmarking: prompt complexity has a hard ceilin
 Learned Go at InMarket to build an acceptance testing framework from scratch — catching a critical serialization bug before production; the framework was later adopted by the principal engineer for infrastructure validation. Continued with Go in the expense classifier project (Cobra CLI, 190+ unit tests, TDD, clean package architecture). Uses stdlib-first approach (`net/http` for Ollama API, no unnecessary dependencies).
 
 ### Python Tooling & Data Pipelines
-**Depth: Strong, primary language for AI tooling**
+**Depth: Self-directed (early 2026), AI tooling focus only — not production engineering depth; primary professional language is Java.**
 
 MCP server implementation, benchmark framework, persona management tools, extraction pipelines, overlay installer. Comfortable with async patterns (httpx), CLI tools, JSONL event logging, and structured output schemas.
 
