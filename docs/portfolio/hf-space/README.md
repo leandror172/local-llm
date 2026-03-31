@@ -7,6 +7,7 @@ sdk: gradio
 sdk_version: 6.9.0
 app_file: app.py
 pinned: false
+thumbnail: https://huggingface.co/spaces/leandror777/engineer-profile/resolve/main/leandro-profile-banner.png
 license: mit
 ---
 
