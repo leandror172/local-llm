@@ -6,6 +6,8 @@ Covers:
 - _format_routing_index() — index formatting
 - _enrich_prompt()        — context injection
 - _route_sections()       — routing call + JSON parse + graceful degradation
+- _retry_after()          — rate limit wait time parsing
+- _with_retry()           — retry wrapper behaviour
 """
 import json
 import os
@@ -189,14 +191,14 @@ class TestRouteSections:
                 result = app._route_sections("question")
         assert len(result) == 2
 
-    def test_capped_at_six(self):
+    def test_capped_at_three(self):
         sections = app._build_section_index(FIXTURES)
         with patch.object(app, "_SECTION_INDEX", sections * 5):  # 20 sections
             with patch.object(app, "hf_client") as mock_client:
                 indices = list(range(10))
                 mock_client.chat_completion.return_value = self._mock_response(json.dumps(indices))
                 result = app._route_sections("question")
-        assert len(result) == 6
+        assert len(result) == 3
 
     def test_exception_returns_empty(self):
         sections = app._build_section_index(FIXTURES)
@@ -205,3 +207,163 @@ class TestRouteSections:
                 mock_client.chat_completion.side_effect = RuntimeError("network error")
                 result = app._route_sections("question")
         assert result == []
+
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+def _make_hf_exc(status_code: int, code: str = "", message: str = "") -> Exception:
+    """Build a mock HfHubHTTPError using Groq's real nested error format."""
+    exc = Exception(str(status_code))
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.json.return_value = {"error": {"code": code, "message": message, "type": ""}}
+    exc.response = resp
+    return exc
+
+
+# ── _retry_after ──────────────────────────────────────────────────────────────
+
+class TestRetryAfter:
+    def test_no_response(self):
+        assert app._retry_after(Exception("test")) is None
+
+    def test_429_rate_limit_with_time(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 9.67s")
+        assert app._retry_after(exc) == pytest.approx(10.67)
+
+    def test_429_rate_limit_over_60s(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 47m49.344s")
+        assert app._retry_after(exc) is None
+
+    def test_429_rate_limit_no_time(self):
+        assert app._retry_after(_make_hf_exc(429, "rate_limit_exceeded", "no time here")) is None
+
+    def test_429_other_code(self):
+        assert app._retry_after(_make_hf_exc(429, "other_error")) is None
+
+    def test_500_rate_limit(self):
+        assert app._retry_after(_make_hf_exc(500, "rate_limit_exceeded")) is None
+
+    def test_exactly_60s(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 1m0.0s")
+        assert app._retry_after(exc) == pytest.approx(61.0)
+
+    def test_61s(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 1m1.0s")
+        assert app._retry_after(exc) is None
+
+
+# ── _with_retry ───────────────────────────────────────────────────────────────
+
+class TestWithRetry:
+    def test_fn_succeeds_first_try(self):
+        fn = MagicMock(return_value="success")
+        with patch("time.sleep") as mock_sleep:
+            result = app._with_retry(fn)
+        assert result == "success"
+        assert fn.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_fn_raises_rate_limit_then_succeeds(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 2.0s")
+        fn = MagicMock(side_effect=[exc, "success"])
+        with patch("time.sleep") as mock_sleep:
+            result = app._with_retry(fn)
+        assert result == "success"
+        assert fn.call_count == 2
+        mock_sleep.assert_called_once_with(pytest.approx(3.0))
+
+    def test_fn_raises_rate_limit_twice(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 2.0s")
+        fn = MagicMock(side_effect=[exc, exc])
+        with patch("time.sleep"):
+            with pytest.raises(Exception):
+                app._with_retry(fn)
+        assert fn.call_count == 2
+
+    def test_fn_raises_non_retriable_error(self):
+        fn = MagicMock(side_effect=ValueError("bad input"))
+        with patch("time.sleep") as mock_sleep:
+            with pytest.raises(ValueError):
+                app._with_retry(fn)
+        assert fn.call_count == 1
+        mock_sleep.assert_not_called()
+
+
+# ── _classify_error ───────────────────────────────────────────────────────────
+
+class TestParseHfError:
+    def test_groq_nested_error_format(self):
+        """Groq wraps errors under an 'error' key (OpenAI format)."""
+        exc = Exception("429")
+        resp = MagicMock()
+        resp.status_code = 429
+        resp.json.return_value = {
+            "error": {
+                "message": ("Rate limit reached for model `llama-3.3-70b-versatile`"
+                            " in organization `org_01k...`. Please try again in 1h59m7.008s."
+                            " Need more tokens?"),
+                "type": "tokens",
+                "code": "rate_limit_exceeded",
+            }
+        }
+        exc.response = resp
+        status, code, message = app._parse_hf_error(exc)
+        assert status == 429
+        assert code == "rate_limit_exceeded"
+        assert "1h59m7.008s" in message
+
+    def test_classify_groq_hourly_limit(self):
+        """End-to-end: Groq nested format → correct user message with wait time."""
+        exc = Exception("429")
+        resp = MagicMock()
+        resp.status_code = 429
+        resp.json.return_value = {
+            "error": {
+                "message": "Please try again in 1h59m7.008s.",
+                "type": "tokens",
+                "code": "rate_limit_exceeded",
+            }
+        }
+        exc.response = resp
+        msg = app._classify_error(exc)
+        assert "about 2 hours" in msg  # ceil(7147s / 60) = 120min = 2h
+        assert "Haiku" in msg
+
+
+class TestClassifyError:
+    def test_daily_quota_includes_wait_time(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 47m49.344s")
+        msg = app._classify_error(exc)
+        assert "48 minutes" in msg  # ceil(47m49s) = 48 min
+        assert "Haiku" in msg
+
+    def test_short_rate_limit(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 9.67s")
+        msg = app._classify_error(exc)
+        assert "few minutes" in msg
+        assert "Haiku" in msg
+
+    def test_no_time_rate_limit(self):
+        exc = _make_hf_exc(429, "rate_limit_exceeded", "no time here")
+        msg = app._classify_error(exc)
+        assert "few minutes" in msg
+        assert "Haiku" in msg
+
+    def test_401(self):
+        assert "Authentication" in app._classify_error(_make_hf_exc(401))
+
+    def test_413(self):
+        assert "too long" in app._classify_error(_make_hf_exc(413))
+
+    def test_500(self):
+        assert "temporarily down" in app._classify_error(_make_hf_exc(500))
+
+    def test_503(self):
+        assert "temporarily down" in app._classify_error(_make_hf_exc(503))
+
+    def test_no_response(self):
+        assert "temporarily unavailable" in app._classify_error(Exception("test"))
+
+    def test_unknown_status(self):
+        assert "temporarily unavailable" in app._classify_error(_make_hf_exc(418))
