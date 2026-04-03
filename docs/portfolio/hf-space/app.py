@@ -5,6 +5,7 @@ Supports HF Inference API (free) and Claude API (higher quality).
 """
 
 import os
+import re
 import time
 from collections import defaultdict
 
@@ -12,9 +13,10 @@ import gradio as gr
 from huggingface_hub import InferenceClient
 
 # ── HF backend (always available) ──────────────────────────
-MODEL_ID = os.environ.get("MODEL_ID", "Qwen/Qwen2.5-72B-Instruct")
+MODEL_ID = os.environ.get("MODEL_ID", "meta-llama/Llama-3.3-70B-Instruct")
+HF_PROVIDER = os.environ.get("HF_PROVIDER", "groq")  # route via Groq by default
 hf_token = os.environ.get("HF_TOKEN") or None
-hf_client = InferenceClient(model=MODEL_ID, token=hf_token)
+hf_client = InferenceClient(model=MODEL_ID, token=hf_token, provider=HF_PROVIDER)
 
 # ── Claude backend (optional — only active if key is set) ──
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
@@ -52,12 +54,19 @@ the answer is yes."""
 
 _HF_RULES = """
 RULES:
-- ONLY state facts that appear in this profile. Do NOT invent details, \
-challenges, solutions, or achievements not listed here.
-- If asked about something not covered, say "That's not covered in the profile \
-I have — you'd need to ask Leandro directly."
-- Keep answers concise: 2-4 paragraphs max. Do not pad with generic filler.
-- Use concrete numbers and specifics from the profile when available.
+- Ground your answers in the profile data below. You may synthesize and draw \
+connections between different parts of the profile, but do NOT invent facts, \
+projects, or achievements not mentioned here. If something is mentioned by name \
+but not described in detail, do NOT elaborate using general knowledge — say \
+"That's not described in detail in the profile I have."
+- If a question is entirely outside what the profile covers, say "That's not \
+covered in the profile I have — you'd need to ask Leandro directly."
+- Prefer prose over bullet lists. Use concrete numbers and specifics from the \
+profile when available. Give thorough answers — cover the topic fully, but do \
+not pad with generic filler.
+- Do NOT add praise just with the purpose of propping up the profile; the \
+objective is to serve the user with relevant information for the question, be \
+it about the profile, or the LLM tools being built, or Leandro's knowledge
 - Do NOT mix technologies between companies. Each role has its own tech stack listed."""
 
 _CLAUDE_RULES = """
@@ -90,8 +99,10 @@ transitions (C# to Java), introduced Event Modeling as a design practice, and \
 consistently established TDD culture wherever he works.
 
 **Current AI work:** Three interconnected repositories — an AI platform \
-(Python/Bash), an expense classification CLI (Go), and a web research tool \
-(Python) — all using local Ollama models with frontier-model (Claude) escalation. \
+(Python/Bash; its components are the MCP Bridge Server, Persona System, and \
+Benchmark Framework described in the AI Infrastructure Projects section below), \
+an expense classification CLI (Go), and a web research tool (Python) — all using \
+local Ollama models with frontier-model (Claude) escalation. \
 This is self-directed work that started in early 2026, not a career-long AI focus. \
 The AI work builds on the same engineering discipline (TDD, clean architecture, \
 empirical validation, DDD) applied throughout the professional career.
@@ -225,8 +236,19 @@ EXAMPLES = [
     ["Tell me about the Aerospike pipeline at InMarket"],
     ["What's the DDD connection to agent architecture?"],
     ["What LLM techniques and tools does Leandro work with?"],
-    ["Is this chat an example of Leandro's work?"]
+    ["Is this chat an example of Leandro's work?"],
 ]
+
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def _strip_thinking(text: str) -> str:
+    """Remove <think>...</think> blocks. Hides incomplete blocks mid-stream."""
+    text = _THINK_RE.sub("", text)
+    idx = text.find("<think>")
+    if idx != -1:
+        text = text[:idx]
+    return text.lstrip("\n")
 
 
 def respond_hf(message: str, history: list[dict]) -> str:
@@ -240,7 +262,7 @@ def respond_hf(message: str, history: list[dict]) -> str:
     try:
         for chunk in hf_client.chat_completion(
             messages=messages,
-            max_tokens=512,
+            max_tokens=2048,
             temperature=0.7,
             stream=True,
         ):
@@ -248,7 +270,9 @@ def respond_hf(message: str, history: list[dict]) -> str:
                 continue
             token = chunk.choices[0].delta.content or ""
             response += token
-            yield response
+            visible = _strip_thinking(response)
+            if visible:
+                yield visible
     except Exception as e:
         if response:
             yield response + f"\n\n*[Response interrupted: {type(e).__name__}]*"
@@ -337,7 +361,7 @@ with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
                 "or your preferred tool."
             )
 
-            backend_choices = ["Open-source (Qwen 72B)"]
+            backend_choices = ["Open-source (Llama 3.3 70B)"]
             if claude_client:
                 backend_choices.append("Claude (Haiku)")
 
@@ -352,6 +376,7 @@ with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
                 fn=respond,
                 additional_inputs=[backend],
                 examples=EXAMPLES,
+                cache_examples=False,
             )
 
         with gr.TabItem("Profile"):
