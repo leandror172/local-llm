@@ -24,7 +24,9 @@ subsystem — gets its own `.memories/` with QUICK.md + KNOWLEDGE.md - read
 /home/leandror/workspaces/web-research/docs/research/memory-architecture-design.md and 
 /home/leandror/workspaces/web-research/docs/research/memory-layer-design.md for details on memories 
 folder idea details - descriptions of the workings of these memories in those files may supersed/conflict
-with instructions below; in which case, the descriptions in the file have higher "priority"
+with instructions below; in which case, the descriptions in the file have higher "priority", as
+the objective of those memories is not just to feed the chatbot - they are to be used by any AI
+agent explrogin these in the future - including Claude Code
 
 Root-level memories cover the overall project. Sub-folder memories cover that component's
 specific decisions, findings, and status.
