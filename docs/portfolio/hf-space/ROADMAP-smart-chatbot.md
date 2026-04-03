@@ -66,7 +66,7 @@ Wire the chatbot to load `.memories/` files alongside the existing profile.
 | Task | Detail |
 |------|--------|
 | Create `context/` folder in HF Space dir | Holds bundled memory files from all repos |
-| Sync script | Copies QUICK.md + KNOWLEDGE.md from all 3 repos into `context/` |
+| Sync script | Copies `.memories/` files + selected READMEs from all 3 repos into `context/` |
 | Modify `app.py` | Load `context/*.md` at startup, append to system prompt |
 | Update `career_chat_upload_hf` | Run sync before uploading to HF |
 
@@ -128,16 +128,29 @@ details available on follow-up.
 
 The chatbot lives in the llm repo (`docs/portfolio/hf-space/`) but reads from all 3 repos.
 
-**Sync strategy (Phase 1):** A pre-upload script copies memory files:
+**Sync strategy (Phase 1):** A pre-upload script copies memory files and READMEs:
 
 ```
 # Run before career_chat_upload_hf
+
+# --- .memories/ files (all folders, all repos) ---
 cp ~/workspaces/llm/.memories/QUICK.md       context/llm-quick.md
 cp ~/workspaces/llm/.memories/KNOWLEDGE.md   context/llm-knowledge.md
+# + sub-folder memories: mcp-server, evaluator, personas, benchmarks, overlays
 cp ~/workspaces/expenses/.memories/QUICK.md   context/expenses-quick.md
 cp ~/workspaces/expenses/.memories/KNOWLEDGE.md context/expenses-knowledge.md
+# + sub-folder memories (expense-reporter, etc.)
 cp ~/workspaces/web-research/.memories/QUICK.md context/web-research-quick.md
 cp ~/workspaces/web-research/.memories/KNOWLEDGE.md context/web-research-knowledge.md
+# + sub-folder memories (engine, spike, tools/web-research)
+
+# --- READMEs (high-value subset) ---
+# Always-load (root-level project overviews):
+#   llm/README.md, expenses/code/README.md, web-research/README.md
+# On-demand (component READMEs, loaded when question targets a specific component):
+#   llm/mcp-server/README.md, llm/evaluator/README.md, llm/overlays/README.md
+#   expenses/code/expense-reporter/README.md, web-research/spike/README.md
+# Skip: .pytest_cache, overlay-test, tests/layer2-comparison, hf-space README
 ```
 
 **Later (Phase 3+):** Move to an HF dataset for larger content, or auto-sync via CI.

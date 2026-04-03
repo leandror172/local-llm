@@ -4,6 +4,7 @@ A chatbot that can discuss Leandro's engineering background, skills, and project
 Supports HF Inference API (free) and Claude API (higher quality).
 """
 
+import glob
 import os
 import re
 import time
@@ -64,6 +65,11 @@ covered in the profile I have — you'd need to ask Leandro directly."
 - Prefer prose over bullet lists. Use concrete numbers and specifics from the \
 profile when available. Give thorough answers — cover the topic fully, but do \
 not pad with generic filler.
+- When someone asks about tools or how they could help with a problem, explain \
+the TOOL'S MECHANISM concretely — what it does, how it works, what it produces. \
+Do NOT just say "Leandro's experience with X could help" — instead explain how \
+the tool itself works and how it maps to the problem. Lead with the tool, not \
+the person. If a tool is only loosely related, say so rather than overstating.
 - Do NOT add praise just with the purpose of propping up the profile; the \
 objective is to serve the user with relevant information for the question, be \
 it about the profile, or the LLM tools being built, or Leandro's knowledge
@@ -223,8 +229,35 @@ engineering, QLoRA trade-offs, DPO data collection, prompt decomposition, benchm
 - Frontend development (backend-focused career)
 """
 
-SYSTEM_PROMPT = _PREAMBLE + _HF_RULES + _PROFILE
-CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE
+# ── Context loading from .memories/ files ─────────────────
+CONTEXT_DIR = os.path.join(os.path.dirname(__file__), "context")
+
+
+def _load_context_files(pattern: str) -> str:
+    """Load markdown files matching a glob pattern from context/, sorted by name."""
+    files = sorted(glob.glob(os.path.join(CONTEXT_DIR, pattern)))
+    if not files:
+        return ""
+    sections = []
+    for path in files:
+        name = os.path.splitext(os.path.basename(path))[0]
+        try:
+            with open(path) as f:
+                content = f.read().strip()
+            if content:
+                sections.append(f"### {name}\n{content}")
+        except OSError:
+            continue
+    if not sections:
+        return ""
+    return "\n\n---\n\n## Project Context (auto-loaded)\n\n" + "\n\n".join(sections)
+
+
+# Always-inject tier: QUICK.md files from all repos (~5K tokens)
+_PROJECT_CONTEXT = _load_context_files("*-quick.md")
+
+SYSTEM_PROMPT = _PREAMBLE + _HF_RULES + _PROFILE + _PROJECT_CONTEXT
+CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE + _PROJECT_CONTEXT
 
 EXAMPLES = [
     ["Tell me about the LLM projects he's working on"],
@@ -237,6 +270,10 @@ EXAMPLES = [
     ["What's the DDD connection to agent architecture?"],
     ["What LLM techniques and tools does Leandro work with?"],
     ["Is this chat an example of Leandro's work?"],
+    ["How does the MCP bridge server work?"],
+    ["What's the evaluator framework and how does it relate to LLM observability?"],
+    ["How does the expense classifier use local models?"],
+    ["What are overlays and how could they help my AI workflow?"],
 ]
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -357,6 +394,7 @@ with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
         with gr.TabItem("Chat"):
             gr.Markdown(
                 "Ask me about Leandro's engineering background, projects, and technical approach. "
+                "For complex questions (e.g., matching tools to your challenges), try the Claude backend for more precise answers. "
                 "For a deeper conversation, download/copy the profile and portfolio docs from the tabs above, and add it to Claude, ChatGPT, "
                 "or your preferred tool."
             )
