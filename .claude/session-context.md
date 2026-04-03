@@ -105,7 +105,13 @@
   - Deployed to HF Spaces. Free tier Llama handles overview questions; Claude backend better for analytical
   - Updated README.md, index.md, root .gitignore
   - Branch: `feature/smart-chatbot` (pushed to remote, deployed to HF)
-- **Active branch:** `feature/smart-chatbot`
+- **Session 49** (2026-04-03) — Chatbot Phase 2 + error handling:
+  - Phase 2 LLM-as-router: `_build_section_index()`, `_route_sections()`, `_enrich_prompt()` — 3 sections/question via non-streaming Groq call
+  - Test suite: 48 unit tests, synthetic fixtures, `_make_hf_exc` using real Groq nested `{"error":{}}` format
+  - Error handling: `_parse_hf_error()` (structured), `_retry_after()` (Xh/Xm/Xs parsing), `_classify_error()` (wait time + Haiku suggestion), `_with_retry()` wrapper
+  - Claude backend skips Groq routing; debug logging added (`career_chat_log` alias)
+  - PR #26 open: `feature/chatbot-phase2` → master
+- **Active branch:** `feature/chatbot-phase2`
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
@@ -122,7 +128,7 @@
   - Expanded companion: `docs/research/ddd-agent-decisions.md` (`ref:ddd-agent-decisions`) — anti-pattern detection with RTX 3060 cost numbers, split/merge flowchart, cost/benefit template, worked examples
   - Key finding: only 3 justified model swap points; Agent Tool should be code; Agent A2 deferred
   - Branch: `feature/mvp-spike-plan` (continued)
-- **Next:** Phase 2 chatbot (LLM-as-router, ~130-160 lines); merge feature/smart-chatbot to master; review .memories/ PRs in expenses + web-research; merge PR #21; resume expense repo MCP work; execute web-research MVP spike
+- **Next:** Merge PR #26 (feature/chatbot-phase2 → master); deploy to HF Spaces; review .memories/ PRs in expenses + web-research; merge PR #21; resume expense repo MCP work; execute web-research MVP spike; Phase 3 chatbot (source code awareness)
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
