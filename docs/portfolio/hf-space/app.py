@@ -5,10 +5,12 @@ Supports HF Inference API (free) and Claude API (higher quality).
 """
 
 import glob
+import json
 import os
 import re
 import time
 from collections import defaultdict
+from dataclasses import dataclass
 
 import gradio as gr
 from huggingface_hub import InferenceClient
@@ -256,6 +258,102 @@ def _load_context_files(pattern: str) -> str:
 # Always-inject tier: QUICK.md files from all repos (~5K tokens)
 _PROJECT_CONTEXT = _load_context_files("*-quick.md")
 
+# ── Phase 2: LLM-as-router for KNOWLEDGE.md sections ──────
+
+
+@dataclass
+class _Section:
+    key: str
+    source: str
+    heading: str
+    snippet: str   # first ~200 chars of body — used in routing index
+    content: str   # full section text — injected when selected
+
+
+def _build_section_index(directory: str | None = None) -> list[_Section]:
+    """Parse all *-knowledge.md files into a flat list of sections."""
+    directory = directory or CONTEXT_DIR
+    sections = []
+    for path in sorted(glob.glob(os.path.join(directory, "*-knowledge.md"))):
+        source = os.path.splitext(os.path.basename(path))[0]
+        try:
+            with open(path) as f:
+                content = f.read()
+        except OSError:
+            continue
+        # Split on ## headings using lookahead to preserve the delimiter
+        parts = re.split(r"\n(?=## )", content)
+        for part in parts:
+            lines = part.strip().split("\n")
+            if not lines[0].startswith("## "):
+                continue  # file-level header — skip
+            heading = lines[0][3:].strip()
+            body_lines = [l for l in lines[1:] if l.strip()]
+            snippet = " ".join(body_lines[:2])[:200]
+            sections.append(_Section(
+                key=f"{source}:{heading}",
+                source=source,
+                heading=heading,
+                snippet=snippet,
+                content=part.strip(),
+            ))
+    return sections
+
+
+def _format_routing_index(sections: list[_Section]) -> str:
+    """Format the section list into a numbered index for the routing prompt."""
+    return "\n".join(
+        f"[{i}] {s.source} / {s.heading}: {s.snippet}"
+        for i, s in enumerate(sections)
+    )
+
+
+_SECTION_INDEX: list[_Section] = _build_section_index()
+_ROUTING_INDEX_STR: str = _format_routing_index(_SECTION_INDEX)
+
+_ROUTING_SYSTEM = """\
+You are a document retrieval assistant. Given a user question and an index of \
+document sections, return the indices of the most relevant sections. \
+Return ONLY a JSON array of integers, no explanation. Example: [0, 3, 7] \
+Select at most 6 sections. If none are relevant, return []."""
+
+
+def _route_sections(question: str) -> list[_Section]:
+    """Call the HF backend (non-streaming) to select relevant knowledge sections."""
+    if not _SECTION_INDEX:
+        return []
+    try:
+        resp = hf_client.chat_completion(
+            messages=[
+                {"role": "system", "content": _ROUTING_SYSTEM},
+                {"role": "user", "content": f"Index:\n{_ROUTING_INDEX_STR}\n\nQuestion: {question}"},
+            ],
+            max_tokens=80,
+            temperature=0.0,
+            stream=False,
+        )
+        raw = resp.choices[0].message.content.strip()
+        indices = json.loads(raw)
+        if not isinstance(indices, list):
+            return []
+        return [
+            _SECTION_INDEX[i] for i in indices[:6]
+            if isinstance(i, int) and 0 <= i < len(_SECTION_INDEX)
+        ]
+    except Exception:
+        return []  # graceful degradation — fall back to quick-files-only
+
+
+def _enrich_prompt(base_prompt: str, sections: list[_Section]) -> str:
+    """Append selected knowledge sections to a system prompt."""
+    if not sections:
+        return base_prompt
+    parts = ["\n\n---\n\n## Retrieved Knowledge Sections\n"]
+    for s in sections:
+        parts.append(f"### [{s.source}] {s.heading}\n{s.content}")
+    return base_prompt + "\n\n".join(parts)
+
+
 SYSTEM_PROMPT = _PREAMBLE + _HF_RULES + _PROFILE + _PROJECT_CONTEXT
 CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE + _PROJECT_CONTEXT
 
@@ -290,7 +388,8 @@ def _strip_thinking(text: str) -> str:
 
 def respond_hf(message: str, history: list[dict]) -> str:
     """Stream response from HF Inference API."""
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    selected = _route_sections(message)
+    messages = [{"role": "system", "content": _enrich_prompt(SYSTEM_PROMPT, selected)}]
     for msg in history:
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": message})
@@ -332,6 +431,7 @@ def respond_claude(message: str, history: list[dict]) -> str:
         return
     _claude_usage[session_id].append(time.time())
 
+    selected = _route_sections(message)
     messages = [{"role": msg["role"], "content": msg["content"]} for msg in history]
     messages.append({"role": "user", "content": message})
 
@@ -341,7 +441,7 @@ def respond_claude(message: str, history: list[dict]) -> str:
             model=CLAUDE_MODEL,
             max_tokens=2048,
             temperature=0.7,
-            system=CLAUDE_SYSTEM_PROMPT,
+            system=_enrich_prompt(CLAUDE_SYSTEM_PROMPT, selected),
             messages=messages,
         ) as stream:
             for text in stream.text_stream:
