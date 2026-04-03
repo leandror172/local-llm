@@ -1,8 +1,45 @@
 # Session Log
 
 **Current Layer:** Portfolio + HF Space chatbot + cross-repo patterns
-**Current Session:** 2026-03-26 — Session 47: Technology conventions pattern doc
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`
+**Current Session:** 2026-04-02 — Session 48: Smart chatbot + .memories/ convention
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`
+
+---
+
+## 2026-04-02 - Session 48: Smart chatbot + .memories/ convention
+
+### Context
+Started from Arize job application analysis — Claude Desktop asked about observability/instrumentation in the benchmark framework. The answer was so thorough it became the foundation for upgrading the HF Space portfolio chatbot from static context to cross-repo awareness.
+
+### What Was Done
+- **Observability/instrumentation analysis** — Mapped evaluator framework to Phoenix/Arize's LLM-as-judge model. Written to `docs/portfolio/hf-space/observability-instrumentation.md`.
+- **Established `.memories/` convention across llm repo** — 12 files (QUICK.md + KNOWLEDGE.md) in 6 folders: root, mcp-server, evaluator, personas, benchmarks, overlays. Follows cognitive memory model from `web-research/docs/research/memory-architecture-design.md`.
+- **Created cross-repo prompt template** — `docs/portfolio/hf-space/prompt-create-memories.md` for generating .memories/ in other repos. Used in expenses and web-research sessions (PRs open in both).
+- **Smart chatbot roadmap** — 4-phase plan in `docs/portfolio/hf-space/ROADMAP-smart-chatbot.md`: Phase 0 (foundation) → Phase 1 (static expansion) → Phase 2 (LLM-as-router) → Phase 3 (source code) → Phase 4 (cross-project intelligence).
+- **Phase 1 implemented** — `sync-context.sh` copies `.memories/` + READMEs from all 3 repos into `context/`. `app.py` loads `*-quick.md` files at startup (~4.7K tokens). System prompt precision rules added for tool-matching questions. 4 new example questions.
+- **Updated README.md** — Added evaluator, overlays, .memories/, portfolio chatbot to project structure and technical highlights.
+- **Updated `.claude/index.md`** — Added .memories/ table, chatbot roadmap files, cross-references to memory architecture docs.
+- **HF Space README updated** — Environment vars table, context sync docs.
+- **Root `.gitignore` updated** — Synced context files excluded from git but NOT from HF upload (removed nested `.gitignore` that would have blocked `upload_folder`).
+- **Tested chatbot locally** — QUICK.md injection works. Llama 3.3 70B handles "what is X" questions well. Complex analytical questions ("which tools match this problem") produce vague associations — Claude backend recommended for those. Added precision rule and Claude-backend nudge to UI.
+- **Branch pushed and deployed** — `feature/smart-chatbot` with 3 commits, uploaded to HF Spaces.
+
+### Decisions Made
+- **Branch in llm repo, not new repo** — chatbot is still a portfolio piece, not independent enough for its own repo. Extract when it gets own tests/CI.
+- **Per-folder .memories/, not just repo root** — follows memory-architecture-design.md convention. Any folder with its own domain gets QUICK.md + KNOWLEDGE.md.
+- **QUICK.md always-injected, KNOWLEDGE.md on-demand** — total QUICK files ~4.7K tokens (safe for system prompt). KNOWLEDGE + READMEs ~20K tokens (Phase 2 routing material).
+- **Root .gitignore for synced files, not nested** — `upload_folder` respects nested `.gitignore`, which would block the context files from reaching HF.
+- **Free tier model sufficient for routing (Phase 2)** — Llama 3.3 70B via Groq handles classification tasks. Phase 2 adds one routing call before the answer call.
+- **Sonnet medium effort for cross-repo memory prompts** — quality bottleneck is project context in each session, not model capability.
+- **`((copied++))` fails with `set -e` when count is 0** — bash arithmetic expansion returns the old value; 0 is falsy → exit code 1. Fix: `copied=$((copied + 1))`.
+
+### Next
+- **Phase 2 implementation** — LLM-as-router for KNOWLEDGE.md sections. ~130-160 lines of code. Build when QUICK.md context proves insufficient for deeper questions. Details in `ROADMAP-smart-chatbot.md`.
+- **Review PRs** — expenses and web-research repos have open PRs for their `.memories/` files.
+- **Merge this branch** — `feature/smart-chatbot` to master (or PR first for review).
+- **Merge PR #21** — persona MCP tools, still open from session 45.
+- **Resume expense repo MCP work** — deferred from session 47.
+- **READMEs as context** — 8 high-value READMEs identified for Phase 1 sync. Currently synced but only QUICK files loaded. Could load root-level READMEs in always-inject tier.
 
 ---
 
@@ -89,55 +126,6 @@ Another session (web-research project) tried creating Python personas by hand-wr
 - Deferred: extract `create-persona.py` core logic into importable library (avoid subprocess from MCP)
 - Deferred: `role_short = role.split(".")[0][:60]` truncates Modelfile comment (cosmetic)
 - Resume web-research MVP spike or Layer 5 work
-
----
-
-## 2026-03-17 - Session 44: Web research tool genesis
-
-### Context
-User wanted to build an AI-powered web research tool that uses local models for processing. Had saved many URLs of tools/techniques to evaluate. Started from a broad idea and iterated through research, architecture design, and existing tool assessment.
-
-### What Was Done
-- **4 parallel research agents** launched: self-hosted scrapers, event sourcing for AI agents, language/framework comparison, existing research architectures
-- **Comprehensive analysis** produced (10-part document): scrapers (Crawl4AI standout), languages (Python/Go/TS viable, Java+Axon overkill), state management (JSONL+SQLite sweet spot), existing tools (12 compared)
-- **Key discoveries:** Local Deep Research (Ollama+SearXNG, MIT, 4.5K commits), SearXNG as consensus search backend, Crawl4AI as best self-hosted scraper, Jina DeepResearch's token budget pattern
-- **User architecture vision** captured: Agent A/B/Tool/A2 multi-agent design, DDD-as-agent-modeling insight, progressive autonomy, testing strategy
-- **Vision document** synthesized from user notes + research
-- **Deep assessment of Local Deep Research:** Sonnet agent examined repo — verdict: build new, borrow patterns (LangChain coupling, 2-3GB deps, no structured output, no multi-model, no progressive autonomy)
-- **Research folder organization:** INDEX.md, QUICK-MEMORY.md, ref blocks on all docs, exploration agenda with fork angles
-- **MCP subagent integration** gap analysis (separate finding)
-- **Work size estimated:** MVP ~4-5 sessions, usable tool ~8-10, full vision ~15-18
-
-### Decisions Made
-- **Build new, informed by LDR** — patterns (BaseSearchEngine, two-phase retrieval, strategy registry, ReAct loop) more valuable than code
-- **Language question reopened** — not inheriting Python from LDR; Python/Go/TS all viable
-- **Session named "genesis"** — serves as root for forked exploration sessions
-- **Research folder convention:** `*-MEMORY.md` files, `INDEX.md` per folder, ref blocks for machine lookup, folder-per-topic scaffolding (future)
-- **Deferred:** ref-lookup.sh prefix search enhancement
-
-### Next
-- Fork sessions for angles A-E (see `docs/research/exploration-agenda.md`)
-- Most impactful next: **MVP spike** (Angle A) — wire SearXNG + Crawl4AI + Ollama, test 14B on 5 URLs
-- Or **SearXNG setup** (Angle E) — prerequisite for any pipeline
-- Language decision needed before significant coding starts
-- Merge this branch's PR, then branch per angle
-
-### Fork: Session 44a — MVP Spike Plan
-- **Branch:** `feature/mvp-spike-plan`
-- Wrote concrete spike plan (`docs/research/mvp-spike-plan.md`): httpx + trafilatura + Ollama HTTP
-- Environment audit: Ollama running, no SearXNG/Firecrawl/Crawl4AI setup needed for spike
-- Simplified approach: validate extraction hypothesis before setting up infra
-- Updated INDEX.md, exploration-agenda.md
-- Established **forked session pattern:** append fork notes, don't rotate logs
-
-### Fork: Session 44b — DDD Agent Modeling
-- **Branch:** `feature/mvp-spike-plan` (continued)
-- Formalized "DDD as agent/model modeling" as reusable design pattern (`docs/research/ddd-agent-modeling.md`)
-- Strategic patterns: bounded contexts → agent domains, context maps → data contracts, subdomain classification → model tier selection
-- Tactical patterns: aggregates → agent consistency units, domain events → event sourcing, sagas → orchestration
-- Expanded companion doc (`docs/research/ddd-agent-decisions.md`): anti-pattern detection heuristics with RTX 3060 cost calculations, split/merge decision flowchart, cost/benefit template, two worked examples for the web research tool
-- Key actionable output: only 3 justified model swap points in the web research architecture; Agent Tool should be code not LLM; Agent A2 deferred until context pressure measured
-- Updated INDEX.md with Design Patterns section
 
 ---
 
