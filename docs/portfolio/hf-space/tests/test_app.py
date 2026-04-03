@@ -211,6 +211,35 @@ class TestRouteSections:
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+def _make_stream(*tokens):
+    """Build a mock HF streaming response — yields one chunk per token."""
+    for token in tokens:
+        chunk = MagicMock()
+        chunk.choices = [MagicMock()]
+        chunk.choices[0].delta.content = token
+        yield chunk
+
+
+def _routing_response(indices_json: str) -> MagicMock:
+    """Build a mock non-streaming routing response."""
+    resp = MagicMock()
+    resp.choices[0].message.content = indices_json
+    return resp
+
+
+def _hf_side_effect(routing_result, stream_result):
+    """Route hf_client.chat_completion to different mocks based on stream kwarg."""
+    def side_effect(*args, **kwargs):
+        if kwargs.get("stream") is False:
+            if isinstance(routing_result, Exception):
+                raise routing_result
+            return routing_result
+        if isinstance(stream_result, Exception):
+            raise stream_result
+        return stream_result
+    return side_effect
+
+
 def _make_hf_exc(status_code: int, code: str = "", message: str = "") -> Exception:
     """Build a mock HfHubHTTPError using Groq's real nested error format."""
     exc = Exception(str(status_code))
@@ -367,3 +396,44 @@ class TestClassifyError:
 
     def test_unknown_status(self):
         assert "temporarily unavailable" in app._classify_error(_make_hf_exc(418))
+
+
+# ── respond_hf integration ────────────────────────────────────────────────────
+
+class TestRespondHfIntegration:
+    def test_routing_failure_falls_back_to_main_call(self):
+        """Routing exception → graceful degradation → main call still streams response."""
+        with patch.object(app, "hf_client") as mock_client:
+            mock_client.chat_completion.side_effect = _hf_side_effect(
+                RuntimeError("routing down"),
+                _make_stream("Hello", " world"),
+            )
+            chunks = list(app.respond_hf("test question", []))
+        assert chunks[-1] == "Hello world"
+
+    def test_routing_success_enriches_system_prompt(self):
+        """Routing returns section index → system prompt sent to main call is enriched."""
+        sections = app._build_section_index(FIXTURES)
+        with patch.object(app, "_SECTION_INDEX", sections):
+            with patch.object(app, "hf_client") as mock_client:
+                mock_client.chat_completion.side_effect = _hf_side_effect(
+                    _routing_response("[0]"),
+                    _make_stream("ok"),
+                )
+                list(app.respond_hf("tell me about section one", []))
+        # Last call is the main streaming call — check its system message
+        main_call_msgs = mock_client.chat_completion.call_args_list[-1].kwargs["messages"]
+        system_content = main_call_msgs[0]["content"]
+        assert sections[0].heading in system_content
+
+    def test_main_call_quota_exhausted_returns_user_message(self):
+        """Main call 429 long-wait quota error → user sees wait time + Haiku suggestion."""
+        quota_exc = _make_hf_exc(429, "rate_limit_exceeded", "try again in 2h0m0.0s")
+        with patch.object(app, "hf_client") as mock_client:
+            mock_client.chat_completion.side_effect = _hf_side_effect(
+                RuntimeError("routing down"),
+                quota_exc,  # raised for stream=True
+            )
+            chunks = list(app.respond_hf("test", []))
+        assert "usage limit" in chunks[-1].lower()
+        assert "Haiku" in chunks[-1]
