@@ -52,6 +52,27 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Ollama eviction/concurrency findings | `docs/findings/ollama-eviction-concurrency-findings.md` | Empirical test results: Ollama queues unloads (no correctness risk); PR #9392 may replace file layer |
 | Portfolio document | `docs/portfolio/portfolio.md` | Unified overview of all 3 repos (llm, expense, web-research), AI/ML techniques, cross-cutting patterns |
 | AI-readable engineer profile | `docs/portfolio/engineer-profile.md` | Structured doc designed for LLM context — skills, philosophy, conversation starters |
+| Portfolio chatbot roadmap | `docs/portfolio/hf-space/ROADMAP-smart-chatbot.md` | 4-phase plan: static expansion → retrieval → source awareness → cross-project |
+| Chatbot context sync script | `docs/portfolio/hf-space/sync-context.sh` | Copies .memories/ + READMEs from all 3 repos into context/ for chatbot |
+| Cross-repo memory prompt | `docs/portfolio/hf-space/prompt-create-memories.md` | Template prompt for creating .memories/ in other repos |
+| Observability/instrumentation analysis | `docs/portfolio/hf-space/observability-instrumentation.md` | How evaluator maps to Phoenix/Arize LLM-as-judge pattern |
+| Per-folder memory architecture | See `~/workspaces/web-research/docs/research/memory-architecture-design.md` | Cognitive memory model: QUICK.md (working) + KNOWLEDGE.md (semantic) per folder |
+| Memory layer design | See `~/workspaces/web-research/docs/research/memory-layer-design.md` | 4-tier progressive context injection (Tier 0-3) |
+
+---
+
+## Per-Folder Memory Files (.memories/)
+
+| Folder | QUICK.md | KNOWLEDGE.md |
+|--------|----------|--------------|
+| Root | `.memories/QUICK.md` | `.memories/KNOWLEDGE.md` |
+| MCP server | `mcp-server/.memories/QUICK.md` | `mcp-server/.memories/KNOWLEDGE.md` |
+| Evaluator | `evaluator/.memories/QUICK.md` | `evaluator/.memories/KNOWLEDGE.md` |
+| Personas | `personas/.memories/QUICK.md` | `personas/.memories/KNOWLEDGE.md` |
+| Benchmarks | `benchmarks/.memories/QUICK.md` | `benchmarks/.memories/KNOWLEDGE.md` |
+| Overlays | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` |
+
+QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
 
 ---
 

@@ -95,20 +95,31 @@ by model size — choose based on task complexity, not raw speed.
 │   ├── detect-persona.py          # Heuristic codebase analyzer (no LLM calls)
 │   └── build-persona.py           # LLM-assisted persona designer
 │
-├── benchmarks/                    # Evaluation framework
+├── benchmarks/                    # Benchmark suite
 │   ├── prompts/                   # Benchmark prompt sets (Go, Python, Java, shell)
 │   ├── lib/                       # Runners, validators, comparison tools
 │   └── results/                   # Benchmark output (gitignored)
 │
+├── evaluator/                     # Two-phase evaluation framework
+│   ├── rubrics/                   # YAML rubrics (Go, Python, Java, Shell, classification, writing)
+│   └── lib/                       # Phase 1 (automated) + Phase 2 (LLM-as-judge) pipeline
+│
 ├── mcp-server/                    # MCP server (Python/FastMCP)
 │   └── src/ollama_mcp/            # Tools: generate_code, classify, summarize, etc.
+│
+├── overlays/                      # Portable scaffolding packages
+│   ├── ref-indexing/              # ref:KEY documentation blocks + lookup CLI
+│   ├── ollama-scaffolding/        # Local model conventions, verdict protocol
+│   └── session-tracking/          # Session continuity tools (resume, handoff, rotate)
 │
 ├── docs/
 │   ├── vision-and-intent.md       # Full project philosophy
 │   ├── plan-v2.md                 # Detailed 10-layer plan
 │   ├── findings/                  # Layer-by-layer empirical findings
+│   ├── portfolio/hf-space/        # Portfolio chatbot (Gradio on HF Spaces)
 │   └── scaffolding-template.md    # Reusable Claude Code project bootstrap guide
 │
+├── .memories/                     # Per-folder agent/chatbot context (QUICK.md + KNOWLEDGE.md)
 ├── scripts/                       # Setup and verification scripts
 └── docker/                        # Docker Compose deployment (planned for agentic tooling)
 ```
@@ -201,6 +212,20 @@ examples for Layer 7 QLoRA fine-tuning.
 ROLE/CONSTRAINTS/FORMAT system prompts. A heuristic codebase analyzer (`detect-persona.py`)
 scores a repo on three signals (file extensions 50%, imports 30%, config files 20%)
 and recommends the top-3 matching personas — no LLM calls, fully deterministic.
+
+### Overlay System (Cross-Repo Consistency)
+Overlays are installable packages of tools, documentation rules, and AI agent conventions.
+Three overlays — ref-indexing (documentation lookup), ollama-scaffolding (local model
+conventions), and session-tracking (session continuity) — can be installed into any repo
+with a single command. The installer supports manual and AI-assisted merge modes, with
+versioned markers for idempotent updates.
+
+### Portfolio Chatbot (Context-Aware)
+A Gradio app on HF Spaces serves as a live portfolio. It loads `.memories/` files from
+all 3 repositories at startup, giving it awareness of current project status, architecture
+decisions, and tooling across the entire infrastructure. The memory system follows a
+cognitive-psychology-inspired tier model: QUICK.md (working memory, always injected) and
+KNOWLEDGE.md (semantic memory, loaded on demand).
 
 ### WSL2 GPU Passthrough
 WSL2 exposes the Windows NVIDIA driver's `libcuda.so` directly into the Linux environment

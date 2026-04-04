@@ -29,6 +29,9 @@ benchmarks/results/
 # Node.js dependencies (Puppeteer for HTML validation)
 benchmarks/node_modules/
 
+# Synced context files for portfolio chatbot (derived by sync-context.sh, uploaded to HF separately)
+docs/portfolio/hf-space/context/*.md
+
 # Python bytecode cache
 __pycache__/
 

@@ -4,10 +4,16 @@ A chatbot that can discuss Leandro's engineering background, skills, and project
 Supports HF Inference API (free) and Claude API (higher quality).
 """
 
+import glob
+import json
+import math
 import os
 import re
 import time
+import traceback
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any, Generator
 
 import gradio as gr
 from huggingface_hub import InferenceClient
@@ -64,6 +70,11 @@ covered in the profile I have — you'd need to ask Leandro directly."
 - Prefer prose over bullet lists. Use concrete numbers and specifics from the \
 profile when available. Give thorough answers — cover the topic fully, but do \
 not pad with generic filler.
+- When someone asks about tools or how they could help with a problem, explain \
+the TOOL'S MECHANISM concretely — what it does, how it works, what it produces. \
+Do NOT just say "Leandro's experience with X could help" — instead explain how \
+the tool itself works and how it maps to the problem. Lead with the tool, not \
+the person. If a tool is only loosely related, say so rather than overstating.
 - Do NOT add praise just with the purpose of propping up the profile; the \
 objective is to serve the user with relevant information for the question, be \
 it about the profile, or the LLM tools being built, or Leandro's knowledge
@@ -223,8 +234,224 @@ engineering, QLoRA trade-offs, DPO data collection, prompt decomposition, benchm
 - Frontend development (backend-focused career)
 """
 
-SYSTEM_PROMPT = _PREAMBLE + _HF_RULES + _PROFILE
-CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE
+# ── Context loading from .memories/ files ─────────────────
+CONTEXT_DIR = os.path.join(os.path.dirname(__file__), "context")
+
+
+def _load_context_files(pattern: str) -> str:
+    """Load markdown files matching a glob pattern from context/, sorted by name."""
+    files = sorted(glob.glob(os.path.join(CONTEXT_DIR, pattern)))
+    if not files:
+        return ""
+    sections = []
+    for path in files:
+        name = os.path.splitext(os.path.basename(path))[0]
+        try:
+            with open(path) as f:
+                content = f.read().strip()
+            if content:
+                sections.append(f"### {name}\n{content}")
+        except OSError:
+            continue
+    if not sections:
+        return ""
+    return "\n\n---\n\n## Project Context (auto-loaded)\n\n" + "\n\n".join(sections)
+
+
+# Always-inject tier: QUICK.md files from all repos (~5K tokens)
+_PROJECT_CONTEXT = _load_context_files("*-quick.md")
+
+# ── Phase 2: LLM-as-router for KNOWLEDGE.md sections ──────
+
+
+@dataclass
+class _Section:
+    key: str
+    source: str
+    heading: str
+    snippet: str   # first ~200 chars of body — used in routing index
+    content: str   # full section text — injected when selected
+
+
+def _build_section_index(directory: str | None = None) -> list[_Section]:
+    """Parse all *-knowledge.md files into a flat list of sections."""
+    directory = directory or CONTEXT_DIR
+    sections = []
+    for path in sorted(glob.glob(os.path.join(directory, "*-knowledge.md"))):
+        source = os.path.splitext(os.path.basename(path))[0]
+        try:
+            with open(path) as f:
+                content = f.read()
+        except OSError:
+            continue
+        # Split on ## headings using lookahead to preserve the delimiter
+        parts = re.split(r"\n(?=## )", content)
+        for part in parts:
+            lines = part.strip().split("\n")
+            if not lines[0].startswith("## "):
+                continue  # file-level header — skip
+            heading = lines[0][3:].strip()
+            body_lines = [l for l in lines[1:] if l.strip()]
+            snippet = " ".join(body_lines[:2])[:200]
+            sections.append(_Section(
+                key=f"{source}:{heading}",
+                source=source,
+                heading=heading,
+                snippet=snippet,
+                content=part.strip(),
+            ))
+    return sections
+
+
+def _format_routing_index(sections: list[_Section]) -> str:
+    """Format the section list into a numbered index for the routing prompt."""
+    return "\n".join(
+        f"[{i}] {s.source} / {s.heading}: {s.snippet}"
+        for i, s in enumerate(sections)
+    )
+
+
+_SECTION_INDEX: list[_Section] = _build_section_index()
+_ROUTING_INDEX_STR: str = _format_routing_index(_SECTION_INDEX)
+
+_ROUTING_SYSTEM = """\
+You are a document retrieval assistant. Given a user question and an index of \
+document sections, return the indices of the most relevant sections. \
+Return ONLY a JSON array of integers, no explanation. Example: [0, 3, 7] \
+Select at most 6 sections. If none are relevant, return []."""
+
+
+def _parse_hf_error(exc: Exception) -> tuple[int, str, str]:
+    """Extract (status_code, error_code, message) from an HfHubHTTPError.
+
+    Returns (0, '', '') if exc has no .response or the body isn't parseable.
+    """
+    response = getattr(exc, "response", None)
+    if response is None:
+        return 0, "", ""
+    status = getattr(response, "status_code", 0)
+    try:
+        body = response.json()
+        # Groq (OpenAI-compatible) wraps errors: {"error": {"code": ..., "message": ...}}
+        error_obj = body.get("error", body) if isinstance(body, dict) else {}
+        return status, error_obj.get("code", ""), error_obj.get("message", "")
+    except Exception as e:
+        print(f"[parse_hf_error] json() failed: {e}", flush=True)
+        return status, "", ""
+
+
+def _retry_after(exc: Exception) -> float | None:
+    """Return seconds to wait before retrying, or None if not retriable.
+
+    Only retries on 429 rate_limit_exceeded with a short wait (<=60s).
+    Daily/hourly quota exhaustion (long waits) returns None — not worth retrying.
+    """
+    status, code, msg = _parse_hf_error(exc)
+    if status != 429 or code != "rate_limit_exceeded":
+        return None
+    m = re.search(r"try again in (?:(\d+)h)?(?:(\d+)m)?(\d+\.?\d*)s", msg)
+    if not m:
+        return None
+    total = int(m.group(1) or 0) * 3600 + int(m.group(2) or 0) * 60 + float(m.group(3))
+    return None if total > 60 else total + 1.0
+
+
+def _format_wait(total_seconds: float) -> str:
+    """Format a duration in seconds as a human-readable string."""
+    minutes = math.ceil(total_seconds / 60)
+    if minutes < 60:
+        return f"about {minutes} minute{'s' if minutes != 1 else ''}"
+    hours, mins = divmod(minutes, 60)
+    base = f"about {hours} hour{'s' if hours != 1 else ''}"
+    return base if mins == 0 else f"{base} {mins} minute{'s' if mins != 1 else ''}"
+
+
+def _classify_error(exc: Exception) -> str:
+    """Return a user-facing error message based on structured HTTP error data."""
+    status, code, msg = _parse_hf_error(exc)
+    if code == "rate_limit_exceeded":
+        m = re.search(r"try again in (?:(\d+)h)?(?:(\d+)m)?(\d+\.?\d*)s", msg)
+        if m:
+            total = int(m.group(1) or 0) * 3600 + int(m.group(2) or 0) * 60 + float(m.group(3))
+            if total > 60:
+                return (f"Usage limit reached — please try again in {_format_wait(total)}, "
+                        f"or switch to the Haiku model.")
+        return "Rate limit reached. Please try again in a few minutes, or switch to the Haiku model."
+    if status == 401:
+        return "Authentication error — please check the API key configuration."
+    if status == 413:
+        return "Your message is too long for this model."
+    if status in (500, 502, 503):
+        return "The model service is temporarily down. Please try again in a moment."
+    return "The model is temporarily unavailable. Please try again."
+
+
+def _with_retry(fn):
+    """Call fn(), retrying once on a retriable rate-limit error.
+
+    fn is a zero-argument callable (typically a lambda wrapping an API call).
+    On a retriable 429 (rate_limit_exceeded), sleeps the suggested wait time
+    and retries once. Any other exception, or a second failure, is re-raised.
+    """
+    for attempt in range(2):
+        try:
+            return fn()
+        except Exception as exc:
+            wait = _retry_after(exc)
+            if wait is not None and attempt == 0:
+                print(f"[retry] rate limited, retrying in {wait:.1f}s…", flush=True)
+                time.sleep(wait)
+                continue
+            raise
+
+
+def _route_sections(question: str) -> list[_Section]:
+    """Call the HF backend (non-streaming) to select relevant knowledge sections."""
+    if not _SECTION_INDEX:
+        print("[routing] index empty — skipping", flush=True)
+        return []
+    print(f"[routing] question: {question[:80]!r}", flush=True)
+    try:
+        resp = _with_retry(lambda: hf_client.chat_completion(
+            messages=[
+                {"role": "system", "content": _ROUTING_SYSTEM},
+                {"role": "user", "content": f"Index:\n{_ROUTING_INDEX_STR}\n\nQuestion: {question}"},
+            ],
+            max_tokens=80,
+            temperature=0.0,
+            stream=False,
+        ))
+        raw = resp.choices[0].message.content.strip()
+        print(f"[routing] raw response: {raw!r}", flush=True)
+        indices = json.loads(raw)
+        if not isinstance(indices, list):
+            print(f"[routing] expected list, got {type(indices).__name__} — no sections selected", flush=True)
+            return []
+        selected = [
+            _SECTION_INDEX[i] for i in indices[:3]
+            if isinstance(i, int) and 0 <= i < len(_SECTION_INDEX)
+        ]
+        print(f"[routing] selected {len(selected)} section(s): {[s.key for s in selected]}", flush=True)
+        return selected
+    except Exception:
+        traceback.print_exc()
+        return []  # graceful degradation — fall back to quick-files-only
+
+
+def _enrich_prompt(base_prompt: str, sections: list[_Section]) -> str:
+    """Append selected knowledge sections to a system prompt."""
+    if not sections:
+        return base_prompt
+    _MAX_SECTION_CHARS = 600
+    parts = ["\n\n---\n\n## Retrieved Knowledge Sections\n"]
+    for s in sections:
+        body = s.content if len(s.content) <= _MAX_SECTION_CHARS else s.content[:_MAX_SECTION_CHARS] + "…"
+        parts.append(f"### [{s.source}] {s.heading}\n{body}")
+    return base_prompt + "\n\n".join(parts)
+
+
+SYSTEM_PROMPT = _PREAMBLE + _HF_RULES + _PROFILE + _PROJECT_CONTEXT
+CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE + _PROJECT_CONTEXT
 
 EXAMPLES = [
     ["Tell me about the LLM projects he's working on"],
@@ -237,6 +464,10 @@ EXAMPLES = [
     ["What's the DDD connection to agent architecture?"],
     ["What LLM techniques and tools does Leandro work with?"],
     ["Is this chat an example of Leandro's work?"],
+    ["How does the MCP bridge server work?"],
+    ["What's the evaluator framework and how does it relate to LLM observability?"],
+    ["How does the expense classifier use local models?"],
+    ["What are overlays and how could they help my AI workflow?"],
 ]
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -251,21 +482,23 @@ def _strip_thinking(text: str) -> str:
     return text.lstrip("\n")
 
 
-def respond_hf(message: str, history: list[dict]) -> str:
+def respond_hf(message: str, history: list[dict]) -> Generator[str, Any, None]:
     """Stream response from HF Inference API."""
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    selected = _route_sections(message)
+    messages = [{"role": "system", "content": _enrich_prompt(SYSTEM_PROMPT, selected)}]
     for msg in history:
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": message})
 
     response = ""
     try:
-        for chunk in hf_client.chat_completion(
+        stream = _with_retry(lambda: hf_client.chat_completion(
             messages=messages,
             max_tokens=2048,
             temperature=0.7,
             stream=True,
-        ):
+        ))
+        for chunk in stream:
             if not chunk.choices:
                 continue
             token = chunk.choices[0].delta.content or ""
@@ -273,15 +506,17 @@ def respond_hf(message: str, history: list[dict]) -> str:
             visible = _strip_thinking(response)
             if visible:
                 yield visible
-    except Exception as e:
+    except Exception as exc:
+        traceback.print_exc()
+        user_msg = _classify_error(exc)
         if response:
-            yield response + f"\n\n*[Response interrupted: {type(e).__name__}]*"
+            yield response + f"\n\n*[{user_msg}]*"
         else:
-            yield f"Sorry, the model is temporarily unavailable. Error: {type(e).__name__}. Please try again."
+            yield user_msg
 
 
 
-def respond_claude(message: str, history: list[dict]) -> str:
+def respond_claude(message: str, history: list[dict]) -> Generator[str, Any, None]:
     """Stream response from Claude API."""
     if not claude_client:
         yield "Claude backend is not configured."
@@ -295,6 +530,8 @@ def respond_claude(message: str, history: list[dict]) -> str:
         return
     _claude_usage[session_id].append(time.time())
 
+    # Claude doesn't need Groq for routing — skip _route_sections to avoid
+    # burning Groq tokens (and failing when Groq's daily limit is hit)
     messages = [{"role": msg["role"], "content": msg["content"]} for msg in history]
     messages.append({"role": "user", "content": message})
 
@@ -311,13 +548,14 @@ def respond_claude(message: str, history: list[dict]) -> str:
                 response += text
                 yield response
     except Exception as e:
+        traceback.print_exc()
         if response:
-            yield response + f"\n\n*[Response interrupted: {type(e).__name__}]*"
+            yield response + f"\n\n*[{_classify_error(e)}]*"
         else:
-            yield f"Claude API error: {type(e).__name__}. Try the open-source model."
+            yield _classify_error(e)
 
 
-def respond(message: str, history: list[dict], backend: str = "") -> str:
+def respond(message: str, history: list[dict], backend: str = "") -> Generator[str, Any | None, None]:
     """Route to the selected backend."""
     if backend == "Claude (Haiku)" and claude_client:
         yield from respond_claude(message, history)
@@ -357,6 +595,7 @@ with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
         with gr.TabItem("Chat"):
             gr.Markdown(
                 "Ask me about Leandro's engineering background, projects, and technical approach. "
+                "For complex questions (e.g., matching tools to your challenges), try the Claude backend for more precise answers. "
                 "For a deeper conversation, download/copy the profile and portfolio docs from the tabs above, and add it to Claude, ChatGPT, "
                 "or your preferred tool."
             )
