@@ -48,6 +48,20 @@ the REJECTED response is "rejected".
 **Implication:** Every comparison run is both a quality assessment and a training
 data collection event. The workflow was designed for this dual purpose.
 
+## Compare-Models Timeout Design (2026-04)
+
+The 300s per-model timeout in compare-models.py is calibrated for the 30B-A3B MoE at
+10-20 tok/s (max ~6000 tokens). Dense models slower than ~5 tok/s cannot complete
+coding tasks within this limit. Empirically: gemma3:27b at 3.2 tok/s generates
+1500-2000 tokens for coding tasks, requiring 470-625s — always times out.
+
+**Rationale:** The timeout is not a tuning parameter — it's a practical signal that
+a model is too slow for iterative coding use. If a model times out consistently on
+warmed benchmarks, it should be marked inactive regardless of quality.
+**Implication:** Before benchmarking a new model, estimate: (expected_tokens / tok/s).
+If that exceeds 240s (giving 60s margin), the model will fail the benchmark regardless
+of the quality it would produce.
+
 ## Validate-Code Scaffolding (2026-02)
 
 validate-code.py doesn't just compile raw code — it scaffolds it first. If Go code
