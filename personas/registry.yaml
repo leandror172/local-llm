@@ -422,3 +422,39 @@ my-python-dsr14:
   num_ctx: 16384
   tier: full
   status: active
+
+my-go-g3-12b:
+  modelfile: modelfiles/go-g3-12b-gemma3-12b.Modelfile
+  base_model: gemma3:12b
+  role: Go 1.22+ backend developer following Effective Go and standard project layout.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-go-g3-27b:
+  modelfile: modelfiles/go-g3-27b-gemma3-27b.Modelfile
+  base_model: gemma3:27b
+  role: Go 1.22+ backend developer following Effective Go and standard project layout.
+  temperature: 0.3
+  num_ctx: 8192
+  tier: full
+  status: inactive  # benchmarked 2026-04-09: 3.2 tok/s, timeout on all coding tasks
+
+my-python-g3-12b:
+  modelfile: modelfiles/python-g3-12b-gemma3-12b.Modelfile
+  base_model: gemma3:12b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active
+
+my-python-g3-27b:
+  modelfile: modelfiles/python-g3-27b-gemma3-27b.Modelfile
+  base_model: gemma3:27b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 8192
+  tier: full
+  status: inactive  # benchmarked 2026-04-09: 3.2 tok/s, timeout on all coding tasks

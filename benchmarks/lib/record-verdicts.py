@@ -10,6 +10,14 @@ Usage (via wrapper — do not call directly):
   benchmarks/lib/run-record-verdicts.sh --file results/my.jsonl # specific file, last entry
   benchmarks/lib/run-record-verdicts.sh --entry 0               # first entry (0-indexed, default: -1)
   benchmarks/lib/run-record-verdicts.sh --list                   # list all entries with timestamps
+
+  # Non-interactive mode (verdicts supplied via flags — works in Claude Code):
+  benchmarks/lib/run-record-verdicts.sh --entry 0 --verdicts "A,I" --notes "|package main + error string"
+  benchmarks/lib/run-record-verdicts.sh --entry 1 --verdicts "I,I" --notes "external dep + deadlock|evictOldest wrong end"
+
+  --verdicts: comma-separated A/I/R in model order (e.g. "A,I,R")
+  --notes:    pipe-separated notes for each model; empty string for ACCEPTED (e.g. "|note2|note3")
+              Only required for IMPROVED and REJECTED entries.
 """
 
 import argparse
@@ -32,6 +40,15 @@ def parse_args():
         help="Entry index (0-based; -1 = last, default)",
     )
     p.add_argument("--list", action="store_true", help="List all entries and exit")
+    p.add_argument(
+        "--verdicts",
+        help="Non-interactive: comma-separated verdicts in model order (e.g. 'A,I,R')",
+    )
+    p.add_argument(
+        "--notes",
+        default="",
+        help="Non-interactive: pipe-separated notes per model (e.g. '|note for model2|note for model3')",
+    )
     return p.parse_args()
 
 
@@ -63,6 +80,29 @@ def list_entries(entries: list[dict]):
         marker = " ✓" if has_verdicts else ""
         print(f"  {i:<4} {e.get('timestamp', '?'):<22} {models}{marker}")
     print()
+
+
+def apply_verdicts_noninteractive(results: list[dict], verdicts_str: str, notes_str: str) -> list[dict]:
+    """Apply verdicts from CLI flags without any input() calls."""
+    verdict_map = {"A": "ACCEPTED", "I": "IMPROVED", "R": "REJECTED"}
+    raw = [v.strip().upper() for v in verdicts_str.split(",")]
+    notes = [n.strip() for n in notes_str.split("|")] if notes_str else []
+
+    if len(raw) != len(results):
+        print(
+            f"ERROR: --verdicts has {len(raw)} value(s) but entry has {len(results)} model(s).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    for i, (result, choice) in enumerate(zip(results, raw)):
+        if choice not in verdict_map:
+            print(f"ERROR: invalid verdict '{choice}' for model {i+1} — must be A, I, or R.", file=sys.stderr)
+            sys.exit(1)
+        result["verdict"] = verdict_map[choice]
+        result["verdict_note"] = notes[i] if i < len(notes) else ""
+
+    return results
 
 
 def collect_verdict(model: str, content: str, index: int, existing: dict | None) -> dict:
@@ -136,20 +176,24 @@ def main():
     for line in entry.get("prompt", "").splitlines():
         print(f"    {line}")
 
-    already_rated = sum(1 for r in results if r.get("verdict"))
-    if already_rated == len(results):
-        print(f"\n  Note: all {len(results)} responses already have verdicts.")
-        redo = input("  Re-record all verdicts? [y/N]: ").strip().lower()
-        if redo != "y":
-            print("  Aborted — no changes made.")
-            return
+    # Non-interactive path: --verdicts supplied via flag
+    if args.verdicts:
+        apply_verdicts_noninteractive(results, args.verdicts, args.notes)
+    else:
+        already_rated = sum(1 for r in results if r.get("verdict"))
+        if already_rated == len(results):
+            print(f"\n  Note: all {len(results)} responses already have verdicts.")
+            redo = input("  Re-record all verdicts? [y/N]: ").strip().lower()
+            if redo != "y":
+                print("  Aborted — no changes made.")
+                return
 
-    # Collect verdict for each result
-    for i, result in enumerate(results, start=1):
-        existing = {"verdict": result.get("verdict"), "verdict_note": result.get("verdict_note")}
-        v = collect_verdict(result["model"], result.get("content", ""), i, existing)
-        result["verdict"] = v["verdict"]
-        result["verdict_note"] = v.get("verdict_note", "")
+        # Collect verdict for each result interactively
+        for i, result in enumerate(results, start=1):
+            existing = {"verdict": result.get("verdict"), "verdict_note": result.get("verdict_note")}
+            v = collect_verdict(result["model"], result.get("content", ""), i, existing)
+            result["verdict"] = v["verdict"]
+            result["verdict_note"] = v.get("verdict_note", "")
 
     # Summary
     print(f"\n{SEPARATOR}")
