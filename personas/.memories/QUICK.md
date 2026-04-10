@@ -4,8 +4,9 @@
 
 ## Status
 
-35+ active personas from 13 base models. Registry stable.
-Last additions: session 45 (2026-03-20) — 5 new Python personas + context audit.
+37 active personas from 15 base models. Registry stable.
+Last additions: session 50 (2026-04-09) — gemma3:12b + gemma3:27b added to models.yaml;
+  my-go-g3-12b, my-python-g3-12b created (active); my-go-g3-27b, my-python-g3-27b (inactive — too slow).
 MCP tools (create_persona, copy_persona) operational via ollama-bridge.
 
 ## Architecture
