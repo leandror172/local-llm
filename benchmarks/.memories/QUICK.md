@@ -8,30 +8,19 @@ Operational. 4 test categories, multi-language validators.
 Used for Layer 4 evaluation runs and model comparison experiments.
 Results in `benchmarks/results/` (timestamped directories).
 
-## Architecture
-
-Orchestrator (`run-benchmark.sh`) drives models through prompts, extracts code,
-validates, and generates comparison reports. Each category has its own validator.
-
 ## Test Categories
-
-| Category | Prompts | Validator |
-|----------|---------|-----------|
-| backend | 3 (Go, Java) | go build + go vet, javac |
-| structured | 5 (JSON) | JSON schema validation |
-| visual | 3 (Canvas) | Puppeteer headless browser |
-| decomposed | 3x3 stages | Stage-chained + Puppeteer |
+`backend` (3, Go+Java), `structured` (5, JSON), `visual` (3, Canvas), `decomposed` (3×3 stages)
 
 ## Key Tools
+- `lib/compare-models.py` — side-by-side comparison, verdict capture
+- `lib/record-verdicts.py` — ACCEPTED/IMPROVED/REJECTED; use `--verdicts A,I --notes "n1|n2"`
+  for non-interactive mode (Claude Code has no TTY — interactive `input()` hits EOFError)
+- `lib/validate-code.py` — compile gate (Go, Shell); `lib/validate-html.js` — Puppeteer
 
-- `lib/compare-models.py` — side-by-side model comparison, captures verdicts
-- `lib/record-verdicts.py` — DPO verdict recording (ACCEPTED/IMPROVED/REJECTED)
-- `lib/validate-code.py` — scaffolds + compiles code (Go, Shell)
-- `lib/validate-html.js` — Puppeteer runtime smoke test
+## Model Findings (durable)
+- **gemma3:12b** — ~31 tok/s, IMPROVED tier on Go + Python; 3-4× faster than qwen2.5-coder:14b
+- **gemma3:27b** — 3.2 tok/s, timeouts on all coding tasks even warm; not viable on RTX 3060
 
 ## Deeper Memory -> KNOWLEDGE.md
-
-- **Few-Shot Injection** — 47% token reduction measured
-- **Prompt Decomposition** — 3-stage sweet spot, empirical validation
-- **Idempotent Runs** — skip existing results, --no-skip to re-run
-- **Compare-Models Pipeline** — DPO verdict collection workflow
+- Few-Shot Injection (47% token reduction), Prompt Decomposition (3-stage sweet spot),
+  Idempotent Runs, Compare-Models DPO pipeline

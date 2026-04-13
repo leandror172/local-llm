@@ -47,6 +47,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
 | Overlay wizard idea | `docs/ideas/overlay-wizard.md` | Deferred: running overlay install interactively inside an AI CLI; wizard pattern generalization; eventual local TUI |
+| Claude Code source + related repos | `docs/ideas/claude-code-python-port.md` | Leaked TS source (cloned locally), open-multi-agent (MIT TS framework). Key files: `services/mcp/normalization.ts` (MCP response format), `services/autoDream/` (memory consolidation). open-multi-agent supports Ollama via baseURL; verified tool-calling with Gemma 4 + Qwen 3. |
 | ollama-scaffolding overlay | `overlays/ollama-scaffolding/` | Local model usage conventions: verdict protocol, decision tree, stubs-then-Ollama, cold-start policy |
 | Ollama coordination layer | `docs/ideas/ollama-coordination-layer.md` | Deferred: shared directory contract for multi-process VRAM coordination; migration path from bundled Option 1 |
 | Ollama eviction/concurrency findings | `docs/findings/ollama-eviction-concurrency-findings.md` | Empirical test results: Ollama queues unloads (no correctness risk); PR #9392 may replace file layer |
@@ -93,10 +94,14 @@ Detailed benchmarks and selection rules → `.claude/archive/layer-0-findings.md
 | Code gen (DPO comparison A) | qwen2.5-coder:14b | my-go-q25c14 — code-specialized, full VRAM |
 | Code gen (DPO comparison B) | qwen3:8b-q8_0 | my-go-q3-q8 — same model, higher quant |
 | Code gen (quality ceiling) | qwen3:30b-a3b | my-go-q3-30b — hybrid, ~10-20 tok/s |
+| Code gen (speed tier) | gemma3:12b | my-go-g3-12b — 3-4× faster than 14B (~32 tok/s), IMPROVED quality (both prompts); good for iterative tasks |
 
 **Future candidates (not yet pulled):**
 - `qwen3.5:35b-a3b` (24GB) — released 2026-02-24, architecture update. Revisit in ~4 weeks.
 - `qwen3-coder:30b` (19GB) — code-specialized MoE. Pull after qwen3:30b-a3b is validated.
+- `gemma3:12b` (~7-8GB Q4) — fits fully in VRAM; **QAT variant** available (`gemma-3-12b-it-qat`) = Quantization-Aware Training, Q4 quality closer to Q8. Multimodal (image+text). Priority benchmark against `my-go-q25c14` on coding tasks. Ollama tag: `gemma3:12b`.
+- `gemma3:27b` (~14-16GB Q4) — needs ~4-6GB RAM spillover; dense architecture offloads better than MoE (expect ~20-25 tok/s vs 10-20 for 30B-A3B). QAT variant also available. Only worthwhile if 12B falls short on reasoning. Ollama tag: `gemma3:27b`.
+- `gemma4:31b` (~19GB+) — released 2026-04-02, multimodal. Not on Ollama yet as of 2026-04-09. Revisit in ~2 weeks.
 <!-- /ref:model-selection -->
 
 <!-- ref:thinking-mode -->

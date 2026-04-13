@@ -81,6 +81,21 @@ models:
     num_ctx: 16384              # 9.0GB weights, 3.0GB free
     default_temp: quality
 
+  # --- Gemma 3 (Google, VRAM-only + hybrid) ---
+  gemma3:12b:
+    display_name: Gemma3-12B
+    file_suffix: gemma3-12b
+    name_suffix: "-g3-12b"
+    num_ctx: 16384              # 8.1GB weights, ~3.9GB free — 16K safe (same tier as 14B)
+    default_temp: quality
+
+  gemma3:27b:
+    display_name: Gemma3-27B
+    file_suffix: gemma3-27b
+    name_suffix: "-g3-27b"
+    num_ctx: 8192               # 17GB total, ~5GB spills to RAM — keep ctx conservative
+    default_temp: quality
+
   # --- Hybrid VRAM+RAM ---
   qwen3:30b-a3b:
     display_name: Qwen3-30B-A3B

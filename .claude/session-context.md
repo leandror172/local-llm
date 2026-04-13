@@ -83,7 +83,7 @@
   - 5 new Python personas: qwen3.5:9b, qwen3:14b, qwen2.5-coder:14b, deepseek-coder-v2:16b, deepseek-r1:14b
   - Context audit: 8B models upgraded 8K→32K (35 Modelfiles updated), 14B confirmed at 16K
   - Added DeepSeek models to models.yaml; added timeout param to ask_ollama/generate_code
-  - PR #21 opened on `feature/persona-mcp-tools`
+  - PR #21 merged (`feature/persona-mcp-tools`)
 - **Session 46** (2026-03-25) — Claude backend for HF Space chatbot:
   - Added Claude (Haiku 4.5) as optional chat backend with per-session rate limiting (30/hr)
   - Decomposed system prompt into composable parts (_PREAMBLE + _RULES + _PROFILE) — Claude gets relaxed grounding rules (synthesis allowed), HF keeps strict rules
@@ -105,14 +105,23 @@
   - Deployed to HF Spaces. Free tier Llama handles overview questions; Claude backend better for analytical
   - Updated README.md, index.md, root .gitignore
   - Branch: `feature/smart-chatbot` (pushed to remote, deployed to HF)
+- **Session 50** (2026-04-09) — Gemma 3 benchmark + Claude Code source research:
+  - gemma3:12b + gemma3:27b pulled and benchmarked (3 prompts, Go + Python)
+  - gemma3:12b: ~31 tok/s, IMPROVED tier — added as speed tier to index.md + model-selection
+  - gemma3:27b: 3.2 tok/s, timeout on all coding tasks, marked inactive in registry
+  - 4 personas created: my-go-g3-12b, my-python-g3-12b (active); g3-27b variants (inactive)
+  - record-verdicts.py: added --verdicts/--notes flags for non-interactive verdict recording
+  - docs/ideas/claude-code-python-port.md: all 3 cloned repos documented with actionable notes
+  - .memories/ QUICK + KNOWLEDGE updated for root, personas, benchmarks
+  - Branch: `feature/gemma3-benchmark` (3 commits, PR not yet opened)
 - **Session 49** (2026-04-03) — Chatbot Phase 2 + error handling:
   - Phase 2 LLM-as-router: `_build_section_index()`, `_route_sections()`, `_enrich_prompt()` — 3 sections/question via non-streaming Groq call
   - Test suite: 48 unit tests, synthetic fixtures, `_make_hf_exc` using real Groq nested `{"error":{}}` format
   - Error handling: `_parse_hf_error()` (structured), `_retry_after()` (Xh/Xm/Xs parsing), `_classify_error()` (wait time + Haiku suggestion), `_with_retry()` wrapper
   - Claude backend skips Groq routing; debug logging added (`career_chat_log` alias)
-  - PR #26 open: `feature/chatbot-phase2` → master
-- **Active branch:** `feature/chatbot-phase2`
-- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix, Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library
+  - PR #26 merged: `feature/chatbot-phase2` → master
+- **Active branch:** `feature/gemma3-benchmark` (PR not yet opened)
+- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library, `add_model` MCP tool (complete the chain: tag → models.yaml entry → derives suffix/name/ctx → optional domain; complements copy_persona/create_persona), gemma4 on Ollama (check ~2026-04-23)
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
   - Environment audit: Ollama running, httpx available, trafilatura needed, no SearXNG/Firecrawl/Crawl4AI yet
@@ -128,8 +137,9 @@
   - Expanded companion: `docs/research/ddd-agent-decisions.md` (`ref:ddd-agent-decisions`) — anti-pattern detection with RTX 3060 cost numbers, split/merge flowchart, cost/benefit template, worked examples
   - Key finding: only 3 justified model swap points; Agent Tool should be code; Agent A2 deferred
   - Branch: `feature/mvp-spike-plan` (continued)
-- **Next:** Merge PR #26 (feature/chatbot-phase2 → master); deploy to HF Spaces; review .memories/ PRs in expenses + web-research; merge PR #21; resume expense repo MCP work; execute web-research MVP spike; Phase 3 chatbot (source code awareness)
-- **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper (5.8) in this repo
+- **Next:** PR for feature/gemma3-benchmark; Phase 3 chatbot (source code awareness); read claude-code/src/services/mcp/normalization.ts before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
+- **Cross-repo:** MVP spike executing in web-research repo sessions; expense MCP work executing in expenses repo sessions; PR #21 merged (`feature/persona-mcp-tools`); .memories/ PRs merged in expenses + web-research
+- **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
 <!-- /ref:current-status -->
 

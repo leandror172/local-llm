@@ -1,8 +1,51 @@
 # Session Log
 
-**Current Layer:** Portfolio + HF Space chatbot + cross-repo patterns
-**Current Session:** 2026-04-03 — Session 49: Chatbot Phase 2 — LLM routing + error handling
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`
+**Current Layer:** Local model benchmarking + persona expansion
+**Current Session:** 2026-04-09 — Session 50: Gemma 3 benchmark + Claude Code source research
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`
+
+---
+
+## 2026-04-09 - Session 50: Gemma 3 benchmark + Claude Code source research
+
+### Context
+Resumed on master (clean). User brought two news items: Claude Code source leaked via npm
+sourcemap, and Google's Gemma 3 / TurboQuant. Session focused on investigating both and
+storing findings durably.
+
+### What Was Done
+- **Research stored:** `docs/ideas/claude-code-python-port.md` — covers all 3 cloned repos
+  (claude-code TS source, claude-code-sourcemap, open-multi-agent); key files to read flagged
+- **Gemma models pulled:** `gemma3:12b` (8.1GB) and `gemma3:27b` (17GB) via Ollama
+- **models.yaml:** added gemma3:12b + gemma3:27b entries (15 base models now)
+- **Personas cloned** via copy_persona from my-go-q25c14 / my-python-q25c14:
+  - `my-go-g3-12b`, `my-python-g3-12b` (active)
+  - `my-go-g3-27b`, `my-python-g3-27b` (inactive — benchmarked, too slow)
+- **Benchmarks (3 prompts, 2 languages):**
+  - gemma3:12b: ~31 tok/s, IMPROVED on all; 3-4× faster than qwen2.5-coder:14b
+  - gemma3:27b: 3.2 tok/s, timeout on ALL tasks even warmed
+- **record-verdicts.py:** added `--verdicts A,I,R --notes "p1|p2|p3"` for non-interactive
+  use (Claude Code terminal has no TTY; interactive `input()` hits EOFError)
+- **Gemma 4:** not on Ollama as of 2026-04-09; revisit ~2 weeks
+- **Deferred:** `add_model` MCP tool (automate models.yaml entry creation)
+- **.memories/ updated:** QUICK (root, personas, benchmarks) + KNOWLEDGE (root, benchmarks)
+- **Branch:** `feature/gemma3-benchmark`, 3 commits (feat + 2x chore)
+
+### Decisions Made
+- gemma3:12b = new speed tier: same IMPROVED quality as 14B, 3-4× faster; best for iterative tasks
+- gemma3:27b = not viable on RTX 3060: dense partial offload slower than MoE at same total size
+  (dense pays PCIe bandwidth on every layer; MoE only activates ~3B params per token)
+- Claude Code `services/mcp/normalization.ts` → read before any MCP server refactor
+- Claude Code `services/autoDream/consolidationPrompt.ts` → read before improving session-handoff quality
+- open-multi-agent (MIT, 3 deps): defer until web-research multi-agent phase; local model pattern
+  via `provider: 'openai', baseURL: 'http://localhost:11434/v1'` verified with Gemma 4 / Qwen 3
+
+### Next
+- Open PR for `feature/gemma3-benchmark` → master
+- Phase 3 chatbot (source code awareness)
+- Explore `claude-code/src/services/mcp/normalization.ts` before next MCP refactor
+- Gemma 4 on Ollama: check availability ~2026-04-23
+- Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights 4.6)
 
 ---
 
@@ -99,35 +142,6 @@ User was working in the expense repo on MCP work and realized two questions kept
 - Resume expense repo MCP work (the questions that triggered this session are now answered)
 - Merge PR #21 (persona MCP tools, still open)
 - Consider adding patterns as new conventions are established
-
----
-
-## 2026-03-25 - Session 46: Claude backend for HF Space chatbot
-
-### Context
-Compacted fork from an earlier session (same day) that built the portfolio docs, engineer profile, and HF Space chatbot (Level 2). This session focused on adding Claude as an optional backend model and iterating on the chatbot UX.
-
-### What Was Done
-- **Added Claude (Haiku) as optional chat backend** — dual-client architecture with HF Inference (free) and Anthropic API. Radio selector auto-appears when `ANTHROPIC_API_KEY` secret is set. Same code deploys with or without Claude.
-- **Per-session rate limiting** — in-memory rate limiter (30 calls/hour default, configurable via `CLAUDE_MAX_PER_HOUR`). Real backstop is Anthropic dashboard spend cap.
-- **Separate system prompts per backend** — Decomposed prompt into `_PREAMBLE + _RULES + _PROFILE`. HF gets strict grounding rules ("ONLY state facts"); Claude gets relaxed rules ("may synthesize and draw connections"). Fixed `.replace()` bug where backslash-continuation strings didn't match.
-- **Self-referential context** — Added NOTE to preamble telling models this chatbot is itself part of Leandro's portfolio work.
-- **Updated examples** — Consistent third-person tone ("How does Leandro..." not "How do you..."); added 2 new LLM-focused examples.
-- **Increased Claude max_tokens** — 512 → 2048 (Haiku is fast/cheap, no timeout risk).
-- **Fixed Gradio `additional_inputs` examples format** — Must be `list[list]` when `additional_inputs` is provided.
-- **Added `career_chat_upload_hf` alias** to `~/.bashrc`; fixed missing `cd` in `career_chat_start`; added `--with anthropic` to start alias.
-- **HF Space debugging** — Diagnosed stuck "Restarting" state; added startup logging; used factory reboot via API.
-
-### Decisions Made
-- **Anthropic API is separate from Claude Pro** — different account, billing, rate limits. API key needed independently.
-- **Haiku 4.5 as default** — cheapest Claude model, undated alias (`claude-haiku-4-5`) for auto-upgrades.
-- **Composable prompt architecture** — `_PREAMBLE + _RULES + _PROFILE` instead of `.replace()` string surgery. Avoids bugs from Python line continuation semantics.
-- **Rate limit HF = no, Claude = yes** — HF is free (their problem); Claude costs money (your problem).
-- **Local model used for code gen** — `my-python-q25c14` generated `respond_claude` function structure (IMPROVED verdict, ~400 tokens saved). 3 parallel calls timed out (GPU contention); sequential retry succeeded.
-
-### Next
-- Level 3 (local Ollama chatbot) deferred until post-Layer 7 fine-tuning
-- Resume main work: merge PR #21, Layer 5 expense classifier, or web research MVP spike
 
 ---
 

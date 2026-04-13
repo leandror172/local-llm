@@ -2,20 +2,24 @@
 
 *Repo-wide accumulated decisions. Read on demand by agents and chatbot.*
 
-## VRAM Budget Constraints (2026-02)
+## VRAM Budget Constraints (2026-02, updated 2026-04)
 
 All architecture decisions are shaped by 12GB VRAM on an RTX 3060.
 7-8B models fit fully in VRAM with generous context (32K tokens).
 14B models fit but are limited to ~16K context before quality degrades.
 30B MoE models (Qwen3-30B-A3B) run hybrid VRAM+RAM at ~10-20 tok/s.
+Dense partial offload: a 27B dense model spilling 5GB to RAM runs at ~3.2 tok/s —
+slower than 30B MoE because dense models pay PCIe bandwidth on every layer; MoE
+only activates ~3B params per token so fewer layers cross the bus.
 
 **Rationale:** Consumer GPU is the constraint, not a limitation — it forces
 discipline in prompt design, model selection, and context management that
 would be invisible with unlimited compute.
 **Implication:** Every feature must answer "does this fit in 12GB?" before
-architecture discussion begins.
+architecture discussion begins. Hybrid VRAM+RAM is viable only for MoE
+architectures; dense models must fit fully in VRAM to be practical.
 
-## Model Tier Findings (2026-02 through 2026-03)
+## Model Tier Findings (2026-02 through 2026-04)
 
 8B models: 63-67 tok/s, reliable up to ~400 output tokens, good for boilerplate.
 14B models: 32 tok/s, reliable up to ~800 output tokens, better reasoning.
@@ -23,9 +27,16 @@ Key insight: prompt complexity has a hard ceiling per model tier. Beyond that,
 both timeout and logic errors co-occur. The fix is prompt decomposition, not
 retries or larger context windows.
 
+**gemma3:12b (2026-04-09):** ~31 tok/s, IMPROVED tier on Go + Python — 3-4× faster than
+qwen2.5-coder:14b (8 tok/s) with comparable quality. Same IMPROVED verdict on all 3
+benchmark prompts. Best use: iterative tasks where speed matters more than one-shot accuracy.
+**gemma3:27b (2026-04-09):** 3.2 tok/s, timeouts on all coding tasks (even warm, even
+on shorter prompts). Dense 27B at 5GB RAM spillover is slower than 30B-A3B MoE — dense
+partial offload costs more PCIe bandwidth per forward pass than MoE sparse routing.
+
 **Rationale:** Discovered empirically through benchmark runs, not from documentation.
-**Implication:** Model selection is task-driven (8B for boilerplate, 14B for reasoning,
-frontier for judgment), not "always use the biggest."
+**Implication:** Model selection is task-driven (8B for boilerplate, gemma3:12b for speed,
+14B for reasoning, frontier for judgment), not "always use the biggest."
 
 ## Prompt Decomposition (2026-02)
 
@@ -75,6 +86,33 @@ security-sensitive code, and evaluation judgment.
 costs per token. But frontier quality is needed for tasks where errors compound.
 **Implication:** The MCP server exists to make this delegation seamless — Claude Code
 calls a tool, local model responds, Claude evaluates the result.
+
+## Claude Code Source + Related Repos (2026-04)
+
+Three repos cloned to `~/workspaces/clones/` after Claude Code source leaked via npm sourcemap:
+- **claude-code/** — full TS source (785KB main.tsx, 40+ tools, coordinator/, services/)
+- **claude-code-sourcemap/** — raw v0.2.8 with maps; community fork → dnakov/anon-kode
+- **open-multi-agent/** — MIT TypeScript multi-agent framework (3 runtime deps)
+
+**Key files to read before MCP server refactor:**
+- `claude-code/src/services/mcp/normalization.ts` — how Claude Code normalizes MCP tool
+  responses before they reach the prompt; informs optimal MCP response format
+- `claude-code/src/services/autoDream/consolidationPrompt.ts` — the exact prompt driving
+  automated memory consolidation (autoDream = our session-handoff, automated)
+
+**open-multi-agent integration pattern:**
+```typescript
+const localAgent = { provider: 'openai', baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' }
+```
+Verified tool-calling: Gemma 4, Llama 3.1, Qwen 3. Falls back to text extraction if model
+returns tool calls as text (handles thinking-mode models). Relevant for web-research multi-agent phase.
+
+**Full notes:** `docs/ideas/claude-code-python-port.md`
+
+**Rationale:** Understanding Claude Code internals lets us align MCP tool response formats
+with how the host actually consumes them, rather than guessing from observed behavior.
+**Implication:** Read `normalization.ts` before any MCP server refactor. Read
+`consolidationPrompt.ts` before improving session-handoff memory quality.
 
 ## Structured Output via Grammar-Constrained Decoding (2026-02)
 

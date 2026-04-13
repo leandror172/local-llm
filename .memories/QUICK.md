@@ -5,8 +5,9 @@
 ## Status
 
 Layers 0-4 complete (of 10-layer plan). Infrastructure fully operational.
-Layer 5+ active: expense classifier using the MCP bridge for local inference.
-Session 47 was most recent (2026-03-26): technology conventions pattern doc.
+Layer 5+ active: expense classifier, chatbot Phases 1+2 (cross-repo context + LLM routing).
+Session 50 (2026-04-09): Gemma 3 benchmarked — gemma3:12b added as speed tier (~31 tok/s),
+gemma3:27b ruled out (3.2 tok/s, timeouts on all coding tasks).
 
 ## Repo Structure
 
