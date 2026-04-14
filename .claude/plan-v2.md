@@ -290,7 +290,7 @@ ollama-bridge call log (starts accumulating from Layer 5 onwards)
 | 7.8 | DPO dataset builder: (prompt, chosen, rejected) triples from Claude-improved local outputs | 1-2 days |
 | 7.9 | QLoRA fine-tuning pipeline: dataset → train adapter → evaluate vs baseline | 2-3 days |
 | 7.10 | Prompt pre-processor: local model compresses/enriches context before Claude calls | 1 day |
-| 7.11 | (Advanced) Full RAG with embeddings: nomic-embed-text + cosine similarity retrieval | 2-3 days |
+| 7.11 | **Promoted to cross-cutting substrate:** Latent Topic Graph. See `ref:plan-latent-topic-graph` (`docs/plans/2026-04-13-latent-topic-graph-implementation.md`) and concept at `ref:concept-latent-topic-graph`. Delivers content-relation retrieval consumed by Layers 3, 4, 7, 8, 9 + career chatbot Phase 3. Executes in parallel with Layers 5/6. | ~3 sessions MVP |
 
 ### Notes on distillation approach
 

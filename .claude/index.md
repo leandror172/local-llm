@@ -377,6 +377,24 @@ Full research → `.claude/archive/layer-1-research.md`
 
 ---
 
+## Smart RAG / Content-Linking Research (Session 51, 2026-04-13)
+
+Cluster investigating retrieval techniques beyond keyword/vector RAG — triggered by the question of how career chatbot, Claude Code, web-research, and llm repo can "note relations between any part of content." Five philosophies identified across 7 sources.
+
+| What | Where | Ref Key |
+|------|-------|---------|
+| **Hub / cross-cutting patterns** | `docs/research/smart-rag-index.md` | `smart-rag-research` |
+| LLM Wiki (pre-compile + typed KG) — highest relevance | `docs/research/smart-rag-llm-wiki.md` | `rag-llm-wiki` |
+| Obsidian Mind (graph-first + classification hook) | `docs/research/smart-rag-obsidian-mind.md` | `rag-obsidian-mind` |
+| Repowise (code-graph + git co-change) | `docs/research/smart-rag-repowise.md` | `rag-repowise` |
+| Claude-Mem (hybrid observation store) | `docs/research/smart-rag-claude-mem.md` | `rag-claude-mem` |
+| MemPalace (hierarchical spatial memory) | `docs/research/smart-rag-mempalace.md` | `rag-mempalace` |
+| HERA arxiv (multi-agent RAG — tangential) | `docs/research/smart-rag-hera.md` | `rag-hera` |
+| Dify (baseline platform — what not to build) | `docs/research/smart-rag-dify.md` | `rag-dify` |
+| Prior conversation (initial survey + architecture) | `docs/ideas/smart-rag.md`, `docs/ideas/smart-rag2.md`, `docs/ideas/smart-rag3.md` | — |
+| **Concept paper (publishable-grade, model-agnostic)** | `docs/research/latent-topic-graph.md` | `concept-latent-topic-graph` |
+| **Implementation plan (for future session)** | `docs/plans/2026-04-13-latent-topic-graph-implementation.md` | `plan-latent-topic-graph` |
+
 ## Web Research Tool (Session 44+)
 
 | What | Where | Ref Key |

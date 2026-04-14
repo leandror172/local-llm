@@ -1,8 +1,39 @@
 # Session Log
 
-**Current Layer:** Local model benchmarking + persona expansion
-**Current Session:** 2026-04-09 — Session 50: Gemma 3 benchmark + Claude Code source research
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`
+**Current Layer:** Layer 5+ / smart-rag research cluster
+**Current Session:** 2026-04-13 — Session 51: Smart RAG research + Latent Topic Graph concept & plan
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`
+
+---
+
+## 2026-04-13 - Session 51: Smart RAG research + Latent Topic Graph concept & plan
+
+### Context
+Resumed on `feature/gemma3-benchmark`, then branched to `feature/smart-rag-research`.
+User wanted a shared content-linking substrate across 4 consumers (career chatbot,
+Claude Code, web-research, llm repo) — not a one-size RAG.
+
+### What Was Done
+- **Research cluster (commit d51cb42):** 7 sources reviewed, per-file notes written
+  under `docs/research/smart-rag-*.md` with ref keys `rag-*`; hub at
+  `ref:smart-rag-research`. `.claude/index.md`, `.memories/{QUICK,KNOWLEDGE}.md` updated.
+- **Latent Topic Graph (commit 38a5bad):** synthesized research into named construct.
+  - Concept paper `docs/research/latent-topic-graph.md` (`ref:concept-latent-topic-graph`)
+  - 10-phase plan `docs/plans/2026-04-13-latent-topic-graph-implementation.md`
+    (`ref:plan-latent-topic-graph`) with plan-v2 integration table
+  - plan-v2 task 7.11 promoted from "vanilla RAG" to cross-cutting LTG substrate
+- Web-research MCP tested live (`research_url`, qwen3:14b, ~46s).
+
+### Decisions Made
+- **Files are containers, not nodes.** Topics are primary; file-to-file is derived aggregate.
+- **Anchor stratification:** `ref:KEY` = confidence 1.0 anchors; LLM edges carry provenance.
+- **Build once in llm repo; federate to consumers.** One retriever, per-domain wikis.
+- **Do not implement in this session** — concept + plan only; next session executes Phase 0+1.
+
+### Next
+- Execute LTG plan Phase 0 (decisions) → Phase 1 (topic-extractor spike).
+- Open PR for `feature/smart-rag-research` → master.
+- Separate pending: PR for `feature/gemma3-benchmark`.
 
 ---
 
@@ -117,31 +148,6 @@ Started from Arize job application analysis — Claude Desktop asked about obser
 - **Merge PR #21** — persona MCP tools, still open from session 45.
 - **Resume expense repo MCP work** — deferred from session 47.
 - **READMEs as context** — 8 high-value READMEs identified for Phase 1 sync. Currently synced but only QUICK files loaded. Could load root-level READMEs in always-inject tier.
-
----
-
-## 2026-03-26 - Session 47: Technology conventions pattern doc
-
-### Context
-User was working in the expense repo on MCP work and realized two questions kept surfacing ("which MCP framework?" and "which Python env?") that were already decided in this repo. Identified the gap: decisions are scattered across session-context, MEMORY.md, and findings — no portable reference.
-
-### What Was Done
-- **Created `docs/patterns/technology-conventions.md`** — self-indexed pattern doc with 7 sections: Python tooling (uv), MCP development (FastMCP), Ollama API, script conventions, git workflow, persona naming, licensing compliance
-- **Self-indexing design** — `ref:patterns-index` lists all patterns in a table; each section is a `ref:patterns-*` block. Two-level lookup: discover via index, drill into details. Split policy documented for when file exceeds ~400 lines.
-- **Added "Revisit when" conditions** — each contingent decision includes conditions under which it should be reconsidered. Two patterns marked as invariants (script conventions = security, licensing = hard requirement). Index table has `Revisit?` column for quick scanning.
-- **Wired cross-repo discovery** — memory entries added to all 3 project memory directories (llm, expenses, web-research) pointing to `ref_lookup(key="patterns-index", path="/mnt/i/workspaces/llm")`. Leverages existing `ref_lookup` MCP tool with `--root` support.
-- **Added CLAUDE.md rule #5** — "Before making technology choices, check `ref:patterns-index`" (this repo trigger)
-- **Updated `.claude/index.md`** — registered the new patterns doc
-
-### Decisions Made
-- **A+B mechanism for pattern discovery:** CLAUDE.md one-liner (this repo) + memory entries (cross-repo via MCP). Rejected SessionStart hook (high context cost, always-on) and overlay distribution (unnecessary given MCP ref_lookup already works cross-repo).
-- **Patterns are not overlays** — unlike scaffolding which copies files, patterns are queried remotely via MCP. No need to duplicate content across repos.
-- **"Revisit when" not universal** — some decisions are invariants (security model, legal requirements) and don't get revisit conditions.
-
-### Next
-- Resume expense repo MCP work (the questions that triggered this session are now answered)
-- Merge PR #21 (persona MCP tools, still open)
-- Consider adding patterns as new conventions are established
 
 ---
 

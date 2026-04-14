@@ -120,7 +120,15 @@
   - Error handling: `_parse_hf_error()` (structured), `_retry_after()` (Xh/Xm/Xs parsing), `_classify_error()` (wait time + Haiku suggestion), `_with_retry()` wrapper
   - Claude backend skips Groq routing; debug logging added (`career_chat_log` alias)
   - PR #26 merged: `feature/chatbot-phase2` → master
-- **Active branch:** `feature/gemma3-benchmark` (PR not yet opened)
+- **Session 51** (2026-04-13) — Smart RAG research + Latent Topic Graph concept & plan:
+  - 7-source research cluster on content-linking retrieval (`ref:smart-rag-research`); see `docs/research/smart-rag-*.md` (8 files)
+  - Named concept: **Latent Topic Graph (LTG)** — topic-level nodes, files-as-containers, anchor stratification, multi-scale. Concept paper at `ref:concept-latent-topic-graph` is publishable-grade
+  - Implementation plan: `ref:plan-latent-topic-graph` (10 phases, Phase 0 decisions required at session start, `relate(a,b)` as acceptance test, ~3 sessions to MVP)
+  - plan-v2 Layer 7 task 7.11 **promoted** from vanilla RAG to cross-cutting substrate; executes in parallel with Layers 5/6
+  - web-research MCP tool tested live (arxiv extraction, 46s via qwen3:14b)
+  - Branch: `feature/smart-rag-research` — commit d51cb42 has the research cluster; concept + plan added after, not yet committed
+- **Active branch:** `feature/smart-rag-research` (PR not yet opened)
+- **Prior active branch:** `feature/gemma3-benchmark` (PR still not opened)
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library, `add_model` MCP tool (complete the chain: tag → models.yaml entry → derives suffix/name/ctx → optional domain; complements copy_persona/create_persona), gemma4 on Ollama (check ~2026-04-23)
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
@@ -137,7 +145,7 @@
   - Expanded companion: `docs/research/ddd-agent-decisions.md` (`ref:ddd-agent-decisions`) — anti-pattern detection with RTX 3060 cost numbers, split/merge flowchart, cost/benefit template, worked examples
   - Key finding: only 3 justified model swap points; Agent Tool should be code; Agent A2 deferred
   - Branch: `feature/mvp-spike-plan` (continued)
-- **Next:** PR for feature/gemma3-benchmark; Phase 3 chatbot (source code awareness); read claude-code/src/services/mcp/normalization.ts before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
+- **Next:** Execute LTG plan (`ref:plan-latent-topic-graph`) — start at Phase 0 decisions → Phase 1 topic-extractor spike. Phase 1 extraction quality is load-bearing; do not proceed to Phase 2 unless spike is clean. Also open: PR for feature/gemma3-benchmark; commit LTG concept+plan to feature/smart-rag-research and PR; Phase 3 chatbot converges with LTG; read claude-code/src/services/mcp/normalization.ts before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
 - **Cross-repo:** MVP spike executing in web-research repo sessions; expense MCP work executing in expenses repo sessions; PR #21 merged (`feature/persona-mcp-tools`); .memories/ PRs merged in expenses + web-research
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
