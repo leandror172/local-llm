@@ -114,6 +114,51 @@ with how the host actually consumes them, rather than guessing from observed beh
 **Implication:** Read `normalization.ts` before any MCP server refactor. Read
 `consolidationPrompt.ts` before improving session-handoff memory quality.
 
+## Smart RAG / Content-Linking Research (2026-04-13, session 51)
+
+Investigation into retrieval techniques beyond keyword/vector RAG — triggered by wanting
+career chatbot, Claude Code, web-research, and llm repo to note relations across all content
+without blowing up context. 7 sources reviewed (see `ref:smart-rag-research`).
+
+**Five philosophies identified:**
+1. **Pre-compile into interlinked wiki** (Karpathy llm-wiki v1+v2) — highest relevance; v2
+   adds typed knowledge graph + hybrid search (BM25+vector+graph). Maps cleanly to our
+   "prepared artifact before HF push" constraint.
+2. **Graph-first via wikilinks** (obsidian-mind) — validates exploiting our existing
+   `ref:KEY` + `.memories/` graph instead of building a new one.
+3. **Code-graph + git co-change** (repowise) — biggest genuinely new idea: files that
+   change together without importing each other is an edge type static analysis misses.
+4. **Hybrid observation store** (claude-mem) — steal the pattern (FTS over calls.jsonl),
+   don't install it (conflicts with session-log + autoDream).
+5. **Hierarchical spatial memory** (MemPalace) — 34% recall gain from scoping alone
+   validates `.memories/` per-folder convention.
+
+**Cross-cutting patterns (3+ sources):**
+- Hybrid = BM25 + vectors + graph (table stakes)
+- Pre-compile once, query many
+- Exploit existing graph structure (our `ref:KEY` system is the seed)
+- Hierarchical scoping beats smarter embeddings
+- Filter-before-fetch via IDs (critical for Opus context discipline)
+- Supersession / contradiction tracking (addresses stale-memory problem)
+- Git co-change edges (scoped to code repos)
+
+**Architectural direction (refined from prior conversation):**
+```
+raw sources → LLM-authored wiki (pre-compile)
+            → indexed wiki (hybrid + graph from refs/links/co-change)
+            → retriever (MCP tool + HTTP endpoint)
+            → consumers: chatbot, Claude Code, web-research Dispatcher
+```
+One wiki per domain (profile, llm, web-research, expense), one federating retriever.
+Chatbot = static artifact; Claude Code = live MCP service; same artifacts underneath.
+
+**Rationale:** Off-the-shelf RAG (Dify) fails the content-linking problem; we have
+infrastructure (`ref:KEY`, `.memories/`, ollama-bridge, evaluator, overlay system) to
+build minimum-viable from primitives at <500 lines of Python.
+**Implication:** Phase 3 chatbot work and Layer 7 RAG (task 7.11) converge on this
+substrate. Build once in llm repo, consume from everywhere via federation layer.
+Full file-by-file notes: `docs/research/smart-rag-*.md` (ref keys `rag-*`).
+
 ## Structured Output via Grammar-Constrained Decoding (2026-02)
 
 Always use Ollama's `format` parameter for JSON output — 100% reliable, no speed penalty.

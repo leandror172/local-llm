@@ -36,3 +36,4 @@ llm/
 - **Prompt Decomposition** — empirically validated 3-stage sweet spot
 - **Cross-Repo Architecture** — 3 repos, one hardware platform, MCP integration layer
 - **DPO Data Collection** — passive training data from verdict-labeled inference logs
+- **Smart RAG Research** — content-linking retrieval cluster (7 sources, 5 philosophies); hub at `ref:smart-rag-research`. Converges chatbot Phase 3 + Layer 7 RAG into one substrate.
