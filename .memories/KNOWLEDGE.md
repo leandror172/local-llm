@@ -159,6 +159,48 @@ build minimum-viable from primitives at <500 lines of Python.
 substrate. Build once in llm repo, consume from everywhere via federation layer.
 Full file-by-file notes: `docs/research/smart-rag-*.md` (ref keys `rag-*`).
 
+## Latent Topic Graph — Concept + Plan (2026-04-13, session 51)
+
+Synthesis of the smart-rag research into a named construct: **Latent Topic Graph (LTG)**.
+
+**The construct:** retrieval substrate where **topic nodes** (extracted by LLM, possibly
+non-contiguous within a file) are primary, **files are containers not nodes**, edges are
+embedding-space weighted, and hand-curated `ref:KEY` structures become first-class anchor
+nodes with confidence 1.0 while LLM-inferred edges carry model-derived confidence. File-to-
+file relationships are derived aggregates, not direct edges.
+
+**Distinguishing properties:**
+1. Topic-level abstraction (not entity-level like GraphRAG, not chunk-level like vector RAG)
+2. Non-contiguous topic recognition (a topic = "what this is about," not "what's contiguous")
+3. Files as containers — drops the vertical/horizontal relationship distinction in favor of
+   pure topic-to-topic with containers as metadata
+4. Anchor stratification — hand-curated edges preserved with provenance, LLM edges traceable
+5. Derived structure rebalances on content change (raw embeddings do not) — salience,
+   rankings, and community assignments shift; the underlying vectors stay fixed
+6. Multi-scale via community detection at multiple resolutions
+
+**Cognitive framing (distinctive):** files are a crude physical-world storage container;
+a topic graph is a closer model of how knowledge actually holds together in the mind. The
+framing is what makes the concept potentially publishable rather than just pragmatic.
+
+**Relation to plan-v2:** LTG is Layer 7 task 7.11 **promoted** from vanilla RAG to a cross-
+cutting substrate consumed by Layers 3, 4, 7, 8, 9 + career chatbot Phase 3. Executes in
+parallel with Layers 5/6, does not block them.
+
+**Concept paper:** `ref:concept-latent-topic-graph` (`docs/research/latent-topic-graph.md`)
+— model-agnostic, publishable-grade idea note.
+**Implementation plan:** `ref:plan-latent-topic-graph` (`docs/plans/2026-04-13-latent-topic-graph-implementation.md`)
+— 10 phases (0–9), Phase 0 decisions required at session start, acceptance test is the
+`relate(file_a, file_b)` pairwise query returning specific verifiable answers.
+
+**Rationale:** The research cluster showed that off-the-shelf RAG falls short on content-
+relation queries; existing infrastructure (`ref:KEY` as seed graph, `.memories/` as tier-0,
+ollama-bridge + local models for free extraction passes, evaluator for scoring) covers
+most of what's needed; the novel combination (topic-level + non-contiguous + files-as-
+containers + anchor stratification) is a step beyond GraphRAG.
+**Implication:** Next session executes Phase 0 + 1 of the plan. Do not skip Phase 0
+decisions. Phase 1 topic-extraction quality is load-bearing for everything else.
+
 ## Structured Output via Grammar-Constrained Decoding (2026-02)
 
 Always use Ollama's `format` parameter for JSON output — 100% reliable, no speed penalty.

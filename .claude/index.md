@@ -391,7 +391,9 @@ Cluster investigating retrieval techniques beyond keyword/vector RAG — trigger
 | MemPalace (hierarchical spatial memory) | `docs/research/smart-rag-mempalace.md` | `rag-mempalace` |
 | HERA arxiv (multi-agent RAG — tangential) | `docs/research/smart-rag-hera.md` | `rag-hera` |
 | Dify (baseline platform — what not to build) | `docs/research/smart-rag-dify.md` | `rag-dify` |
-| Prior conversation (initial survey + architecture) | `docs/ideas/smart-rag.md`, `docs/ideas/smart-rag2.md` | — |
+| Prior conversation (initial survey + architecture) | `docs/ideas/smart-rag.md`, `docs/ideas/smart-rag2.md`, `docs/ideas/smart-rag3.md` | — |
+| **Concept paper (publishable-grade, model-agnostic)** | `docs/research/latent-topic-graph.md` | `concept-latent-topic-graph` |
+| **Implementation plan (for future session)** | `docs/plans/2026-04-13-latent-topic-graph-implementation.md` | `plan-latent-topic-graph` |
 
 ## Web Research Tool (Session 44+)
 
