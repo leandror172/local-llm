@@ -1,5 +1,5 @@
 name: session-tracking
-version: 1
+version: 2
 description: >
   Session continuity tools for Claude Code projects. Installs resume.sh
   (session-start summary) and rotate-session-log.sh (log archival). Installs

@@ -17,7 +17,7 @@ echo ""
 
 # 1. Current status (layer, next tasks, branch)
 "$SCRIPT_DIR/ref-lookup.sh" current-status 2>/dev/null \
-  | grep -v "^<!-- " | grep -v "^$" | head -20
+  | grep -v "^<!-- " | grep -v "^$" | head -20 || true
 echo ""
 
 # 2. "Next" pointer from most recent session entry in session-log.md
@@ -52,7 +52,7 @@ fi
 
 echo "═══════════════════════════════════════════════════"
 echo "  Use: .claude/tools/ref-lookup.sh <KEY>"
-KEYS=$("$SCRIPT_DIR/ref-lookup.sh" list 2>/dev/null | tr '\n' ' ')
+KEYS=$("$SCRIPT_DIR/ref-lookup.sh" list 2>/dev/null | tr '\n' ' ' || true)
 if [ -n "$KEYS" ]; then
   echo "  Keys: $KEYS"
 else
