@@ -6,8 +6,8 @@
 
 Layers 0-4 complete (of 10-layer plan). Infrastructure fully operational.
 Layer 5+ active: expense classifier, chatbot Phases 1+2 (cross-repo context + LLM routing).
-Session 50 (2026-04-09): Gemma 3 benchmarked — gemma3:12b added as speed tier (~31 tok/s),
-gemma3:27b ruled out (3.2 tok/s, timeouts on all coding tasks).
+Session 52 (2026-04-14): LTG Phase 0 decisions frozen in `retrieval/DECISIONS.md`;
+Phase 1 (topic-extractor spike) is next, with an 11-dimension rubric and 5-6 model A/B sweep.
 
 ## Repo Structure
 
@@ -19,6 +19,7 @@ llm/
   benchmarks/    # Multi-language code validation suite
   overlays/      # Portable scaffolding packages for cross-repo consistency
   modelfiles/    # Ollama Modelfile definitions
+  retrieval/     # Latent Topic Graph (LTG) substrate — Phase 0 decisions frozen (session 52)
   docs/          # Research, patterns, portfolio, findings
 ```
 
@@ -37,4 +38,4 @@ llm/
 - **Cross-Repo Architecture** — 3 repos, one hardware platform, MCP integration layer
 - **DPO Data Collection** — passive training data from verdict-labeled inference logs
 - **Smart RAG Research** — content-linking retrieval cluster (7 sources, 5 philosophies); hub at `ref:smart-rag-research`. Converges chatbot Phase 3 + Layer 7 RAG into one substrate.
-- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph`. Promotes plan-v2 task 7.11 to cross-cutting. Next session executes Phase 0 + 1.
+- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph` (+ 18 narrow phase/section refs `ltg-plan-*`). Phase 0 frozen session 52 → `retrieval/DECISIONS.md` (`ref:ltg-scope` through `ref:ltg-corpus`). Phase 1 is the topic-extractor spike, load-bearing for everything downstream.
