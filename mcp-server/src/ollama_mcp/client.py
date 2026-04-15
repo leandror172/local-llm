@@ -88,7 +88,7 @@ class OllamaClient:
         # httpx.AsyncClient reuses TCP connections across requests, which
         # avoids the overhead of a new TLS/TCP handshake per call.
         self._base_url = base_url.rstrip("/")
-        self._http = httpx.AsyncClient(base_url=self._base_url)
+        self._http = httpx.AsyncClient(base_url=self._base_url, timeout=None)
 
         # In-flight request tracking. Counts active requests per model.
         # Used by warm_model to avoid evicting a model mid-generation.
@@ -176,11 +176,17 @@ class OllamaClient:
         # Track in-flight requests so warm_model can check before evicting.
         self.mark_inflight(model)
         try:
-            response = await self._http.post(
-                "/api/chat",
-                json=payload,
-                timeout=timeout,
-            )
+            # Use a fresh client per call to avoid stale connection state from
+            # previously cancelled or timed-out requests.  The TCP handshake
+            # overhead is negligible relative to model generation time (30–150s).
+            async with httpx.AsyncClient(
+                base_url=self._base_url, timeout=None
+            ) as fresh_client:
+                response = await fresh_client.post(
+                    "/api/chat",
+                    json=payload,
+                    timeout=timeout,
+                )
         except httpx.ConnectError:
             raise OllamaConnectionError(
                 f"Cannot connect to Ollama at {self._base_url}. "
