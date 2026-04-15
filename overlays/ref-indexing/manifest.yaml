@@ -1,9 +1,10 @@
 name: ref-indexing
-version: 1
+version: 2
 description: >
   Ref block documentation system: [ref:KEY] tags in CLAUDE.md point to
   <!-- ref:KEY --> blocks in *.md files. Includes ref-lookup tool,
   integrity checker, pre-commit hook guidance, and a starter index.md.
+  v2: ref-lookup supports prefix/glob search (KEY*) and digits in key names.
 
 # Files to copy verbatim to target repo.
 # Source paths are relative to this overlay's files/ directory.
