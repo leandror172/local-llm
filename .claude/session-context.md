@@ -138,6 +138,17 @@
 - **Active branch:** `feature/ltg-phase0` (PR pending at handoff)
 - **Prior active branch:** `feature/smart-rag-research` (merged, e639b5e); `feature/gemma3-benchmark` (PR still not opened)
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library, `add_model` MCP tool (complete the chain: tag → models.yaml entry → derives suffix/name/ctx → optional domain; complements copy_persona/create_persona), gemma4 on Ollama (check ~2026-04-23)
+  - Branch: `feature/smart-rag-research` — commit d51cb42 has the research cluster; concept + plan added after, not yet committed
+- **Session 53** (2026-04-15) — ref-lookup prefix search + Phase 1 extractor spike (runner built):
+  - `ref-lookup.sh` gains glob mode (`KEY*`) + digit-key fix in `--list`; overlay ref-indexing v2; PR #30
+  - Phase 1 corpus: 8 files selected (7 prose + 1 code). `retrieval/prompts/extract.txt` + `retrieval/extract_topics.py` built via local-model workflow (q25c14 + gemma3:12b IMPROVED; Claude version chosen as final)
+  - MCP `client.py` fix: `timeout=None` on AsyncClient + fresh client per `chat()` call (fixes stale connection after cancelled requests)
+  - Deferred: `ModelCaller` Protocol for `extract_topics.py` (in `ref:deferred-infra`)
+  - `cozempic` window bug: reports 1.00M, actual 200K — multiply reported % by 5×
+  - Branch: `feature/ltg-phase1-extractor-spike` (commit 80e7ebf)
+- **Active branch:** `feature/ltg-phase1-extractor-spike` (PR not yet opened — run sweep first)
+- **Prior active branch:** `feature/ref-lookup-prefix-search` (PR #30 open); `feature/ltg-phase0` (PR open, under review); `feature/gemma3-benchmark` (PR still not opened)
+- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ModelCaller Protocol for extract_topics.py, extract create-persona.py into importable library, `add_model` MCP tool, gemma4 on Ollama (check ~2026-04-23)
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
   - Environment audit: Ollama running, httpx available, trafilatura needed, no SearXNG/Firecrawl/Crawl4AI yet
@@ -153,7 +164,7 @@
   - Expanded companion: `docs/research/ddd-agent-decisions.md` (`ref:ddd-agent-decisions`) — anti-pattern detection with RTX 3060 cost numbers, split/merge flowchart, cost/benefit template, worked examples
   - Key finding: only 3 justified model swap points; Agent Tool should be code; Agent A2 deferred
   - Branch: `feature/mvp-spike-plan` (continued)
-- **Next:** Execute LTG **Phase 1 topic-extractor spike** (`ref:ltg-plan-phase-1` + `ref:ltg-extractor` for sweep protocol). Write extraction prompt (structured output via `format`), runner script, warm models, run 5-6 models × 8 files + long-file appendix, score on 11-dim rubric, pick winner. Exit threshold: weighted quality ≥ 2.2. Also required before locking embedding: **Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 on 12GB card). Also open: PR for feature/ltg-phase0; PR for feature/gemma3-benchmark; Phase 3 chatbot converges with LTG; read claude-code/src/services/mcp/normalization.ts before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
+- **Next:** **Run the Phase 1 sweep** (`python3 retrieval/extract_topics.py` from repo root) — 4 models × 8 corpus files. Score dims 1-4 auto; fill dims 5-8 manually in `retrieval/runs/*-manual-rubric.md`. Exit threshold: weighted quality ≥ 2.2. Document results in `retrieval/spike-results.md`, then open PR for `feature/ltg-phase1-extractor-spike`. Also: **Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 on 12GB card, required before locking embedding). Still open: PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; read `claude-code/src/services/mcp/normalization.ts` before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
 - **Cross-repo:** MVP spike executing in web-research repo sessions; expense MCP work executing in expenses repo sessions; PR #21 merged (`feature/persona-mcp-tools`); .memories/ PRs merged in expenses + web-research
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
