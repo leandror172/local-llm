@@ -126,9 +126,17 @@
   - Implementation plan: `ref:plan-latent-topic-graph` (10 phases, Phase 0 decisions required at session start, `relate(a,b)` as acceptance test, ~3 sessions to MVP)
   - plan-v2 Layer 7 task 7.11 **promoted** from vanilla RAG to cross-cutting substrate; executes in parallel with Layers 5/6
   - web-research MCP tool tested live (arxiv extraction, 46s via qwen3:14b)
-  - Branch: `feature/smart-rag-research` — commit d51cb42 has the research cluster; concept + plan added after, not yet committed
-- **Active branch:** `feature/smart-rag-research` (PR not yet opened)
-- **Prior active branch:** `feature/gemma3-benchmark` (PR still not opened)
+  - Branch: `feature/smart-rag-research` — merged as commit e639b5e
+- **Session 52** (2026-04-14) — LTG Phase 0 decisions frozen + plan re-indexed:
+  - All 8 Phase 0 decisions resolved and recorded in `retrieval/DECISIONS.md` (new top-level `retrieval/` directory). Each entry: decision / rationale / alternatives / revisit trigger.
+  - Notable non-default outcomes: **embedding** flipped to `bge-m3` via Ollama after confirming `ollama pull bge-m3` works (eliminates runtime split); **storage** simplified to pure LanceDB + sidecars (SQLite layer rejected for MVP); **extractor** deferred to empirical A/B in Phase 1 with 11-dim rubric, 5-6 models × 8 files + long-file appendix, exit threshold ≥ 2.2
+  - Plan re-indexed: 19 narrow `ref:KEY` blocks replace single file-wide block. `plan-latent-topic-graph` now wraps intro+goal only; per-phase keys `ltg-plan-phase-0..9` + section keys `ltg-plan-{required-reading,deferred,relationship,integration,risks,estimate,success,handoff}`. Phase 0/1/2 annotated with forward references to session 52 resolutions.
+  - Decision ref keys (in `retrieval/DECISIONS.md`): `ltg-scope`, `ltg-embedding`, `ltg-vector-store`, `ltg-graph-lib`, `ltg-extractor`, `ltg-placement`, `ltg-storage-layout`, `ltg-corpus`, `ltg-notes`.
+  - New feedback memory: batch multiple edits into one Write or parallel calls on Opus (sequential Edits burn cost). Captured mid-session after user flagged it.
+  - Chore commits: `.mcp.json` gains web-research MCP entry; 3 `/copy` snapshot files saved under `docs/ideas/smart-rag-phase-0-response-*.md`.
+  - Branch: `feature/ltg-phase0` (3 commits: docs + 2x chore)
+- **Active branch:** `feature/ltg-phase0` (PR pending at handoff)
+- **Prior active branch:** `feature/smart-rag-research` (merged, e639b5e); `feature/gemma3-benchmark` (PR still not opened)
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library, `add_model` MCP tool (complete the chain: tag → models.yaml entry → derives suffix/name/ctx → optional domain; complements copy_persona/create_persona), gemma4 on Ollama (check ~2026-04-23)
 - **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
   - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
@@ -145,7 +153,7 @@
   - Expanded companion: `docs/research/ddd-agent-decisions.md` (`ref:ddd-agent-decisions`) — anti-pattern detection with RTX 3060 cost numbers, split/merge flowchart, cost/benefit template, worked examples
   - Key finding: only 3 justified model swap points; Agent Tool should be code; Agent A2 deferred
   - Branch: `feature/mvp-spike-plan` (continued)
-- **Next:** Execute LTG plan (`ref:plan-latent-topic-graph`) — start at Phase 0 decisions → Phase 1 topic-extractor spike. Phase 1 extraction quality is load-bearing; do not proceed to Phase 2 unless spike is clean. Also open: PR for feature/gemma3-benchmark; commit LTG concept+plan to feature/smart-rag-research and PR; Phase 3 chatbot converges with LTG; read claude-code/src/services/mcp/normalization.ts before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
+- **Next:** Execute LTG **Phase 1 topic-extractor spike** (`ref:ltg-plan-phase-1` + `ref:ltg-extractor` for sweep protocol). Write extraction prompt (structured output via `format`), runner script, warm models, run 5-6 models × 8 files + long-file appendix, score on 11-dim rubric, pick winner. Exit threshold: weighted quality ≥ 2.2. Also required before locking embedding: **Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 on 12GB card). Also open: PR for feature/ltg-phase0; PR for feature/gemma3-benchmark; Phase 3 chatbot converges with LTG; read claude-code/src/services/mcp/normalization.ts before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
 - **Cross-repo:** MVP spike executing in web-research repo sessions; expense MCP work executing in expenses repo sessions; PR #21 merged (`feature/persona-mcp-tools`); .memories/ PRs merged in expenses + web-research
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)

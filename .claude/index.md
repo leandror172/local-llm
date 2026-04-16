@@ -393,7 +393,48 @@ Cluster investigating retrieval techniques beyond keyword/vector RAG — trigger
 | Dify (baseline platform — what not to build) | `docs/research/smart-rag-dify.md` | `rag-dify` |
 | Prior conversation (initial survey + architecture) | `docs/ideas/smart-rag.md`, `docs/ideas/smart-rag2.md`, `docs/ideas/smart-rag3.md` | — |
 | **Concept paper (publishable-grade, model-agnostic)** | `docs/research/latent-topic-graph.md` | `concept-latent-topic-graph` |
-| **Implementation plan (for future session)** | `docs/plans/2026-04-13-latent-topic-graph-implementation.md` | `plan-latent-topic-graph` |
+| **Implementation plan (for future session)** | `docs/plans/2026-04-13-latent-topic-graph-implementation.md` | `plan-latent-topic-graph` (intro+goal) |
+
+### LTG Plan — Per-Section Ref Keys
+
+The plan file is long; narrow ref keys let `ref-lookup.sh` return a single phase or section rather than the full document. All blocks live in `docs/plans/2026-04-13-latent-topic-graph-implementation.md`.
+
+| Section | Ref Key |
+|---|---|
+| Required Reading | `ltg-plan-required-reading` |
+| Phase 0 — Decisions | `ltg-plan-phase-0` |
+| Phase 1 — Topic Extractor Spike | `ltg-plan-phase-1` |
+| Phase 2 — Embedding + Storage | `ltg-plan-phase-2` |
+| Phase 3 — Anchor Integration | `ltg-plan-phase-3` |
+| Phase 4 — Graph + Communities | `ltg-plan-phase-4` |
+| Phase 5 — `relate(a,b)` Tool | `ltg-plan-phase-5` |
+| Phase 6 — MCP `retrieve_context` | `ltg-plan-phase-6` |
+| Phase 7 — Reranker (optional) | `ltg-plan-phase-7` |
+| Phase 8 — Per-Repo Configuration | `ltg-plan-phase-8` |
+| Phase 9 — Federation Layer | `ltg-plan-phase-9` |
+| Deferred / Out of Scope | `ltg-plan-deferred` |
+| Relationship to plan-v2 | `ltg-plan-relationship` |
+| Integration Points | `ltg-plan-integration` |
+| Risks and Mitigations | `ltg-plan-risks` |
+| Work Estimate | `ltg-plan-estimate` |
+| Success Definition | `ltg-plan-success` |
+| Handoff Notes | `ltg-plan-handoff` |
+
+## LTG Phase 0 Decisions (Session 52, 2026-04-14)
+
+Frozen decisions for the Latent Topic Graph substrate, reached before any code was written. Each decision records rationale, alternatives, and revisit triggers. Full file: `retrieval/DECISIONS.md`.
+
+| Decision | Ref Key | Summary |
+|---|---|---|
+| Index scope | `ltg-scope` | Per-repo index; federation deferred to Phase 9 |
+| Embedding model | `ltg-embedding` | `bge-m3` via Ollama (dense 1024-dim); fallback chain to mxbai/arctic/nomic |
+| Vector store | `ltg-vector-store` | LanceDB, no separate SQL layer |
+| Graph library | `ltg-graph-lib` | networkx + leidenalg |
+| Topic extractor | `ltg-extractor` | Empirical A/B in Phase 1: 5-6 models, 8 files + long-file appendix, 11-dim rubric |
+| Code placement | `ltg-placement` | New top-level `retrieval/` directory |
+| Storage layout | `ltg-storage-layout` | Pure LanceDB + JSON/YAML sidecars + `inspect.py` |
+| MVP corpus | `ltg-corpus` | Curated subset (`docs/research/` + `docs/ideas/` + `.claude/` + `.memories/`); two branch points after Phase 1 |
+| Cross-cutting notes | `ltg-notes` | Call logging, warm-up, gitignore for raw Phase 1 extractions |
 
 ## Web Research Tool (Session 44+)
 

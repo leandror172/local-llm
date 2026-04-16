@@ -2,6 +2,9 @@
   "mcpServers": {
     "ollama-bridge": {
       "command": "/mnt/i/workspaces/llm/mcp-server/run-server.sh"
+    },
+    "web-research": {
+      "command": "/mnt/i/workspaces/web-research/tools/web-research/run-server.sh"
     }
   }
 }
