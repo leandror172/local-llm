@@ -558,12 +558,21 @@ render();
 """
 
 
+TEMPLATE_PATH = Path(__file__).parent / "ltg-rater.template.html"
+
+
 def build_html(records: list[dict], sources: dict[str, str], tag: str) -> str:
+    template = TEMPLATE_PATH.read_text(encoding="utf-8")
     return (
-        HTML_TEMPLATE
-        .replace("__TAG__", tag)
-        .replace("__DATA_JSON__", json.dumps(records))
-        .replace("__SOURCES_JSON__", json.dumps(sources))
+        template
+        .replace("__TAG_PLACEHOLDER__", tag)
+        .replace("__DATA_PLACEHOLDER__", json.dumps({
+            "tag": tag,
+            "weights": {"dim5": 0.35, "dim6": 0.35, "dim7": 0.20, "dim8": 0.10},
+            "exit_threshold": 2.2,
+            "data": records,
+        }))
+        .replace("__SOURCES_PLACEHOLDER__", json.dumps(sources))
     )
 
 

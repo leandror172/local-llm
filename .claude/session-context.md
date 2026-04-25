@@ -80,6 +80,11 @@
   - Scored 4/8 files: QUICK.md, smart-rag-repowise.md, plan-v2.md, build-persona.py. **Preliminary winner: qwen3:14b** (2.68 raw → 2.43 with speed penalty). Backup: qwen3:8b (2.20, 4× faster). Not yet frozen — gates on remaining 4 files + determinism + MoE eval.
   - Findings saved to `retrieval/spike-results.md` with 3 ref blocks: `ltg-phase1-results`, `ltg-phase1-insights`, `ltg-phase1-routing-hypothesis`. Indexed in `.claude/index.md`. 5 new deferred items in `.claude/tasks.md` under `ref:deferred-infra`.
   - Notable finding: qwen2.5-coder:14b has a striking prose-vs-code split (off-by-one on prose, tightest boundaries on code). Motivates file-type-routed extractor.
+- **Session 56** (2026-04-25) — LTG rater page redesign (Claude Design + viz_sweep wiring):
+  - Produced Claude Design brief + representative JSONL slice (`retrieval/runs/20260416-181839-design-slice.json`, 57 KB) for the Design session.
+  - User generated `retrieval/ltg-rater.template.html` (>1600 lines) in Claude Design — new UI with keyboard scoring, model-comparison view, resizable split, dark/light toggle, etc.
+  - Wired template into `retrieval/viz_sweep.py`: file-based read, updated placeholder tokens. Fixed DATA envelope mismatch (template expects `{tag, weights, exit_threshold, data:[]}` not bare array). Re-renders cleanly: 32 records, 8 sources, 288 KB.
+  - Legacy `HTML_TEMPLATE` string literal in `viz_sweep.py` is now dead code — safe to delete after new template confirmed on all edge cases.
 - **Active branch:** `feature/ltg-phase1-extractor-spike` (PR not yet opened — 5/8 scored by Claude draft; 3 remaining + user-track scoring before PR)
 - **Prior active branch:** `feature/ref-lookup-prefix-search` (PR #30 open); `feature/ltg-phase0` (PR open, under review); `feature/gemma3-benchmark` (PR still not opened)
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ModelCaller Protocol for extract_topics.py, extract create-persona.py into importable library, `add_model` MCP tool, gemma4 on Ollama (check ~2026-04-23)

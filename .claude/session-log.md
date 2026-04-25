@@ -1,8 +1,39 @@
 # Session Log
 
 **Current Layer:** LTG Phase 1 — topic extractor spike
-**Current Session:** 2026-04-17 — Session 55: persona-template.md scored + two-rater framing + overlap-semantics insight
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`
+**Current Session:** 2026-04-25 — Session 56: LTG rater page redesign (Claude Design + viz_sweep wiring)
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`
+
+---
+
+## 2026-04-25 - Session 56: LTG rater page redesign (Claude Design + viz_sweep wiring)
+
+### Context
+Short tooling session. Entry point: user wanted the HTML-viz scoring page URL, then pivoted to redesigning it using Claude Design (claude.ai artifact builder).
+
+### What Was Done
+- **Located viz at** `retrieval/runs/20260416-181839.html` and confirmed how to open it in Windows from WSL2.
+- **Generated Claude Design brief:** Instructions + self-contained prompt covering the data schema, behavioral spec (localStorage, export, span-chip highlighting), and 8 specific improvement goals (keyboard scoring, model-comparison view, sticky progress bar with per-file coloring, better card density, resizable split, prominent metrics, dark/light toggle, error state polish).
+- **Generated representative JSONL slice** (`retrieval/runs/20260416-181839-design-slice.json` — 57 KB): 4 models on `smart-rag-repowise.md` (multi-model comparison case) + 1 `qwen2.5-coder:14b` run on `build-persona.py` (code file_role variation), plus both source files. Bundled as `{tag, weights, exit_threshold, data, sources}` envelope matching the Design prompt spec.
+- **User ran Claude Design** and produced `retrieval/ltg-rater.template.html` (>1600 lines).
+- **Wired template into `retrieval/viz_sweep.py`:**
+  - Added `TEMPLATE_PATH` constant pointing to the new file
+  - Replaced inline `HTML_TEMPLATE` string literal usage in `build_html` with `TEMPLATE_PATH.read_text()`
+  - Updated placeholder tokens: `__TAG__` / `__DATA_JSON__` / `__SOURCES_JSON__` → `__TAG_PLACEHOLDER__` / `__DATA_PLACEHOLDER__` / `__SOURCES_PLACEHOLDER__`
+- **Diagnosed and fixed DATA envelope mismatch:** First render showed the correct tag in the header but no records/models. Root cause: template reads `DATA.data` (envelope shape from slice JSON), but renderer was injecting a bare array. Fixed `build_html` to wrap records as `{tag, weights, exit_threshold, data: [...]}`; SOURCES stays as bare map (template reads `SOURCES[path]`). Re-rendered cleanly: 32 records, 8 sources, 288 KB.
+
+### Decisions Made
+- **Template read from disk per render call** (not imported at module load) — enables iterating on the HTML in Claude Design and re-running without restarting Python.
+- **Legacy `HTML_TEMPLATE` string stays in `viz_sweep.py` as dead code** for this session — safe to delete in a follow-up once the new template is confirmed on all edge cases (error rows, missing topics, etc.).
+- **Envelope shape is authoritative:** `weights` and `exit_threshold` now flow from Python → template. Any future rubric changes should be made in `viz_sweep.py`, not in the template JS.
+
+### Next
+- **Score remaining 3 corpus files** (either Claude draft or user HTML-viz track): `docs/research/smart-rag-index.md`, `docs/ideas/smart-rag3.md`, `.memories/KNOWLEDGE.md`. KNOWLEDGE.md highest priority.
+- **Reconcile two-rater scores:** Export `manual-rubric.md` from viz localStorage → compare with Claude's draft in `retrieval/spike-results.md`. Record divergences. Gate extractor freeze on agreement.
+- **After all 8 scored:** Commit `feature/ltg-phase1-extractor-spike`, open PR.
+- **Then:** prompt-iteration experiment (topic-count floor + containment-only overlap); determinism re-runs (dim 9 Jaccard); Phase 2 VRAM co-residence probe.
+- **Delete `HTML_TEMPLATE` dead code** from `viz_sweep.py` once new template confirmed stable.
+- **Still open:** PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
 
 ---
 
@@ -92,76 +123,7 @@ Resumed on `feature/ltg-phase0` (PR open for review). Two quick deferred items f
 - **Still open**: PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers.
 **Current Layer:** Layer 5+ / LTG Phase 0 frozen
 **Current Session:** 2026-04-14 — Session 52: LTG Phase 0 decisions + plan re-indexed
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`
-
----
-
-## 2026-04-14 - Session 52: LTG Phase 0 decisions + plan re-indexed
-
-### Context
-Resumed on master (clean) after session 51's smart-rag + LTG work merged in
-commit e639b5e. User switched to Opus max effort for the Phase 0 decision
-discussion — all 8 Phase 0 decisions required explicit resolution before
-any code. New branch `feature/ltg-phase0`.
-
-### What Was Done
-- **Phase 0 decisions frozen** in `retrieval/DECISIONS.md` — 8 entries, each with
-  decision / rationale / alternatives / revisit trigger. New top-level `retrieval/`
-  directory created with `.memories/QUICK.md` following the per-folder convention.
-- **Plan document re-indexed** with 19 narrow `ref:KEY` blocks replacing the single
-  file-wide block per the single-responsibility rule. `plan-latent-topic-graph`
-  now wraps only intro+goal; per-phase keys `ltg-plan-phase-0` through
-  `ltg-plan-phase-9` plus `ltg-plan-{required-reading,deferred,relationship,
-  integration,risks,estimate,success,handoff}`. Phase 0/1/2 blocks cross-reference
-  the session 52 resolutions in DECISIONS.md.
-- **`.claude/index.md` updated** with two new tables: "LTG Plan — Per-Section Ref Keys"
-  (18 sub-keys) and "LTG Phase 0 Decisions" (8 decision keys).
-- **Root `.memories/QUICK.md` updated** — added `retrieval/` to repo structure,
-  advanced LTG status, added pointers to the narrow ref keys.
-- **Feedback memory saved** (`feedback_batch_edits_on_opus.md`): batch multiple edits
-  into one Write or parallel tool calls on Opus, not sequential Edits (cost).
-- **Chore commits:** `.mcp.json` gains the web-research MCP entry; 3 `/copy` response
-  snapshots saved to `docs/ideas/smart-rag-phase-0-response-*.md`.
-
-### Decisions Made
-Summary of frozen Phase 0 (full rationale in `retrieval/DECISIONS.md`):
-- **Index scope** → per-repo, federation to Phase 9 (`ref:ltg-scope`)
-- **Embedding** → `bge-m3` via Ollama (Ollama-native flipped the decision from
-  nomic-embed-text); fallback chain mxbai → arctic → nomic. VRAM co-residence
-  probe required in Phase 2 before locking. (`ref:ltg-embedding`)
-- **Vector store** → LanceDB (`ref:ltg-vector-store`)
-- **Graph lib** → networkx + leidenalg (`ref:ltg-graph-lib`)
-- **Extractor** → empirical A/B in Phase 1, no pre-commit; 5-6 models × 8 files +
-  long-file appendix, 11-dim rubric, two-stage variant for top 2, exit threshold
-  ≥ 2.2 weighted quality (`ref:ltg-extractor`)
-- **Placement** → new top-level `retrieval/` directory (`ref:ltg-placement`)
-- **Storage layout** → pure LanceDB + JSON/YAML sidecars + `inspect.py` (rejected
-  the SQLite+LanceDB split; adding SQLite later is a 2-hour add if ever needed).
-  (`ref:ltg-storage-layout`)
-- **Corpus** → curated subset + `docs/ideas/`; two finding-dependent branch points
-  (code files, long files) to resolve after Phase 1 sweep (`ref:ltg-corpus`)
-
-Non-default highlights: embedding choice hinged on `ollama pull bge-m3` succeeding;
-extractor decision is explicitly "how we will decide" rather than "what we decided";
-two-stage extraction variant added to sweep after discussion of attention-splitting
-failure modes; long-file handling elevated to Phase 1 appendix after user flagged
-the >1MB web-research MCP wiki file as a stress test that might reveal architectural
-findings (file-as-unit vs segment-as-unit).
-
-### Next
-- **Phase 1 topic-extractor spike.** Write the structured-output extraction prompt
-  + runner script. Warm models via `warm_model` MCP tool before batch. Run the
-  sweep (5-6 models × 8 files + long-file appendix). Score against the 11-dim
-  rubric. Pick winner. Document in `retrieval/phase1-results.md` and
-  `retrieval/phase1-long-file-findings.md`. Do not advance to Phase 2 unless
-  weighted quality ≥ 2.2.
-- **Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 on 12GB card) is required
-  before locking the embedding choice; if eviction happens during query-time ops,
-  drop to `mxbai-embed-large`.
-- Open PR for `feature/ltg-phase0` → master.
-- Still open: PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with
-  LTG; read claude-code `services/mcp/normalization.ts` before next MCP refactor;
-  Layer 4 stragglers; registry hot-reload; server.py refactor.
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`
 
 ---
 
