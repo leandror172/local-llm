@@ -4,9 +4,11 @@
 
 ## Status
 
-Session 52 (2026-04-14): Phase 0 decisions **frozen** in `DECISIONS.md`. No code yet.
-Next: Phase 1 topic-extractor spike — load-bearing for everything downstream. Do not
-advance to Phase 2 unless Phase 1 hits the weighted quality exit threshold (≥2.2).
+Session 56 (2026-04-25): Phase 1 extractor spike **in progress**. Sweep ran (32 records,
+4 models × 8 corpus files). 5/8 files scored (Claude draft). Preliminary winner:
+**qwen3:14b** (q=2.42 ✅, threshold ≥2.2). Rater UI redesigned — new template at
+`ltg-rater.template.html`, rendered by `viz_sweep.py`. Do not advance to Phase 2 until
+all 8 files scored + two-rater reconciliation (Claude draft vs user HTML-viz scores).
 
 ## What Lives Here
 
@@ -14,13 +16,12 @@ advance to Phase 2 unless Phase 1 hits the weighted quality exit threshold (≥2
 retrieval/
   DECISIONS.md              # Phase 0 decisions (frozen, session 52)
   .memories/                # This folder's working + semantic memory
-  # Coming in Phase 1:
-  extract_topics.py         # Topic extractor runner
+  extract_topics.py         # Topic extractor runner (4 models × 8 files)
+  viz_sweep.py              # HTML rater renderer — uses ltg-rater.template.html
+  ltg-rater.template.html   # Scoring UI (Claude Design, 1600+ lines)
+  spike-results.md          # Phase 1 scoring + insights (ref:ltg-phase1-results etc.)
   prompts/extract.txt       # Structured-output extraction prompt
-  phase1-raw/               # Per-(model, file) raw JSON (gitignored)
-  phase1-scores.csv         # Rubric scores
-  phase1-results.md         # Narrative summary + winner
-  phase1-long-file-findings.md  # >1MB MCP wiki chunking experiment
+  runs/                     # Sweep outputs: JSONL + rendered HTML + design slice
 ```
 
 ## Frozen Phase 0 Decisions (see DECISIONS.md for full rationale)
@@ -36,7 +37,7 @@ retrieval/
 
 ## Key Rules
 
-- **Phase 1 is load-bearing.** If quality is poor, iterate the prompt — not the model.
+- **Phase 1 is load-bearing.** Extractor freeze gates Phase 2. If quality is poor, iterate prompt — not model.
 - **VRAM co-residence probe required** before locking bge-m3 (qwen3:14b + bge-m3 ≈ 12GB on 12GB card).
 - **Raw extractions gitignored** — only scores + narrative results committed.
 - **Warm models before batch runs** via `warm_model` MCP tool to eliminate cold starts.
