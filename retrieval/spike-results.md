@@ -50,27 +50,49 @@
 
 Exit threshold is `≥ 2.2`. ✅ = passes threshold.
 
-### User's per-file scores
+### User's per-file scores (HTML-viz track, complete — session 58)
 
-_Pending — will be exported from HTML viz localStorage once scoring complete._
+Source: `retrieval/runs/manual-rubric.md` + `retrieval/runs/ltg-rater-20260416-181839-20260430-215756Z.json` (32/32 cells scored, with 648 per-topic scores `{n, d, b}` in 29/32 cells; per-topic JSON usage deferred to Phase 2 — see `ref:deferred-infra`).
 
 | File | gemma3:12b | qwen3:14b | qwen2.5-coder:14b | qwen3:8b |
 |---|---|---|---|---|
-| `.memories/QUICK.md` | — | — | — | — |
-| `docs/research/smart-rag-repowise.md` | — | — | — | — |
-| `.claude/plan-v2.md` | — | — | — | — |
-| `personas/build-persona.py` | — | — | — | — |
-| `docs/research/smart-rag-index.md` | — | — | — | — |
-| `docs/ideas/smart-rag3.md` | — | — | — | — |
-| `personas/persona-template.md` | — | — | — | — |
-| `.memories/KNOWLEDGE.md` | — | — | — | — |
+| `.memories/QUICK.md` | 0.75 | **2.80 ✅** | 1.75 | **2.70 ✅** |
+| `docs/research/smart-rag-repowise.md` | **2.20 ✅** | **2.70 ✅** | **2.25 ✅** | **2.50 ✅** |
+| `.claude/plan-v2.md` | 1.35 | **2.70 ✅** | **2.35 ✅** | 1.90 |
+| `personas/build-persona.py` | 1.65 | **2.90 ✅** | **2.90 ✅** | **2.60 ✅** |
+| `personas/persona-template.md` | **2.20 ✅** | **3.00 ✅** | **2.55 ✅** | **2.90 ✅** |
+| `.memories/KNOWLEDGE.md` | **2.20 ✅** | **3.00 ✅** | **2.65 ✅** | **2.90 ✅** |
+| `docs/research/smart-rag-index.md` | 2.00 | **2.80 ✅** | **2.45 ✅** | **2.65 ✅** |
+| `docs/ideas/smart-rag3.md` | **2.20 ✅** | **3.00 ✅** | **2.35 ✅** | **2.90 ✅** |
+| **average (8 files)** | **1.82** | **2.86** | **2.41** | **2.63** |
+
+### Two-rater reconciliation (session 58, 2026-04-30) — Branch C
+
+**Outcome.** Both rater tracks produce **identical 4-model ranking** and identical pass/fail verdicts after speed penalty (`qwen3:14b ✅ > qwen3:8b ✅ > qwen2.5-coder:14b ❌ > gemma3:12b ❌`). User track is systematically more lenient (per-model Δ_avg: gemma +0.21, qwen3:14b +0.18, coder +0.40, qwen3:8b +0.36) but the relative ordering and gating decisions hold under both raters.
+
+**Decisive cells** (the four that gate Branch A/B/C from `ref:ltg-phase1-pending-revisions`):
+
+| Cell | Claude | User | Cross-rater agreement |
+|---|---|---|---|
+| `smart-rag-index.md` × qwen3:14b | 2.43 | 2.80 | — |
+| `smart-rag-index.md` × qwen3:8b  | **2.55** | 2.65 | ✗ Claude says qwen3:8b wins by +0.12; User says qwen3:14b wins by +0.15 — flip does NOT survive |
+| `smart-rag3.md` × qwen3:14b | **2.85** | **3.00** | ✓ both agree |
+| `smart-rag3.md` × qwen3:8b  | 2.30 | 2.90 | ✓ both agree (qwen3:14b wins) |
+
+**Resolution: Branch C (mixed).** Both raters agree on `smart-rag3` (qwen3:14b wins) but disagree on `smart-rag-index` (the qwen3:8b lead does not survive). Per the pre-registered decision tree: **keep 2-arm routing as the production decision; preserve the cross-reference-index 3rd-arm hypothesis as a deferred item** for re-evaluation when (a) determinism re-runs supply more evidence, (b) more cross-reference files are added to the corpus, or (c) MoE candidates are evaluated. The spike's n=1 on this file role is genuinely thin. See `ref:ltg-phase1-routing-hypothesis` for the revised production routing.
+
+**Largest single-cell disagreement: `.memories/QUICK.md` × `gemma3:12b` (Δ=−0.93).** Claude scored 1.68; user scored 0.75 with d5=0 and the explicit note _"Tends to infer wrong ideas (memory_architecture name/description from aggregated pieces that seem very tangent to that idea), strange decisions on spans (12-14 + 16-23, missing `llm/` root folder of structure)"_. This is the **only** cell of 32 where the user track is harsher than Claude, and it concerns a model already verdict-failing — so it sharpens gemma's `❌` rather than weakening it. The concrete failure mode it reveals is *semantic hallucination on dense memory files*: gemma3:12b inferred a topic identity from peripheral content rather than from the topic's own span, a behaviour the per-file weighted scalar in Claude's draft underweighted.
+
+**Coder borderline note.** Under the user track, `qwen2.5-coder:14b` finishes at 2.16 adjusted (raw 2.41, −0.25 speed penalty) — only 0.04 below the 2.2 threshold, vs Claude draft's 1.76 adjusted (0.44 below). Verdict still resolves to `❌`, but the margin is small enough that adding 2-3 more code files to the corpus could plausibly flip it. Tracked as the "specialized-extractor routing study" deferred item.
+
+**Dim-8 reweight question (insight #6).** User-track weighted scores ran systematically higher on whole-section-drop files (`KNOWLEDGE.md` × qwen3:8b: +0.65; `persona-template.md` × qwen3:8b: +0.65) — but the per-dim breakdown of the Claude draft is not available, so a d8-specific calibration claim cannot be made from per-file scalars alone. What can be said: **dim-8 reweighting is not load-bearing for the ranking** (the binary freeze decision survives both rater tracks unchanged). Left as a Phase 2 deferred refinement — could matter if the rubric is later repurposed as a continuous quality metric (e.g., for DPO scoring at Layer 7); for the binary freeze it is fit-for-purpose.
 
 ### After speed penalty (−0.25 if < 15 tok/s) — final 8-file averages
 
 | Model | raw avg | TPS | adjusted | verdict |
 |---|---|---|---|---|
 | qwen3:14b         | 2.69 |  9.4 | **2.44** | ✅ passes — winner overall (lead 0.17 over qwen3:8b) |
-| qwen3:8b          | 2.27 | 38.4 | **2.27** | ✅ passes; 4× faster; **best on cross-reference index format** |
+| qwen3:8b          | 2.27 | 38.4 | **2.27** | ✅ passes; 4× faster; **best on cross-reference index format in Claude draft** (user track inverted this — see Two-rater reconciliation above) |
 | qwen2.5-coder:14b | 2.01 |  6.5 | **1.76** | ❌ fails overall — code-only candidate |
 | gemma3:12b        | 1.61 | 16.7 | **1.61** | ❌ fails — boilerplate + off-by-one on dense bullets + under-extraction on long prose |
 
@@ -85,10 +107,10 @@ _Pending — will be exported from HTML viz localStorage once scoring complete._
 **Not recommended as general-purpose extractor:** `gemma3:12b` (boilerplate descriptions + off-by-one on dense bullets + under-extraction on long prose — only 6 topics for an 84-line architectural doc), `qwen2.5-coder:14b` (off-by-one span numbering on dense prose; emits structural meta-topics on long architectural docs — three rule-3 violations on `smart-rag3.md`; worst single-file score 1.55).
 
 **Do not freeze yet.** Gate the final `ref:ltg-extractor` decision-replacement on:
-1. **Two-rater reconciliation** — user's HTML-viz scores must agree on the ranking; per-dim divergences signal rubric calibration issues (especially dim 8 weight, see finding #6)
-2. **Determinism re-runs on winner** (dim 9 Jaccard) — does qwen3:14b's `smart-rag-index.md` off-by-one reproduce, or was it sample-unlucky?
-3. **MoE probe** per `ref:ltg-phase1-routing-hypothesis` — fold into Phase 2 VRAM co-residence probe
-4. **Routing-hypothesis update** — cross-reference index now joins prose and code as a third file class with a different best model; the routing story is genuinely 3-armed (insight #7) and the format-sensitivity is now empirically validated by paired-file evidence (insight #8)
+1. ~~**Two-rater reconciliation**~~ — **complete (session 58, Branch C)**: identical ranking and verdicts under both raters; user-track leniency does not flip pass/fail on any model; cross-ref-index 3rd-arm deferred (see Two-rater reconciliation above and `ref:ltg-phase1-routing-hypothesis`).
+2. **Determinism re-runs on winner** (dim 9 Jaccard) — does qwen3:14b's `smart-rag-index.md` off-by-one reproduce, or was it sample-unlucky? Now the cheapest gating evidence remaining (~30s of compute); if reproducible, supplies the missing Phase 1 evidence for the deferred 3rd arm.
+3. **MoE probe** per `ref:ltg-phase1-routing-hypothesis` — fold into Phase 2 VRAM co-residence probe.
+4. ~~**Routing-hypothesis update**~~ — **complete (session 58)**: 2-arm production routing; cross-ref-index 3rd arm deferred to Phase 2 pending more file-class samples or MoE eval (Branch C, see `ref:ltg-phase1-routing-hypothesis`).
 
 <!-- /ref:ltg-phase1-results -->
 
@@ -211,24 +233,55 @@ Both lower-tier models also vary by format, but neither is strong enough on eith
 
 **Implication for the freeze:** if user-track scoring agrees on the smart-rag-index/smart-rag3 ranking flip, route by format; if it disagrees, the third routing arm collapses and qwen3:14b becomes single-model default. This single paired comparison is the highest-leverage reconciliation point in the two-rater diff.
 
+### 9. Two-rater reconciliation (session 58) — ranking robust, calibration is rater-dependent
+
+After the user's HTML-viz scoring track completed (32/32 cells in `retrieval/runs/manual-rubric.md` + per-topic detail in `retrieval/runs/ltg-rater-20260416-181839-20260430-215756Z.json`), the two rater tracks produced **identical 4-model ranking and identical pass/fail verdicts** but with systematic absolute-score divergence:
+
+| Model | Claude raw avg | User raw avg | Δ_avg | Verdict (both) |
+|---|---|---|---|---|
+| qwen3:14b         | 2.69 | 2.86 | +0.17 | ✅ |
+| qwen3:8b          | 2.27 | 2.63 | +0.36 | ✅ |
+| qwen2.5-coder:14b | 2.01 | 2.41 | +0.40 | ❌ (borderline under user, 0.04 below threshold) |
+| gemma3:12b        | 1.61 | 1.82 | +0.21 | ❌ |
+
+**The decisive flip from finding #8 did not survive.** On `smart-rag-index.md`, Claude scored qwen3:8b > qwen3:14b by +0.12 (motivating the 3-arm routing hypothesis). The user track reverses the order — qwen3:14b > qwen3:8b by +0.15. On `smart-rag3.md` both raters agree (qwen3:14b wins by +0.55 / +0.10). Per the pre-registered decision tree (`ref:ltg-phase1-pending-revisions` Branch C), this is mixed → keep 2-arm routing, defer 3rd arm to Phase 2.
+
+**The single counter-direction divergence is structurally informative.** Of 20 cells with |Δ| ≥ 0.30, **19 are user-higher**; the lone exception, `.memories/QUICK.md` × `gemma3:12b` (Δ=−0.93, user d5=0 with note "infers wrong ideas, strange decisions on spans"), concerns a model already verdict-failing. This sharpens the `gemma3:12b ❌` rather than weakening it: gemma's failure mode on dense memory files is *semantic hallucination* (inferring topic identity from peripheral content), which the per-file scalar in Claude's draft underweighted. Two raters caught what one would not have.
+
+**Methodological takeaway for Layer 7 / DPO scoring.** The rubric is fit-for-purpose for **binary** decisions (which model passes the gate, which model wins a head-to-head) but absolute scores are calibration-sensitive across raters by ~0.2–0.4 weighted-quality points. If the same rubric is later reused as a continuous quality metric (e.g., for DPO preference pairs at Layer 7), expect to need either inter-rater calibration or per-rater normalization before treating raw weighted_quality as a global signal.
+
+**Spike's net contribution to extractor freeze:** identical binary verdicts across raters → the freeze on `qwen3:14b` (prose) + `qwen2.5-coder:14b` (code) is robust to rater calibration. The remaining gates are determinism re-run + MoE eval, neither of which depends on rater calibration.
+
 <!-- /ref:ltg-phase1-insights -->
 
 ---
 
 <!-- ref:ltg-phase1-routing-hypothesis -->
-## Open hypothesis — specialized-model routing for extractor
+## Production routing decision — 2-arm specialized extractor (Branch C, session 58)
 
-Phase 1 evidence suggests a single extractor model is a local optimum; file-type routing may beat any single-model choice:
+Two-rater reconciliation closed at session 58 with **mixed evidence on the cross-reference-index 3rd arm** (Branch C, see `ref:ltg-phase1-pending-revisions`). The user track did not reproduce Claude's `qwen3:8b > qwen3:14b` flip on `smart-rag-index.md` — qwen3:14b instead won under user scoring. With n=1 on cross-reference-index files and inconsistent cross-rater evidence, the 3rd arm is preserved as a hypothesis but not adopted as production routing.
 
-- **Code files → `qwen2.5-coder:14b`** (2.48 on `build-persona.py` with tight function-aligned spans vs qwen3:14b's 2.68 with cross-function semantic topics). The tradeoff is "function enumeration" vs "cross-function clusters" — the `ref:ltg-extractor` rubric explicitly flagged this as dim `semantic-vs-syntactic` for code files. Data on this dim is still thin (one code file).
-- **Prose files → `qwen3:14b`** (consistent 2.68 raw across 3 prose files of varying density).
-- **MoE probe (deferred):** `qwen3:30b-a3b` (hybrid VRAM+RAM, 19 GB MoE with ~3 B active params) and `qwen3-coder:30b` when hardware-headroom permits. Hypothesis: MoE sparse activation may deliver quality closer to dense 30B-class while staying within the 12 GB + hybrid-RAM budget. The Phase 2 VRAM co-residence probe is mandatory before locking embedding anyway; folding MoE extractor eval into that probe is cheap.
+**Production routing (Phase 1 freeze candidate, gated on determinism + MoE):**
 
-**Decision gate:** do not commit to routing until (1) remaining 4 corpus files are scored, (2) MoE candidates evaluated under the same rubric, (3) determinism re-runs executed on the winner(s). Until then, pick `qwen3:14b` as single-model default to unblock Phase 2 integration; revisit when data is complete.
+- **Code files → `qwen2.5-coder:14b`** (2.48 Claude / 2.90 User on `personas/build-persona.py`, tight function-aligned spans). n=1; revisit when more code files added — under the user track, this model finishes 0.04 below threshold rather than 0.44, so a corpus expansion could plausibly flip the verdict.
+- **Prose files → `qwen3:14b`** (universal prose winner on every one of 7 prose files in both rater tracks: Claude 2.43–2.85 raw, User 2.70–3.00 raw; ranking agreement is bit-identical on prose).
+- **Single-model fallback** if routing infrastructure isn't worth the cost yet: `qwen3:14b` (loses ~0.10–0.15 quality on cross-reference-index files in the Claude draft, gains operational simplicity; the user-track loss is inverted, so the worst-case under either rater is ~0.15 — small).
+
+**Deferred to Phase 2 (was 3rd arm in pre-reconciliation hypothesis):**
+
+- **Cross-reference-index files (n=1) → `qwen3:8b` candidate.** Claude draft saw a 0.12 weighted-quality lead on `smart-rag-index.md`; user track reversed it. Re-evaluate when (a) the determinism re-run on `smart-rag-index.md` × qwen3:14b confirms or refutes the off-by-one failure mode (insight #7), (b) more cross-reference-index files are added to the corpus, or (c) MoE candidates are evaluated under the same rubric.
+- **MoE probe:** `qwen3:30b-a3b` (hybrid VRAM+RAM, 19 GB MoE with ~3 B active params) and `qwen3-coder:30b` when hardware-headroom permits. Hypothesis: MoE sparse activation may deliver quality closer to dense 30B-class while staying within the 12 GB + hybrid-RAM budget. The Phase 2 VRAM co-residence probe is mandatory before locking embedding anyway; folding MoE extractor eval into that probe is cheap.
+- **Per-topic JSON evidence (648 scores in 29/32 cells):** Could supply per-topic boundary evidence to disambiguate the deferred 3rd arm without a corpus-expansion sweep. Tracked in `ref:deferred-infra`.
+
+**Decision gate** for the formal `ref:ltg-extractor` decision-replacement (do not commit until):
+1. ~~Two-rater reconciliation~~ — **complete (session 58, Branch C)**.
+2. **Determinism re-runs on winner** under the same rubric (Jaccard ≥ 0.85 → +0.5 stability bonus; ≥ 0.80 → +0.25). Cheapest remaining evidence; ~30s of compute on `smart-rag-index.md` × qwen3:14b also answers the deferred 3rd-arm question directly.
+3. **MoE candidates evaluated** — fold into Phase 2 VRAM co-residence probe.
 
 **Revisit triggers:**
 - MoE sweep completed → re-evaluate whether routing still beats a single-model choice.
 - `qwen3-coder:30b` pulled (gated on hardware-headroom probe — see `ref:deferred-infra`).
-- Additional code files added to MVP corpus; current n=1 is too thin.
+- Additional code files added to MVP corpus (current n=1 is too thin; coder 0.04-below-threshold under user track makes a corpus-expansion flip plausible).
+- Additional cross-reference-index files added (n=1 → n≥3 would resolve the deferred 3rd arm).
 
 <!-- /ref:ltg-phase1-routing-hypothesis -->

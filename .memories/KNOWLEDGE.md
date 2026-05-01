@@ -201,26 +201,29 @@ containers + anchor stratification) is a step beyond GraphRAG.
 **Implication:** Next session executes Phase 0 + 1 of the plan. Do not skip Phase 0
 decisions. Phase 1 topic-extraction quality is load-bearing for everything else.
 
-## LTG Phase 1 Extractor Spike — Findings (2026-04, sessions 54-56)
+## LTG Phase 1 Extractor Spike — Findings (2026-04, sessions 54-58)
 
 Topic-extractor A/B across 4 models × 8 corpus files, 11-dim rubric (dims 5-8 manual).
 Weighted quality = `0.35·dim5 + 0.35·dim6 + 0.20·dim7 + 0.10·dim8`, exit threshold ≥ 2.2.
 
-**Preliminary results (5/8 files scored):**
+**Final results (8/8 files scored, Claude draft + user HTML-viz reconciled — session 58, Branch C):**
 
-| Model | Raw avg | Speed penalty | Adjusted | Pass |
-|---|---|---|---|---|
-| qwen3:14b | 2.67 | −0.25 | **2.42** | ✅ |
-| qwen3:8b | 2.21 | 0 | **2.21** | ✅ |
-| qwen2.5-coder:14b | 2.08 | −0.25 | **1.83** | ❌ |
-| gemma3:12b | 1.71 | −0.25 | **1.71** | ❌ |
+| Model | Raw (Claude) | Raw (User) | Speed pen. | Adj. (Claude) | Adj. (User) | Pass |
+|---|---|---|---|---|---|---|
+| qwen3:14b         | 2.69 | 2.86 | −0.25 | **2.44** | **2.61** | ✅ |
+| qwen3:8b          | 2.27 | 2.63 | 0     | **2.27** | **2.63** | ✅ |
+| qwen2.5-coder:14b | 2.01 | 2.41 | −0.25 | **1.76** | **2.16** | ❌ (borderline under user) |
+| gemma3:12b        | 1.61 | 1.82 | −0.25 | **1.61** | **1.82** | ❌ |
 
-Speed penalty: −0.25 if model runs <15 tok/s. Full findings: `ref:ltg-phase1-results`.
+Speed penalty: −0.25 if model runs <15 tok/s. Both rater tracks produce identical ranking + identical pass/fail. User track is systematically more lenient (Δ_avg +0.17 to +0.40 weighted-quality points) but does not change any binary verdict. Full findings: `ref:ltg-phase1-results`.
+
+**Production routing (Branch C, session 58):** 2-arm specialized — `qwen2.5-coder:14b` for code files, `qwen3:14b` for prose files. Cross-reference-index 3rd-arm hypothesis (qwen3:8b candidate) deferred to Phase 2 pending determinism re-run + MoE eval; the qwen3:8b > qwen3:14b flip on `smart-rag-index.md` survived only in the Claude draft, not the user track. See `ref:ltg-phase1-routing-hypothesis`.
 
 **Key insights:**
 - Whole-section drops under topic-budget pressure (dim 8 catches) — both sub-optimal models silently omitted a section rather than merging
 - Hierarchical containment (child ⊆ parent span) is a feature (supports LTG multi-scale); crossed partial overlap is the bug — mechanical check: `intersection == smaller_span`
-- qwen2.5-coder:14b has a striking prose/code split: off-by-one on prose, tight boundaries on code → future routing hypothesis
+- qwen2.5-coder:14b has a striking prose/code split: off-by-one on prose, tight boundaries on code → motivates 2-arm routing
+- Two-rater reconciliation: rubric is fit-for-purpose for **binary** decisions (ranking + pass/fail robust across raters); absolute scores diverge by ~0.2–0.4 across raters, so reuse as a continuous quality metric (e.g., DPO scoring at Layer 7) would need calibration first
 
 **Viz tooling pattern (`retrieval/viz_sweep.py` + `retrieval/ltg-rater.template.html`):**
 - Template-based rendering: `build_html()` reads `ltg-rater.template.html` from disk, replaces three tokens
