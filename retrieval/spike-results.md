@@ -275,8 +275,8 @@ Two-rater reconciliation closed at session 58 with **mixed evidence on the cross
 
 **Decision gate** for the formal `ref:ltg-extractor` decision-replacement (do not commit until):
 1. ~~Two-rater reconciliation~~ — **complete (session 58, Branch C)**.
-2. **Determinism re-runs on winner** under the same rubric (Jaccard ≥ 0.85 → +0.5 stability bonus; ≥ 0.80 → +0.25). Cheapest remaining evidence; ~30s of compute on `smart-rag-index.md` × qwen3:14b also answers the deferred 3rd-arm question directly.
-3. **MoE candidates evaluated** — fold into Phase 2 VRAM co-residence probe.
+2. ~~**Determinism re-runs on winner**~~ — **complete (session 59, Branch C)**. All 5 runs ≤ 3/7 (range 1–3/7); Jaccard median 0.600 (below 0.80, no stability bonus). Off-by-one is a confirmed model property on dense single-line bullets, not sampling luck. Three deterministic failure modes: B2 semantic conflation (absorbed into wiki_precompilation at line 12), B6 −1 shift (claims 26 every run), B5 structural absorption (dropped in 4/5 runs). Action: add containment/post-pass guard at retrieval time; do NOT split routing to qwen3:8b on this evidence alone. See `ref:ltg-phase1-determinism-smart-rag-index` for full analysis.
+3. **MoE candidates evaluated** — fold into Phase 2 VRAM co-residence probe. **This is now the only remaining gate.**
 
 **Revisit triggers:**
 - MoE sweep completed → re-evaluate whether routing still beats a single-model choice.
