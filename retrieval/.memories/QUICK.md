@@ -4,14 +4,11 @@
 
 ## Status
 
-Session 58 (2026-04-30): Phase 1 extractor spike **closed via two-rater
-reconciliation** (Branch C). 8/8 corpus files scored under both Claude draft
-+ user HTML-viz tracks. Identical ranking + verdicts (adj. Claude/User):
-qwen3:14b ✅ 2.44/2.61 (winner), qwen3:8b ✅ 2.27/2.63 (backup), qwen2.5-coder:14b
-❌ 1.76/2.16 (borderline under user), gemma3:12b ❌ 1.61/1.82. Production
-routing: 2-arm (coder for code, qwen3:14b for prose); cross-ref-index 3rd-arm
-deferred to Phase 2. Final freeze still gates on determinism re-run on
-`smart-rag-index.md` × qwen3:14b (~30s, cheapest gating evidence) + MoE eval.
+Session 59 (2026-05-04): Phase 1 **fully closed**. All 3 freeze gates cleared.
+Determinism: Branch C (off-by-one model property, 5 runs all ≤3/7, Jaccard 0.60).
+MoE: qwen3:30b-a3b unusable (TTFT > 9 min); qwen3-coder:30b 2.06 adj. < 2.2.
+**ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code.
+Phase 2 next: VRAM co-residence probe + LanceDB + bge-m3.
 
 ## What Lives Here
 

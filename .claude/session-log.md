@@ -1,8 +1,40 @@
 # Session Log
 
-**Current Layer:** LTG Phase 1 — topic extractor spike CLOSED via two-rater reconciliation (Branch C); final freeze pending determinism re-run + MoE eval
-**Current Session:** 2026-04-30 — Session 58: LTG Phase 1 two-rater reconciliation closes Phase 1 (Branch C)
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`
+**Current Layer:** LTG Phase 2 — embedding + storage (Phase 1 extractor fully frozen)
+**Current Session:** 2026-05-04 — Session 59: Determinism re-run + MoE eval → ref:ltg-extractor frozen
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`
+
+---
+
+## 2026-05-04 - Session 59: Determinism re-run + MoE eval → Phase 1 extractor frozen
+
+### Context
+Resumed on `feature/ltg-phase1-reconciliation-session-58`. PR was already open. Two freeze gates remained: determinism re-run on `smart-rag-index.md` × qwen3:14b, and MoE extractor eval (qwen3:30b-a3b, qwen3-coder:30b). Both completed this session, closing all three gates and allowing the formal `ref:ltg-extractor` decision-replacement.
+
+### What Was Done
+- **Determinism re-run** (5 runs, `smart-rag-index.md` × `qwen3:14b`): All 5 runs scored 1–3/7 on the 7 cross-cutting-pattern bullets (original was 4/7). Branch C confirmed — off-by-one is a model property, not sampling luck. Three deterministic failure modes: B2 semantic conflation (absorbed into `wiki_precompilation` at line 12 every run), B6 −1 shift (claims 26 every run), B5 structural absorption (dropped in 4/5 runs). Jaccard median 0.600 — no stability bonus. Committed to `retrieval/runs/20260504-153903.jsonl` + filled `determinism-ground-truth.md` analysis template.
+- **MoE eval (qwen3:30b-a3b)**: Unusable. TTFT > 9 minutes even for trivial prompts (direct probe: 150 tokens in 6.5s at 23 tok/s generation, but prefill latency ~9 min). Root cause: Ollama MoE hybrid RAM offload loads all attention layers during prefill at RAM bus speeds. Architecture limitation, not a config fix. `extract_topics.py` timeout bumped 240 → 600s for future probes.
+- **MoE eval (qwen3-coder:30b)**: 8/8 files completed at 6.7–14.8 tok/s. Scored by Opus subagent (methodology-consistent with sessions 54-57). Prose avg: 2.36 pre-penalty / **2.06 adjusted** (fails ≥2.2 — speed penalty universal). Key failure: span-anchoring weakness on long/loose files (plan-v2.md: 5.7% coverage). Bright spots: persona-template.md 3.00, build-persona.py 2.80 (semantic clusters not enumeration). Does not displace qwen3:14b.
+- **Formal `ref:ltg-extractor` freeze**: Replaced placeholder "how we will decide" entry in `retrieval/DECISIONS.md` with frozen `winner_model` entry — 2-arm routing (qwen3:14b prose, qwen2.5-coder:14b code), frozen params, deferred items list, gate evidence.
+- **New ref blocks** added to `retrieval/spike-rater-notes.md`: `ref:ltg-phase1-determinism-smart-rag-index`, `ref:ltg-phase1-moe-eval`. Decision gate items 2 and 3 struck through in `ref:ltg-phase1-routing-hypothesis` in `retrieval/spike-results.md`.
+- **2 commits** on `feature/ltg-phase1-reconciliation-session-58`: `9aca7c7` (determinism) + `84f3647` (MoE eval + extractor freeze).
+
+### Decisions Made
+- **Determinism Branch C applied**: containment/post-pass guard at retrieval time for `qwen3:14b` on dense single-line bullet lists — not a routing change. The deferred 3rd-arm hypothesis (qwen3:8b for cross-ref-index files) is unaffected.
+- **qwen3:30b-a3b permanently deferred**: Ollama MoE offload makes it unusable on this hardware. Not a config problem — would require Ollama internals change or dedicated MoE inference path.
+- **qwen3-coder:30b not adopted**: Fails adjusted threshold. Better than qwen2.5-coder:14b on code (2.80 vs 2.48) but not enough to justify 3× resource cost at MVP stage.
+- **ref:ltg-extractor frozen**: qwen3:14b (prose), qwen2.5-coder:14b (code). Phase 1 is complete.
+
+### Next
+- **Phase 2 entry point: VRAM co-residence probe** — qwen3:14b + bge-m3 ≈ 12 GB on 12 GB card. Must confirm they can run simultaneously before embedding is locked. This is Phase 2's first concrete task.
+- **Prompt-iteration experiment** (still deferred from sessions 55/57): topic-count floor `max(5, major_section_count)` + containment-only overlap rule. Cheap re-sweep on existing 8 files; tests whether qwen3:8b's whole-section-drop failure is prompt-fixable.
+- **Still-open PRs**: session 57 PR (`feature/ltg-phase1-scoring-and-notes`); `feature/gemma3-benchmark`; `feature/ltg-phase1-reconciliation-session-58` (current, already open).
+- **Phase 2 work**: LanceDB integration, bge-m3 embedding, graph construction (networkx + leidenalg), `relate(a,b)` acceptance test.
+
+### Notable
+- The original 4/7 determinism score was a *favorable* draw — the re-run landed 1–3/7, worse than the original. Single-run spike studies may overestimate model stability.
+- qwen3-coder:30b's span-anchoring failure (keyword pointer vs section range) is qualitatively different from qwen3:8b's section-drop — content recognition is correct but the model can't extend a concept to the paragraphs that develop it.
+- Pre-committed decision trees (determinism + two-rater reconciliation) paid off again — both branches applied mechanically without post-hoc negotiation.
 
 ---
 
@@ -110,38 +142,6 @@ Short tooling session. Entry point: user wanted the HTML-viz scoring page URL, t
 - **After all 8 scored:** Commit `feature/ltg-phase1-extractor-spike`, open PR.
 - **Then:** prompt-iteration experiment (topic-count floor + containment-only overlap); determinism re-runs (dim 9 Jaccard); Phase 2 VRAM co-residence probe.
 - **Delete `HTML_TEMPLATE` dead code** from `viz_sweep.py` once new template confirmed stable.
-- **Still open:** PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
-
----
-
-## 2026-04-17 - Session 55: persona-template.md scored + two-rater framing + overlap-semantics insight
-
-### Context
-Resumed on `feature/ltg-phase1-extractor-spike`. Entry point was `@.claude/session-context.md resume` followed by a correction: the 4 already-scored files were scored **by Claude in session 54 (draft)**, not by the user — user's independent HTML-viz scoring is still in progress. That reframed the rest of the session around two-rater scoring and the next most diagnostic file to score.
-
-### What Was Done
-- **Relabeled `retrieval/spike-results.md` scoring table as "Claude's scores" (draft)** + added an empty "User's per-file scores" table to be exported from HTML viz localStorage. Two-rater agreement now gates the final extractor freeze.
-- **Picked `personas/persona-template.md` as next file** — highest-information pick because it's the only semi-structured YAML+prose template in the corpus (other remaining files duplicate already-scored types).
-- **Scored persona-template.md across all 4 models** (dims 5-8 + weighted):
-  - `qwen3:14b` → **2.65** (9 topics / 9 natural sections, contiguous, zero overlap — cleanest output of any (model, file) pair in the spike)
-  - `qwen3:8b` → **2.25** (best descriptions of any model on this file, but **missed Registration section 154-163 entirely**; `system_prompt_structure` bleeds into Temperature Guide)
-  - `qwen2.5-coder:14b` → **2.00** (5-line Rules subsection dropped inside `system_prompt` span)
-  - `gemma3:12b` → **1.35** (missed Naming Convention 140-150; `parameter_tuning` overlaps 2 other topics; boilerplate drag on dim 6)
-- **Updated 5-file averages:** qwen3:14b 2.67 / qwen3:8b 2.21 / coder 2.08 / gemma3 1.71. After speed penalty: **2.42 ✅ / 2.21 ✅ / 1.83 ❌ / 1.71 ❌**. Ranking stable; qwen3:14b's cross-file consistency hardens.
-- **Added two new insights to `ref:ltg-phase1-insights`:**
-  - #4 **Whole-section drops under topic-budget pressure** — both sub-optimal models (qwen3:8b, gemma3:12b) produced fewer topics than the file's section count and silently omitted a section instead of merging. Dim 8 catches this.
-  - #5 **Partial cross-overlap vs hierarchical containment** — revised after user pushback. Rule should be "containment OK, crossed NOT OK": allow child ⊆ parent (supports LTG multi-scale / anchor stratification per `ref:concept-latent-topic-graph`), forbid partial intersection with neither span subset. Mechanical post-hoc check: `intersection == smaller_span`.
-- **Added new deferred task** (`ref:deferred-infra`): prompt iteration combining (1) topic-count floor = `max(5, major_section_count)` and (2) containment-only overlap rule. Two cheap guardrails, both grounded in persona-template.md evidence.
-
-### Decisions Made
-- **Two-rater scoring track:** Claude's scores are a draft; user's HTML-viz scores are authoritative. Divergence on specific dims = rubric calibration signal, not a tie-breaker. Gate extractor freeze on agreement.
-- **Overlap semantics — containment is a feature, crossed is a bug.** User pointed out that forbidding all overlap would suppress the multi-scale retrieval pattern the LTG concept paper relies on. Revised the "no shared lines" rule to "intersection must equal smaller span". Also gives the graph a free parent→child hierarchy edge.
-- **Topic-count floor is worth testing.** Under-budget extraction is a silent failure mode (whole sections vanish with no warning). A floor forces either broader topics or more of them — either is better than dropped content.
-
-### Next
-- **Score 3 remaining files:** `docs/research/smart-rag-index.md`, `docs/ideas/smart-rag3.md`, `.memories/KNOWLEDGE.md`. Either Claude continues the draft track, or user's HTML-viz scoring closes first — both paths acceptable. KNOWLEDGE.md is the highest-priority remaining (pairs with QUICK.md for memory-file size sensitivity).
-- **After all 8 scored:** export manual-rubric.md from viz (user track) + compare against Claude's draft. Record divergences. Commit `feature/ltg-phase1-extractor-spike` and open PR.
-- **Then:** determinism re-runs on winner (dim 9 Jaccard), MoE probe folded into Phase 2 VRAM co-residence, prompt-iteration experiment (topic-count floor + containment-only overlap).
 - **Still open:** PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
 
 ---
