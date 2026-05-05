@@ -38,7 +38,7 @@ REPO_ROOT = Path(__file__).parent.parent
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 RUNS_DIR = Path(__file__).parent / "runs"
 OLLAMA_URL = "http://localhost:11434/api/chat"
-TIMEOUT_S = 240  # generous — 14B models can be slow on large files
+TIMEOUT_S = 600  # 240s was enough for 14B; MoE 30B hybrid needs longer cold-load
 
 # Models to sweep. Each entry: model_tag → extra top-level payload keys.
 # Options that go inside Ollama's "options" dict are nested under "options".

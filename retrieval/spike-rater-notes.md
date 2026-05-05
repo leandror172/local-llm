@@ -369,3 +369,53 @@ When user-track scoring lands:
 **Ground truth + pre-committed rule:** `retrieval/runs/determinism-ground-truth.md`  
 **Original observation (finding #7):** `ref:ltg-phase1-insights`
 <!-- /ref:ltg-phase1-determinism-smart-rag-index -->
+
+<!-- ref:ltg-phase1-moe-eval -->
+## MoE extractor eval — qwen3:30b-a3b + qwen3-coder:30b (2026-05-04, session 59)
+
+**Task:** Evaluate both 30B MoE candidates against the full 8-file Phase 1 corpus under the same rubric. Final freeze gate (item 3 in `ref:ltg-phase1-routing-hypothesis`).
+
+### qwen3:30b-a3b — UNUSABLE
+
+All 8 files timed out even at 600s timeout. Direct Ollama probe confirmed TTFT > 9 minutes for a trivial "say hello" prompt (150 tokens generated in 6.5s = 23 tok/s generation, but prefill latency is catastrophically slow). Root cause: Ollama's MoE sparse-activation hybrid RAM offload loads all attention layers during prefill at RAM bus speeds, not VRAM bandwidth. This is a known Ollama MoE offload perf issue documented in CLAUDE.md. Not a config problem — the architecture interacts badly with the current Ollama hybrid strategy.
+
+**Verdict: ❌ Unusable for any extractor task under current hardware/Ollama config.**
+
+### qwen3-coder:30b — Scored (all 8 files complete)
+
+| File | dim5 | dim6 | dim7 | dim8 | WQ (pre) | WQ (adj −0.3) |
+|---|---|---|---|---|---|---|
+| smart-rag-repowise.md | 3 | 3 | 1 | 2 | 2.50 | 2.20 |
+| QUICK.md | 2 | 2 | 1 | 1 | 1.70 | 1.40 |
+| smart-rag-index.md | 3 | 3 | 2 | 2 | 2.70 | 2.40 |
+| plan-v2.md | 3 | 2 | 0 | 0 | 1.75 | 1.45 |
+| persona-template.md | 3 | 3 | 3 | 3 | 3.00 | 2.70 |
+| KNOWLEDGE.md | 3 | 1 | 1 | 3 | 2.20 | 1.90 |
+| smart-rag3.md | 3 | 3 | 2 | 2 | 2.70 | 2.40 |
+| build-persona.py | 3 | 3 | 2 | 3 | 2.80 | 2.50 |
+| **prose avg** | | | | | **2.36** | **2.06** |
+
+All files ran below 15 tok/s (range: 6.7–14.8); speed penalty applies universally.
+
+**Verdict: ❌ FAILS ≥2.2 threshold on adjusted prose average (2.06). Marginally passes pre-penalty (2.36) but speed penalty is non-negotiable at these tok/s.**
+
+**Comparison:** Meaningfully better than qwen2.5-coder:14b (+0.42 pre-penalty prose avg) and better on code specifically (2.80 vs 2.48 on build-persona.py). Does not displace qwen3:14b (2.69 prose avg).
+
+**Systematic failure modes:**
+1. **Span-anchoring weakness on long/loose files**: cherry-picks single keyword-mention lines instead of section ranges. Catastrophic on plan-v2.md (coverage 0.057 = 5.7% on 442 lines). Qualitatively different from qwen3:8b's section-drops — content recognition correct but span reasoning breaks down at scale.
+2. **Boilerplate prefixes on KNOWLEDGE.md**: every description starts with "This topic covers/details/explores…" — same pattern flagged in finding #3 for gemma3:12b.
+3. **Span reuse across topics**: multiple topics claim identical span ranges (KNOWLEDGE.md, smart-rag-index.md, smart-rag3.md) — containment violations rather than intentional hierarchy.
+
+**Bright spot:** persona-template.md scored 3.00 pre-penalty (3/3/3/3) — when file structure is clean and section-aligned, qwen3-coder:30b matches qwen3:14b quality. Code file (2.80) shows semantic clustering, not enumeration.
+
+### MoE gate conclusion
+
+Neither MoE candidate displaces the existing routing. The Phase 1 production routing is confirmed as final:
+- **Prose → qwen3:14b** (clear winner at 2.69 prose avg; unaffected by MoE eval)
+- **Code → qwen2.5-coder:14b** (n=1; qwen3-coder:30b scores higher on code but at 3× the size and similar speed — not worth the resource cost at MVP stage)
+- **qwen3:30b-a3b**: permanently deferred pending Ollama MoE offload improvements (architectural limitation, not a config fix)
+
+**Run output:** `retrieval/runs/20260504-172139.jsonl` (8 records, qwen3-coder:30b only)  
+**Full rubric scores:** `retrieval/runs/20260504-172139-manual-rubric.md`  
+**Scorer:** Opus subagent (session 59) — methodology-consistent with sessions 54-57
+<!-- /ref:ltg-phase1-moe-eval -->
