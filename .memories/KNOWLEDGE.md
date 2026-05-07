@@ -201,6 +201,36 @@ containers + anchor stratification) is a step beyond GraphRAG.
 **Implication:** Next session executes Phase 0 + 1 of the plan. Do not skip Phase 0
 decisions. Phase 1 topic-extraction quality is load-bearing for everything else.
 
+## LTG Phase 1 Extractor Spike — Findings (2026-04, sessions 54-56)
+
+Topic-extractor A/B across 4 models × 8 corpus files, 11-dim rubric (dims 5-8 manual).
+Weighted quality = `0.35·dim5 + 0.35·dim6 + 0.20·dim7 + 0.10·dim8`, exit threshold ≥ 2.2.
+
+**Preliminary results (5/8 files scored):**
+
+| Model | Raw avg | Speed penalty | Adjusted | Pass |
+|---|---|---|---|---|
+| qwen3:14b | 2.67 | −0.25 | **2.42** | ✅ |
+| qwen3:8b | 2.21 | 0 | **2.21** | ✅ |
+| qwen2.5-coder:14b | 2.08 | −0.25 | **1.83** | ❌ |
+| gemma3:12b | 1.71 | −0.25 | **1.71** | ❌ |
+
+Speed penalty: −0.25 if model runs <15 tok/s. Full findings: `ref:ltg-phase1-results`.
+
+**Key insights:**
+- Whole-section drops under topic-budget pressure (dim 8 catches) — both sub-optimal models silently omitted a section rather than merging
+- Hierarchical containment (child ⊆ parent span) is a feature (supports LTG multi-scale); crossed partial overlap is the bug — mechanical check: `intersection == smaller_span`
+- qwen2.5-coder:14b has a striking prose/code split: off-by-one on prose, tight boundaries on code → future routing hypothesis
+
+**Viz tooling pattern (`retrieval/viz_sweep.py` + `retrieval/ltg-rater.template.html`):**
+- Template-based rendering: `build_html()` reads `ltg-rater.template.html` from disk, replaces three tokens
+- DATA token must inject an **envelope**, not a bare array: `{tag, weights, exit_threshold, data: [...]}`
+- SOURCES token is a bare map: `{filepath: content}` (accessed as `SOURCES[path]`)
+- Scores persist in browser `localStorage` keyed by `sweep-scores-<TAG>`; export as markdown rubric
+
+**Rationale:** Extractor quality is load-bearing for all downstream LTG phases — bad extraction means bad graph edges and bad retrieval. The spike gates Phase 2 VRAM co-residence probe.
+**Implication:** Do not freeze extractor choice until all 8 files scored + two-rater reconciliation (Claude draft vs user HTML-viz scores). qwen3:14b is the provisional winner; qwen3:8b is viable backup (4× faster, same threshold).
+
 ## Structured Output via Grammar-Constrained Decoding (2026-02)
 
 Always use Ollama's `format` parameter for JSON output — 100% reliable, no speed penalty.

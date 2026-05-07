@@ -47,79 +47,6 @@
 ## Current Status
 
 - **Phases 0-6:** Complete → `.claude/archive/phases-0-6.md`
-- **Layer 0:** Complete (12/12) → `.claude/archive/layer-0-findings.md`
-- **Layer 1:** Complete (7/7) — MCP server built, all tools verified, system-wide availability
-- **Layer 2:** Complete (5/5) — Tools installed, tested, findings documented
-- **Layer 3:** Complete (5/5 + refactoring + 3.5-A comparison) — 30 active personas
-- **Layer 4:** Complete — evaluator framework, shell rubric, Phase 1 validators (Python + Java), prompt decomposition, all merged to master (PR #6, #7, #8)
-- **Sessions 39-40** — Verdict capture, context-files, ref-integrity, overlay system; all PRs merged to master
-- **Session 41** (2026-03-13) — All PRs merged; dotfiles backup system built:
-  - Private repo `leandror172/dotfiles` at `~/workspaces/dotfiles/`
-  - `backup.sh` + `install.sh` + `SessionStart` hook wired in `~/.claude/settings.json`
-  - Backs up: claude-code (user-level), claude-projects/llm/memory, claude-desktop (Windows)
-- **Session 42** (2026-03-14) — Verdict retry policy + warm_model MCP tool + ollama-scaffolding overlay:
-  - Verdict policy: 3-dimension heuristic (defect type / fix scope / prompt cost) replaces "3 lines"
-  - warm_model MCP tool: in-flight tracking, safe eviction, trivial-prompt warm-up
-  - ollama-scaffolding overlay: tested 3 backends, redesigned to short CLAUDE.md pointer + full ref file
-  - Installed in expense repo (PR #8), new persona `my-api-docs-q3`
-- **Session 43** (2026-03-15) — warm_model testing + bug fix + Ollama coordination research:
-  - warm_model fully tested; "evict then 404" bug fixed via `_check_model_exists()` pre-validation
-  - Hook fix: verdict template skipped for non-generation tools
-  - Ollama eviction-during-generation: safe (queues unload, doesn't interrupt) — empirically tested
-  - PR #9392 discovered: adds `ACTIVE` to `/api/ps`; watch before building Option 2 file layer
-  - PR #15 merged; findings documented in `docs/findings/ollama-eviction-concurrency-findings.md`
-- **Session 44** (2026-03-17) — Web research tool genesis session:
-  - Extensive research: scrapers (Crawl4AI, Firecrawl, SearXNG), languages (Python/Go/TS/Java/Kotlin), event sourcing (Axon vs lightweight), existing tools (GPT-Researcher, STORM, Jina, Local Deep Research, Mastra)
-  - User architecture vision: multi-agent (Agent A/Tool/B/A2), DDD-as-agent-modeling, progressive autonomy, pluggable scrapers, context-efficient design
-  - Deep assessment of Local Deep Research: MIT, modular, but LangChain-coupled, no structured output, no multi-model, 2-3GB deps → verdict: **build new, informed by LDR patterns**
-  - Work estimate: MVP ~4-5 sessions, usable tool ~8-10, full vision ~15-18
-  - Research docs in `docs/research/` with INDEX.md, ref keys, QUICK-MEMORY pattern
-  - Deferred: ref-lookup prefix search for `*-MEMORY.md` convention
-- **Session 45** (2026-03-20) — Persona MCP tools & infrastructure overhaul:
-  - Extracted `models.yaml` (single source of truth for 13 base models); `models.py` loads from YAML
-  - Added `create_persona` / `copy_persona` MCP tools in ollama-bridge
-  - Created user-level `create-persona` skill (3 patterns: copy, create, LLM-assisted); added to ollama-scaffolding overlay
-  - Fixed `--constraint` (repeatable flag), double-period in role
-  - 5 new Python personas: qwen3.5:9b, qwen3:14b, qwen2.5-coder:14b, deepseek-coder-v2:16b, deepseek-r1:14b
-  - Context audit: 8B models upgraded 8K→32K (35 Modelfiles updated), 14B confirmed at 16K
-  - Added DeepSeek models to models.yaml; added timeout param to ask_ollama/generate_code
-  - PR #21 merged (`feature/persona-mcp-tools`)
-- **Session 46** (2026-03-25) — Claude backend for HF Space chatbot:
-  - Added Claude (Haiku 4.5) as optional chat backend with per-session rate limiting (30/hr)
-  - Decomposed system prompt into composable parts (_PREAMBLE + _RULES + _PROFILE) — Claude gets relaxed grounding rules (synthesis allowed), HF keeps strict rules
-  - Self-referential context added (chatbot knows it's part of Leandro's portfolio)
-  - Fixed: Gradio additional_inputs examples format, .replace() bug with backslash continuations, HF Space stuck restart (factory reboot)
-  - Bash aliases: career_chat_start/stop/upload_hf in ~/.bashrc
-  - Branch: `feature/portfolio-docs`
-- **Session 47** (2026-03-26) — Technology conventions pattern doc:
-  - Created `docs/patterns/technology-conventions.md` — self-indexed (7 patterns, `ref:patterns-*` keys)
-  - Added "Revisit when" conditions to contingent decisions; invariants marked with `—`
-  - Cross-repo discovery: memory entries in all 3 project dirs pointing to `ref_lookup` MCP tool
-  - CLAUDE.md rule #5: check `ref:patterns-index` before tech choices
-  - Branch: `feature/technology-conventions`
-- **Session 48** (2026-04-02) — Smart chatbot + .memories/ convention:
-  - Established `.memories/` (QUICK.md + KNOWLEDGE.md) per-folder convention across llm repo (6 folders, 12 files)
-  - Cross-repo prompt template used in expenses + web-research sessions (PRs open)
-  - Smart chatbot roadmap: 4 phases (static → routing → source → cross-project)
-  - Phase 1 implemented: `sync-context.sh` + app.py loads QUICK files (~4.7K tokens) at startup
-  - Deployed to HF Spaces. Free tier Llama handles overview questions; Claude backend better for analytical
-  - Updated README.md, index.md, root .gitignore
-  - Branch: `feature/smart-chatbot` (pushed to remote, deployed to HF)
-- **Session 50** (2026-04-09) — Gemma 3 benchmark + Claude Code source research:
-  - gemma3:12b + gemma3:27b pulled and benchmarked (3 prompts, Go + Python)
-  - gemma3:12b: ~31 tok/s, IMPROVED tier — added as speed tier to index.md + model-selection
-  - gemma3:27b: 3.2 tok/s, timeout on all coding tasks, marked inactive in registry
-  - 4 personas created: my-go-g3-12b, my-python-g3-12b (active); g3-27b variants (inactive)
-  - record-verdicts.py: added --verdicts/--notes flags for non-interactive verdict recording
-  - docs/ideas/claude-code-python-port.md: all 3 cloned repos documented with actionable notes
-  - .memories/ QUICK + KNOWLEDGE updated for root, personas, benchmarks
-  - Branch: `feature/gemma3-benchmark` (3 commits, PR not yet opened)
-- **Session 49** (2026-04-03) — Chatbot Phase 2 + error handling:
-  - Phase 2 LLM-as-router: `_build_section_index()`, `_route_sections()`, `_enrich_prompt()` — 3 sections/question via non-streaming Groq call
-  - Test suite: 48 unit tests, synthetic fixtures, `_make_hf_exc` using real Groq nested `{"error":{}}` format
-  - Error handling: `_parse_hf_error()` (structured), `_retry_after()` (Xh/Xm/Xs parsing), `_classify_error()` (wait time + Haiku suggestion), `_with_retry()` wrapper
-  - Claude backend skips Groq routing; debug logging added (`career_chat_log` alias)
-  - PR #26 merged: `feature/chatbot-phase2` → master
 - **Session 51** (2026-04-13) — Smart RAG research + Latent Topic Graph concept & plan:
   - 7-source research cluster on content-linking retrieval (`ref:smart-rag-research`); see `docs/research/smart-rag-*.md` (8 files)
   - Named concept: **Latent Topic Graph (LTG)** — topic-level nodes, files-as-containers, anchor stratification, multi-scale. Concept paper at `ref:concept-latent-topic-graph` is publishable-grade
@@ -135,25 +62,38 @@
   - New feedback memory: batch multiple edits into one Write or parallel calls on Opus (sequential Edits burn cost). Captured mid-session after user flagged it.
   - Chore commits: `.mcp.json` gains web-research MCP entry; 3 `/copy` snapshot files saved under `docs/ideas/smart-rag-phase-0-response-*.md`.
   - Branch: `feature/ltg-phase0` (3 commits: docs + 2x chore)
-- **Active branch:** `feature/ltg-phase0` (PR pending at handoff)
-- **Prior active branch:** `feature/smart-rag-research` (merged, e639b5e); `feature/gemma3-benchmark` (PR still not opened)
-- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ref-lookup prefix search, extract create-persona.py into importable library, `add_model` MCP tool (complete the chain: tag → models.yaml entry → derives suffix/name/ctx → optional domain; complements copy_persona/create_persona), gemma4 on Ollama (check ~2026-04-23)
-- **Session 44a** (2026-03-17) — MVP spike plan (fork of session 44):
-  - Concrete extraction spike plan: `docs/research/mvp-spike-plan.md` (`ref:mvp-spike-plan`)
-  - Environment audit: Ollama running, httpx available, trafilatura needed, no SearXNG/Firecrawl/Crawl4AI yet
-  - Simplified spike: httpx + trafilatura + direct Ollama HTTP (no heavy infra for hypothesis validation)
-  - Two prompts: open extraction + focus-directed. JSON schema via `format` param
-  - Test URLs: 5 known pages from prior research (Crawl4AI, Stagehand, LDR, Jina, Crawl4AI docs)
-  - Models: qwen2.5-coder:14b first, then qwen3:14b, qwen3:8b
-  - Branch: `feature/mvp-spike-plan`
-  - **Forked session pattern:** Fork notes appended, no log rotation (genesis session owns rotation)
-- **Session 44b** (2026-03-17) — DDD agent modeling (fork of session 44):
-  - Formalized "DDD as agent/model modeling" pattern: `docs/research/ddd-agent-modeling.md` (`ref:ddd-agent-modeling`)
-  - Strategic patterns (bounded contexts, context maps, subdomain classification) + tactical patterns (aggregates, events, sagas)
-  - Expanded companion: `docs/research/ddd-agent-decisions.md` (`ref:ddd-agent-decisions`) — anti-pattern detection with RTX 3060 cost numbers, split/merge flowchart, cost/benefit template, worked examples
-  - Key finding: only 3 justified model swap points; Agent Tool should be code; Agent A2 deferred
-  - Branch: `feature/mvp-spike-plan` (continued)
-- **Next:** Execute LTG **Phase 1 topic-extractor spike** (`ref:ltg-plan-phase-1` + `ref:ltg-extractor` for sweep protocol). Write extraction prompt (structured output via `format`), runner script, warm models, run 5-6 models × 8 files + long-file appendix, score on 11-dim rubric, pick winner. Exit threshold: weighted quality ≥ 2.2. Also required before locking embedding: **Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 on 12GB card). Also open: PR for feature/ltg-phase0; PR for feature/gemma3-benchmark; Phase 3 chatbot converges with LTG; read claude-code/src/services/mcp/normalization.ts before next MCP refactor; Layer 4 stragglers; registry hot-reload; server.py refactor
+- **Session 53** (2026-04-15) — ref-lookup prefix search + Phase 1 extractor spike (runner built):
+  - `ref-lookup.sh` gains glob mode (`KEY*`) + digit-key fix in `--list`; overlay ref-indexing v2; PR #30
+  - Phase 1 corpus: 8 files selected (7 prose + 1 code). `retrieval/prompts/extract.txt` + `retrieval/extract_topics.py` built via local-model workflow (q25c14 + gemma3:12b IMPROVED; Claude version chosen as final)
+  - MCP `client.py` fix: `timeout=None` on AsyncClient + fresh client per `chat()` call (fixes stale connection after cancelled requests)
+  - Deferred: `ModelCaller` Protocol for `extract_topics.py` (in `ref:deferred-infra`)
+  - `cozempic` window bug: reports 1.00M, actual 200K — multiply reported % by 5×
+  - Branch: `feature/ltg-phase1-extractor-spike` (commit 80e7ebf)
+- **Session 55** (2026-04-17) — persona-template.md scored (5/8) + two-rater framing + overlap semantics refined:
+  - Clarified that the 4 already-scored files were scored **by Claude in session 54 (draft)**, not by the user. `retrieval/spike-results.md` relabeled accordingly; two-rater agreement (Claude draft vs user HTML-viz scores) now gates extractor freeze.
+  - Scored `personas/persona-template.md` across 4 models: qwen3:14b=**2.65** (9 topics / 9 sections, perfect alignment), qwen3:8b=**2.25** (missed Registration 154-163), coder=**2.00** (dropped Rules subsection), gemma3=**1.35**. 5-file averages with speed penalty: **qwen3:14b 2.42 ✅ / qwen3:8b 2.21 ✅ / coder 1.83 ❌ / gemma3 1.71 ❌**. Ranking stable.
+  - Two new insights added to `ref:ltg-phase1-insights`: #4 whole-section drops under topic-budget pressure (dim 8 catches); #5 hierarchical containment (child ⊆ parent) is a feature per LTG multi-scale design, crossed partial overlap is the bug — mechanical check is `intersection == smaller_span`. User pushback on the original "no shared lines" framing corrected this.
+  - New deferred task: prompt iteration combining topic-count floor (`max(5, major_section_count)`) + containment-only overlap rule.
+- **Session 54** (2026-04-16) — Phase 1 sweep executed + HTML scorer + 4/8 files scored:
+  - Sweep ran 32/32 ok (`retrieval/runs/20260416-181839.jsonl`). `pip3 install httpx` needed on first attempt.
+  - Built `retrieval/viz_sweep.py` — self-contained HTML viewer with inline rubric scorer (dims 5-8 dropdowns + notes + live weighted_quality badge), localStorage persistence keyed by run_id, span chips that highlight source lines, duplicate-span auto-flag, export-to-markdown. Refactored once after security hook flagged `innerHTML` → now pure DOM methods.
+  - Scored 4/8 files: QUICK.md, smart-rag-repowise.md, plan-v2.md, build-persona.py. **Preliminary winner: qwen3:14b** (2.68 raw → 2.43 with speed penalty). Backup: qwen3:8b (2.20, 4× faster). Not yet frozen — gates on remaining 4 files + determinism + MoE eval.
+  - Findings saved to `retrieval/spike-results.md` with 3 ref blocks: `ltg-phase1-results`, `ltg-phase1-insights`, `ltg-phase1-routing-hypothesis`. Indexed in `.claude/index.md`. 5 new deferred items in `.claude/tasks.md` under `ref:deferred-infra`.
+  - Notable finding: qwen2.5-coder:14b has a striking prose-vs-code split (off-by-one on prose, tightest boundaries on code). Motivates file-type-routed extractor.
+- **Session 56** (2026-04-25) — LTG rater page redesign (Claude Design + viz_sweep wiring):
+  - Produced Claude Design brief + representative JSONL slice (`retrieval/runs/20260416-181839-design-slice.json`, 57 KB) for the Design session.
+  - User generated `retrieval/ltg-rater.template.html` (>1600 lines) in Claude Design — new UI with keyboard scoring, model-comparison view, resizable split, dark/light toggle, etc.
+  - Wired template into `retrieval/viz_sweep.py`: file-based read, updated placeholder tokens. Fixed DATA envelope mismatch (template expects `{tag, weights, exit_threshold, data:[]}` not bare array). Re-renders cleanly: 32 records, 8 sources, 288 KB.
+  - Legacy `HTML_TEMPLATE` string literal in `viz_sweep.py` is now dead code — safe to delete after new template confirmed on all edge cases.
+- **Session 57** (2026-04-25) — Score remaining 3 corpus files + capture rater notes (Claude draft 8/8 closed):
+  - **Scored final 3 files** (KNOWLEDGE.md, smart-rag-index.md, smart-rag3.md). Final 8-file Claude draft averages after speed penalty: qwen3:14b 2.44 ✅ (winner), qwen3:8b 2.27 ✅ (backup, **best on cross-ref index**), coder 1.76 ❌, gemma3 1.61 ❌. Ranking unchanged from 5-file mark, but lead narrowed from 0.46 → 0.17.
+  - **Three new numbered insights** added to `ref:ltg-phase1-insights`: #6 section-drop pattern reproduces (qwen3:8b confirmed structural — KNOWLEDGE.md + persona-template.md) + dim-8 weighting under-penalises whole-section drops; #7 cross-reference index breaks qwen3:14b's lead via off-by-one on dense bullets (model-agnostic format failure — coder hit it on smart-rag-repowise.md, qwen3:14b on smart-rag-index.md); #8 paired-file natural experiment (smart-rag-index ↔ smart-rag3) confirms format-sensitivity dominates content-sensitivity (0.55 + 0.42 swings in opposite directions).
+  - **New file `retrieval/spike-rater-notes.md`** with three ref blocks held outside `.memories/KNOWLEDGE.md` until two-rater reconciliation closes (avoids biasing user-track HTML-viz scoring): `ltg-phase1-claude-rater-notes` (per-cell scoring rationale + evidence quotes); `ltg-phase1-meta-insights` (file-class taxonomy, paired-file methodology, per-model trends, reconciliation priorities, mechanical post-pass guards: coverage cap >60% + containment overlap check); `ltg-phase1-pending-revisions` (stale-wording cleanup queue + 3 conditional drafts A/B/C for routing-hypothesis revision based on user-track outcome, with decision tree).
+  - **Branch + commit:** `feature/ltg-phase1-scoring-and-notes` (off `feature/ltg-rater-redesign`); single commit `2330e04`.
+- **Active branch:** `feature/ltg-phase1-scoring-and-notes` (PR queued — final step of session 57)
+- **Prior active branches:** `feature/ltg-rater-redesign` (parent of current; session 56 work); `feature/ltg-phase1-extractor-spike` (further upstream — runner + sweep); `feature/ref-lookup-prefix-search` (PR #30 open); `feature/ltg-phase0` (PR open, under review); `feature/gemma3-benchmark` (PR still not opened)
+- **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ModelCaller Protocol for extract_topics.py, extract create-persona.py into importable library, `add_model` MCP tool, gemma4 on Ollama (check ~2026-04-23), prompt-iteration experiment (topic-count floor + containment-only overlap), delete legacy `HTML_TEMPLATE` from viz_sweep.py
+- **Next:** **(1) User completes HTML-viz scoring track** (in progress — `manual-rubric.md.1.md/.2.md/.3/.4` working backups in tree). **(2) Two-rater reconciliation:** diff per cell; apply Branch A/B/C from `ref:ltg-phase1-pending-revisions` based on outcome; apply 3-item stale-wording cleanup; update `.memories/KNOWLEDGE.md` final 8/8 numbers. **(3) Determinism re-run on `smart-rag-index.md` for qwen3:14b** — does the off-by-one on the 7 pattern bullets reproduce? Gating evidence for the 3-arm routing arm. **(4) Prompt-iteration experiment** (deferred from session 55) — topic-count floor + containment-only overlap, cheap re-sweep on existing 8 files. **(5) Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 on 12GB) folded with MoE extractor eval (`qwen3:30b-a3b`, `qwen3-coder:30b`). **(6) Formal `ref:ltg-extractor` decision-replacement** in `retrieval/DECISIONS.md`. Still open: PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
 - **Cross-repo:** MVP spike executing in web-research repo sessions; expense MCP work executing in expenses repo sessions; PR #21 merged (`feature/persona-mcp-tools`); .memories/ PRs merged in expenses + web-research
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)

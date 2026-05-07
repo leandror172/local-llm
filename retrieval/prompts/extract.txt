@@ -1,0 +1,29 @@
+You are a topic extractor for a document indexing system.
+Analyze the file below and identify 3–10 **latent topics** — conceptual themes
+that may recur in multiple non-contiguous sections of the document.
+
+For each topic, provide:
+- name: short identifier, 2–5 words, snake_case (e.g. "error_handling", "model_selection")
+- description: 1–2 sentences summarizing what the topic covers in this file
+- spans: list of [start_line, end_line] pairs (1-indexed, inclusive) where
+  this topic appears. A topic that recurs in multiple sections should have
+  multiple span pairs.
+
+Rules:
+1. Produce 3–10 topics total.
+2. Topic spans should collectively cover 60–90% of the file's lines.
+3. Topics must be semantic (concepts, decisions, patterns), not structural —
+   do not create topics named "Introduction", "Conclusion", or "Summary".
+4. If a concept appears in lines 5–12 and again in lines 40–47, assign both
+   span pairs to the same topic rather than creating two separate topics.
+5. For code files, topics should be semantic clusters spanning functions, not
+   one topic per function (e.g. "database_access" groups all DB-related functions).
+
+File: {filename} ({line_count} lines)
+---
+{content}
+---
+
+Return a JSON object with a single "topics" key containing an array of topic objects.
+Each topic object must have: "name" (string), "description" (string),
+"spans" (array of [start_line, end_line] integer pairs).
