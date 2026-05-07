@@ -4,11 +4,14 @@
 
 ## Status
 
-Session 56 (2026-04-25): Phase 1 extractor spike **in progress**. Sweep ran (32 records,
-4 models × 8 corpus files). 5/8 files scored (Claude draft). Preliminary winner:
-**qwen3:14b** (q=2.42 ✅, threshold ≥2.2). Rater UI redesigned — new template at
-`ltg-rater.template.html`, rendered by `viz_sweep.py`. Do not advance to Phase 2 until
-all 8 files scored + two-rater reconciliation (Claude draft vs user HTML-viz scores).
+Session 58 (2026-04-30): Phase 1 extractor spike **closed via two-rater
+reconciliation** (Branch C). 8/8 corpus files scored under both Claude draft
++ user HTML-viz tracks. Identical ranking + verdicts (adj. Claude/User):
+qwen3:14b ✅ 2.44/2.61 (winner), qwen3:8b ✅ 2.27/2.63 (backup), qwen2.5-coder:14b
+❌ 1.76/2.16 (borderline under user), gemma3:12b ❌ 1.61/1.82. Production
+routing: 2-arm (coder for code, qwen3:14b for prose); cross-ref-index 3rd-arm
+deferred to Phase 2. Final freeze still gates on determinism re-run on
+`smart-rag-index.md` × qwen3:14b (~30s, cheapest gating evidence) + MoE eval.
 
 ## What Lives Here
 

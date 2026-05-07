@@ -1,8 +1,47 @@
 # Session Log
 
-**Current Layer:** LTG Phase 1 — topic extractor spike (Claude draft track CLOSED, awaiting two-rater reconciliation)
-**Current Session:** 2026-04-25 — Session 57: Score remaining 3 corpus files + capture rater notes (Claude draft 8/8 complete)
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`
+**Current Layer:** LTG Phase 1 — topic extractor spike CLOSED via two-rater reconciliation (Branch C); final freeze pending determinism re-run + MoE eval
+**Current Session:** 2026-04-30 — Session 58: LTG Phase 1 two-rater reconciliation closes Phase 1 (Branch C)
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`
+
+---
+
+## 2026-04-30 - Session 58: LTG Phase 1 two-rater reconciliation closes Phase 1 (Branch C)
+
+### Context
+Resumed mid-day on `feature/ltg-phase1-scoring-and-notes` (session 57's branch). User signaled "Manual viz is done; ltg-rater-...-215756Z.json also has individual scores for (almost) each topic" — i.e., the user-track HTML-viz scoring complete, with richer per-topic data than the original rater. This was the queued reconciliation step from session 57's "Next" pointer. User explicitly directed: commit on a new branch, then session-handoff, then PR.
+
+### What Was Done
+- **Reconciled user track (manual-rubric.md, 32/32 cells) with Claude draft.** Per-cell delta analysis: **identical 4-model ranking and identical pass/fail verdicts** under both raters. User track systematically more lenient (per-model Δ_avg: gemma +0.21, qwen3:14b +0.18, coder +0.40, qwen3:8b +0.36) but the relative ordering and gating decisions hold.
+- **Applied Branch C** from `ref:ltg-phase1-pending-revisions` per the pre-registered decision tree. Cross-rater agreement: agree on `smart-rag3.md` (qwen3:14b wins, both raters); disagree on `smart-rag-index.md` (Claude: qwen3:8b > qwen3:14b by +0.12; User: qwen3:14b > qwen3:8b by +0.15). Mixed → Branch C: keep 2-arm production routing (qwen2.5-coder:14b for code, qwen3:14b for prose); cross-ref-index 3rd-arm hypothesis preserved as deferred Phase 2 item.
+- **Final 8/8 adjusted scores (Claude / User):** qwen3:14b 2.44 / 2.61 ✅ winner; qwen3:8b 2.27 / 2.63 ✅ backup; qwen2.5-coder:14b 1.76 / 2.16 ❌ (borderline under user, 0.04 below threshold — corpus expansion could plausibly flip); gemma3:12b 1.61 / 1.82 ❌.
+- **Edited `retrieval/spike-results.md`** (5 surgical edits): filled user scores table (32 cells, was placeholder); added Two-rater reconciliation section with decisive cells + Branch C resolution + largest single-cell disagreement note (QUICK.md × gemma3 Δ=−0.93) + dim-8 reweight question; softened pre-reconciliation routing claims in Claude draft block; added insight #9 to `ref:ltg-phase1-insights` (rubric fit-for-purpose for binary decisions; ~0.2–0.4 calibration drift for continuous reuse); rewrote `ref:ltg-phase1-routing-hypothesis` block per Branch C with explicit 2-arm production + 3 deferred Phase 2 items.
+- **Updated `.memories/KNOWLEDGE.md`** "LTG Phase 1 Extractor Spike — Findings" section: replaced preliminary 5/8 table with final 8/8 reconciled (Claude + User columns), added production-routing summary + rater-calibration takeaway for Layer 7 / DPO scoring.
+- **Updated `.claude/tasks.md`:** marked "score remaining 4 corpus files" complete; added 2 new deferred items in `ref:deferred-infra` — (a) cross-reference-index 3rd-arm routing hypothesis (defer-to-Phase-2 with re-eval triggers), (b) per-topic JSON (648 scores) as Phase 2 input.
+- **Updated `.memories/QUICK.md` (root) + `retrieval/.memories/QUICK.md`:** refreshed status blocks from "session 56, 5/8 in progress, preliminary winner" to "session 58, reconciliation closed, 2-arm production, freeze pending determinism + MoE". Confirmed other per-folder QUICK.md / KNOWLEDGE.md files (evaluator, mcp-server, overlays, personas, benchmarks) do not reference Phase 1 content — left untouched.
+- **Branch + commits:** Created `feature/ltg-phase1-reconciliation-session-58` off `feature/ltg-phase1-scoring-and-notes` (session 57's branch — not master, because the reconciliation depends on session 57's `ref:ltg-phase1-pending-revisions`). Two commits: `c3fdcdd` (reconciliation core: spike-results.md + KNOWLEDGE.md + tasks.md + tracked manual-rubric.md + tracked latest JSON export) and `34cfaa8` (chore: QUICK.md memory updates).
+
+### Decisions Made
+- **Branch C selected mechanically** per the pre-registered decision tree from session 57 (`ref:ltg-phase1-pending-revisions`). Rationale: agree on `smart-rag3` flip but disagree on `smart-rag-index` flip → Branch C (mixed). The pre-registration prevented post-hoc rationalization of which branch fits the data.
+- **3rd-arm hypothesis preserved as deferred, not killed.** Re-eval triggers documented: (a) determinism re-run on smart-rag-index × qwen3:14b confirms/refutes off-by-one, (b) more cross-reference-index files added to corpus (n=1 → n≥3), (c) MoE candidates evaluated. Determinism re-run is cheapest (~30s) and answers the deferred question directly.
+- **Dim-8 reweight question (insight #6) NOT load-bearing for ranking** — both rater tracks produce identical pass/fail; deferred to Phase 2 as a refinement that would matter only if the rubric is later repurposed for continuous DPO scoring.
+- **Per-topic JSON (648 scores in 29/32 cells) deferred to Phase 2** — could supply per-topic boundary evidence to disambiguate the 3rd arm without corpus expansion. Out of scope for Phase 1 binary freeze.
+- **Branch off current session 57 branch, not master** — reconciliation depends on the `ref:ltg-phase1-pending-revisions` block introduced in session 57; branching off master would create a base where the decision tree doesn't exist.
+- **Tracked the user-track source files** (`retrieval/runs/manual-rubric.md` + `…215756Z.json`) alongside the doc edits because spike-results.md cites them. Other intermediate exports + manual-rubric backups left untracked.
+
+### Next
+- **Push `feature/ltg-phase1-reconciliation-session-58`** + open PR (final step of this session).
+- **Determinism re-run on `smart-rag-index.md` × qwen3:14b** — now the cheapest gating evidence remaining (~30s of compute). If the off-by-one on the 7 pattern bullets reproduces under 2 more sweeps, that's the missing Phase 1 evidence for the deferred 3rd arm. Apply stability bonus (+0.5 if Jaccard ≥ 0.85, +0.25 if ≥ 0.80) to weighted_quality before the formal freeze decision.
+- **Prompt-iteration experiment** (still deferred from sessions 55/57): topic-count floor `max(5, major_section_count)` + containment-only overlap rule. Cheap re-sweep on existing 8 files; would directly test whether qwen3:8b's whole-section-drop failure mode is fixable in-prompt.
+- **Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 ≈ 12 GB on 12 GB card) folded with **MoE extractor eval** (qwen3:30b-a3b, qwen3-coder:30b) per `ref:ltg-phase1-routing-hypothesis`.
+- **Formal `ref:ltg-extractor` decision-replacement** in `retrieval/DECISIONS.md` once determinism + MoE evidence lands. Branch C does NOT pre-commit the freeze; only the routing hypothesis.
+- **Still open:** session 57 PR for `feature/ltg-phase1-scoring-and-notes`; PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
+
+### Notable
+- **Largest single-cell disagreement: `.memories/QUICK.md` × `gemma3:12b` (Δ=−0.93).** The only cell of 32 where the user track is harsher than Claude. User scored d5=0 with explicit note about semantic hallucination ("infers wrong ideas, strange decisions on spans"). Sharpens gemma's `❌` rather than weakening it — the failure mode is *semantic hallucination on dense memory files*, which Claude's per-file scalar underweighted.
+- **Coder borderline:** under user track, qwen2.5-coder:14b finishes at 2.16 adjusted (0.04 below threshold) vs Claude 1.76 (0.44 below). Same verdict but margin is small enough that 2-3 more code files in the corpus could flip it.
+- **Methodological insight for Layer 7:** rubric is fit-for-purpose for binary decisions; absolute scores diverge by ~0.2–0.4 weighted-quality points across raters. Continuous reuse (DPO scoring) would need inter-rater calibration.
+- **Pre-registered decision tree paid off.** Session 57 wrote down what each user-track outcome would mean before seeing the user's scores. Branch C applied mechanically rather than getting argued into Branch A on weak grounds. Worth carrying forward to determinism + MoE eval (pre-register what each outcome means).
 
 ---
 
@@ -104,32 +143,6 @@ Resumed on `feature/ltg-phase1-extractor-spike`. Entry point was `@.claude/sessi
 - **After all 8 scored:** export manual-rubric.md from viz (user track) + compare against Claude's draft. Record divergences. Commit `feature/ltg-phase1-extractor-spike` and open PR.
 - **Then:** determinism re-runs on winner (dim 9 Jaccard), MoE probe folded into Phase 2 VRAM co-residence, prompt-iteration experiment (topic-count floor + containment-only overlap).
 - **Still open:** PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
-
----
-
-## 2026-04-16 - Session 54: Phase 1 sweep executed + HTML scorer viz + 4/8 files scored
-
-### Context
-Resumed on `feature/ltg-phase1-extractor-spike` with the extractor runner already built (session 53). Goal: run the sweep and produce a verdict for `ref:ltg-extractor`.
-
-### What Was Done
-- **Ran Phase 1 sweep:** `python3 retrieval/extract_topics.py` — 4 models × 8 files = 32/32 ok. Had to `pip3 install httpx` first. Raw results at `retrieval/runs/20260416-181839.{jsonl,summary.txt,manual-rubric.md}`.
-- **Built `retrieval/viz_sweep.py`** — self-contained HTML viewer for sweep results. Features: model/file filters, live stats strip, per-card span chips that highlight source lines in a right-hand pane, duplicate-span-set auto-flag, inline rubric scorer (dims 5-8 dropdowns + notes + weighted_quality badge), localStorage persistence keyed by run_id, export-to-markdown button. Rebuilt once after a security hook flagged `innerHTML` — refactored to `createElement`/`textContent`. Help panel embedded for in-viz rubric reference.
-- **Scored 4/8 files manually:** QUICK.md, smart-rag-repowise.md, plan-v2.md, build-persona.py. Raw averages: qwen3:14b=2.68, qwen3:8b=2.20, qwen2.5-coder:14b=2.10, gemma3:12b=1.80. With speed penalty (−0.25 if <15 tok/s): qwen3:14b=2.43 ✅, qwen3:8b=2.20 ✅, coder=1.85 ❌, gemma3=1.80 ❌.
-- **Saved findings with ref:KEY blocks:** `retrieval/spike-results.md` (new file) — three blocks: `ltg-phase1-results` (scoring + verdict), `ltg-phase1-insights` (coder prose-vs-code split, qwen3:8b duplicate spans on plan-v2, gemma3 boilerplate), `ltg-phase1-routing-hypothesis` (specialized-model routing + MoE probe).
-- **Indexed in tracking files:** `.claude/index.md` gets a new LTG Phase 1 Spike Results section with the three ref keys; `.claude/tasks.md` gets 5 new deferred items under `ref:deferred-infra` (score remaining 4 files, determinism re-runs, MoE eval, routing study, bash wrappers for retrieval tools).
-
-### Decisions Made
-- **Preliminary extractor pick:** `qwen3:14b` (not frozen — gates on remaining 4 files, determinism re-runs, MoE eval). Pick the default now to unblock Phase 2 integration.
-- **Viz format: static HTML** (not CLI/Streamlit). Self-contained, no deps, works offline, persists to localStorage.
-- **Scoring granularity: holistic per-record** (one dim5 score across all ~7 topics in a record), notes field for specific topic-level observations. Per-topic scoring rejected as overkill for this spike (would have been ~250 cells vs 32).
-- **Speed penalty: −0.25 if <15 tok/s** (rubric left the amount undefined; this is the session 54 working value).
-- **Interesting finding worth chasing later:** `qwen2.5-coder:14b` was off-by-one on prose spans but tight on code. Motivates file-type-routed extractor — captured as `ref:ltg-phase1-routing-hypothesis`.
-
-### Next
-- **Score the remaining 4 files** using the HTML viz (`retrieval/runs/20260416-181839.html`): `smart-rag-index.md`, `smart-rag3.md`, `persona-template.md`, `KNOWLEDGE.md`. User said next session they want further analysis on those files.
-- **After scoring complete:** export manual-rubric.md from viz, commit the branch, open PR for `feature/ltg-phase1-extractor-spike`.
-- **Still open:** determinism re-runs on winner (dim 9); MoE extractor eval (fold into Phase 2 VRAM co-residence probe); specialized-routing study (add code files to corpus).
 
 ---
 
