@@ -196,6 +196,8 @@ Other infrastructure:
 | `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; no args = list all keys | Any time a `[ref:KEY]` tag is needed |
 | `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
 | `.claude/tools/benchmark-status.sh` | Rubrics/prompts/personas/results overview | Before any benchmark session |
+| `.claude/tools/ollama-stats.py` | DPO evaluation stats: total calls, model usage, verdict distribution | After evaluating local model outputs; track progress |
+| `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
 
 ### MCP Server
 | Script | Purpose | When to Use |
