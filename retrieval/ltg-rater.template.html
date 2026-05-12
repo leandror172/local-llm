@@ -506,6 +506,53 @@ input, textarea, select { font-family: inherit; color: inherit; }
 .score-row .weight {
   font-family: var(--fs-mono); font-size: 10.5px; color: var(--fg-3);
   text-align: right;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+}
+.score-row .weight-pct { color: var(--fg-3); }
+.rec-pill {
+  font-family: var(--fs-mono); font-size: 10px;
+  padding: 1px 6px; border-radius: 3px;
+  background: var(--bg-3); color: var(--fg-1);
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 100ms, color 100ms, border-color 100ms;
+}
+.rec-pill:hover { background: var(--warm-soft); color: var(--fg-0); border-color: var(--warm-rail); }
+.rec-pill.empty {
+  cursor: default; background: transparent; color: var(--fg-3);
+  border-color: transparent; font-style: italic;
+}
+.rec-pill.empty:hover { background: transparent; color: var(--fg-3); border-color: transparent; }
+
+.micro-scores {
+  margin-top: 8px;
+  display: flex; flex-wrap: wrap; gap: 4px 12px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line-soft);
+}
+.micro-cell {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.micro-label {
+  font-family: var(--fs-mono); font-size: 10px;
+  color: var(--fg-3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-right: 2px;
+}
+.micro-btn {
+  width: 20px; height: 20px;
+  font-family: var(--fs-mono); font-size: 11px;
+  border: 1px solid var(--line-soft); background: var(--bg-2);
+  border-radius: 3px; color: var(--fg-2);
+  transition: background 100ms, color 100ms, border-color 100ms;
+}
+.micro-btn:hover { border-color: var(--fg-3); color: var(--fg-0); }
+.micro-btn.on {
+  background: var(--warm-soft);
+  border-color: var(--warm-rail);
+  color: var(--fg-0);
+  font-weight: 600;
 }
 
 .score-buttons { display: inline-flex; gap: 4px; }
@@ -616,6 +663,11 @@ input, textarea, select { font-family: inherit; color: inherit; }
 }
 .src-body .line.hl-soft { background: var(--cool-soft); }
 .src-body .line.hl-soft .ln { color: var(--fg-1); }
+.src-body .line.hl-uncovered {
+  background: oklch(85% 0.13 95 / 0.18);
+}
+.src-body .line.hl-uncovered .ln { color: oklch(75% 0.14 85); }
+.src-body .line.hl-soft.hl-uncovered { background: var(--cool-soft); }
 .src-body .line.hl-strong {
   background: var(--cool-strong);
 }
@@ -719,6 +771,10 @@ input, textarea, select { font-family: inherit; color: inherit; }
       <button id="view-compare">compare</button>
     </div>
     <div class="grow" style="flex:1"></div>
+    <button class="btn" id="btn-save-json" title="Download a portable backup (.json)">Save .json</button>
+    <button class="btn" id="btn-load-json" title="Restore scores from a .json backup">Load .json</button>
+    <input type="file" id="file-load-json" accept=".json,application/json" style="display:none">
+    <span class="sep"></span>
     <button class="btn primary" id="btn-export">Export .md</button>
     <button class="btn" id="btn-copy">Copy</button>
     <button class="btn danger" id="btn-clear">Clear</button>
@@ -1086,8 +1142,8 @@ function loadSource(file) {
 
 function clearHighlights() {
   const body = document.getElementById("src-body");
-  body.querySelectorAll(".line.hl-soft, .line.hl-strong").forEach(n => {
-    n.classList.remove("hl-soft", "hl-strong");
+  body.querySelectorAll(".line.hl-soft, .line.hl-strong, .line.hl-uncovered").forEach(n => {
+    n.classList.remove("hl-soft", "hl-strong", "hl-uncovered");
   });
 }
 
@@ -1097,6 +1153,19 @@ function highlightTopic(run, topicIdx, clickedSpanIdx) {
   const topic = run.parsed_topics[topicIdx];
   if (!topic) return;
   const body = document.getElementById("src-body");
+
+  // uncovered: any line not in any span of any topic for this run
+  const covered = new Set();
+  for (const t of (run.parsed_topics || [])) {
+    for (const sp of (t.spans || [])) {
+      for (let n = sp[0]; n <= sp[1]; n++) covered.add(n);
+    }
+  }
+  body.querySelectorAll(".line").forEach(row => {
+    const ln = +row.dataset.ln;
+    if (!covered.has(ln)) row.classList.add("hl-uncovered");
+  });
+
   // soft: all spans of topic
   for (const sp of (topic.spans || [])) {
     const [a,b] = sp;
@@ -1245,12 +1314,22 @@ function buildCard(run, compact) {
         const label = sp[0] === sp[1] ? String(sp[0]) : `${sp[0]}–${sp[1]}`;
         return `<span class="span-chip" data-span-idx="${si}" data-topic-idx="${ti}">${label}</span>`;
       }).join("");
+      const ts = (s.topicScores && s.topicScores[ti]) || {};
+      const microRow = (key, label) => {
+        const cur = ts[key];
+        return `<div class="micro-cell" data-mkey="${key}"><span class="micro-label">${label}</span>${[0,1,2,3].map(n => `<button class="micro-btn${cur===n?' on':''}" data-mscore="${n}">${n}</button>`).join("")}</div>`;
+      };
       row.innerHTML = `
         <div class="idx">${String(ti+1).padStart(2,"0")}</div>
         <div>
           <div class="name">${escapeHtml(t.name || "(unnamed)")}</div>
           <div class="desc">${escapeHtml(t.description || "")}</div>
           <div class="spans">${spansHtml}</div>
+          <div class="micro-scores" data-topic-idx="${ti}">
+            ${microRow("n","name")}
+            ${microRow("d","desc")}
+            ${microRow("b","bnd")}
+          </div>
         </div>
       `;
       tl.appendChild(row);
@@ -1261,17 +1340,24 @@ function buildCard(run, compact) {
   // scoring
   const sb = document.createElement("div");
   sb.className = "score-block";
+  const avgs = topicAverages(run, s);
+  const microKey = { d5: "n", d6: "d", d7: "b" };
   for (const dim of DIMS) {
     const row = document.createElement("div");
     row.className = "score-row";
     row.dataset.dim = dim.id;
     const cur = s[dim.id];
+    const mk = microKey[dim.id];
+    const avg = mk ? avgs[mk] : null;
+    const recHtml = (avg != null)
+      ? `<button class="rec-pill" data-rec="${Math.round(avg)}" title="Average across topics: ${avg.toFixed(2)} — click to apply">avg ${avg.toFixed(2)} → ${Math.round(avg)}</button>`
+      : (mk ? `<span class="rec-pill empty">no per-topic scores</span>` : "");
     row.innerHTML = `
       <div class="dim-label"><span>${dim.label}</span><span class="dim-key">${dim.key}</span></div>
       <div class="score-buttons">
         ${[0,1,2,3].map(n => `<button data-score="${n}"${cur===n?' class="on"':''}>${n}</button>`).join("")}
       </div>
-      <div class="weight">${Math.round(dim.weight*100)}%</div>
+      <div class="weight">${recHtml}<span class="weight-pct">${Math.round(dim.weight*100)}%</span></div>
     `;
     sb.appendChild(row);
   }
@@ -1306,6 +1392,27 @@ document.getElementById("cards").addEventListener("click", (e) => {
     state.activeSpanKey = runId + ":" + ti + ":" + si;
     highlightTopic(run, ti, si);
     applyActiveStates();
+    return;
+  }
+
+  // micro per-topic score button
+  const mb = e.target.closest(".micro-btn");
+  if (mb) {
+    const cell = mb.closest(".micro-cell");
+    const wrap = mb.closest(".micro-scores");
+    const ti = +wrap.dataset.topicIdx;
+    const key = cell.dataset.mkey;
+    const n = +mb.dataset.mscore;
+    setTopicScore(runId, ti, key, n);
+    return;
+  }
+
+  // recommended (avg) pill
+  const rec = e.target.closest(".rec-pill");
+  if (rec && !rec.classList.contains("empty")) {
+    const dimId = rec.closest(".score-row").dataset.dim;
+    const v = +rec.dataset.rec;
+    setScore(runId, dimId, v);
     return;
   }
 
@@ -1348,6 +1455,76 @@ function setScore(runId, dimId, value) {
   updateCardMetrics(runId);
   renderProgress();
   renderCounts();
+}
+
+function setTopicScore(runId, topicIdx, key, value) {
+  scores[runId] = scores[runId] || {};
+  scores[runId].topicScores = scores[runId].topicScores || {};
+  const ts = scores[runId].topicScores[topicIdx] = scores[runId].topicScores[topicIdx] || {};
+  if (ts[key] === value) ts[key] = null;
+  else ts[key] = value;
+  // clean empties
+  if (ts.n == null && ts.d == null && ts.b == null) delete scores[runId].topicScores[topicIdx];
+  saveJSON(SCORES_KEY, scores);
+  updateMicroButtons(runId, topicIdx);
+  updateRecPills(runId);
+}
+
+function topicAverages(run, runScores) {
+  const ts = (runScores && runScores.topicScores) || {};
+  const sums = { n: 0, d: 0, b: 0 };
+  const cnts = { n: 0, d: 0, b: 0 };
+  if (run.parsed_topics) {
+    for (let i = 0; i < run.parsed_topics.length; i++) {
+      const t = ts[i];
+      if (!t) continue;
+      for (const k of ["n","d","b"]) {
+        if (typeof t[k] === "number") { sums[k] += t[k]; cnts[k]++; }
+      }
+    }
+  }
+  return {
+    n: cnts.n ? sums.n/cnts.n : null,
+    d: cnts.d ? sums.d/cnts.d : null,
+    b: cnts.b ? sums.b/cnts.b : null,
+  };
+}
+
+function updateMicroButtons(runId, topicIdx) {
+  const card = document.querySelector(`.card[data-run-id="${CSS.escape(runId)}"]`);
+  if (!card) return;
+  const wrap = card.querySelector(`.micro-scores[data-topic-idx="${topicIdx}"]`);
+  if (!wrap) return;
+  const ts = ((scores[runId] && scores[runId].topicScores) || {})[topicIdx] || {};
+  wrap.querySelectorAll(".micro-cell").forEach(cell => {
+    const key = cell.dataset.mkey;
+    const cur = ts[key];
+    cell.querySelectorAll(".micro-btn").forEach(b => {
+      b.classList.toggle("on", +b.dataset.mscore === cur);
+    });
+  });
+}
+
+function updateRecPills(runId) {
+  const card = document.querySelector(`.card[data-run-id="${CSS.escape(runId)}"]`);
+  if (!card) return;
+  const run = RUNS.find(r => r.run_id === runId);
+  if (!run) return;
+  const avgs = topicAverages(run, scores[runId] || {});
+  const microKey = { d5: "n", d6: "d", d7: "b" };
+  card.querySelectorAll(".score-row").forEach(row => {
+    const dimId = row.dataset.dim;
+    const mk = microKey[dimId];
+    if (!mk) return;
+    const avg = avgs[mk];
+    const wrap = row.querySelector(".weight");
+    const old = wrap.querySelector(".rec-pill");
+    if (old) old.remove();
+    const html = (avg != null)
+      ? `<button class="rec-pill" data-rec="${Math.round(avg)}" title="Average across topics: ${avg.toFixed(2)} — click to apply">avg ${avg.toFixed(2)} → ${Math.round(avg)}</button>`
+      : `<span class="rec-pill empty">no per-topic scores</span>`;
+    wrap.insertAdjacentHTML("afterbegin", html);
+  });
 }
 
 function updateCardMetrics(runId) {
@@ -1577,6 +1754,88 @@ document.getElementById("btn-clear").addEventListener("click", () => {
   scores = {};
   localStorage.removeItem(SCORES_KEY);
   render();
+});
+
+/* ---- JSON backup: save / load ---------------------------------- */
+function buildBackup() {
+  // Tally for sanity-checking on import
+  let totalScored = 0, totalTopicScores = 0;
+  for (const r of RUNS) {
+    if (runScored(r)) totalScored++;
+    const ts = (scores[r.run_id] && scores[r.run_id].topicScores) || {};
+    for (const k in ts) {
+      const t = ts[k] || {};
+      for (const dk of ["n","d","b"]) if (typeof t[dk] === "number") totalTopicScores++;
+    }
+  }
+  return {
+    kind: "ltg-rater-backup",
+    schema: 1,
+    tag: TAG,
+    weights: WEIGHTS,
+    threshold: THRESHOLD,
+    saved_at: new Date().toISOString(),
+    counts: { runs: RUNS.length, scored: totalScored, topic_scores: totalTopicScores },
+    scores: scores,
+  };
+}
+
+document.getElementById("btn-save-json").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(buildBackup(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z").replace("T","-");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ltg-rater-${TAG}-${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  flash(document.getElementById("btn-save-json"), "saved");
+});
+
+document.getElementById("btn-load-json").addEventListener("click", () => {
+  document.getElementById("file-load-json").click();
+});
+
+document.getElementById("file-load-json").addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = ""; // reset so picking the same file again re-fires
+  if (!file) return;
+  let parsed;
+  try {
+    const text = await file.text();
+    parsed = JSON.parse(text);
+  } catch (err) {
+    alert("Could not parse that file as JSON:\n\n" + err.message);
+    return;
+  }
+  if (!parsed || parsed.kind !== "ltg-rater-backup" || !parsed.scores) {
+    alert("That file doesn't look like an LTG rater backup (missing kind / scores).");
+    return;
+  }
+  // Tag mismatch — warn but allow (useful when reusing scores across renders)
+  if (parsed.tag && parsed.tag !== TAG) {
+    if (!confirm(
+      `Backup is for tag "${parsed.tag}" but this page is "${TAG}".\n` +
+      `Run IDs may not match. Import anyway?`
+    )) return;
+  }
+  // Diff: how many runs in the backup match runs we know about?
+  const knownIds = new Set(RUNS.map(r => r.run_id));
+  const incomingIds = Object.keys(parsed.scores);
+  const matched = incomingIds.filter(id => knownIds.has(id)).length;
+  const orphans = incomingIds.length - matched;
+  const haveLocal = Object.keys(scores).length;
+  const msg =
+    `Import ${incomingIds.length} run record(s)?\n` +
+    `• ${matched} match runs in this page\n` +
+    (orphans ? `• ${orphans} orphan record(s) (no matching run — will be kept)\n` : ``) +
+    (haveLocal ? `\nThis will OVERWRITE your current ${haveLocal} local record(s).` : ``);
+  if (!confirm(msg)) return;
+
+  scores = parsed.scores;
+  saveJSON(SCORES_KEY, scores);
+  render();
+  flash(document.getElementById("btn-load-json"), `loaded ${matched} / ${incomingIds.length}`);
 });
 
 function flash(el, msg) {
