@@ -333,3 +333,89 @@ When user-track scoring lands:
 - The dim-8 rubric weighting question (insight #6) — left open. If user track penalizes whole-section drops harder than Claude did, the freeze might need to wait on a re-weighted re-score before committing to qwen3:8b as the cross-reference-index arm or as the latency backup.
 
 <!-- /ref:ltg-phase1-pending-revisions -->
+
+<!-- ref:ltg-phase1-determinism-smart-rag-index -->
+## Determinism re-run — qwen3:14b × smart-rag-index.md (2026-05-04, session 59)
+
+**Task:** 5-run repeat at identical parameters (`temperature=0.1`, `think=False`, `num_ctx=8192`) to test whether the original 4/7 line-accuracy failure on the 7 cross-cutting-pattern bullets (lines 22-28) was sampling luck or a model property.
+
+**Result: Branch C — all 5 runs ≤ 4/7 (range: 1–3/7). Off-by-one is a model property.**
+
+| Run | B1(22) | B2(23) | B3(24) | B4(25) | B5(26) | B6(27) | B7(28) | Acc |
+|-----|--------|--------|--------|--------|--------|--------|--------|-----|
+| 1   | 22 ✓   | 12 ✗   | 23 ✓   | 25 ✓   | — ✗    | 26 ✗   | 27 ✗   | 3/7 |
+| 2   | 22 ✓   | 12 ✗   | 23 ✗   | 24 ✗   | 25 ✗   | 26 ✗   | 23 ✓   | 2/7 |
+| 3   | 22 ✓   | 12 ✗   | 23 ✗   | 24 ✗   | — ✗    | 26 ✗   | 23 ✓   | 2/7 |
+| 4   | 22 ✓   | 12 ✗   | 23 ✓   | 25 ✓   | — ✗    | 26 ✗   | 27 ✗   | 3/7 |
+| 5   | 22 ✓   | 12 ✗   | 23 ✗   | 24 ✗   | — ✗    | 26 ✗   | 23 ✗   | 1/7 |
+
+**Pairwise Jaccard (10 pairs):** min=0.455  median=0.600  max=0.778  
+→ below 0.80 threshold — **no stability bonus**
+
+**Three deterministic failure modes identified:**
+1. **B2 (line 23 — "pre-compile once, query many"):** Absorbed into `wiki_precompilation` (anchored at line 12) in all 5 runs. The model treats this bullet as part of the broader wiki-precompilation concept introduced earlier rather than as a distinct pattern. *Semantic conflation.*
+2. **B6 (line 27 — "supersession / contradiction tracking"):** Claims line 26 every run (−1 shift). *Deterministic format-sensitivity.*
+3. **B5 (line 26 — "filter-before-fetch"):** Dropped in 4/5 runs (subsumed by adjacent topics). In run 2 it appears at line 25 (−1). *Structural absorption.*
+
+**B3/B4/B7 failures:** Variable but follow the −1 pattern or conflation with adjacent concepts. Not deterministic, but consistently worse than the original sweep's 4/7.
+
+**Note:** The result is *worse* than the original 4/7 — not just reproducible, but systematically more frequent. The original sweep may have benefited from a favorable sampling draw.
+
+**Branch C action:** Add containment/post-pass guard at retrieval time for `qwen3:14b` on dense single-line bullet lists rather than splitting routing to qwen3:8b. The deferred 3rd-arm hypothesis (cross-ref-index files → qwen3:8b) is unaffected — it was always gated on reproducibility of the failure, not on the chosen remedy. Update routing-hypothesis Decision Gate: determinism gate ✅ closed (Branch C).
+
+**Decision gate update:** `ref:ltg-phase1-routing-hypothesis` item 2 (determinism re-run) is now complete. MoE eval remains the only outstanding gate before formal `ref:ltg-extractor` decision-replacement.
+
+**Run output:** `retrieval/runs/20260504-153903.jsonl` (5 records, 2026-05-04)  
+**Ground truth + pre-committed rule:** `retrieval/runs/determinism-ground-truth.md`  
+**Original observation (finding #7):** `ref:ltg-phase1-insights`
+<!-- /ref:ltg-phase1-determinism-smart-rag-index -->
+
+<!-- ref:ltg-phase1-moe-eval -->
+## MoE extractor eval — qwen3:30b-a3b + qwen3-coder:30b (2026-05-04, session 59)
+
+**Task:** Evaluate both 30B MoE candidates against the full 8-file Phase 1 corpus under the same rubric. Final freeze gate (item 3 in `ref:ltg-phase1-routing-hypothesis`).
+
+### qwen3:30b-a3b — UNUSABLE
+
+All 8 files timed out even at 600s timeout. Direct Ollama probe confirmed TTFT > 9 minutes for a trivial "say hello" prompt (150 tokens generated in 6.5s = 23 tok/s generation, but prefill latency is catastrophically slow). Root cause: Ollama's MoE sparse-activation hybrid RAM offload loads all attention layers during prefill at RAM bus speeds, not VRAM bandwidth. This is a known Ollama MoE offload perf issue documented in CLAUDE.md. Not a config problem — the architecture interacts badly with the current Ollama hybrid strategy.
+
+**Verdict: ❌ Unusable for any extractor task under current hardware/Ollama config.**
+
+### qwen3-coder:30b — Scored (all 8 files complete)
+
+| File | dim5 | dim6 | dim7 | dim8 | WQ (pre) | WQ (adj −0.3) |
+|---|---|---|---|---|---|---|
+| smart-rag-repowise.md | 3 | 3 | 1 | 2 | 2.50 | 2.20 |
+| QUICK.md | 2 | 2 | 1 | 1 | 1.70 | 1.40 |
+| smart-rag-index.md | 3 | 3 | 2 | 2 | 2.70 | 2.40 |
+| plan-v2.md | 3 | 2 | 0 | 0 | 1.75 | 1.45 |
+| persona-template.md | 3 | 3 | 3 | 3 | 3.00 | 2.70 |
+| KNOWLEDGE.md | 3 | 1 | 1 | 3 | 2.20 | 1.90 |
+| smart-rag3.md | 3 | 3 | 2 | 2 | 2.70 | 2.40 |
+| build-persona.py | 3 | 3 | 2 | 3 | 2.80 | 2.50 |
+| **prose avg** | | | | | **2.36** | **2.06** |
+
+All files ran below 15 tok/s (range: 6.7–14.8); speed penalty applies universally.
+
+**Verdict: ❌ FAILS ≥2.2 threshold on adjusted prose average (2.06). Marginally passes pre-penalty (2.36) but speed penalty is non-negotiable at these tok/s.**
+
+**Comparison:** Meaningfully better than qwen2.5-coder:14b (+0.42 pre-penalty prose avg) and better on code specifically (2.80 vs 2.48 on build-persona.py). Does not displace qwen3:14b (2.69 prose avg).
+
+**Systematic failure modes:**
+1. **Span-anchoring weakness on long/loose files**: cherry-picks single keyword-mention lines instead of section ranges. Catastrophic on plan-v2.md (coverage 0.057 = 5.7% on 442 lines). Qualitatively different from qwen3:8b's section-drops — content recognition correct but span reasoning breaks down at scale.
+2. **Boilerplate prefixes on KNOWLEDGE.md**: every description starts with "This topic covers/details/explores…" — same pattern flagged in finding #3 for gemma3:12b.
+3. **Span reuse across topics**: multiple topics claim identical span ranges (KNOWLEDGE.md, smart-rag-index.md, smart-rag3.md) — containment violations rather than intentional hierarchy.
+
+**Bright spot:** persona-template.md scored 3.00 pre-penalty (3/3/3/3) — when file structure is clean and section-aligned, qwen3-coder:30b matches qwen3:14b quality. Code file (2.80) shows semantic clustering, not enumeration.
+
+### MoE gate conclusion
+
+Neither MoE candidate displaces the existing routing. The Phase 1 production routing is confirmed as final:
+- **Prose → qwen3:14b** (clear winner at 2.69 prose avg; unaffected by MoE eval)
+- **Code → qwen2.5-coder:14b** (n=1; qwen3-coder:30b scores higher on code but at 3× the size and similar speed — not worth the resource cost at MVP stage)
+- **qwen3:30b-a3b**: permanently deferred pending Ollama MoE offload improvements (architectural limitation, not a config fix)
+
+**Run output:** `retrieval/runs/20260504-172139.jsonl` (8 records, qwen3-coder:30b only)  
+**Full rubric scores:** `retrieval/runs/20260504-172139-manual-rubric.md`  
+**Scorer:** Opus subagent (session 59) — methodology-consistent with sessions 54-57
+<!-- /ref:ltg-phase1-moe-eval -->

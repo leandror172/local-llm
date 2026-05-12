@@ -74,48 +74,35 @@ All three are a one-line config swap.
 ---
 
 <!-- ref:ltg-extractor -->
-## 5. Topic extractor model — empirical A/B in Phase 1 (no pre-commitment)
+## 5. Topic extractor model — **FROZEN** (session 59, 2026-05-04)
 
-**Decision:** No single model is frozen. Phase 1 runs a structured sweep and picks the winner by weighted rubric. This decision is explicitly "how we will decide" rather than "what we have decided."
+**Decision:** 2-arm specialized routing. All three freeze gates cleared.
 
-**Sweep configuration:**
+| Arm | Model | Rationale |
+|---|---|---|
+| **Prose files** | `qwen3:14b` | Clear winner — 2.69 Claude-draft prose avg, 2.86 user-track avg. Passes threshold on all 7 prose files under both rater tracks. Universal ranking agreement across two independent scorers. |
+| **Code files** | `qwen2.5-coder:14b` | n=1 (build-persona.py); passes threshold at 2.48/2.90 (Claude/user). Best semantic clustering on code. Revisit if corpus expands — user track puts this model only 0.04 above threshold. |
 
-| Axis | Values |
-|---|---|
-| **Models** | `gemma3:12b`, `qwen3:14b`, `qwen2.5-coder:14b`, `qwen3:8b` (think:false), optional `gemma3:27b` (single-stage only due to speed) |
-| **Test corpus** | 7 prose files spanning long research doc, short memory file, mixed markup+code, multi-topic plan, short persona Modelfile, heavy-cross-reference research doc, and a concatenated extra-long doc. Plus 1 code file (Python ~300-500 lines) for code-extraction evaluation. |
-| **Long-file appendix** | The >1MB MCP wiki file from the web-research repo, tested with 3 strategies: prefix truncation, naive chunking, structure-aware chunking (H2/H3 boundaries). One model only (`qwen3:14b`). |
-| **Variants** | Single-stage (all models) + two-stage (top 2 models from single-stage round only; gemma3:27b excluded from two-stage due to cost) |
-| **Determinism re-runs** | Top model × 3 files × 2 runs at temp 0.1 for Jaccard stability |
+**Single-model fallback:** `qwen3:14b` — loses ≤0.15 quality on cross-reference-index files, gains operational simplicity. Acceptable for MVP.
 
-**Rubric (11 dimensions):**
-1. Structural compliance (JSON valid, required fields) — PASS/FAIL
-2. Topic count in [3, 10]
-3. Span coverage (sum of spans / file length, target 0.6-0.9)
-4. Non-contiguity rate (≥30% of topics on multi-topic files)
-5. Topic name quality (0-3) — 35% of weighted quality
-6. Description quality (0-3) — 35% of weighted quality
-7. Boundary sanity (0-3) — 20% of weighted quality
-8. Mutual coverage (0-3) — 10% of weighted quality
-9. Determinism (Jaccard name similarity across re-runs, target ≥0.8)
-10. Latency (tok/s, wall time)
-11. Token economy (output tokens / input tokens)
+**Frozen parameters:** `temperature=0.1`, `think=False`, `num_ctx=8192`, `format=json_schema` (structured output, 100% reliable).
 
-**Additional dimension for code files:** Semantic-vs-syntactic topics (0-3). 0 = one topic per function (enumeration), 3 = true semantic clusters spanning functions. Coder models are the specific failure-mode watch here.
+**Prompt:** `retrieval/prompts/extract.txt` (single-stage, no iteration needed — qwen3:14b cleared threshold on first sweep).
 
-**Weighted score formula:**
-`0.35*name + 0.35*desc + 0.20*boundary + 0.10*coverage + stability_bonus − speed_penalty`
+**Gate evidence:**
+1. ~~Two-rater reconciliation~~ — complete (session 58). Identical 4-model ranking under both Claude and user scoring tracks.
+2. ~~Determinism re-run~~ — complete (session 59, Branch C). Off-by-one on dense single-line bullets is a confirmed model property; containment/post-pass guard added to Phase 2 action list. Does not change routing decision.
+3. ~~MoE eval~~ — complete (session 59). qwen3:30b-a3b unusable (Ollama MoE offload TTFT > 9 min). qwen3-coder:30b fails adjusted threshold (2.06 prose avg after universal speed penalty). Neither displaces existing routing. See `ref:ltg-phase1-moe-eval`.
 
-Stability bonus: +0.5 if Jaccard ≥ 0.85, +0.25 if ≥ 0.80. Speed penalty only if < 15 tok/s (hard floor).
+**Deferred items (Phase 2, not blocking freeze):**
+- VRAM co-residence probe: qwen3:14b + bge-m3 ≈ 12 GB on 12 GB card — must confirm before embedding is locked.
+- Containment/post-pass guard for qwen3:14b on dense single-line bullet lists (Branch C action from determinism re-run).
+- Prompt-iteration experiment: topic-count floor `max(5, major_section_count)` + containment-only overlap rule (tests whether qwen3:8b's whole-section-drop failure is prompt-fixable; deferred because the freeze decision doesn't depend on it).
+- Cross-reference-index 3rd arm: qwen3:8b candidate on `smart-rag-index.md`-type files — n=1 evidence, not load-bearing. Revisit with ≥3 cross-ref-index files or after prompt-iteration experiment.
 
-**Exit criteria for Phase 1 → Phase 2:**
-- Winner must have weighted quality average ≥ 2.2 across all prose test files
-- At least one model must pass the semantic-vs-syntactic rubric on the code file, OR the decision is documented that code is excluded from MVP corpus
-- Long-file appendix must produce a concrete chunking recommendation (naive / structure-aware / defer)
+**Full scoring evidence:** `retrieval/spike-results.md` (`ref:ltg-phase1-results`), `retrieval/spike-rater-notes.md` (`ref:ltg-phase1-routing-hypothesis`, `ref:ltg-phase1-moe-eval`, `ref:ltg-phase1-determinism-smart-rag-index`).
 
-**Iteration budget:** Up to 3 prompt iterations if no model clears the threshold on the first sweep. Escalate to two-stage variant before giving up on a model.
-
-**Revisit when:** Phase 1 scoring is complete — at that point this decision is replaced by a frozen `winner_model` + `winner_prompt_style` entry.
+**Revisit when:** Phase 2 corpus expansion adds ≥3 cross-reference-index files, or a new model family arrives at 14B-class with > 15 tok/s and qualitatively better span reasoning.
 <!-- /ref:ltg-extractor -->
 
 ---
