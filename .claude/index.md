@@ -19,6 +19,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 
 ---
 
+<!-- ref:quick-pointers -->
 ## Quick Pointers (Active Work)
 
 | What | Where |
@@ -29,6 +30,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Agent preferences & resume checklist | `.claude/session-context.md` |
 | Project rules & constraints | `CLAUDE.md` (repo root) |
 | Cross-session memory | `~/.claude/projects/.../memory/MEMORY.md` |
+<!-- /ref:quick-pointers -->
 
 ---
 
@@ -43,6 +45,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Routing patterns (A/B/C) | `docs/vision-and-intent.md` | Local-first, frontier-delegates, chat-routes-both |
 | Expense classifier vision | `docs/vision/expense-classifier-vision.md` | End-to-end Telegram→classify→Excel goal, iterative phases, domain boundaries |
 | Expense classifier data inventory | `docs/vision/expense-classifier-data-inventory.md` | What exists: auto-category analysis artifacts, expense-reporter architecture, what to read |
+| resume.sh ref audit & improvement plan | `docs/plans/resume-sh-ref-audit.md` | Which ref tags to add/remove + 3 structural fixes (session 60) |
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
@@ -62,6 +65,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 
 ---
 
+<!-- ref:memory-files -->
 ## Per-Folder Memory Files (.memories/)
 
 | Folder | QUICK.md | KNOWLEDGE.md |
@@ -74,109 +78,28 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Overlays | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
+<!-- /ref:memory-files -->
 
 ---
 
 ## Layer 0 Findings (Reference)
 
-<!-- ref:model-selection -->
-### Model Selection Rules
-Detailed benchmarks and selection rules → `.claude/archive/layer-0-findings.md`
+Runtime ref blocks (`ref:model-selection`, `ref:thinking-mode`, `ref:structured-output`) and future model candidates → `docs/findings/layer-0-runtime-refs.md`
 
-| Scenario | Model | Notes |
-|----------|-------|-------|
-| Quick code gen, boilerplate | 8B think:false | my-go-q3, my-python-q3 etc. |
-| Medium algorithms | 8B think:false | |
-| Complex architecture | 14B think:false | my-architect-q3 (qwen3:14b) |
-| Multi-file / long context | 8B (14B can't fit ~4K ctx) | |
-| Retry after 8B failure | 14B think:true | |
-| Classification / routing | 8B or 4B | my-classifier-q3 |
-| Code gen (DPO comparison A) | qwen2.5-coder:14b | my-go-q25c14 — code-specialized, full VRAM |
-| Code gen (DPO comparison B) | qwen3:8b-q8_0 | my-go-q3-q8 — same model, higher quant |
-| Code gen (quality ceiling) | qwen3:30b-a3b | my-go-q3-30b — hybrid, ~10-20 tok/s |
-| Code gen (speed tier) | gemma3:12b | my-go-g3-12b — 3-4× faster than 14B (~32 tok/s), IMPROVED quality (both prompts); good for iterative tasks |
-
-**Future candidates (not yet pulled):**
-- `qwen3.5:35b-a3b` (24GB) — released 2026-02-24, architecture update. Revisit in ~4 weeks.
-- `qwen3-coder:30b` (19GB) — code-specialized MoE. Pull after qwen3:30b-a3b is validated.
-- `gemma3:12b` (~7-8GB Q4) — fits fully in VRAM; **QAT variant** available (`gemma-3-12b-it-qat`) = Quantization-Aware Training, Q4 quality closer to Q8. Multimodal (image+text). Priority benchmark against `my-go-q25c14` on coding tasks. Ollama tag: `gemma3:12b`.
-- `gemma3:27b` (~14-16GB Q4) — needs ~4-6GB RAM spillover; dense architecture offloads better than MoE (expect ~20-25 tok/s vs 10-20 for 30B-A3B). QAT variant also available. Only worthwhile if 12B falls short on reasoning. Ollama tag: `gemma3:27b`.
-- `gemma4:31b` (~19GB+) — released 2026-04-02, multimodal. Not on Ollama yet as of 2026-04-09. Revisit in ~2 weeks.
-<!-- /ref:model-selection -->
-
-<!-- ref:thinking-mode -->
-### Thinking Mode Strategy
-Full measurements → `.claude/archive/layer-0-findings.md` § "Task 0.8 Findings"
-
-- **`/no_think` does NOT work** — only API parameter `think: false` disables thinking
-- Default: `think: false` for all tasks
-- Escalate to `think: true` for: complex architecture, retry after failure
-- Overhead: 67-84% of Qwen3 tokens are hidden thinking (3-7x slower)
-- `think` is an API param, not a Modelfile setting — callers must set it
-<!-- /ref:thinking-mode -->
-
-<!-- ref:structured-output -->
-### Structured Output (JSON Schema)
-Full test results → `.claude/archive/layer-0-findings.md` § "Task 0.7 Findings"
-
-- Always use `format` param — 100% valid JSON with it, 0% without it
-- No speed penalty (~0-3% overhead)
-- Enum enforcement is reliable — model cannot violate schema constraints
-- Without `format`, coding personas write code instead of answering analytical questions
-- Combine with `think: false` for fastest structured responses
-<!-- /ref:structured-output -->
-
-Other Layer 0 findings:
-
-| Topic | File | Key Takeaway |
-|-------|------|-------------|
-| Qwen3 vs Qwen2.5 benchmarks | `.claude/archive/layer-0-findings.md` | 4 personas × 6 prompts; hidden thinking tokens discovery |
-| 14B performance profile | `.claude/archive/layer-0-findings.md` | 32 tok/s, ~4K context, best for complex single-Q |
-| Prompt decomposition results | `.claude/archive/layer-0-findings.md` | 3-stage sweet spot, reduces bug severity not count |
-| Few-shot example library | `benchmarks/examples/` | 6 examples (3 backend, 3 visual), `--examples` flag |
+Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-0-findings.md`
 
 ---
 
 ## Infrastructure & Setup (Completed)
 
-<!-- ref:verification -->
-### Verification Commands
-Full command snippets → `.claude/archive/phases-0-6.md` § "Useful Commands"
-
-- Automated: `./scripts/verify-installation.sh` (14 checks)
-- Manual: `nvidia-smi`, `ollama ps`, `curl localhost:11434`
-- Performance: API curl + python tok/s calculation one-liner
-<!-- /ref:verification -->
-
-<!-- ref:git-safety -->
-### Git Safety Protocol
-1. **Explain** what the command will do → get explicit user approval BEFORE running
-2. **Backup first** — `git branch safety-backup-$(date +%s)`
-3. **Dry-run** when available (`--dry-run`, `--no-act`) → show output before executing
-4. **Verify** after each operation: `git fsck --full` and `git log --oneline -5`
-5. **If verification fails** — stop and restore from backup, do not fix forward
-
-Double-check remote URLs before any push. Never delete `.git` contents without a backup.
-<!-- /ref:git-safety -->
-
-<!-- ref:git-worktrees -->
-### Git Worktrees for Parallel Work
-```bash
-git worktree add ../llm-feature-branch feature-branch
-git worktree add ../llm-experiment experiment-branch
-```
-Each worktree is an isolated checkout sharing the same `.git` object store. Prefer worktrees over branch switching for parallel agent work, evaluation comparisons, or multiple branches at once.
-<!-- /ref:git-worktrees -->
-
-Other infrastructure:
+**Git safety + worktrees** (`ref:git-safety`, `ref:git-worktrees`) → `docs/patterns/technology-conventions.md`
 
 | Topic | File | Key Content |
 |-------|------|-------------|
 | Phases 0-6 completion details | `.claude/archive/phases-0-6.md` | All setup phases, decisions, gotchas, artifacts |
 | Hardware specs | `.claude/local/hardware-inventory.md` | RTX 3060 12GB, detailed system info (gitignored) |
-| Verification report | `verification-report.md` | Phase 0 GPU/WSL2 verification findings |
+| Verification | `scripts/verify-installation.sh` | `./scripts/verify-installation.sh` (14 checks); manual: `nvidia-smi`, `ollama ps` |
 | Installation script | `scripts/setup-ollama.sh` | Idempotent native Ollama setup |
-| Verification script | `scripts/verify-installation.sh` | 14-check automated verification suite |
 | Docker portable setup | `docker/docker-compose.yml` | GPU config, healthcheck, named volume |
 | Ollama config rationale | `docs/modelfile-reference.md` | Why each Modelfile setting was chosen |
 | Sampling parameters explained | `docs/sampling-parameters.md` | Temperature & top-p educational guide |
@@ -243,71 +166,12 @@ Other infrastructure:
 
 ---
 
-<!-- ref:personas -->
 ## Personas (Modelfiles)
 
 **Registry:** `personas/registry.yaml` (machine-readable source of truth)
 **Template:** `personas/persona-template.md` (spec for creating new personas)
-
-### Specialized Coding
-| Persona | Modelfile | Base Model | Role |
-|---------|-----------|------------|------|
-| my-java-q3 | `modelfiles/java-qwen3.Modelfile` | Qwen3-8B | Java 21, Spring Boot 3.x |
-| my-go-q3 | `modelfiles/go-qwen3.Modelfile` | Qwen3-8B | Go 1.22+, Effective Go |
-| my-python-q3 | `modelfiles/python-qwen3.Modelfile` | Qwen3-8B | Python 3.11+, FastAPI, CLI |
-| my-creative-coder | `modelfiles/creative-coder-qwen25.Modelfile` | Qwen2.5-Coder-7B | Visual/creative coding |
-| my-creative-coder-q3 | `modelfiles/creative-coder-qwen3.Modelfile` | Qwen3-8B | Visual/creative (Qwen3) |
-| my-codegen-q3 | `modelfiles/codegen-qwen3.Modelfile` | Qwen3-8B | General-purpose code gen (polyglot fallback) |
-
-### LLM Infrastructure
-| Persona | Modelfile | Base Model | Role |
-|---------|-----------|------------|------|
-| my-shell-q3 | `modelfiles/shell-qwen3.Modelfile` | Qwen3-8B | Bash/shell, Linux/WSL2 |
-| my-mcp-q3 | `modelfiles/mcp-qwen3.Modelfile` | Qwen3-8B | MCP server dev (FastMCP) |
-| my-prompt-eng-q3 | `modelfiles/prompt-eng-qwen3.Modelfile` | Qwen3-8B | Prompt engineering (7-14B) |
-
-### NLP / Utility
-| Persona | Modelfile | Base Model | Role |
-|---------|-----------|------------|------|
-| my-classifier-q3 | `modelfiles/classifier-qwen3.Modelfile` | Qwen3-8B | Text classification (JSON) |
-| my-summarizer-q3 | `modelfiles/summarizer-qwen3.Modelfile` | Qwen3-8B | Text summarization |
-| my-translator-q3 | `modelfiles/translator-qwen3.Modelfile` | Qwen3-8B | Language translation (generic) |
-| my-ptbr-q3 | `modelfiles/ptbr-translator-qwen3.Modelfile` | Qwen3-8B | PT-BR ↔ English specialist |
-| my-tech-writer-q3 | `modelfiles/tech-writer-qwen3.Modelfile` | Qwen3-8B | Technical docs, READMEs |
-
-### Legacy / Fallback
-| Persona | Modelfile | Base Model | Role |
-|---------|-----------|------------|------|
-| my-coder | `modelfiles/coding-assistant.Modelfile` | Qwen2.5-Coder-7B | Java/Go backend (polyglot) |
-| my-coder-q3 | `modelfiles/coding-assistant-qwen3.Modelfile` | Qwen3-8B | Java/Go backend (polyglot, Qwen3) |
-
-### Bare (Tool Wrappers)
-| Persona | Modelfile | Base Model | Host Tool |
-|---------|-----------|------------|-----------|
-| my-aider | `modelfiles/aider-qwen25.Modelfile` | Qwen2.5-Coder-7B | Aider |
-| my-opencode | `modelfiles/opencode-qwen3.Modelfile` | Qwen3-8B | OpenCode |
-
-### Layer 5+ Comparison Personas (DPO data collection)
-| Persona | Modelfile | Base Model | Role |
-|---------|-----------|------------|------|
-| my-go-q25c14 | `modelfiles/go-qwen25c14.Modelfile` | Qwen2.5-Coder-14B | Go comparison partner — code-specialized 14B, full VRAM |
-| my-java-q25c14 | `modelfiles/java-qwen25c14.Modelfile` | Qwen2.5-Coder-14B | Java 21 + Spring Boot 3.x — code-specialized 14B, full VRAM |
-| my-go-q3-q8 | `modelfiles/go-qwen3-q8.Modelfile` | Qwen3-8B-Q8 | Go Q4 vs Q8 quantization comparison |
-| my-go-q3-30b | `modelfiles/go-qwen3-30b.Modelfile` | Qwen3-30B-A3B | Go quality ceiling — hybrid VRAM+RAM, ~10-20 tok/s |
-<!-- /ref:personas -->
-
----
-
-## Session History
-
-| Session | Handoff File | Highlights |
-|---------|-------------|------------|
-| Sessions 1-4 (Phases 0-2) | `.claude/session-handoff-2026-02-03.md` | GPU passthrough, Ollama install, 67 tok/s |
-| Sessions 5-7 (Phases 3-5) | `.claude/session-handoff-2026-02-06.md` | Modelfile, my-coder, Docker, verification |
-| Session 8 (Plan v2) | `.claude/session-handoff-2026-02-08.md` | 10-layer plan drafted |
-| Session 9 (Benchmarks) | `.claude/session-handoff-2026-02-09b.md` | Benchmark framework, Qwen3 findings |
-| Sessions 10-12 (Layer 0) | `.claude/session-handoff-2026-02-11.md` | Decomposition, validation, few-shot, Layer 0 complete |
-| Layer 0 full session log | `.claude/archive/session-log-layer0.md` | 717 lines, Sessions 8-12 detailed history |
+**Full catalog (all categories + modelfiles):** `personas/personas-reference.md` [ref:personas lives here]
+**Ideas / future candidates:** `personas/ideas.md`
 
 ---
 
@@ -341,14 +205,6 @@ Full research → `.claude/archive/layer-1-research.md`
 - **SDK:** `mcp[cli]` (official Python SDK, v1.x stable)
 <!-- /ref:mcp-integration -->
 
-| Topic | File | Key Takeaway |
-|-------|------|-------------|
-| MCP protocol, transports, Claude Code integration | `.claude/archive/layer-1-research.md` | stdio transport, tool descriptions are routing |
-| Language comparison (Python/Go/Java/Kotlin/TS) | `.claude/archive/layer-1-research.md` § "Language Decision" | Python: lowest friction, best ecosystem |
-| Existing tools landscape | `.claude/archive/layer-1-research.md` § "Existing Tools Landscape" | No drop-in; patterns to borrow from 4 projects |
-| MCP server discovery registries | `.claude/archive/layer-1-research.md` § "MCP Server Discovery Resources" | mcp.so, mcpservers.org, awesome-mcp-servers, etc. |
-| All 10 official SDK repos | `.claude/archive/layer-1-research.md` § "SDK Quick Reference" | TS, Python, Go, Java, Kotlin, C#, Swift, Ruby, Rust, PHP |
-
 ---
 
 ## Layer 2 Implementation
@@ -360,7 +216,7 @@ Full research → `.claude/archive/layer-1-research.md`
 | Qwen Code config | `~/.qwen/settings.json` | qwen3:8b via Ollama OpenAI-compat API (id = model name) |
 | Goose config | `~/.config/goose/config.yaml` | qwen2.5-coder:7b, developer extension; `GOOSE_DISABLE_KEYRING=1` required in WSL2 |
 | Frontier API key catalog | `.env` (gitignored) | 7 providers documented with signup URLs and limits |
-| Layer 2 decisions | `.claude/session-context.md` § "Layer 2 Decisions" | Tool selection rationale, architecture divide, deferred items |
+| Layer 2 decisions | `.claude/archive/decisions-layers-1-3.md` | Tool selection rationale, architecture divide, deferred items |
 | Test prompts | `tests/layer2-comparison/` | 3 tests: Spring Boot, visual, MCP tool |
 | Test runner guide | `tests/layer2-comparison/README.md` | 5-tool setup, run commands, diff commands, cleanup |
 | **Test findings & decision guide** | `docs/findings/layer2-tool-comparison.md` | Full results, failure taxonomy, when to use what |
@@ -376,6 +232,8 @@ Full research → `.claude/archive/layer-1-research.md`
 | Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags |
 | Creator bash wrapper | `personas/run-create-persona.sh` | Whitelist-safe entry point (auto-approved) |
 | All Modelfiles | `modelfiles/*.Modelfile` | 28 total across all categories |
+| Full persona catalog | `personas/personas-reference.md` | All personas by category with modelfile + base model |
+| Future persona ideas | `personas/ideas.md` | Candidates not yet built |
 
 ---
 
@@ -463,12 +321,3 @@ Frozen decisions for the Latent Topic Graph substrate, reached before any code w
 | Technical analysis (10 parts) | `docs/research/web-research-tool-analysis.md` | `analysis-web-research` |
 | LDR assessment (build-vs-fork) | `docs/research/local-deep-research-assessment.md` | `ldr-assessment` |
 
----
-
-## Research & Background
-
-| Topic | File |
-|-------|------|
-| LLM engines, OpenClaw, WSL2 setup | `local-llm_and_open-claw.md` |
-| Ollama config, Docker, portability | `llm-configuration-research.md` |
-| Local LLM ecosystem concepts | `docs/concepts-local-llm-ecosystem.md` |

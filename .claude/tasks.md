@@ -11,207 +11,54 @@
 - **Phases 0-6:** Infrastructure setup complete (Ollama, models, Docker, verification, docs)
 - **Layer 0:** Foundation upgrades complete (12/12) — Qwen3 models, benchmarks, structured output, thinking mode strategy, decomposition, runtime validation, few-shot examples
 - **Layer 1:** MCP Server complete (7/7 + MCP-1/2/3/4) — FastMCP server, 9 tools, persona-aware routing, system-wide availability
+- **Layer 2:** Local-first CLI complete — Aider (primary) + OpenCode (comparison); decisions → `.claude/archive/decisions-layers-1-3.md`; findings → `docs/findings/layer2-tool-comparison.md`
 
 ---
 
-## Layer 2: Local-First CLI Tool
+## Layer 3: Persona Creator — COMPLETE
 
-**Goal:** A Claude Code-like interface running against local Ollama, with optional frontier escalation (Pattern A: local-first, escalates up).
+All tasks (3.1–3.6 + refactoring + 3.5-A) complete. Decisions → `.claude/archive/decisions-layers-1-3.md`. Full catalog → `personas/personas-reference.md`. Future candidates → `personas/ideas.md`.
 
-- [x] 2.1 Evaluate tools: landscape survey of 34 CLI tools → Aider (primary) + OpenCode (comparison)
-- [x] 2.2 Install and configure Aider v0.86.2 + OpenCode v1.2.5 with Ollama backend
-- [x] 2.3 Configure frontier fallback → `.env` with 7 providers (dormant), CLI-flag toggle
-- [x] 2.4 Five-tool comparison test (Aider, OpenCode, Qwen Code, Goose, Claude Code) — see `docs/findings/layer2-tool-comparison.md`
-- [x] 2.5 Decision guide written — `docs/findings/layer2-tool-comparison.md` § "Decision Guide"
-
-### Key Findings
-- **Tool-calling wall at 7-8B:** All tool-calling agents (OpenCode, Qwen Code, Goose) failed locally. Only Aider's text-format works reliably.
-- **Groq free tier incompatible with tool-calling agents:** Tool-definition overhead ≈16K tokens exceeds 12K TPM limit. Gemini free tier needed.
-- **Aider quality limits:** `javax.persistence` (wrong namespace for Boot 3.x), broken physics (no coordinate transforms), missed spec requirements. Treat output as draft.
-- **Installed tools:** Aider v0.86.2, OpenCode v1.2.5, Qwen Code v0.10.3, Goose v1.24.0
-- **Deferred:** Qwen Code with qwen3-coder (smallest = 30B, 19GB — needs hardware upgrade)
-
-### Closing-the-gap integration
-- Cascade pattern (#14): frontier fallback via Aider `--architect` mode or `.env` API keys
-- Best-of-N (#10): can run same prompt through Aider + OpenCode and compare
-
-### Unlocks
-- Coding continues when Claude quota is depleted
-- Unlimited experimentation and iteration
-- Persona testing without frontier token cost
-
----
-
-## Layer 3: Persona Creator
-
-**Goal:** A system that builds, tests, and refines Modelfile personas through conversation.
-
-- [x] 3.1 Design persona template — `personas/persona-template.md` (fields, defaults, skeleton, model selection guide)
-- [x] 3.6 Create specialized persona set — 8 new personas (java, go, python, shell, mcp, prompt-eng, ptbr, tech-writer)
-- [x] 3.5 Persona registry — `personas/registry.yaml` (28 active, 0 planned)
-- [x] 3.2 Build conversational persona creator — `personas/create-persona.py` + `run-create-persona.sh`
-- [x] 3.3 Model selection logic — embedded in creator (MODEL_MATRIX: domain → model + ctx + temp)
-- [x] 3.4 Codebase analyzer — file-based persona detection (returns top 3 with confidence scores)
-  - **COMPLETE:** Phase 1, 2, 3 all done ✓
-  - Phase 1: Core detection, 3-signal scoring, 5 test fixtures (all passing)
-  - Phase 2: Advanced import/config parsing (package.json, pom.xml, requirements.txt, go.mod)
-  - Phase 3: Polish, documentation (DETECT-PERSONA.md), error handling
-  - Merged to master (PR #2)
-  - Input: directory path; Output: ranked personas with confidence (0.0–1.0)
-  - Callable as Python function + standalone CLI (`personas/run-detect-persona.sh`)
-  - Heuristics: file extensions (50%), imports (30%), config files (20%)
-
-- [x] **Layer 3 Refactoring** (bonus work: all PR #1 deferred items)
-  - **Refactor 1:** MODEL_MATRIX → personas/models.py (centralized, reusable)
-  - **Refactor 2:** Input helpers → personas/lib/interactive.py (ask, ask_choice, ask_multiline, ask_confirm)
-  - **Refactor 3:** TEMPERATURES consolidation (dict-of-dicts, prevents drift)
-  - Result: create-persona.py reduced by 155 lines; clean foundation for Task 3.5
-  - PR #3 created (awaiting merge to master)
-
-- [x] 3.5 Conversational persona builder — **COMPLETE** (session 23-24)
-  - Branch: `feature/task-3.5-conversational-builder` (pending PR + merge)
-  - Plan: `docs/plans/2026-02-18-conversational-persona-builder.md` (5 tasks)
-  - **✅ Task 1:** `my-persona-designer-q3` persona created + registered
-  - **✅ Task 2:** `personas/lib/ollama_client.py` — sync urllib client (3 tests passing)
-  - **✅ Task 3:** `personas/build-persona.py` — core LLM builder (3 tests passing)
-    - importlib used for `detect-persona.py` (hyphenated filename — can't import directly)
-    - Constraint sanitization: commas within constraints replaced with semicolons before `--constraints` join
-  - **✅ Task 4:** `personas/run-build-persona.sh` — wrapper with `python3 -u` (stdout unbuffering fix)
-  - **✅ Task 5:** Integration verified (11/11 tests), live persona created (`my-rust-async-q3`), docs written
-  - Tests: `./benchmarks/test-build-persona.sh` (use `./` not `bash` — enables Claude Code whitelist)
-  - Docs: `personas/BUILD-PERSONA.md`
-  - **Follow-ups:**
-    - [x] 3.5-A: Persona designer comparison benchmark — 8b, 14b, Claude Haiku compared. Finding: 8b production-ready, 14b not worth 3x perf hit, Claude Haiku best at abstract intent. Branch: `feature/task-3.5-A-comparison` (unmerged)
-    - [ ] 3.5-B: Implement Option 3 multi-round conversation loop — deferred, not blocking Layer 4
-
-<!-- ref:layer3-inventory -->
-### Persona Inventory (35+ active)
-**Specialized coding:** my-java-q3, my-go-q3, my-python-q3, my-react-q3, my-angular-q3, my-creative-coder(-q3), my-codegen-q3
-**Code reviewers:** my-java-reviewer-q3, my-go-reviewer-q3
-**Architecture:** my-architect-q3 (14B), my-be-architect-q3, my-fe-architect-q3
-**Cloud consulting:** my-aws-q3, my-gcp-q3
-**LLM infrastructure:** my-shell-q3, my-mcp-q3, my-prompt-eng-q3
-**NLP / utility:** my-classifier-q3, my-summarizer-q3, my-translator-q3, my-ptbr-q3, my-tech-writer-q3
-**Life / career:** my-career-coach-q3
-**Meta:** my-persona-designer-q3
-**Legacy fallback:** my-coder, my-coder-q3 (polyglot Java+Go — prefer specialists)
-**Bare (tool wrappers):** my-aider, my-opencode
-**Rust async:** my-rust-async-q3 (added during 3.5 live e2e test)
-
-### Future Persona Candidates (not yet built)
-Identified during 3.5-A designer comparison test design — abstract personas that proved
-interesting to reason about and could be genuinely useful:
-- **my-code-archaeologist-q3**: Reads unfamiliar legacy codebases and explains what they
-  actually do — not what comments say. MUST NOT trust comments, MUST read before explaining,
-  skeptical framing. Good for onboarding onto inherited code.
-- **my-socratic-tutor-q3**: Never gives direct answers; leads through questions.
-  MUST NOT state answers, MUST ask ≥1 question per response, domain-agnostic.
-  Useful for learning sessions where spoon-feeding defeats the purpose.
-
-<!-- /ref:layer3-inventory -->
-
-### Creator Tool
-- Script: `personas/create-persona.py` — interactive 8-step flow or `--non-interactive` flags
-- Wrapper: `personas/run-create-persona.sh` — whitelist-safe, auto-approved
-- Features: model selection (Task 3.3), domain defaults, name suggestion, collision guard, `--dry-run`
+- [ ] **3.5-B:** Implement Option 3 multi-round conversation loop — deferred, not blocking Layer 4
 
 <!-- ref:layer4-status -->
 ## Layer 4: Evaluator Framework — COMPLETE
 
-- [x] 4.1 Rubrics: 6 YAML rubric files in `evaluator/rubrics/` (code-go, code-java, code-python, code-general, classification, writing)
-- [x] 4.2 evaluate.py: two-phase scoring engine + `evaluator/run-evaluate.sh`
-  - Phase 1: automated checks (Go compile/vet, JSON schema) → deterministic scores
-  - Phase 2: LLM judge via ollama_chat (one criterion per call, temp=0.1, structured output)
-- [x] 4.3 benchmark.py: persona×prompt orchestrator + `evaluator/run-benchmark.sh`
-  - VRAM optimization: groups personas by base_model, defers judge to end
-  - --dry-run mode, --all-coding discovery, results → `evaluator/results/{timestamp}/`
-- [x] 4.4 Prompt sets: 40 prompts across 5 domains (go:10, java:10, python:10, cls:5, shell:5)
+Core tasks (4.1–4.4) + shell rubric + Java/Python validators + prompt decomposition all complete. Key design decisions → `docs/plans/2026-02-21-layer4-discussion-context.md`.
 
-### Deferred / Future Evaluator Work
-- [x] **4.x Shell rubric** — COMPLETE (2026-02-24, session 29). PR #7. Findings: `docs/findings/shell-benchmark-findings.md`
-  - `evaluator/rubrics/code-shell.yaml` — new rubric (1 Phase 1 + 5 Phase 2 criteria)
-  - `benchmarks/lib/validate-code.py` — added `validate_shell()` + `.sh` dispatch + shellcheck availability check
-  - `evaluator/lib/evaluate.py` — added `shellcheck_clean` case (plan was wrong: else path returned null)
-  - `modelfiles/shell-qwen3.Modelfile` — 6 new shellcheck-targeted constraints (SC2207/SC2181/SC2012/SC2064/SC2168/SC2030 eliminated)
-  - **Key findings:** Specialist hypothesis not confirmed at 8B (both 66.7%); constraints fix mechanical patterns but not logic errors; sh-01/sh-02 exceed 8B generation capacity at any timeout; sh-04 is best differentiator (specialist 95.2% vs baseline 68.6%)
-- [x] **4.x Java/Python Phase 1 validators:** COMPLETE (session 31, PR #8)
-  - Python: `validate_python()` via built-in `compile()`, `syntax_valid` criterion in `code-python.yaml`, 5 fixtures
-  - Java: `validate_java()` via `javac` with class-name scaffolding + two-pass `missing_dependency` classifier, `compiles` criterion in `code-java.yaml`, 5 fixtures
-  - `validate-code.py` now covers Go, Shell, Python, Java
-- [x] **4.x sh-01/sh-02 prompt decomposition:** COMPLETE (session 31, PR #8)
-  - `01a-log-stats.md`, `01b-log-histogram.md`, `02a-backup-create.md`, `02b-backup-rotate.md`
-  - Each targets ~150–250 token output — within 8B reliable window
-- [x] **4.x Default timeout bump:** COMPLETE (session 31) — `benchmark.py` DEFAULT_TIMEOUT 300s → 600s
+### Open stragglers
 - [ ] **4.x Phase 3 frontier judge:** Extension point designed in `docs/plans/2026-02-21-layer4-discussion-context.md` — Claude API call for subjective/ambiguous cases.
 - [ ] **4.6 Claude Desktop insights tool:** Standalone `tools/claude-desktop-insights.py` (split out from original Layer 4 scope).
-
-### Session 28 fixes (committed 41a99ba, branch feature/layer4-evaluator-framework)
-- [x] evaluate.py: `result = None` before try block (UnboundLocalError on judge failure)
-- [x] benchmark.py: Markdown table separator fix in `generate_report()`
-- [x] benchmark.py: `--resume RUN_ID` flag — skip cached generations + evals, rerun only missing
-
-### Discussion context: `docs/plans/2026-02-21-layer4-discussion-context.md`
-Key decisions: Stance 3 (Unix-style seams), three-phase scoring, tight scope, 4.6 split to standalone utility
-
-### MCP Enhancement Tasks (Layer 1 catch-up — COMPLETE)
-Brought the MCP server in sync with Layer 3 persona infrastructure (session 26):
-- [x] **MCP-4: Persona registry query** — `query_personas` tool: filters by language/domain/tier/name, returns JSON
-- [x] **MCP-1: Persona-aware routing** — `generate_code` uses registry-driven routes (java→my-java-q3, etc.); `ask_ollama` gains `persona` param with registry validation
-- [x] **MCP-2: Detect persona tool** — `detect_persona` tool: runs `run-detect-persona.sh --json-compact` via subprocess
-- [x] **MCP-3: Build persona tool** — `build_persona` tool: runs `run-build-persona.sh --describe --json-only --skip-refinement` via subprocess
-- [x] **Bugfix:** `build-persona.py` forward-reference error (VALID_TEMPERATURES used before definition)
-- New file: `mcp-server/src/ollama_mcp/registry.py` (~170 lines)
-- Tool count: 6 → 9; dependency added: `pyyaml>=6.0`
-
----
-
-<!-- ref:deferred-infra -->
-## Deferred Infrastructure / Tooling
-
-Items identified but not yet prioritized — evaluate when relevant layer work begins:
-
-- [ ] **Hook-based auto-resume:** `UserPromptSubmit` Claude Code hook that injects `resume.sh` output as context on session start. Eliminates need for CLAUDE.md instruction to run resume manually. Needs investigation: hook fires every message (not just first), so would need a `.claude/local/session-started` flag to gate it.
-- [x] **ref-integrity checker:** COMPLETE (session 39, branch `feature/ref-integrity-checker`). `check-ref-integrity.py`: 4 checks (dangling refs, unclosed blocks, duplicate defs, orphaned blocks). Fence-aware (skips ``` blocks), excludes `.git/`/`node_modules/`/`.venv/`, supports `--root` for cross-repo. `check-ref-integrity.sh`: thin bash wrapper. `.githooks/pre-commit`: gates on staged `*.md` files. Install: `git config core.hooksPath .githooks`. LLM repo exits clean; expense repo revealed 1 dangling ref + 3 duplicate block defs.
-- [x] **ref_lookup cross-repo support:** COMPLETE (session 39). `ref-lookup.sh` now accepts `--root /abs/path` to override `PROJECT_ROOT`; MCP `ref_lookup` tool adds optional `path: str` param that passes `--root` to the script. Validated: cross-repo lookup of expense repo refs works, `--list` enumerates that repo's keys, bad path returns clear error.
-- [x] **ollama-bridge: context_files input for generate_code / ask_ollama:** COMPLETE (session 39, branch `feature/context-files-param`). `ContextFile` Pydantic model (`path`, `start_line`, `end_line`); `_build_context_block()` reads files server-side and prepends as `<context>` fenced blocks. Added to both `generate_code` and `ask_ollama`. Absolute paths enforced; errors returned as strings. FastMCP generates proper nested JSON schema from the Pydantic model.
-- [x] **ollama-bridge: log prompt/completion token counts + frontier savings estimate:** COMPLETE (session 38, PR #10). `prompt_eval_count`, `prompt_chars`, `response_chars`, and `claude_tokens_est` ((prompt+system+response chars)/4) now logged in every `calls.jsonl` entry. Verdict instruction in CLAUDE.md + scaffolding-template.md updated: ACCEPTED/IMPROVED verdicts include a rough mental chars/4 estimate — no file reads, no code execution.
-- [x] **ollama-bridge: PostToolUse hook for structured verdict capture:** COMPLETE (session 39, PR pending). `PostToolUse` hook injects `[VERDICT prompt_hash=N]` template via `hookSpecificOutput.additionalContext`; `Stop`/`SubagentStop` hooks scan the correct transcript (main vs `agent_transcript_path`) and append `{type:"verdict", prompt_hash, verdict, reason, est_claude_tokens}` to `calls.jsonl`. Hooks promoted to `~/.claude/settings.json` (user-level) so they fire in all Claude Code sessions, not just this repo.
-- [x] **Claude Code user-config backup/tracking:** COMPLETE (session 41). Private repo `leandror172/dotfiles` at `~/workspaces/dotfiles/`. `backup.sh` (OS-aware, WSL2+Linux) + `install.sh` (restore, top-of-file variables for machine-specific paths). `SessionStart` hook in `~/.claude/settings.json` auto-runs backup. Covers: `claude-code/` (user-level `~/.claude/`), `claude-projects/llm/` (memory only), `claude-desktop/` (Windows AppData). First commit pushed.
-- [ ] **Qwen3-Coder-Next feasibility study (80B MoE, 3B active):** At 3-bit quantization ~24GB — technically fits 12GB VRAM + ~26GB free RAM = 38GB, but only ~2GB headroom (high OOM risk). Requires Ollama ≥ v0.15.5 (already satisfied after 0.17.5 upgrade). Investigation tracks: (1) profile actual RAM usage of current hybrid models to see real headroom; (2) evaluate native Linux (no WSL2) — WSL2 adds ~4-6GB RAM overhead from virtualization; running Ollama natively in Linux could recover enough margin. If native Linux route: consider dual-boot or moving WSL2 to native Ubuntu on a separate partition. Not a priority until 30B models are benchmarked and proven insufficient.
-- [ ] **expense-reporter config reader: replace runtime.Caller with os.Executable:** `internal/config/config.go` uses `runtime.Caller(0)` to locate `config/config.json` relative to the source file. This breaks on deployment (embedded path points to build machine's source tree). Fix: use `os.Executable()` + walk up to find `config/config.json`, matching the pattern already used in `GetWorkbookPath()` in `root.go`. Low priority until the binary is deployed anywhere.
-- [x] **Refine IMPROVED verdict workflow for Ollama code generation:** COMPLETE (session 42). Policy authored in `docs/scaffolding-template.md` § "Handling Imperfect Output: Decision Tree". Replaced "3 lines" threshold with 3-dimension heuristic (defect type / fix scope / prompt cost). Stubs-then-Ollama codified as named retry pattern. Runtime ref block: `ref:local-model-retry-patterns`. Propagated to expense repo via `ollama-scaffolding` overlay (PR #8 in expense repo). Also: `warm_model` MCP tool built (in-flight tracking + safe eviction), cold-start grace period policy added.
-- [ ] **Overlay wizard — interactive install inside an AI CLI:** The current overlay installer is a batch script; running it interactively *inside* Claude Code (or a future local AI CLI) would allow conversational merge planning, step-by-step confirmation, and handling of unexpected cases through dialogue. Three progressive steps: (1) `/install-overlay` skill or MCP tool that runs inside Claude Code — Claude IS the backend, no Ollama call; (2) generalize into a "wizard" pattern for any multi-step stateful workflow needing AI judgment at the edges; (3) portable interactive TUI running against local Ollama for users without Claude subscription. Key open questions: skill vs MCP tool hosting, state across turns, fallback to batch mode. Context: `docs/ideas/overlay-wizard.md`.
-- [ ] **Upgrade WSL2 Python from 3.10 to 3.12:** Ubuntu 22.04 ships with Python 3.10; `StrEnum` (cleaner than `str, Enum` mixin) requires 3.11+. `uv python install 3.12` installs alongside 3.10 without replacing it — shebang lines in scripts need updating to `#!/usr/bin/env python3.12` or scripts need to be run via `uv run --python 3.12`. Benefits beyond `StrEnum`: match-statement improvements, better error messages, `tomllib` stdlib, `ExceptionGroup`. Low effort, no risk to existing scripts (3.10 stays available). Do before writing new standalone Python scripts.
-- [x] **MCP `create_persona` / `copy_persona` tools:** COMPLETE (session 45, PR #21). `create_persona` accepts name/role/constraints/base_model/temperature; `copy_persona` parses source Modelfile via regex. User-level `create-persona` skill (3 patterns). Added to `ollama-scaffolding` overlay. Also: timeout param added to `ask_ollama`/`generate_code` for 30B+ models; context sizes audited and upgraded (8B: 8K→32K, 35 Modelfiles updated); DeepSeek models added to `models.yaml`; model config extracted from Python to YAML.
-- [ ] **`create-persona.py`: accept raw temperature values:** Currently only accepts named choices (`deterministic`, `balanced`, `creative`). Should also accept numeric values (e.g., `0.1`, `0.7`) for finer control, especially when `build_persona` proposes a specific number.
-- [x] **MCP `warm_model` tool (Option 1 — bundled):** COMPLETE (session 43, PR #15). In-flight tracking (mark_inflight/mark_complete/is_busy) wraps chat() in try/finally. list_running() wraps /api/ps. unload_model() wraps keep_alive:0. warm_model orchestrates: check loaded → validate model exists → check busy → evict → warm with trivial prompt. Bug fixed: validate before evict (was "evict then 404" on bad model names). **Caveat:** in-flight check is single-session only — each Claude Code session has its own MCP server process. Cross-session protection needs Option 2 (file-based coordination layer).
-- [ ] **Refactor `server.py` — separation of concerns:** `warm_model` has grown several inline sections that should be extracted into private helpers (`_is_model_loaded`, `_check_busy_models`, `_evict_all`, `_load_model`). Broader goal: split `server.py` into logical modules (tool handlers vs. Ollama plumbing vs. shared helpers) as the file continues to grow. Discovered session 43 when adding `_check_model_exists`.
-- [ ] **File-based Ollama coordination layer (Option 2):** Cross-session in-flight tracking using lock files. **Threat model revised (session 43):** correctness risk is off the table — Ollama's internal `refCount` queues unloads until generation completes (tested empirically). Remaining concern is VRAM thrash (performance only). **Watch Ollama PR #9392 first** — adds `ACTIVE` field to `/api/ps` via the same `refCount`; if it ships, `is_busy()` becomes a one-line `/api/ps` check and the file layer is unnecessary. Build trigger: VRAM thrash is an observed pain point AND #9392 hasn't shipped. Design + findings: `docs/ideas/ollama-coordination-layer.md`, `docs/findings/ollama-eviction-concurrency-findings.md`.
-- [ ] **Extract `create-persona.py` into importable library:** MCP `create_persona`/`copy_persona` currently shell out to `run-create-persona.sh` via subprocess. Extract core logic (Modelfile generation, registry append, Ollama create) into `personas/lib/persona_builder.py` so MCP tools can call it directly. Removes subprocess overhead and eliminates the shell-wrapper dependency.
-- [ ] **MCP server: hot-reload persona registry:** New personas created via CLI aren't visible until MCP server restarts. Add a `reload_registry` tool or file-watcher to pick up changes without restart. Discovered when `my-api-docs-q3` was invisible after creation (session 42).
-- [ ] **ollama-scaffolding overlay: repo-file-as-context guidance:** When generating code via Ollama, include existing repo files (protocols, implementations, data files) as few-shot context — more effective than prose style instructions. Add this as guidance to the `ollama-scaffolding` overlay source so all downstream repos inherit it. Origin: web-research session 4, where premature deletion of `models.json` lost a useful coding-context artifact.
-- [ ] **`extract_topics.py`: pluggable ModelCaller Protocol:** `call_ollama` is hardcoded as the only caller. Extract a `ModelCaller` Protocol (`def __call__(self, model: str, prompt: str) -> dict: ...`) and thread a `caller: ModelCaller = call_ollama` parameter through `run_single` / `run_sweep`. Enables swapping in: Ollama HTTP (current), MCP bridge, OpenAI-compatible API, or a mock for tests. Introduced in `retrieval/extract_topics_gemma.py` (Phase 1 spike, session 53); upgrade before Phase 3+ integration.
-- [ ] **Subagent MCP server integration discoverability:** Infrastructure is in place (subagents can reference parent MCP servers by name in their `mcpServers` config), but feature is underdocumented and lacks working examples, templates, or discovery tooling. See `docs/findings/mcp-subagent-integration.md` § "What Would Improve Usability" for short/medium/long-term improvements. **Short-term:** create `~/.claude/agents/ollama-worker.md` template + example invocation guide. **Medium-term:** `/spawn-with-mcp` skill for interactive agent creation. **Long-term:** `inheritMcpServers` flag, auto-discovery, hot-reload. Priority: evaluate when Layer 5 (expense-classifier) needs local model subagents.
-- [x] **LTG Phase 1 — score remaining 4 corpus files:** COMPLETE (Claude draft session 57; user HTML-viz track session 58; two-rater reconciliation session 58, Branch C). Final 8/8 adjusted: qwen3:14b ✅ winner (2.44 / 2.61 Claude/User), qwen3:8b ✅ backup (2.27 / 2.63), coder ❌ (1.76 / 2.16 — borderline under user), gemma ❌ (1.61 / 1.82). Both rater tracks identical ranking + verdicts. User scoring at `retrieval/runs/manual-rubric.md` + `retrieval/runs/ltg-rater-20260416-181839-20260430-215756Z.json`. Production routing decision: `ref:ltg-phase1-routing-hypothesis`.
-- [ ] **LTG Phase 1 — determinism re-runs on winner:** Top model × 3 files × 2 runs at temp 0.1 for Jaccard stability (dim 9). Per `ref:ltg-extractor` original plan. Use `python3 retrieval/extract_topics.py --model <winner> --runs 2`. Apply stability bonus (+0.5 if Jaccard ≥ 0.85, +0.25 if ≥ 0.80) to final weighted_quality before freezing the extractor decision.
-- [ ] **LTG Phase 1 — MoE model extractor eval:** `qwen3:30b-a3b` (hybrid VRAM+RAM, 19 GB MoE) and `qwen3-coder:30b` (when hardware-headroom permits). Run under the same 11-dim rubric as the dense sweep. Fold into Phase 2 VRAM co-residence probe since both require the same hardware-headroom work. See `ref:ltg-phase1-routing-hypothesis`.
-- [ ] **LTG Phase 1 — specialized-extractor routing study:** `qwen2.5-coder:14b` scored 2.48 on `build-persona.py` with tight function-aligned spans but 1.80-2.10 on prose (off-by-one line numbering in enumerations). Add 3-5 more code files to the MVP corpus; test routing (coder model on code, qwen3:14b on prose) vs single-model. See `ref:ltg-phase1-insights` for evidence and `ref:ltg-phase1-routing-hypothesis` for the decision gate.
-- [ ] **LTG Phase 1 — prompt iteration: topic-count floor + containment-only overlap:** Two guardrails to test in a prompt revision. (1) **Topic-count floor** — instruct extractor to produce at least `max(5, major_section_count)` topics; under-budget models silently dropped whole sections on `persona-template.md` (qwen3:8b dropped Registration lines 154-163; gemma3:12b dropped Naming Convention 140-150). (2) **Containment-only overlap** — allow hierarchical containment (child span ⊆ parent span, supports LTG multi-scale/anchor stratification per `ref:concept-latent-topic-graph`) but forbid partial cross-overlap (neither span ⊆ the other — qwen3:8b produced crossed `system_prompt_structure [66-78, 79-88, 89-104]` vs `temperature_guidelines [101-110]` sharing lines 101-104). Mechanical post-hoc check: for every pair with span intersection, assert `intersection == smaller_span`. Also gives a free parent→child hierarchy edge for the graph. See `ref:ltg-phase1-insights` findings #4 and #5.
-- [ ] **LTG Phase 1 — cross-reference-index 3rd-arm routing hypothesis (deferred from Branch C reconciliation, session 58):** Claude draft saw `qwen3:8b` win on `docs/research/smart-rag-index.md` by 0.12 weighted-quality points (2.55 vs 2.43, motivating a 3rd routing arm); user HTML-viz track inverted this (2.65 vs 2.80). With n=1 cross-reference-index file and inconsistent cross-rater evidence, the 3rd arm was deferred. Re-evaluate when: (a) determinism re-run on `smart-rag-index.md` × qwen3:14b confirms or refutes the insight #7 off-by-one failure mode (~30s of compute, cheapest gating evidence), (b) more cross-reference-index files are added to the corpus (n=1 → n≥3), or (c) MoE candidates are evaluated under the same rubric. See `ref:ltg-phase1-routing-hypothesis`, `ref:ltg-phase1-pending-revisions`.
-- [ ] **LTG Phase 1 — per-topic rubric JSON as Phase 2 input:** `retrieval/runs/ltg-rater-20260416-181839-20260430-215756Z.json` carries 648 per-topic scores `{n, d, b}` (name, description, boundary) in 29/32 cells, beyond the per-file dim 5/6/7/8 aggregates that drove the binary freeze decision. Could supply per-topic boundary-quality evidence to disambiguate the deferred cross-reference-index 3rd arm without requiring a corpus-expansion sweep. Out of scope for Phase 1 freeze; tracked here for Phase 2 evaluation.
-- [ ] **`retrieval/viz_sweep.py` — bash wrapper:** Convention (`.claude/index.md` § "Runnable Scripts") is `./run-*.sh`, not direct `python3`. Add `retrieval/run-viz-sweep.sh` wrapper for the viz generator. Same for `retrieval/extract_topics.py` (`retrieval/run-extract-topics.sh`). Low priority — both are one-off tools invoked by hand, not from approved-tool whitelists.
-<!-- /ref:deferred-infra -->
 
 ---
 
 <!-- /ref:layer4-status -->
 
-### Design Decisions
-- **Specialization over generalization:** Narrow personas outperform broad ones at 7-8B. my-java-q3 with `MUST use jakarta.*` beats generic my-coder-q3 that tries to cover both Java and Go.
-- **Constraint-driven prompts:** Each MUST/MUST NOT targets an observed failure mode (e.g., javax.persistence from Layer 2, unquoted variables in shell).
-- **Two-tier system:** Full personas (SYSTEM + all params) vs bare personas (minimal, for external tools like Aider/OpenCode).
-- **Registry as source of truth:** `personas/registry.yaml` — machine-readable, appended by creator tool.
-- **Raw text append:** PyYAML strips comments on round-trip; registry uses comment section headers, so creator appends raw YAML text.
+<!-- ref:deferred-infra -->
+## Deferred Infrastructure / Tooling
+
+Completed items → `.claude/archive/deferred-completed.md`
+
+- [ ] **Hook-based auto-resume:** `UserPromptSubmit` hook injects `resume.sh` output on session start. Needs `.claude/local/session-started` flag to gate (fires every message, not just first).
+- [ ] **Qwen3-Coder-Next feasibility study (80B MoE, 3B active):** ~24GB at 3-bit quant. Needs VRAM headroom profiling + native Linux eval. Not priority until 30B models proven insufficient.
+- [ ] **expense-reporter config reader: replace runtime.Caller with os.Executable:** `internal/config/config.go` uses `runtime.Caller(0)` — breaks on deployment. Fix: `os.Executable()` + walk up. Low priority until binary deployed.
+- [ ] **Overlay wizard — interactive install inside an AI CLI:** Context: `docs/ideas/overlay-wizard.md`. Three steps: `/install-overlay` skill → wizard pattern generalization → portable TUI.
+- [ ] **Upgrade WSL2 Python from 3.10 to 3.12:** `uv python install 3.12` alongside 3.10. Do before writing new standalone Python scripts.
+- [ ] **`create-persona.py`: accept raw temperature values:** Currently named choices only. Should also accept numeric (e.g., `0.1`, `0.7`).
+- [ ] **Refactor `server.py` — separation of concerns:** Extract `_is_model_loaded`, `_check_busy_models`, `_evict_all`, `_load_model` helpers. Split into logical modules.
+- [ ] **File-based Ollama coordination layer (Option 2):** Watch Ollama PR #9392 first (`ACTIVE` field in `/api/ps`). Build trigger: VRAM thrash observed AND #9392 hasn't shipped. Design: `docs/ideas/ollama-coordination-layer.md`.
+- [ ] **Extract `create-persona.py` into importable library:** MCP tools currently shell out via subprocess. Extract to `personas/lib/persona_builder.py`.
+- [ ] **MCP server: hot-reload persona registry:** New personas invisible until restart. Add `reload_registry` tool or file-watcher.
+- [ ] **ollama-scaffolding overlay: repo-file-as-context guidance:** Include existing repo files as few-shot context. Add to overlay source for downstream repos.
+- [ ] **`extract_topics.py`: pluggable ModelCaller Protocol:** Extract `ModelCaller` Protocol; thread through `run_single` / `run_sweep`. Upgrade before Phase 3+ integration.
+- [ ] **Subagent MCP server integration discoverability:** See `docs/findings/mcp-subagent-integration.md`. Short-term: `~/.claude/agents/ollama-worker.md` template.
+- [ ] **LTG Phase 1 — specialized-extractor routing study:** Add 3-5 more code files to corpus; test routing (coder on code, qwen3:14b on prose) vs single-model. See `ref:ltg-phase1-insights` + `ref:ltg-phase1-routing-hypothesis`.
+- [ ] **LTG Phase 1 — prompt iteration: topic-count floor + containment-only overlap:** (1) `max(5, major_section_count)` floor; (2) containment-only overlap (no crossed partial spans). See `ref:ltg-phase1-insights` findings #4 and #5.
+- [ ] **LTG Phase 1 — cross-reference-index 3rd-arm routing hypothesis:** Deferred from Branch C reconciliation. Re-evaluate when: determinism re-run on `smart-rag-index.md` × qwen3:14b, or corpus n≥3 cross-ref files, or MoE evaluated. See `ref:ltg-phase1-routing-hypothesis`.
+- [ ] **LTG Phase 1 — per-topic rubric JSON as Phase 2 input:** 648 per-topic scores in `ltg-rater-20260416-181839-20260430-215756Z.json`. Could disambiguate 3rd-arm hypothesis without new sweep.
+- [ ] **`retrieval/viz_sweep.py` — bash wrapper:** Add `retrieval/run-viz-sweep.sh` + `retrieval/run-extract-topics.sh`. Low priority (one-off tools).
+- [ ] **resume.sh — ref tag audit + structural fixes:** Add `ref:quick-pointers` (high priority) and `ref:active-decisions` (medium, now compact); add open-deferred count one-liner. Fix 3 bugs: `head -20` truncation on current-status, user-prefs flattened to unreadable single line, key list unreadable. Full plan: `docs/plans/resume-sh-ref-audit.md`.
+<!-- /ref:deferred-infra -->
 
 ---
 
@@ -228,14 +75,7 @@ Items identified but not yet prioritized — evaluate when relevant layer work b
 > Only task **5.8** (MCP thin wrapper) runs in this repo.
 
 ### Pre-work — COMPLETE (sessions 32–35)
-- [x] **5.0a** ollama-bridge JSONL logging: `config.py` (CALL_LOG_PATH, LOG_FULL_CONTENT) + `client.py` (_log_call method). Logs to `~/.local/share/ollama-bridge/calls.jsonl`.
-- [x] **5.0b** CLAUDE.md: Layer 5+ local-model-first instruction (try local, evaluate, record ACCEPTED/IMPROVED/REJECTED verdict)
-- [x] **5.0c** Model audit + new pulls (session 34): qwen2.5-coder:14b, qwen3:8b-q8_0, qwen3:30b-a3b; personas my-go-q25c14 (ACCEPTED), my-go-q3-q8 (IMPROVED), my-go-q3-30b (REJECTED)
-- [x] **5.0d** Multi-model comparison tooling: `run-compare-models.sh` + `run-record-verdicts.sh`; first DPO pairs in `benchmarks/results/compare-runs.jsonl`
-- [x] **5.0e** Fix `think: false` in `ollama_client.py` — moved from `options{}` to top-level payload in both `personas/lib/ollama_client.py` and `mcp-server/src/ollama_mcp/client.py`. Verified: 82% token reduction, 6.4x speedup. (session 35)
-- [x] **5.0f** Reduce `num_ctx` in `go-qwen25c14.Modelfile` from 16384 → 10240 (user chose 10240 over 8192). Rebuilt persona, no OOM. (session 35)
-- [x] **5.0g** Create `my-java-q25c14` persona (qwen2.5-coder:14b, Java 21 + Spring Boot 3.x, num_ctx=10240). Registered + smoke-tested. (session 35)
-- [x] **5.0h** Set up todaytix-test workspace (`/home/leandror/workspaces/todaytix-test/`) with CLAUDE.md + .mcp.json for Spring Boot exercise. (session 35)
+JSONL logging, local-model-first CLAUDE.md instruction, model audit (qwen2.5-coder:14b + 14B personas), multi-model comparison tooling, `think: false` fix, num_ctx tuning. All done.
 
 ### Layer 5 Tasks (next)
 - [ ] **5.1** Port training data into expense-reporter: copy `feature_dictionary_enhanced.json` + `training_data_complete.json` to `data/` in expense-reporter; document format

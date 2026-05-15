@@ -253,3 +253,25 @@ exec uv run --project "$SCRIPT_DIR" python -m my_module "$@"
 
 **Established in:** Layer 1 decisions
 <!-- /ref:patterns-licensing -->
+
+---
+
+<!-- ref:git-safety -->
+### Git Safety Protocol
+1. **Explain** what the command will do → get explicit user approval BEFORE running
+2. **Backup first** — `git branch safety-backup-$(date +%s)`
+3. **Dry-run** when available (`--dry-run`, `--no-act`) → show output before executing
+4. **Verify** after each operation: `git fsck --full` and `git log --oneline -5`
+5. **If verification fails** — stop and restore from backup, do not fix forward
+
+Double-check remote URLs before any push. Never delete `.git` contents without a backup.
+<!-- /ref:git-safety -->
+
+<!-- ref:git-worktrees -->
+### Git Worktrees for Parallel Work
+```bash
+git worktree add ../llm-feature-branch feature-branch
+git worktree add ../llm-experiment experiment-branch
+```
+Each worktree is an isolated checkout sharing the same `.git` object store. Prefer worktrees over branch switching for parallel agent work, evaluation comparisons, or multiple branches at once.
+<!-- /ref:git-worktrees -->
