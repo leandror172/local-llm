@@ -102,6 +102,7 @@ Or manually:
 
 ---
 
+<!-- ref:active-decisions -->
 ## Active Decisions
 
 ### Cross-cutting principles
@@ -115,3 +116,4 @@ Or manually:
 **Frozen layer decisions (Layers 1/2/3):** `.claude/archive/decisions-layers-1-3.md`
 **Historical decisions (Phases 0-6, Layer 0):** `.claude/archive/phases-0-6.md`
 **LTG decisions:** `retrieval/DECISIONS.md` (ref keys: `ltg-scope`, `ltg-embedding`, `ltg-extractor`, etc.)
+<!-- /ref:active-decisions -->

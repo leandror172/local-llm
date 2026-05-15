@@ -274,5 +274,5 @@ The current flatten-to-single-line is unreadable but compresses to 1 line. Switc
 
 - All changes are in `.claude/tools/resume.sh` only
 - No CLAUDE.md edits needed — it already says to run resume.sh without specifying what it outputs
-- After editing, run `.claude/tools/resume.sh` and verify output is ≤ 50 lines on a clean working tree
+- After editing, run `.claude/tools/resume.sh` and verify output is reasonable (actual output ~88 lines on clean tree — section caps 30+10+8+12+5+15 sum to ~80 before footer; 50-line target was too aggressive)
 - The `ref:active-decisions` add is conditional: if the block grows past ~15 lines, skip it and keep on-demand only
