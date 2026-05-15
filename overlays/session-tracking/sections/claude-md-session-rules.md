@@ -1,7 +1,7 @@
 ## Resuming Multi-Session Work
 
-**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~40 lines.
-For deeper context: `ref-lookup.sh current-status` | `ref-lookup.sh active-decisions`
+**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, key files, active decisions, and recent commits in ~80-100 lines.
+For deeper context: `ref-lookup.sh current-status` | `ref-lookup.sh active-decisions` | `ref-lookup.sh quick-pointers` | `ref-lookup.sh user-prefs`
 **Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
 
 ## Workflow Rules (HARD REQUIREMENTS)
