@@ -61,8 +61,8 @@ Use `git worktree` for parallel branch work. [ref:git-worktrees]
 
 ## Resuming Multi-Session Work
 
-**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~40 lines.
-For deeper context: `ref-lookup.sh active-decisions` | `ref-lookup.sh layer4-status` | `ref-lookup.sh bash-wrappers`
+**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~80-100 lines.
+For deeper context: `ref-lookup.sh layer4-status` | `ref-lookup.sh bash-wrappers`
 **Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
 **Sensitive data:** `.claude/local/` (gitignored).
 
