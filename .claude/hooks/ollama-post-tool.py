@@ -53,7 +53,7 @@ if CALLS_LOG.exists():
 # The prompt_hash is embedded so the Stop hook can match verdict → call record.
 template = (
     f"[VERDICT prompt_hash={prompt_hash}]\n"
-    "verdict: ACCEPTED | IMPROVED | REJECTED  ← pick one, delete the others\n"
+    "verdict: 0 | 1 | 2  ← 0=rejected 1=improved 2=accepted; pick one, delete the others\n"
     "reason: <one line>\n"
     "est_claude_tokens: <number — (prompt chars + response chars) / 4, mentally>\n"
     "[/VERDICT]"
