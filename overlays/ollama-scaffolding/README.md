@@ -7,8 +7,8 @@ MCP server. Designed to be installed alongside `ref-indexing`.
 
 | Target | Content |
 |--------|---------|
-| `CLAUDE.md` (merge) | Local-model-first rules, verdict protocol, imperfect output decision tree, stubs-then-Ollama pattern, cold-start grace period, training data convention |
-| `.claude/overlays/local-model-retry-patterns.md` (template) | Runtime-accessible `ref:local-model-retry-patterns` block for agents to look up retry policy |
+| `CLAUDE.md` (merge) | Prompt style, when-to-call, serialization, verdict protocol, imperfect output decision tree, stubs-then-Ollama pattern, cold-start grace period |
+| `.claude/overlays/local-model-conventions.md` (file) | Runtime-accessible `ref:local-model-conventions` block — full before/after-call usage policy. Overlay-owned; re-install propagates updates |
 
 ## Prerequisites
 
@@ -27,6 +27,10 @@ MCP server. Designed to be installed alongside `ref-indexing`.
 
 # Install with manual merge (prints TODO for CLAUDE.md placement)
 ./overlays/install-overlay.py ollama-scaffolding --target ~/workspaces/expenses/code
+
+# Re-install to propagate doc updates — pass --backup to keep a .bak of any
+# locally-modified copy of local-model-conventions.md before it is overwritten
+./overlays/install-overlay.py ollama-scaffolding --target ~/workspaces/expenses/code --backup
 ```
 
 ## Design rationale

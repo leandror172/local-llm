@@ -70,8 +70,8 @@
 
 ---
 
-<!-- ref:local-model-retry-patterns -->
-## Local Model Retry Patterns
+<!-- ref:local-model-conventions -->
+## Local Model Conventions
 
 When Ollama output is imperfect, classify by **defect type × fix scope × prompt cost**:
 
@@ -88,7 +88,7 @@ Stubs-then-Ollama: write stub signatures, call Ollama with stubs in `context_fil
 Cold-start timeouts → `TIMEOUT_COLD_START`, not 0 (rejected). No DPO triple recorded. Retry immediately. Use `warm_model` MCP tool to eliminate cold starts.
 
 Full decision tree: `docs/scaffolding-template.md` § "Handling Imperfect Output: Decision Tree"
-<!-- /ref:local-model-retry-patterns -->
+<!-- /ref:local-model-conventions -->
 
 <!-- ref:resume-steps -->
 ## Quick Resume

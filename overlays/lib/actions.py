@@ -9,6 +9,21 @@ from .backends import Backend
 from .planner import ai_merge, _backup
 from .report import record
 
+# Extensions that should land executable. The overlay repo may live on a WSL
+# drvfs mount, where every file reports mode 777 — so the filesystem's executable
+# bit is unreliable. Decide by extension instead (empty suffix = likely a script).
+_SCRIPT_SUFFIXES = {".sh", ".bash", ".zsh", ".py", ".pl", ".rb"}
+
+
+def _is_executable_payload(src: Path) -> bool:
+    return src.suffix.lower() in _SCRIPT_SUFFIXES or src.suffix == ""
+
+
+def _apply_mode(dest: Path, executable: bool):
+    # copy2 carries the source mode over; on drvfs that is 777. Set an explicit,
+    # predictable mode so docs are not left executable.
+    dest.chmod(0o755 if executable else 0o644)
+
 
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -26,8 +41,7 @@ def _copy_file(src: Path, dest: Path, display: str, executable: bool,
         if not dry_run:
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
-            if executable:
-                dest.chmod(dest.stat().st_mode | 0o755)
+            _apply_mode(dest, executable)
         record("COPY", display, "file missing")
     elif sha256(src) == sha256(dest):
         record("SKIP", display, "up to date")
@@ -36,8 +50,7 @@ def _copy_file(src: Path, dest: Path, display: str, executable: bool,
             if do_backup:
                 _backup(dest)
             shutil.copy2(src, dest)
-            if executable:
-                dest.chmod(dest.stat().st_mode | 0o755)
+            _apply_mode(dest, executable)
         bak_note = f"backup: {display}.bak" if do_backup else "no backup (use --backup to enable)"
         record("UPDATE", display, "differs from overlay source", bak_note)
 
@@ -48,7 +61,8 @@ def handle_files(manifest: dict, overlay_dir: Path, target_root: Path,
     for src_name, dest_rel in manifest.get("files", {}).items():
         src = files_dir / src_name
         dest = target_root / dest_rel
-        _copy_file(src, dest, dest_rel, executable=True, do_backup=do_backup, dry_run=dry_run)
+        _copy_file(src, dest, dest_rel, executable=_is_executable_payload(src),
+                   do_backup=do_backup, dry_run=dry_run)
 
 
 def handle_user_files(manifest: dict, overlay_dir: Path, skill_level: str,
@@ -75,7 +89,8 @@ def handle_user_files(manifest: dict, overlay_dir: Path, skill_level: str,
         src = files_dir / src_name
         dest = dest_root / dest_rel
         display = f"{level_label}/{dest_rel}"
-        _copy_file(src, dest, display, executable=False, do_backup=do_backup, dry_run=dry_run)
+        _copy_file(src, dest, display, executable=_is_executable_payload(src),
+                   do_backup=do_backup, dry_run=dry_run)
 
 
 def handle_templates(manifest: dict, overlay_dir: Path, target_root: Path, dry_run: bool):

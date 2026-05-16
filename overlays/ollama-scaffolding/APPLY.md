@@ -3,10 +3,17 @@
 ## Goal
 
 Inject a short pointer section into the target repo's CLAUDE.md that directs agents
-to read the full verdict/retry policy in `.claude/overlays/local-model-retry-patterns.md`.
+to read the full usage policy in `.claude/overlays/local-model-conventions.md`.
 
-The CLAUDE.md section is intentionally small (~6 lines). The full policy lives in the
+The CLAUDE.md section is intentionally small. The full policy lives in the
 reference file, not in CLAUDE.md.
+
+## Updating an existing install
+
+`.claude/overlays/local-model-conventions.md` is delivered as a `files:` entry —
+fully overlay-owned. Re-running the installer propagates any changes (COPY if
+missing, SKIP if identical, overwrite if changed). Pass `--backup` on re-install
+to keep a `.bak` of any locally-modified copy before it is overwritten.
 
 ## Placement rule
 
