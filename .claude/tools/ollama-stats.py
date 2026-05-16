@@ -73,12 +73,14 @@ def verdicts(calls):
         verdict_counts[verdict] += 1
 
     print("\n=== VERDICT DISTRIBUTION ===\n")
+    print("Verdict scale: 2 = accepted · 1 = improved · 0 = rejected\n")
     print(f"Total evaluated:   {len(verdict_records)}")
 
-    for verdict in ['ACCEPTED', 'IMPROVED', 'REJECTED']:
+    _label = {2: 'accepted', 1: 'improved', 0: 'rejected'}
+    for verdict in [2, 1, 0]:
         count = verdict_counts[verdict]
         pct = count / len(verdict_records) * 100 if verdict_records else 0
-        print(f"{verdict:10}  {count:3} ({pct:5.1f}%)")
+        print(f"{verdict} ({_label[verdict]}):  {count:3} ({pct:5.1f}%)")
 
 def main():
     calls = load_calls()
