@@ -43,8 +43,8 @@ The combination produces DPO preference pairs: same prompt, two responses,
 one labeled better.
 
 **Rationale:** DPO fine-tuning requires preference pairs (chosen vs rejected).
-Model comparison naturally produces these — the ACCEPTED response is "chosen",
-the REJECTED response is "rejected".
+Model comparison naturally produces these — the 2 (accepted) response is "chosen",
+the 0 (rejected) response is "rejected".
 **Implication:** Every comparison run is both a quality assessment and a training
 data collection event. The workflow was designed for this dual purpose.
 
