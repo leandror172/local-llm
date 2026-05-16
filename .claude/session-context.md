@@ -75,15 +75,17 @@
 
 When Ollama output is imperfect, classify by **defect type × fix scope × prompt cost**:
 
-- **Mechanical** (syntax, typo, wrong import) → IMPROVED, inline always
-- **Structural, 1–2 isolated sites** → inline (IMPROVED or REJECTED based on effort)
-- **Structural, 3+ sites or interdependent** → REJECTED + stubs-then-Ollama if interface definable; scratch if not
-- **Conceptual** (correct syntax, wrong behavior) → REJECTED, write from scratch
+Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
+
+- **Mechanical** (syntax, typo, wrong import) → 1 (improved), inline always
+- **Structural, 1–2 isolated sites** → inline (1 or 0 based on effort)
+- **Structural, 3+ sites or interdependent** → 0 (rejected) + stubs-then-Ollama if interface definable; scratch if not
+- **Conceptual** (correct syntax, wrong behavior) → 0 (rejected), write from scratch
 - **Prompt cost tiebreaker:** if explaining > fixing → inline regardless of scope
 
-Stubs-then-Ollama: write stub signatures, call Ollama with stubs in `context_files`. First call = REJECTED triple; second call gets its own verdict (often ACCEPTED). Both are clean DPO signal.
+Stubs-then-Ollama: write stub signatures, call Ollama with stubs in `context_files`. First call = 0 (rejected) triple; second call gets its own verdict (often 2 (accepted)). Both are clean DPO signal.
 
-Cold-start timeouts → `TIMEOUT_COLD_START`, not REJECTED. No DPO triple recorded. Retry immediately. Use `warm_model` MCP tool to eliminate cold starts.
+Cold-start timeouts → `TIMEOUT_COLD_START`, not 0 (rejected). No DPO triple recorded. Retry immediately. Use `warm_model` MCP tool to eliminate cold starts.
 
 Full decision tree: `docs/scaffolding-template.md` § "Handling Imperfect Output: Decision Tree"
 <!-- /ref:local-model-retry-patterns -->
@@ -108,7 +110,7 @@ Or manually:
 ### Cross-cutting principles
 - **Routing patterns:** (A) local-first escalate, (B) frontier delegates via MCP, (C) chat routes both → `docs/vision-and-intent.md`
 - **Licensing (STRONG):** Always check + honor external project licenses; attribute in `docs/ATTRIBUTIONS.md`
-- **Layer 5 preferred codegen model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~25-32s, ACCEPTED quality
+- **Layer 5 preferred codegen model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~25-32s, 2 (accepted) quality
 - **qwen3:8b think:false:** Must be top-level payload param, not inside `options{}` — Ollama silently ignores it there
 - **num_ctx 10240 for 14B:** Balances context vs VRAM. KV cache formula: `2 × layers × kv_heads × head_dim × ctx × 2bytes`
 - **Multi-model comparison → DPO pairs:** `run-compare-models.sh` + `run-record-verdicts.sh` → Layer 7 pipeline

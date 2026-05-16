@@ -148,13 +148,16 @@ whenever a local model generates code (via `mcp__ollama-bridge__generate_code`
 or `mcp__ollama-bridge__ask_ollama`):
 
 **Evaluate every local model response explicitly:**
-- `ACCEPTED` — used as-is (note the prompt that worked)
-- `IMPROVED` — used with modifications (note what changed and why)
-- `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task)
 
-**On ACCEPTED or IMPROVED verdicts, add a rough token estimate — do NOT read files or write code to compute it:**
+Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
+
+- `2` — used as-is (note the prompt that worked)
+- `1` — used with modifications (note what changed and why)
+- `0` — not usable (note the failure reason: logic error / wrong API / off-task)
+
+**On verdicts 2 or 1, add a rough token estimate — do NOT read files or write code to compute it:**
 - Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
-- Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`
+- Note it inline in one phrase, e.g.: `2 — ~300 est. Claude tokens saved`
 - Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
 
 This pattern generates (prompt, local_response, verdict) triples that feed future
@@ -164,33 +167,33 @@ DPO fine-tuning pipelines.
 
 When Ollama output isn't perfect, classify the defect before deciding how to proceed.
 The goal is to pick the action that produces the best outcome *and* the cleanest DPO
-training signal (ACCEPTED triples > IMPROVED triples > REJECTED triples).
+training signal (2 (accepted) triples > 1 (improved) triples > 0 (rejected) triples).
 
 ```
 Ollama returns output
 │
 ├─ Is the defect mechanical (slip, syntax, typo, wrong import)?
-│  └─ IMPROVED — fix inline always
+│  └─ 1 (improved) — fix inline always
 │
 ├─ Is the defect structural (missing sections, wrong interface, wrong pattern)?
 │  │
 │  ├─ Fix scope: 1–2 isolated sites?
-│  │  └─ Inline (IMPROVED if trivial, REJECTED if effort > describing it)
+│  │  └─ Inline (1 if trivial, 0 if effort > describing it)
 │  │
 │  ├─ Fix scope: 3+ sites or interdependent?
 │  │  │
 │  │  ├─ Is the interface/signature definable?
-│  │  │  └─ REJECTED + stubs-then-Ollama retry
+│  │  │  └─ 0 (rejected) + stubs-then-Ollama retry
 │  │  │     (stubs embed context structurally; second call gets own verdict)
 │  │  │
-│  │  └─ NO → REJECTED, write from scratch
+│  │  └─ NO → 0 (rejected), write from scratch
 │  │
 │  └─ Prompt cost tiebreaker: would explaining the fix to Ollama
 │     take more effort than the fix itself?
 │     └─ YES → inline regardless of scope
 │
 └─ Is the defect conceptual (correct syntax, wrong behavior/mental model)?
-   └─ REJECTED, write from scratch
+   └─ 0 (rejected), write from scratch
       (stubs won't help — the model misunderstood the task, not the structure)
 ```
 
@@ -212,20 +215,20 @@ analogous to decomposing monolithic benchmark prompts.
 or omitted required interface implementations across 3+ sites.
 
 **How it works:**
-1. Verdict the first call as `REJECTED` (with reason)
+1. Verdict the first call as `0` (rejected, with reason)
 2. Write stub signatures / interface definitions that anchor the structure
 3. Call Ollama again with the stub file provided via `context_files`
-4. The second call gets its own independent verdict (often ACCEPTED)
+4. The second call gets its own independent verdict (often 2 (accepted))
 
-**Why it improves DPO data quality:** The first call produces a clean REJECTED triple.
+**Why it improves DPO data quality:** The first call produces a clean 0 (rejected) triple.
 The second call uses an anchored prompt (stubs carry context structurally rather than
-through natural language), so it's more likely to produce an ACCEPTED triple. Both
+through natural language), so it's more likely to produce a 2 (accepted) triple. Both
 triples are high-quality training signal.
 
 **Future refinement:** Conceptual defects (correct syntax, wrong behavior) may warrant
 model escalation (8B→14B) rather than stubs-then-Ollama. Stubs anchor structure, not
 semantics — they won't fix a model that misunderstood the task. Evaluate this when
-enough REJECTED-conceptual triples exist to measure escalation success rates.
+enough 0-conceptual triples exist to measure escalation success rates.
 
 ### Cold Start Grace Period
 
@@ -235,7 +238,7 @@ depending on model size. This causes false timeouts that are infrastructure arti
 not quality judgments on the model's output.
 
 **Policy:** A timeout on the **first call to a model in a session** should not be
-recorded as `REJECTED`. Instead:
+recorded as `0` (rejected). Instead:
 
 - Label it `TIMEOUT_COLD_START` — this is not a verdict on output quality
 - Do not record it as a DPO training triple (no output was produced)

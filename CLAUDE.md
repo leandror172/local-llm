@@ -77,13 +77,16 @@ code generation tasks. This generates training data for future distillation.
 - Straightforward transformations (parsing, formatting, serialization)
 
 **After receiving local model output, evaluate it explicitly:**
-- `ACCEPTED` — used as-is (note the prompt that worked)
-- `IMPROVED` — used with modifications (note what changed and why)
-- `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task)
 
-**On ACCEPTED or IMPROVED verdicts, add a rough token estimate — do NOT read files or write code to compute it:**
+Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
+
+- `2` — used as-is (note the prompt that worked)
+- `1` — used with modifications (note what changed and why)
+- `0` — not usable (note the failure reason: logic error / wrong API / off-task)
+
+**On verdicts 2 or 1, add a rough token estimate — do NOT read files or write code to compute it:**
 - Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
-- Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`
+- Note it inline in one phrase, e.g.: `2 — ~300 est. Claude tokens saved`
 - Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
 
 **When output is imperfect:** Classify by defect type / fix scope / prompt cost — not line count. [ref:local-model-retry-patterns]
