@@ -12,12 +12,12 @@ Usage (via wrapper — do not call directly):
   benchmarks/lib/run-record-verdicts.sh --list                   # list all entries with timestamps
 
   # Non-interactive mode (verdicts supplied via flags — works in Claude Code):
-  benchmarks/lib/run-record-verdicts.sh --entry 0 --verdicts "A,I" --notes "|package main + error string"
-  benchmarks/lib/run-record-verdicts.sh --entry 1 --verdicts "I,I" --notes "external dep + deadlock|evictOldest wrong end"
+  benchmarks/lib/run-record-verdicts.sh --entry 0 --verdicts "2,1" --notes "|package main + error string"
+  benchmarks/lib/run-record-verdicts.sh --entry 1 --verdicts "1,1" --notes "external dep + deadlock|evictOldest wrong end"
 
-  --verdicts: comma-separated A/I/R in model order (e.g. "A,I,R")
-  --notes:    pipe-separated notes for each model; empty string for ACCEPTED (e.g. "|note2|note3")
-              Only required for IMPROVED and REJECTED entries.
+  --verdicts: comma-separated 0/1/2 in model order (e.g. "2,1,0")
+  --notes:    pipe-separated notes for each model; empty string for verdict 2 (e.g. "|note2|note3")
+              Only required for verdict 1 (improved) and 0 (rejected) entries.
 """
 
 import argparse
@@ -42,7 +42,7 @@ def parse_args():
     p.add_argument("--list", action="store_true", help="List all entries and exit")
     p.add_argument(
         "--verdicts",
-        help="Non-interactive: comma-separated verdicts in model order (e.g. 'A,I,R')",
+        help="Non-interactive: comma-separated verdicts in model order (e.g. '2,1,0')",
     )
     p.add_argument(
         "--notes",
@@ -84,8 +84,8 @@ def list_entries(entries: list[dict]):
 
 def apply_verdicts_noninteractive(results: list[dict], verdicts_str: str, notes_str: str) -> list[dict]:
     """Apply verdicts from CLI flags without any input() calls."""
-    verdict_map = {"A": "ACCEPTED", "I": "IMPROVED", "R": "REJECTED"}
-    raw = [v.strip().upper() for v in verdicts_str.split(",")]
+    verdict_map = {"0": 0, "1": 1, "2": 2}
+    raw = [v.strip() for v in verdicts_str.split(",")]
     notes = [n.strip() for n in notes_str.split("|")] if notes_str else []
 
     if len(raw) != len(results):
@@ -97,7 +97,7 @@ def apply_verdicts_noninteractive(results: list[dict], verdicts_str: str, notes_
 
     for i, (result, choice) in enumerate(zip(results, raw)):
         if choice not in verdict_map:
-            print(f"ERROR: invalid verdict '{choice}' for model {i+1} — must be A, I, or R.", file=sys.stderr)
+            print(f"ERROR: invalid verdict '{choice}' for model {i+1} — must be 0, 1, or 2.", file=sys.stderr)
             sys.exit(1)
         result["verdict"] = verdict_map[choice]
         result["verdict_note"] = notes[i] if i < len(notes) else ""
@@ -124,23 +124,23 @@ def collect_verdict(model: str, content: str, index: int, existing: dict | None)
             return existing
 
     print(f"\n  Verdict for model {index} ({model}):")
-    print("    [A] ACCEPTED  — used as-is")
-    print("    [I] IMPROVED  — used with modifications")
-    print("    [R] REJECTED  — not usable")
+    print("    [2] accepted  — used as-is")
+    print("    [1] improved  — used with modifications")
+    print("    [0] rejected  — not usable")
     print()
 
     while True:
-        choice = input("  Your verdict (A/I/R): ").strip().upper()
-        if choice in ("A", "I", "R"):
+        choice = input("  Your verdict (0/1/2): ").strip()
+        if choice in ("0", "1", "2"):
             break
-        print("  Please enter A, I, or R.")
+        print("  Please enter 0, 1, or 2.")
 
-    verdict_map = {"A": "ACCEPTED", "I": "IMPROVED", "R": "REJECTED"}
+    verdict_map = {"0": 0, "1": 1, "2": 2}
     verdict = verdict_map[choice]
 
     note = ""
-    if choice in ("I", "R"):
-        note = input(f"  Notes ({verdict} — what changed / why rejected): ").strip()
+    if choice in ("0", "1"):
+        note = input(f"  Notes (verdict {verdict} — what changed / why rejected): ").strip()
 
     return {"verdict": verdict, "verdict_note": note}
 

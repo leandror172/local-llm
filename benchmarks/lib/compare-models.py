@@ -11,10 +11,11 @@ Usage (via wrapper — do not call directly):
   benchmarks/lib/run-compare-models.sh --models my-go-q3,my-go-q25c14 --prompt-file prompts/go-01.md --no-verdict
 
 Verdicts:
+  Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
   After each pair, you are asked to rate each response:
-    A — ACCEPTED (used as-is)
-    I — IMPROVED (used with modifications — describe changes)
-    R — REJECTED (not usable — describe failure)
+    2 — accepted (used as-is)
+    1 — improved (used with modifications — describe changes)
+    0 — rejected (not usable — describe failure)
   These are written to stdout and optionally to a results file for DPO pair extraction.
 """
 
@@ -143,23 +144,22 @@ def query_model(model: str, prompt: str, think: bool, timeout: int) -> dict:
 def collect_verdict(model: str, response: str, index: int) -> dict:
     """Interactively collect verdict for a single model response."""
     print(f"\n  Verdict for Model {index} ({model}):")
-    print("    [A] ACCEPTED  — used as-is")
-    print("    [I] IMPROVED  — used with modifications")
-    print("    [R] REJECTED  — not usable")
+    print("    [2] accepted  — used as-is")
+    print("    [1] improved  — used with modifications")
+    print("    [0] rejected  — not usable")
     print()
 
     while True:
-        choice = input("  Your verdict (A/I/R): ").strip().upper()
-        if choice in ("A", "I", "R"):
+        choice = input("  Your verdict (0/1/2): ").strip()
+        if choice in ("0", "1", "2"):
             break
-        print("  Please enter A, I, or R.")
+        print("  Please enter 0, 1, or 2.")
 
-    verdict_map = {"A": "ACCEPTED", "I": "IMPROVED", "R": "REJECTED"}
-    verdict = verdict_map[choice]
+    verdict = int(choice)
 
     note = ""
-    if choice in ("I", "R"):
-        note = input(f"  Notes ({verdict}): ").strip()
+    if choice in ("0", "1"):
+        note = input(f"  Notes (verdict {verdict}): ").strip()
 
     return {"verdict": verdict, "note": note}
 
@@ -226,7 +226,7 @@ def main():
         print("  Rate each response for DPO training data collection.")
         for i, result in enumerate(results, start=1):
             if result["error"]:
-                verdict = {"verdict": "REJECTED", "note": f"Error: {result['error']}"}
+                verdict = {"verdict": 0, "note": f"Error: {result['error']}"}
             else:
                 verdict = collect_verdict(result["model"], result["content"], i)
             verdicts.append(verdict)
@@ -237,9 +237,11 @@ def main():
         print(SEPARATOR)
         for i, (result, verdict) in enumerate(zip(results, verdicts), start=1):
             status = "ERROR" if result["error"] else f"{result['tok_s']} tok/s"
+            _label = {2: 'accepted', 1: 'improved', 0: 'rejected'}
             v = verdict["verdict"]
+            v_str = f"{v} ({_label.get(v, v)})" if isinstance(v, int) else v
             note = f" — {verdict['note']}" if verdict.get("note") else ""
-            print(f"  Model {i}: {result['model']:<30} {status:<18} {v}{note}")
+            print(f"  Model {i}: {result['model']:<30} {status:<18} {v_str}{note}")
 
     # Write output file
     run_record = {
