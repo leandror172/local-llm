@@ -31,6 +31,21 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _read_text_eol(path: Path) -> tuple[str, bool]:
+    # Returns (LF-normalized text, whether the file used CRLF). Lets callers
+    # process in LF and write back with the file's original line endings —
+    # a read_text/write_text round-trip would otherwise normalize CRLF away.
+    raw = path.read_bytes()
+    crlf = b"\r\n" in raw
+    return raw.decode("utf-8").replace("\r\n", "\n"), crlf
+
+
+def _write_text_eol(path: Path, content: str, crlf: bool):
+    if crlf:
+        content = content.replace("\r\n", "\n").replace("\n", "\r\n")
+    path.write_text(content, newline="")
+
+
 def _copy_file(src: Path, dest: Path, display: str, executable: bool,
                do_backup: bool, dry_run: bool):
     if not src.exists():
@@ -178,7 +193,7 @@ def handle_merge_sections(
             record("CREATE", dest_rel, "file missing — created with overlay section only")
             continue
 
-        existing = dest.read_text()
+        existing, dest_crlf = _read_text_eol(dest)
         version_match = open_pattern.search(existing)
 
         if version_match:
@@ -199,7 +214,7 @@ def handle_merge_sections(
                 if not dry_run:
                     if do_backup:
                         _backup(dest)
-                    dest.write_text(updated)
+                    _write_text_eol(dest, updated, dest_crlf)
                 bak_note = f"backup: {dest_rel}.bak" if do_backup else "no backup (use --backup to enable)"
                 record("UPDATE", dest_rel, f"v{found_version} → v{overlay_version}", bak_note)
         else:
