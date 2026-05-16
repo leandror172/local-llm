@@ -2,7 +2,7 @@
 # run-compare-models.sh — Multi-model comparison wrapper.
 #
 # Sends the same prompt to multiple Ollama models side-by-side.
-# Collects verdict (ACCEPTED/IMPROVED/REJECTED) per model response.
+# Collects verdict (0/1/2 — 0=rejected 1=improved 2=accepted) per model response.
 # Designed for Layer 5+ DPO data collection.
 #
 # Usage:

@@ -13,12 +13,12 @@ Results in `benchmarks/results/` (timestamped directories).
 
 ## Key Tools
 - `lib/compare-models.py` — side-by-side comparison, verdict capture
-- `lib/record-verdicts.py` — ACCEPTED/IMPROVED/REJECTED; use `--verdicts A,I --notes "n1|n2"`
+- `lib/record-verdicts.py` — verdict scale: 2=accepted 1=improved 0=rejected; use `--verdicts 2,1 --notes "|n2"`
   for non-interactive mode (Claude Code has no TTY — interactive `input()` hits EOFError)
 - `lib/validate-code.py` — compile gate (Go, Shell); `lib/validate-html.js` — Puppeteer
 
 ## Model Findings (durable)
-- **gemma3:12b** — ~31 tok/s, IMPROVED tier on Go + Python; 3-4× faster than qwen2.5-coder:14b
+- **gemma3:12b** — ~31 tok/s, verdict-1 (improved) tier on Go + Python; 3-4× faster than qwen2.5-coder:14b
 - **gemma3:27b** — 3.2 tok/s, timeouts on all coding tasks even warm; not viable on RTX 3060
 
 ## Deeper Memory -> KNOWLEDGE.md

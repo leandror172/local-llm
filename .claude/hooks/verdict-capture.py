@@ -81,13 +81,13 @@ full_text = "\n".join(assistant_chunks)
 # --- Find filled VERDICT blocks ---
 # Template format injected by ollama-post-tool.py:
 #   [VERDICT prompt_hash=<hex12>]
-#   verdict: ACCEPTED | IMPROVED | REJECTED
+#   verdict: 0 | 1 | 2  (0=rejected 1=improved 2=accepted)
 #   reason: <one line>
 #   est_claude_tokens: <number>
 #   [/VERDICT]
 pattern = re.compile(
     r"\[VERDICT prompt_hash=([a-f0-9]+)\]\s*"
-    r"verdict:\s*(ACCEPTED|IMPROVED|REJECTED)[^\n]*\n"
+    r"verdict:\s*([012])[^\n]*\n"
     r"reason:\s*([^\n]+)\n"
     r"est_claude_tokens:\s*(\d+)[^\n]*\n"
     r"\[/VERDICT\]",
@@ -107,7 +107,7 @@ for prompt_hash, verdict, reason, est_tokens in matches:
         "type": "verdict",
         "ts": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
         "prompt_hash": prompt_hash,
-        "verdict": verdict.upper(),
+        "verdict": int(verdict),
         "reason": reason.strip(),
         "est_claude_tokens": int(est_tokens),
     })

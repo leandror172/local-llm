@@ -32,7 +32,7 @@ llm/
 - **Bash wrappers over direct python3** — `./script.sh` form, whitelist-safe
 - **ref-indexing convention** — `<!-- ref:KEY -->` blocks for runtime lookups
 - **Local-first, frontier escalation** — try local models first, Claude for judgment
-- **Verdict protocol** — ACCEPTED/IMPROVED/REJECTED on every local model output → DPO data
+- **Verdict protocol** — 0/1/2 on every local model output → DPO data
 
 ## Deeper Memory -> KNOWLEDGE.md
 

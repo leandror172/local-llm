@@ -27,8 +27,8 @@ Key insight: prompt complexity has a hard ceiling per model tier. Beyond that,
 both timeout and logic errors co-occur. The fix is prompt decomposition, not
 retries or larger context windows.
 
-**gemma3:12b (2026-04-09):** ~31 tok/s, IMPROVED tier on Go + Python — 3-4× faster than
-qwen2.5-coder:14b (8 tok/s) with comparable quality. Same IMPROVED verdict on all 3
+**gemma3:12b (2026-04-09):** ~31 tok/s, 1 (improved) tier on Go + Python — 3-4× faster than
+qwen2.5-coder:14b (8 tok/s) with comparable quality. Same 1 (improved) verdict on all 3
 benchmark prompts. Best use: iterative tasks where speed matters more than one-shot accuracy.
 **gemma3:27b (2026-04-09):** 3.2 tok/s, timeouts on all coding tasks (even warm, even
 on shorter prompts). Dense 27B at 5GB RAM spillover is slower than 30B-A3B MoE — dense
@@ -67,7 +67,7 @@ must be backward-compatible.
 ## DPO Data Collection Strategy (2026-03)
 
 Every local model call is logged to JSONL (prompt, response, model, latency, token counts).
-Human verdicts (ACCEPTED/IMPROVED/REJECTED) are recorded alongside each generation.
+Human verdicts (0/1/2) are recorded alongside each generation.
 The evaluator framework adds automated quality scores (Phase 1) and LLM judge scores (Phase 2).
 Together these form DPO training triples: (prompt, response, quality_signal).
 

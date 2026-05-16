@@ -20,9 +20,11 @@ Call records:      185
 Verdict records:   40
 Verdict coverage:  21.6%
 
-ACCEPTED      5 ( 12.5%)
-IMPROVED     28 ( 70.0%)
-REJECTED      7 ( 17.5%)
+Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
+
+2 (accepted):    5 ( 12.5%)
+1 (improved):   28 ( 70.0%)
+0 (rejected):    7 ( 17.5%)
 ```
 
 ### `ollama-verdicts.py` — Verdict Analysis
@@ -30,9 +32,9 @@ Explore individual verdicts and find failure patterns.
 
 ```bash
 ./.claude/tools/ollama-verdicts.py                # All verdicts with details
-./.claude/tools/ollama-verdicts.py ACCEPTED       # Only ACCEPTED verdicts
-./.claude/tools/ollama-verdicts.py IMPROVED       # Only IMPROVED verdicts
-./.claude/tools/ollama-verdicts.py REJECTED       # Only REJECTED verdicts
+./.claude/tools/ollama-verdicts.py 2              # Only accepted verdicts
+./.claude/tools/ollama-verdicts.py 1              # Only improved verdicts
+./.claude/tools/ollama-verdicts.py 0              # Only rejected verdicts
 ./.claude/tools/ollama-verdicts.py --summary      # Stats only
 ./.claude/tools/ollama-verdicts.py --hints        # Rejection patterns
 ```
@@ -53,7 +55,7 @@ Both scripts analyze: `~/.local/share/ollama-bridge/calls.jsonl`
 
 Records include:
 - **Call records**: Ollama model invocations (model, prompt, response, latency)
-- **Verdict records**: Your evaluations (ACCEPTED/IMPROVED/REJECTED + reason + token estimate)
+- **Verdict records**: Your evaluations (0/1/2 + reason + token estimate)
 
 Verdicts are linked to calls via `prompt_hash` for traceability.
 
@@ -71,12 +73,12 @@ Verdicts are linked to calls via `prompt_hash` for traceability.
 
 3. **Review specific rejections:**
    ```bash
-   ./.claude/tools/ollama-verdicts.py REJECTED
+   ./.claude/tools/ollama-verdicts.py 0
    ```
 
 4. **Analyze high-token estimates:**
    ```bash
-   ./.claude/tools/ollama-verdicts.py IMPROVED | grep tokens
+   ./.claude/tools/ollama-verdicts.py 1 | grep tokens
    ```
 
 ## Token Estimate Notes

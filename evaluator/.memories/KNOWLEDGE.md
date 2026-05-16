@@ -64,7 +64,7 @@ infrastructure grew as a side effect of measuring what local models produce.
 
 ## Verdict Integration (2026-03)
 
-The evaluator scores complement human verdicts (ACCEPTED/IMPROVED/REJECTED).
+The evaluator scores complement human verdicts (0/1/2).
 Together they form the full quality signal for DPO:
 - Human verdict: was the output usable? (binary quality)
 - Evaluator scores: how good was it on specific criteria? (granular quality)

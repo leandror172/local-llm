@@ -2,11 +2,13 @@
 """
 Analyze verdicts from ollama-bridge calls for patterns and insights.
 
+Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
+
 Usage:
   ./ollama-verdicts.py              # All verdicts with reasons
-  ./ollama-verdicts.py ACCEPTED     # Show only ACCEPTED verdicts
-  ./ollama-verdicts.py IMPROVED     # Show only IMPROVED verdicts
-  ./ollama-verdicts.py REJECTED     # Show only REJECTED verdicts
+  ./ollama-verdicts.py 2            # Show only accepted verdicts
+  ./ollama-verdicts.py 1            # Show only improved verdicts
+  ./ollama-verdicts.py 0            # Show only rejected verdicts
   ./ollama-verdicts.py --summary    # Stats only
   ./ollama-verdicts.py --hints      # Common failure patterns
 """
@@ -51,11 +53,12 @@ def print_summary(verdicts):
     print("=== VERDICT SUMMARY ===\n")
     print(f"Total evaluated: {len(verdicts)}\n")
 
-    for verdict in ['ACCEPTED', 'IMPROVED', 'REJECTED']:
+    _label = {2: 'accepted', 1: 'improved', 0: 'rejected'}
+    for verdict in [2, 1, 0]:
         count = verdict_counts[verdict]
         pct = count / len(verdicts) * 100 if verdicts else 0
         avg_tokens = sum(token_est[verdict]) / len(token_est[verdict]) if token_est[verdict] else 0
-        print(f"{verdict:10}  {count:3} ({pct:5.1f}%)  avg tokens: {avg_tokens:6.0f}")
+        print(f"{verdict} ({_label[verdict]}):  {count:3} ({pct:5.1f}%)  avg tokens: {avg_tokens:6.0f}")
 
 def print_all_verdicts(verdicts, filter_type=None):
     """Print all verdicts with details."""
@@ -66,7 +69,8 @@ def print_all_verdicts(verdicts, filter_type=None):
         if filter_type and verdict != filter_type:
             continue
 
-        print(f"{i}. [{verdict}] {v.get('ts', 'unknown')[:10]}")
+        _label = {2: 'accepted', 1: 'improved', 0: 'rejected'}
+        print(f"{i}. [{verdict} ({_label.get(verdict, verdict)})] {v.get('ts', 'unknown')[:10]}")
         print(f"   Hash: {v.get('prompt_hash', 'unknown')}")
         if 'reason' in v:
             reason = v['reason']
@@ -83,7 +87,7 @@ def find_patterns(verdicts):
     """Find common patterns in rejections."""
     print("\n=== REJECTION PATTERNS ===\n")
 
-    rejected = [v for v in verdicts if v.get('verdict') == 'REJECTED']
+    rejected = [v for v in verdicts if v.get('verdict') == 0]
     if not rejected:
         print("No rejections yet!")
         return
@@ -116,9 +120,9 @@ def main():
         print_summary(verdicts)
     elif '--hints' in args:
         find_patterns(verdicts)
-    elif args and args[0] in ['ACCEPTED', 'IMPROVED', 'REJECTED']:
+    elif args and args[0] in ['0', '1', '2']:
         print_summary(verdicts)
-        print_all_verdicts(verdicts, filter_type=args[0])
+        print_all_verdicts(verdicts, filter_type=int(args[0]))
     else:
         print_summary(verdicts)
         print_all_verdicts(verdicts)
