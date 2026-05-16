@@ -14,7 +14,7 @@ Running LLMs locally for development has compounding advantages:
 - **Training data** — Every local model call generates labeled examples for future fine-tuning
 
 The deeper goal is a system that **improves itself through usage**: local models generate
-output, a human verdict (ACCEPTED / IMPROVED / REJECTED) is recorded alongside it, and
+output, a human verdict (0/1/2 — accepted/improved/rejected) is recorded alongside it, and
 that labeled data feeds a future fine-tuning pipeline to narrow the gap between local
 and frontier model quality over time.
 
@@ -33,7 +33,7 @@ The infrastructure is built in layers, each unlocking the next:
 | 4 | Evaluator: benchmark framework, rubrics, automated code validators | ✅ Complete |
 | 5 | Application: expense classifier using local models, with auto-insert | 🔄 Active |
 | 6 | Chat interface: Telegram/WhatsApp routing to local or frontier | ⏳ Planned |
-| 7 | Fine-tuning pipeline: DPO/SFT on accumulated ACCEPTED/IMPROVED/REJECTED logs | ⏳ Planned |
+| 7 | Fine-tuning pipeline: DPO/SFT on accumulated 0/1/2 verdict logs | ⏳ Planned |
 | 8 | Multi-agent orchestration: architect persona recruits specialist sub-agents | ⏳ Planned |
 | 9 | Idle-time runner: autonomous self-improvement during GPU downtime | ⏳ Planned |
 
@@ -197,11 +197,11 @@ This is why the MCP server uses FastMCP (text/Python, not JSON tool schemas pass
 small models) and why `qwen3-coder:30b` is the first viable local tool-calling model
 on this hardware.
 
-### ACCEPTED / IMPROVED / REJECTED Pipeline
+### Verdict Pipeline (2 = accepted · 1 = improved · 0 = rejected)
 Every local model call during development is evaluated and labeled:
-- **ACCEPTED** — used as-is → positive training example
-- **IMPROVED** — used with modifications → (prompt, local, corrected) triple
-- **REJECTED** + reason → negative example with failure mode label
+- **2 (accepted)** — used as-is → positive training example
+- **1 (improved)** — used with modifications → (prompt, local, corrected) triple
+- **0 (rejected)** + reason → negative example with failure mode label
 
 This is DPO training data collection by design, not retrofit. Target: 500+ labeled
 examples for Layer 7 QLoRA fine-tuning.

@@ -257,7 +257,7 @@ class OllamaClient:
             # Rough estimate of how many Claude API tokens the same task would cost.
             # Formula: (prompt + system + response chars) / 4 — the standard
             # chars-per-token approximation for English/code content. Intentionally
-            # imprecise; good enough for ballpark ACCEPTED/IMPROVED savings reports.
+            # imprecise; good enough for ballpark 2/1 (accepted/improved) savings reports.
             system_chars = len(system) if system else 0
             claude_tokens_est = (
                 len(prompt) + system_chars + len(response.content)
