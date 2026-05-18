@@ -1,8 +1,38 @@
 # Session Log
 
 **Current Layer:** LTG Phase 2 — embedding + storage (Phase 1 extractor fully frozen)
-**Current Session:** 2026-05-04 — Session 59: Determinism re-run + MoE eval → ref:ltg-extractor frozen
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`
+**Current Session:** 2026-05-16 — Session 60: Consolidate Ollama directives into ollama-scaffolding overlay
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
+
+---
+
+## 2026-05-16 - Session 60: Consolidate Ollama directives into ollama-scaffolding overlay
+
+### Context
+Side-track from the LTG line. User observed that the expense and web-research repos carry Ollama-usage directives in their feedback memories that are absent from the `ollama-scaffolding` overlay master files. Goal: promote the selected directives into the overlay so every repo it installs into shares them. Work done on a new branch `feature/ollama-scaffolding-directives`.
+
+### What Was Done
+- **Six directives consolidated** into `ollama-scaffolding` from expense/web-research feedback memories: D1 prompt style (describe behavior, not implementation), D2 always-attempt (never skip on past `0` verdicts), D3 serialization (serial by default; 3+ parallel exceeds VRAM; different-model parallel worst), D4 retry budget (3-4 attempts before escalating), D5 caller inclusion in `context_files`, D6 few-shot-before-delete.
+- **Mechanism conversion:** the retry-patterns reference doc moved from a `templates:` entry (created once, never propagates) to a `files:` entry (hash-based COPY/SKIP/overwrite — re-installs deliver updates).
+- **Renamed** `local-model-retry-patterns` → `local-model-conventions` (ref key + file) to reflect the broader before/after-call scope; doc restructured into "Before you call" / "After you call". All references updated, including this repo's own `ref:` block in `session-context.md` and `CLAUDE.md`.
+- **Two installer bugs fixed in `overlays/lib/actions.py`:** (1) `handle_files` forced `executable=True` — replaced with extension-based detection (`_is_executable_payload`) + explicit `_apply_mode`, because the `/mnt/i` drvfs mount reports every file as 777 so mode-preservation is unreliable; (2) `handle_merge_sections` round-tripped through `read_text`/`write_text`, silently normalizing a CRLF target to LF — added `_read_text_eol`/`_write_text_eol` to preserve line endings.
+- **Propagated** to expense (`4ed7a89`) and web-research (`4bd07d5`, amended to restore CRLF after the bug was found+fixed). Both got the v1→v2 overlay marker update deterministically — no AI mode.
+- **3 commits:** llm branch `feature/ollama-scaffolding-directives` — `3c0e2f4` (consolidation) + `548ca07` (line-ending fix); expense/web-research one each.
+
+### Decisions Made
+- **`files:` over markers for the overlay doc** — it is 100% overlay-owned with zero per-repo customization, so the template "user-managed" contract bought nothing; `files:` propagates on re-install with no version bump. A standalone marked-file mechanism was considered and deferred.
+- **Renamed the ref key** — the doc outgrew "retry patterns" once pre-call directives were added; `local-model-conventions` covers calling + verdict + retry.
+- **chmod by extension, not filesystem mode** — drvfs makes the executable bit meaningless; extension is the only reliable signal without a git dependency.
+- **Amended the web-research commit** (user-approved) rather than a follow-up commit — it was unpushed and the EOL-normalization noise would otherwise complicate merges with in-progress work in that repo.
+
+### Next
+- Resume the LTG Phase 2 line — VRAM co-residence probe (qwen3:14b + bge-m3 ≈ 12 GB). This session did not touch LTG.
+- New deferred items added to `ref:deferred-infra`: AI-merge-path CRLF preservation; ollama-scaffolding overlay review-for-improvements.
+- Open PR for `feature/ollama-scaffolding-directives`.
+
+### Notable
+- **WSL drvfs gotcha:** Windows drives mounted in WSL (`/mnt/*`, 9p/drvfs) report every file as `-rwxrwxrwx` and ignore `chmod`. Any tool that copies files off such a mount and trusts `os.access` or mode-preservation will mis-set permissions. `git ls-files -s` still shows the correct mode (git stores it).
+- The deterministic v1→v2 marker replace in `handle_merge_sections` is mode-independent — AI mode is only used for *first* insertion when no marker exists. "Don't use AI mode" was satisfied automatically for both target repos.
 
 ---
 
@@ -111,37 +141,6 @@ Resumed mid-day on `feature/ltg-rater-redesign` (session 56 had landed the new r
 - **Determinism re-run on `smart-rag-index.md` for qwen3:14b** (cheap; ~30s of compute) — does the off-by-one on the 7 pattern bullets reproduce, or was the sweep sample-unlucky? This is gating evidence for the 3-arm routing arm.
 - **Prompt-iteration experiment** (deferred from session 55): topic-count floor `max(5, major_section_count)` + containment-only overlap rule. Cheap re-sweep on existing 8 files; would directly test whether qwen3:8b's whole-section-drop failure mode is fixable.
 - **Then:** MoE probe (qwen3:30b-a3b, qwen3-coder:30b) folded into Phase 2 VRAM co-residence work; formal `ref:ltg-extractor` decision-replacement in `retrieval/DECISIONS.md`; routing-hypothesis revision applied per chosen branch.
-- **Still open:** PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
-
----
-
-## 2026-04-25 - Session 56: LTG rater page redesign (Claude Design + viz_sweep wiring)
-
-### Context
-Short tooling session. Entry point: user wanted the HTML-viz scoring page URL, then pivoted to redesigning it using Claude Design (claude.ai artifact builder).
-
-### What Was Done
-- **Located viz at** `retrieval/runs/20260416-181839.html` and confirmed how to open it in Windows from WSL2.
-- **Generated Claude Design brief:** Instructions + self-contained prompt covering the data schema, behavioral spec (localStorage, export, span-chip highlighting), and 8 specific improvement goals (keyboard scoring, model-comparison view, sticky progress bar with per-file coloring, better card density, resizable split, prominent metrics, dark/light toggle, error state polish).
-- **Generated representative JSONL slice** (`retrieval/runs/20260416-181839-design-slice.json` — 57 KB): 4 models on `smart-rag-repowise.md` (multi-model comparison case) + 1 `qwen2.5-coder:14b` run on `build-persona.py` (code file_role variation), plus both source files. Bundled as `{tag, weights, exit_threshold, data, sources}` envelope matching the Design prompt spec.
-- **User ran Claude Design** and produced `retrieval/ltg-rater.template.html` (>1600 lines).
-- **Wired template into `retrieval/viz_sweep.py`:**
-  - Added `TEMPLATE_PATH` constant pointing to the new file
-  - Replaced inline `HTML_TEMPLATE` string literal usage in `build_html` with `TEMPLATE_PATH.read_text()`
-  - Updated placeholder tokens: `__TAG__` / `__DATA_JSON__` / `__SOURCES_JSON__` → `__TAG_PLACEHOLDER__` / `__DATA_PLACEHOLDER__` / `__SOURCES_PLACEHOLDER__`
-- **Diagnosed and fixed DATA envelope mismatch:** First render showed the correct tag in the header but no records/models. Root cause: template reads `DATA.data` (envelope shape from slice JSON), but renderer was injecting a bare array. Fixed `build_html` to wrap records as `{tag, weights, exit_threshold, data: [...]}`; SOURCES stays as bare map (template reads `SOURCES[path]`). Re-rendered cleanly: 32 records, 8 sources, 288 KB.
-
-### Decisions Made
-- **Template read from disk per render call** (not imported at module load) — enables iterating on the HTML in Claude Design and re-running without restarting Python.
-- **Legacy `HTML_TEMPLATE` string stays in `viz_sweep.py` as dead code** for this session — safe to delete in a follow-up once the new template is confirmed on all edge cases (error rows, missing topics, etc.).
-- **Envelope shape is authoritative:** `weights` and `exit_threshold` now flow from Python → template. Any future rubric changes should be made in `viz_sweep.py`, not in the template JS.
-
-### Next
-- **Score remaining 3 corpus files** (either Claude draft or user HTML-viz track): `docs/research/smart-rag-index.md`, `docs/ideas/smart-rag3.md`, `.memories/KNOWLEDGE.md`. KNOWLEDGE.md highest priority.
-- **Reconcile two-rater scores:** Export `manual-rubric.md` from viz localStorage → compare with Claude's draft in `retrieval/spike-results.md`. Record divergences. Gate extractor freeze on agreement.
-- **After all 8 scored:** Commit `feature/ltg-phase1-extractor-spike`, open PR.
-- **Then:** prompt-iteration experiment (topic-count floor + containment-only overlap); determinism re-runs (dim 9 Jaccard); Phase 2 VRAM co-residence probe.
-- **Delete `HTML_TEMPLATE` dead code** from `viz_sweep.py` once new template confirmed stable.
 - **Still open:** PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
 
 ---

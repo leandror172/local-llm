@@ -58,7 +58,8 @@
   - Edits: `retrieval/spike-results.md` (filled user table 32 cells; added Two-rater reconciliation section; insight #9; rewrote `ref:ltg-phase1-routing-hypothesis` per Branch C); `.memories/KNOWLEDGE.md` (final 8/8 reconciled, Claude+User columns); `.claude/tasks.md` (marked scoring complete; added 2 deferred items: 3rd-arm hypothesis + per-topic JSON Phase 2 input); `.memories/QUICK.md` (root) + `retrieval/.memories/QUICK.md` (status block refresh).
   - **Final extractor freeze gates cleared in session 59:** (a) determinism re-run → Branch C (model property confirmed), (b) MoE eval → qwen3:30b-a3b unusable (TTFT > 9 min), qwen3-coder:30b fails adjusted threshold (2.06). `ref:ltg-extractor` formally frozen in session 59.
   - Branch: `feature/ltg-phase1-reconciliation-session-58` (off `feature/ltg-phase1-scoring-and-notes`); 2 commits (`c3fdcdd` reconciliation core + `34cfaa8` QUICK.md memory updates).
-- **Active branch:** `feature/ltg-phase1-reconciliation-session-58` (PR open; 2 commits this session — determinism + MoE eval + extractor freeze)
+- **Session 60** (2026-05-16) — Side-track: consolidated 6 Ollama-usage directives from expense/web-research feedback memories into the `ollama-scaffolding` overlay. Converted the reference doc from a `templates:` entry to a `files:` entry (propagates on re-install); renamed `local-model-retry-patterns` → `local-model-conventions`. Fixed 2 installer bugs in `overlays/lib/actions.py` — extension-based chmod (drvfs reports 777) and CRLF preservation in `handle_merge_sections`. Propagated to expense (`4ed7a89`) + web-research (`4bd07d5`). Branch `feature/ollama-scaffolding-directives`, commits `3c0e2f4` + `548ca07`. Did not touch LTG.
+- **Active branch:** `feature/ollama-scaffolding-directives` (Session 60 overlay work, 2 commits, PR pending). LTG branch `feature/ltg-phase1-reconciliation-session-58` PR still open.
 - **Phase 1 status: FULLY CLOSED (session 59, 2026-05-04).** All three freeze gates cleared. `ref:ltg-extractor` formally frozen: qwen3:14b (prose), qwen2.5-coder:14b (code). See `retrieval/DECISIONS.md`.
 - **Prior active branches:** `feature/ltg-phase1-scoring-and-notes` (parent of current; session 57 work — PR still queued); `feature/ltg-rater-redesign` (further upstream; session 56 work); `feature/ltg-phase1-extractor-spike` (runner + sweep); `feature/ref-lookup-prefix-search` (PR #30 open); `feature/ltg-phase0` (PR open, under review); `feature/gemma3-benchmark` (PR still not opened)
 - **Open deferred tasks:** hook-based auto-resume, Qwen3-Coder-Next feasibility, expense-reporter runtime.Caller fix (tracked in expenses repo), Python 3.10→3.12 via uv, Layer 4 stragglers (Phase 3 frontier judge, claude-desktop insights tool 4.6), raw temperature values, registry hot-reload, server.py refactor, file-based coordination layer (watch PR #9392), ModelCaller Protocol for extract_topics.py, extract create-persona.py into importable library, `add_model` MCP tool, prompt-iteration experiment (topic-count floor + containment-only overlap), delete legacy `HTML_TEMPLATE` from viz_sweep.py, **LTG cross-ref-index 3rd-arm routing hypothesis** (defer-to-Phase-2), **LTG per-topic rubric JSON as Phase 2 input** (648 scores in 29/32 cells), **containment/post-pass guard** for qwen3:14b on dense single-line bullet lists (Branch C action from determinism re-run), **qwen3:30b-a3b deferred** pending Ollama MoE offload improvement
@@ -70,8 +71,8 @@
 
 ---
 
-<!-- ref:local-model-retry-patterns -->
-## Local Model Retry Patterns
+<!-- ref:local-model-conventions -->
+## Local Model Conventions
 
 When Ollama output is imperfect, classify by **defect type × fix scope × prompt cost**:
 
@@ -88,7 +89,7 @@ Stubs-then-Ollama: write stub signatures, call Ollama with stubs in `context_fil
 Cold-start timeouts → `TIMEOUT_COLD_START`, not 0 (rejected). No DPO triple recorded. Retry immediately. Use `warm_model` MCP tool to eliminate cold starts.
 
 Full decision tree: `docs/scaffolding-template.md` § "Handling Imperfect Output: Decision Tree"
-<!-- /ref:local-model-retry-patterns -->
+<!-- /ref:local-model-conventions -->
 
 <!-- ref:resume-steps -->
 ## Quick Resume

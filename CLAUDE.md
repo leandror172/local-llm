@@ -89,7 +89,7 @@ Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
 - Note it inline in one phrase, e.g.: `2 — ~300 est. Claude tokens saved`
 - Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
 
-**When output is imperfect:** Classify by defect type / fix scope / prompt cost — not line count. [ref:local-model-retry-patterns]
+**When output is imperfect:** Classify by defect type / fix scope / prompt cost — not line count. [ref:local-model-conventions]
 
 **Do NOT use local models for:**
 - Architectural decisions or multi-file reasoning
