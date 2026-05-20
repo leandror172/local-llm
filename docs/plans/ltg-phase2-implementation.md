@@ -95,6 +95,8 @@ SCHEMA = pa.schema([
     pa.field("description",          pa.string()),       # text that was embedded
     pa.field("spans",                pa.string()),       # JSON string: "[[10,16],[26,32]]"
     pa.field("vector",               pa.list_(pa.float32(), 1024)),
+    pa.field("embed_model",          pa.string()),       # e.g. "bge-m3"
+    pa.field("embed_dim",            pa.int32()),        # e.g. 1024 — belt-and-suspenders
     pa.field("extractor_model",      pa.string()),       # "qwen3:14b" or "qwen2.5-coder:14b"
     pa.field("extraction_run_id",    pa.string()),       # run_id from Phase 1 JSONL
     pa.field("extraction_timestamp", pa.string()),       # ISO timestamp from Phase 1 JSONL
@@ -179,8 +181,7 @@ embedding = response.json()["embeddings"][0]  # list[float], len=1024
 python3 retrieval/store.py \
   --input retrieval/embeddings.jsonl \
   --index retrieval/index \
-  [--table topics] \
-  [--overwrite]
+  [--table topics]
 ```
 
 **Logic:**
@@ -188,10 +189,9 @@ python3 retrieval/store.py \
 1. Load all rows from --input as list of dicts
 2. Convert "vector" field from list[float] to pa.array (float32, len=1024)
 3. Open (or create) LanceDB at --index path
-4. If table exists and --overwrite: drop and recreate
-5. If table exists and not --overwrite: append (allows incremental adds later)
-6. Write all rows using schema defined above
-7. Print: N rows written, table size, index path
+4. Always use mode="overwrite" (drop and recreate on each run for MVP)
+5. Write all rows using schema defined above
+6. Print: N rows written, table size, index path
 ```
 
 **LanceDB setup:**
@@ -204,7 +204,7 @@ db = lancedb.connect("retrieval/index")
 table = db.create_table("topics", data=rows, schema=SCHEMA, mode="overwrite")
 ```
 
-**Dependency:** `pip install lancedb pyarrow`
+**Dependency:** `pip install 'lancedb>=0.20,<0.30' pyarrow`
 
 **Note on `retrieval/index/`:** This directory is binary LanceDB data. Add to `.gitignore` if not already present.
 
@@ -243,7 +243,7 @@ python3 retrieval/inspect.py --list [--index retrieval/index]
     spans: [[12,14],[26,32],[44,45],[52,52]]
 ```
 
-**Dependency:** `pip install lancedb pyarrow httpx`
+**Dependency:** `pip install 'lancedb>=0.20,<0.30' pyarrow httpx`
 
 ---
 
@@ -275,7 +275,7 @@ retrieval/run-store.sh \
   --overwrite
 
 # Step 3: run acceptance queries
-retrieval/run-inspect.sh --query "what do we know about thinking mode" --k 5
+retrieval/run-inspect.sh --query "what's special about Repowise's git co-change analysis" --k 5
 retrieval/run-inspect.sh --query "how do we handle memory across sessions" --k 5
 retrieval/run-inspect.sh --query "which models are good at topic extraction" --k 5
 retrieval/run-inspect.sh --query "how does Repowise analyze code repositories" --k 5
@@ -289,7 +289,7 @@ Phase 2 passes when all four probe queries return sensible results.
 
 | Query | Expected top result | Pass criterion |
 |-------|--------------------|----|
-| "what do we know about thinking mode" | `.memories/KNOWLEDGE.md` or `.claude/` topic | Top result from a file that actually discusses thinking mode |
+| "what's special about Repowise's git co-change analysis" | `docs/research/smart-rag-repowise.md` topic | Top result from the repowise file (confirmed in Phase 1 JSONL) |
 | "how do we handle memory across sessions" | `.memories/QUICK.md` or `.memories/KNOWLEDGE.md` topic | Top result from a memory file |
 | "which models are good at topic extraction" | `.memories/KNOWLEDGE.md` Phase 1 summary topic or `spike-results` | Top result references extractors/models |
 | "how does Repowise analyze code repositories" | `docs/research/smart-rag-repowise.md` topic | Top result from the repowise file |
@@ -334,3 +334,57 @@ When Phase 2 passes acceptance:
 | **BM25 sidecar index** | Dense-only may be sufficient for MVP | Probe queries miss exact technical terms (model names, ref keys, flags) |
 | **Synthesis with qwen3:14b** | inspect.py is retrieval-only for now | Phase 5 `relate(a,b)` adds synthesis |
 | **Chunking for long files** | No long files in Phase 1 corpus | Phase 2.5 corpus expansion |
+| **Incremental append / dedupe in store.py** | MVP is a single 8-file pass; LanceDB does not enforce ID uniqueness | Phase 2.5 needs proper dedupe design before append is safe |
+
+---
+
+## Advisor Review — Session 61
+
+**Plan review — solid overall, four concrete fixes worth incorporating:**
+
+### 1. Re-run idempotency is underspecified (blocker for clean iteration)
+
+The plan says: *"If table exists and not --overwrite: append (allows incremental adds later)"*. But append mode with no dedupe creates duplicate rows on every re-run, even though IDs (`{file_path}:{topic_name}`) are designed to be unique. LanceDB does NOT enforce uniqueness on any field — `id` is just metadata.
+
+**Fix:** Pick one of:
+- **(a)** Default behavior is always overwrite for MVP; remove the append branch. Document that incremental adds are a Phase 2.5 concern when full-corpus mode arrives. *(Recommended for the 8-file pass.)*
+- **(b)** Before append, run `table.delete(f"id = '{row['id']}'")` for each incoming row's id. Explicit dedupe, costs a small per-row query.
+
+Pick (a) — it matches the actual Phase 2 scope (single 8-file pass). The append story can be designed properly when Phase 2.5 actually needs it.
+
+### 2. Schema missing `embed_model` field (foresight gap)
+
+The schema records `extractor_model` (which extractor produced the topic) but not which embedder produced the vector. Today this is uniformly `bge-m3`, but the fallback chain (`mxbai-embed-large`, `nomic-embed-text`) is documented in `ref:ltg-embedding`. If you ever switch — or run a comparison — you'll have a mixed index with no way to tell which row came from which embedder.
+
+**Fix:** Add `pa.field("embed_model", pa.string())` and `pa.field("embed_dim", pa.int32())` to the schema. embed.py writes both. ~2 lines of code, removes a future foot-gun. The `embed_dim` field is belt-and-suspenders — LanceDB enforces vector dimension at the schema level, but having it queryable means `inspect.py` can warn if the index doesn't match the expected dim.
+
+### 3. Probe query #1 is weakly grounded in the 8-file corpus
+
+*"What do we know about thinking mode"* — none of the 8 files have a dedicated topic on thinking mode. The closest is `.memories/KNOWLEDGE.md`, which discusses model tier findings and prompt decomposition. The extractor names topics semantically, so there's no guarantee a topic literally named or described around "thinking mode" exists. If the test fails on this query, it's ambiguous whether the pipeline is broken or the corpus just doesn't carry that signal.
+
+**Fix:** Replace with a query that's clearly grounded:
+- *"What's special about Repowise's git co-change analysis"* (you already have this exact topic confirmed in the sample JSONL)
+- Or: *"What memory architecture does this repo use"* — hits `.memories/KNOWLEDGE.md` or `.memories/QUICK.md` topics
+
+Keep the other three — they're well-grounded.
+
+### 4. LanceDB version is unpinned (instability risk)
+
+`pip install lancedb` will pull the latest release, which has had API changes (e.g., the table-creation surface shifted between 0.4 → 0.10 → 0.20). The plan's `create_table(data=rows, schema=SCHEMA, mode="overwrite")` syntax is current as of recent versions but could break on a fresh install months later.
+
+**Fix:** Pin to a known-working version in the plan: `pip install 'lancedb>=0.20,<0.30' pyarrow`. If the implementing session finds the pin is wrong, they update it then; the explicit range is documentation that "this was tested against 0.2x".
+
+### Lower-priority suggestions
+
+**5. Batch embed calls.** bge-m3's `/api/embed` accepts `input: [str, str, ...]` and returns `embeddings: [[...], [...], ...]`. ~128 topics in one batch is much faster than 128 sequential calls. Drop into embed.py's loop with a `BATCH_SIZE = 32` constant. Not a blocker, but a 4-10x speedup essentially for free.
+
+**6. Sequential constraint is policy, not mechanism.** The plan states the rule but doesn't enforce it. For MVP this is fine — the pipeline naturally runs sequentially (embed.py → store.py → inspect.py, each a separate process). Worth a comment in embed.py: `# Sequential constraint: do not run alongside qwen3:14b inference (ref:ltg-vram-probe)`.
+
+### What's good and shouldn't change
+
+- Required Reading section is exemplary — exactly what a future session needs.
+- Decisions In Force prevents re-litigation cleanly.
+- Per-script CLI specs with concrete pseudocode = no design ambiguity left.
+- The 4-probe acceptance test with explicit expected-result column is the right level of detail.
+- Index/memory update checklist for post-completion is the kind of thing that gets forgotten without an explicit list.
+- The deferred-items table with explicit triggers is exactly right.
