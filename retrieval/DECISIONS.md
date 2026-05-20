@@ -34,7 +34,7 @@ Each entry records the decision, the reasoning, alternatives considered, and the
 
 All three are a one-line config swap.
 
-**Phase 2 gating probe (required before locking):** Load `qwen3:14b` (~9 GB) and `bge-m3` (~3 GB) concurrently, alternate extract/embed/query operations, watch for evictions. Total ~12 GB on 12 GB card — pressure is expected. If eviction happens only during indexing (sequential anyway), accept. If eviction happens during query-time operations (embed query → retrieve → synthesize), drop to `mxbai-embed-large`.
+**Phase 2 gating probe — COMPLETE (2026-05-20, session 61):** WARN verdict — bge-m3 evicts qwen3:14b at load time (11.4 GB + 1.2 GB > 12 GB headroom), but query-time interleaved stress (5 rounds embed→infer) showed zero evictions at ~3.5s avg infer latency. **bge-m3 is locked. Sequential constraint: embed.py and infer calls must not run in parallel.** Script: `retrieval/run-vram-probe.sh`. Full VRAM figures: qwen3:14b runtime footprint 11,384 MiB; bge-m3 1,200 MiB; total headroom 12,288 MiB.
 
 **Alternatives considered:** `nomic-embed-text` as simplest-possible default — rejected in favor of bge-m3 once Ollama-native status was confirmed. Running `bge-m3` via `sentence-transformers` — rejected because Ollama-native route exists.
 

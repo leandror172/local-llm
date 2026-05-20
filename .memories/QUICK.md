@@ -10,7 +10,7 @@ Session 59 (2026-05-04): LTG Phase 1 **fully closed**. All 3 freeze gates cleare
 determinism re-run (Branch C — off-by-one confirmed model property) + MoE eval
 (qwen3:30b-a3b unusable TTFT > 9min; qwen3-coder:30b fails adj. 2.06 < 2.2).
 **ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code.
-Phase 2 next: VRAM co-residence probe (qwen3:14b + bge-m3 ≈ 12GB).
+Phase 2 active: VRAM probe complete (bge-m3 locked, sequential constraint). embed.py + store.py next.
 
 ## Repo Structure
 
@@ -22,7 +22,7 @@ llm/
   benchmarks/    # Multi-language code validation suite
   overlays/      # Portable scaffolding packages for cross-repo consistency
   modelfiles/    # Ollama Modelfile definitions
-  retrieval/     # LTG substrate — Phase 1 reconciled (session 58, Branch C); freeze pending determinism + MoE
+  retrieval/     # LTG substrate — Phase 1 fully closed (session 59); Phase 2 next
   docs/          # Research, patterns, portfolio, findings
 ```
 

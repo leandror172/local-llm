@@ -4,11 +4,15 @@
 
 ## Status
 
-Session 59 (2026-05-04): Phase 1 **fully closed**. All 3 freeze gates cleared.
-Determinism: Branch C (off-by-one model property, 5 runs all ≤3/7, Jaccard 0.60).
-MoE: qwen3:30b-a3b unusable (TTFT > 9 min); qwen3-coder:30b 2.06 adj. < 2.2.
-**ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code.
-Phase 2 next: VRAM co-residence probe + LanceDB + bge-m3.
+Session 59 (2026-05-04): Phase 1 **fully closed**. ref:ltg-extractor frozen: qwen3:14b prose, qwen2.5-coder:14b code.
+Session 61 (2026-05-20): VRAM probe complete → **bge-m3 locked** (sequential constraint applies). → `ref:ltg-vram-probe`
+Phase 2 active: embed.py + store.py (LanceDB) next.
+
+## Deeper Memory → KNOWLEDGE.md
+
+- **VRAM co-residence probe** — actual footprints, WARN verdict rationale, sequential constraint, script gotcha → `ref:ltg-vram-probe`
+- **Phase 1 extractor summary** — final scores, failure modes, MoE eval, determinism finding → `ref:ltg-phase1-summary`
+- **Phase 0 decisions index** — all 8 frozen decisions with key reasons → `ref:ltg-phase0-decisions-index`
 
 ## What Lives Here
 
@@ -17,6 +21,7 @@ retrieval/
   DECISIONS.md              # Phase 0 decisions (frozen, session 52)
   .memories/                # This folder's working + semantic memory
   extract_topics.py         # Topic extractor runner (4 models × 8 files)
+  run-vram-probe.sh         # VRAM co-residence probe script (Phase 2 gate)
   viz_sweep.py              # HTML rater renderer — uses ltg-rater.template.html
   ltg-rater.template.html   # Scoring UI (Claude Design, 1600+ lines)
   spike-results.md          # Phase 1 scoring + insights (ref:ltg-phase1-results etc.)
@@ -38,6 +43,6 @@ retrieval/
 ## Key Rules
 
 - **Phase 1 is load-bearing.** Extractor freeze gates Phase 2. If quality is poor, iterate prompt — not model.
-- **VRAM co-residence probe required** before locking bge-m3 (qwen3:14b + bge-m3 ≈ 12GB on 12GB card).
+- **VRAM probe complete (session 61):** bge-m3 locked; sequential-only constraint applies to embed.py.
 - **Raw extractions gitignored** — only scores + narrative results committed.
 - **Warm models before batch runs** via `warm_model` MCP tool to eliminate cold starts.
