@@ -1,8 +1,42 @@
 # Session Log
 
 **Current Layer:** MCP server feature execution (ollama-bridge Plans 1-3) — side track before LTG Phase 2
-**Current Session:** 2026-05-22 — Session 63: MCP Plan 1 executed (refs param + personas + constraints)
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`
+**Current Session:** 2026-05-22 — Session 64: MCP Plan 2 executed (output_file + output_only params)
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`
+
+---
+
+## 2026-05-22 - Session 64: MCP Plan 2 executed (output_file + output_only params)
+
+### Context
+Resumed on `feature/ollama-bridge-output-file` (new branch off `feature/ollama-bridge-refs-param`). Plan 2 was fully specified and advisor-reviewed. Session goal: execute TDD cycle for `output_file` + `output_only` params on `ask_ollama` and `generate_code`.
+
+### What Was Done
+- **Plan 2 (output_file) — fully executed, TDD:**
+  - `mcp-server/tests/test_output_file.py` — 9 tests (8 plan spec + 1 generate_code integration), all confirmed red before implementation, all green after
+  - `_resolve_output_path` helper added to `server.py` after `_build_refs_block` — shared with Plan 3 (`patch_file`); returns `pathlib.Path | str`
+  - `_write_output_file` helper added — atomic write via `{path}.tmp` + `os.replace`; creates parent dirs; returns status or error string
+  - `ask_ollama` modified: `output_file`/`output_only` params added; path pre-validated before Ollama call (fail-fast); return block replaced
+  - `generate_code` modified: same changes, using few-shot sibling pattern (passed modified `ask_ollama` as context)
+  - 19/19 total tests green (9 new + 10 from Plan 1), zero regressions
+- **Live acceptance tests — all 4 passed:**
+  1. Basic write (absolute path) — content returned + file written
+  2. Relative path → resolved to `REPO_ROOT/retrieval/test_output.py` ✅
+  3. `output_only=True` — returned `"Written 156 bytes to /tmp/comment.txt"` ✅
+  4. Edit loop — written file passed back as `context_files`, model updated its own output ✅
+- **Plan 3 updated** with session findings: stale line numbers (generate_code 480→615, insertion ~1118→1290), impl prompt now explicitly requests atomic write, acceptance tests `/tmp` → `~/workspaces/tmp`
+- **Docs updated:** `mcp-server/.memories/QUICK.md` (output_file Key Patterns), `mcp-server/.memories/KNOWLEDGE.md` (new output_file design section), `mcp-server/README.md` (tool signatures 2 features behind), `.claude/index.md` (tool count 6→10), `overlays/ollama-scaffolding/files/local-model-conventions.md` (new output_file subsection)
+- **New feedback memory:** use `~/workspaces/tmp` for scratch/test files, not `/tmp`
+- **Branch:** `feature/ollama-bridge-output-file` — 3 commits (feat + 2 docs); PR created covering Plans 1+2 together (12 commits total vs master)
+- **Local model verdicts:** test_output_file 1 (fixed `@pytest.mark.asyncio` decorators + `AsyncMock` type hints), helpers 1 (fixed `os.environ` vs module-level `REPO_ROOT` + missing `mkdir`), `ask_ollama` modification 2, `generate_code` modification 2 — ~4075 est. Claude tokens saved
+
+### Decisions Made
+- **`~/workspaces/tmp` for all scratch/acceptance-test files** (not `/tmp`) — user preference set this session
+- **`pyproject.toml` always in context when generating pytest** — local model defaults to `@pytest.mark.asyncio` without it; project uses `asyncio_mode=auto`
+
+### Next
+- **Plan 3 (`patch_file` tool)** on a new branch off current: read `ref:mcp-patch-file-*` for full spec; TDD first (`test_patch_file.py`, 8 tests); then implement `patch_file` after `ref_lookup` (line ~1290). Plan: `docs/plans/ollama-bridge-patch-file.md`. Note: advisor blocker #1 (atomic write) is now in the impl prompt.
+- **Then merge Plans 1+2+3 PR and start LTG Phase 2:** `docs/plans/ltg-phase2-implementation.md` (`ref:ltg-phase2-plan`)
 
 ---
 
@@ -96,36 +130,6 @@ Resumed with all prior PRs merged (master clean). Two goals: clear the Phase 2 g
 
 ### Notable
 - **`set -euo pipefail` + `grep -q` SIGPIPE trap:** `cmd | grep -q pattern` fails when grep exits on first match and sends SIGPIPE to `cmd`. With pipefail, the pipe returns 141 (SIGPIPE), not grep's 0. Appears as a false negative on the first matching entry in the output. Fix: `OUT=$(cmd); echo "$OUT" | grep -q pattern`. A generic bash gotcha worth remembering for any probe/filter script.
-
----
-
-## 2026-05-16 - Session 60: Consolidate Ollama directives into ollama-scaffolding overlay
-
-### Context
-Side-track from the LTG line. User observed that the expense and web-research repos carry Ollama-usage directives in their feedback memories that are absent from the `ollama-scaffolding` overlay master files. Goal: promote the selected directives into the overlay so every repo it installs into shares them. Work done on a new branch `feature/ollama-scaffolding-directives`.
-
-### What Was Done
-- **Six directives consolidated** into `ollama-scaffolding` from expense/web-research feedback memories: D1 prompt style (describe behavior, not implementation), D2 always-attempt (never skip on past `0` verdicts), D3 serialization (serial by default; 3+ parallel exceeds VRAM; different-model parallel worst), D4 retry budget (3-4 attempts before escalating), D5 caller inclusion in `context_files`, D6 few-shot-before-delete.
-- **Mechanism conversion:** the retry-patterns reference doc moved from a `templates:` entry (created once, never propagates) to a `files:` entry (hash-based COPY/SKIP/overwrite — re-installs deliver updates).
-- **Renamed** `local-model-retry-patterns` → `local-model-conventions` (ref key + file) to reflect the broader before/after-call scope; doc restructured into "Before you call" / "After you call". All references updated, including this repo's own `ref:` block in `session-context.md` and `CLAUDE.md`.
-- **Two installer bugs fixed in `overlays/lib/actions.py`:** (1) `handle_files` forced `executable=True` — replaced with extension-based detection (`_is_executable_payload`) + explicit `_apply_mode`, because the `/mnt/i` drvfs mount reports every file as 777 so mode-preservation is unreliable; (2) `handle_merge_sections` round-tripped through `read_text`/`write_text`, silently normalizing a CRLF target to LF — added `_read_text_eol`/`_write_text_eol` to preserve line endings.
-- **Propagated** to expense (`4ed7a89`) and web-research (`4bd07d5`, amended to restore CRLF after the bug was found+fixed). Both got the v1→v2 overlay marker update deterministically — no AI mode.
-- **3 commits:** llm branch `feature/ollama-scaffolding-directives` — `3c0e2f4` (consolidation) + `548ca07` (line-ending fix); expense/web-research one each.
-
-### Decisions Made
-- **`files:` over markers for the overlay doc** — it is 100% overlay-owned with zero per-repo customization, so the template "user-managed" contract bought nothing; `files:` propagates on re-install with no version bump. A standalone marked-file mechanism was considered and deferred.
-- **Renamed the ref key** — the doc outgrew "retry patterns" once pre-call directives were added; `local-model-conventions` covers calling + verdict + retry.
-- **chmod by extension, not filesystem mode** — drvfs makes the executable bit meaningless; extension is the only reliable signal without a git dependency.
-- **Amended the web-research commit** (user-approved) rather than a follow-up commit — it was unpushed and the EOL-normalization noise would otherwise complicate merges with in-progress work in that repo.
-
-### Next
-- Resume the LTG Phase 2 line — VRAM co-residence probe (qwen3:14b + bge-m3 ≈ 12 GB). This session did not touch LTG.
-- New deferred items added to `ref:deferred-infra`: AI-merge-path CRLF preservation; ollama-scaffolding overlay review-for-improvements.
-- Open PR for `feature/ollama-scaffolding-directives`.
-
-### Notable
-- **WSL drvfs gotcha:** Windows drives mounted in WSL (`/mnt/*`, 9p/drvfs) report every file as `-rwxrwxrwx` and ignore `chmod`. Any tool that copies files off such a mount and trusts `os.access` or mode-preservation will mis-set permissions. `git ls-files -s` still shows the correct mode (git stores it).
-- The deterministic v1→v2 marker replace in `handle_merge_sections` is mode-independent — AI mode is only used for *first* insertion when no marker exists. "Don't use AI mode" was satisfied automatically for both target repos.
 
 ---
 
