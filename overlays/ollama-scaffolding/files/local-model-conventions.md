@@ -61,6 +61,20 @@ trivial edits (adding a flag, a 2-line branch, a one-liner).
   must be loaded into VRAM separately. Always call models sequentially, even for
   benchmarking: tier 1 first; on a `0` verdict, then tier 2.
 
+### Refs context: inject project documentation
+
+Use `refs: ["key1", "key2"]` on `generate_code` or `ask_ollama` to inject
+documentation, rules, or decisions from any folder that uses the
+`<!-- ref:KEY -->` marker convention. The server resolves the keys and
+prepends them as a `<refs>` block — no Claude token cost.
+
+- Use for decisions, architecture rules, schema definitions, or prompting
+  guidelines that live in markdown but aren't code files.
+- Pass `refs_root` when working in a folder other than the default LLM repo.
+  Any folder with `*.md` files using `<!-- ref:KEY -->` markers works.
+- Combine with `context_files` freely: refs get prepended first (docs before code).
+- Find available keys with `ref_lookup(key="list", path="/abs/path/to/folder")`.
+
 ### Context files: pass what defines the behavior
 
 More signal in `context_files` means a higher verdict tier. Include:
