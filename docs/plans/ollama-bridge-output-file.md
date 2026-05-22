@@ -153,19 +153,35 @@ context_files:
 <!-- ref:mcp-output-file-impl -->
 ## Implementation
 
-### Step 1 — Add `_write_output_file` helper (~25 lines)
+### Step 1 — Add `_resolve_output_path` helper (~15 lines)
 
-**Location:** `mcp-server/src/ollama_mcp/server.py`, after `_build_refs_block`
-(or after `_build_context_block` if Plan 1 not yet implemented).
+**Location:** `mcp-server/src/ollama_mcp/server.py`, after `_build_refs_block`.
+
+**What it does:** Resolves a path string to an absolute `pathlib.Path`.
+If absolute: use as-is. If relative: prepend `REPO_ROOT`. If `REPO_ROOT`
+is None and path is relative: return an `"Error: …"` string. Call
+`.resolve()` AFTER `mkdir(parents=True, exist_ok=True)` so the canonical
+path is accurate. Returns either a resolved `pathlib.Path` or an error string.
+
+**Why a shared helper:** Plan 3 (`patch_file`) needs identical resolution
+logic. Extract once here; Plan 3 imports and calls it. Without this,
+any `.resolve()` fix applied here won't carry to `patch_file`.
+
+**Persona:** `my-python-q25c14` (pure path logic, no MCP protocol).
+
+---
+
+### Step 1b — Add `_write_output_file` helper (~20 lines)
+
+**Location:** Immediately after `_resolve_output_path`.
 
 **What it does:**
-1. If `output_file` is an absolute path: use as-is.
-2. If relative: prepend `REPO_ROOT`. If `REPO_ROOT` is `None`: return error string.
-3. Create parent directories if they don't exist (`pathlib.Path.mkdir(parents=True, exist_ok=True)`).
-4. Write `content` (str) to file, UTF-8, overwriting.
-5. On success: return `f"Written {len(content.encode())} bytes to {resolved_path}"`.
-6. On `OSError`: return `f"Error writing to {resolved_path}: {e}"`.
-7. Never raise — return error strings, same as all other helpers.
+1. Call `_resolve_output_path(path)` — return error string if it errors.
+2. Create parent directories (`mkdir(parents=True, exist_ok=True)`).
+3. Write to `{resolved}.tmp` first, then `os.replace(tmp, resolved)` — atomic on POSIX.
+4. On success: return `f"Written {resolved.stat().st_size} bytes to {resolved}"`.
+5. On `OSError`: return `f"Error writing to {resolved}: {e}"`.
+6. Never raise.
 
 **Context to send to `generate_code`:**
 ```
@@ -178,13 +194,17 @@ context_files:
 ```
 
 **Prompt:**
-> Write an async helper `_write_output_file(path: str, content: str) -> str`
-> for a Python FastMCP server. It resolves the path: if absolute, use as-is;
-> if relative, prepend REPO_ROOT (from config). If REPO_ROOT is None and path
-> is relative, return an error string. Create parent directories with
-> `pathlib.Path.mkdir(parents=True, exist_ok=True)`. Write content as UTF-8.
-> On success return `"Written N bytes to /abs/path"` (N = byte length).
-> On OSError return `"Error writing to /abs/path: <e>"`. Never raise.
+> Write two async helpers for a Python FastMCP server.
+> (1) `_resolve_output_path(path: str) -> pathlib.Path | str`: if absolute,
+> wrap in Path; if relative, prepend REPO_ROOT. If REPO_ROOT is None and
+> path is relative, return an "Error: …" string. Call `.resolve()` after
+> the path is constructed. Return the resolved Path or error string.
+> (2) `_write_output_file(path: str, content: str) -> str`: call
+> `_resolve_output_path`; return error string if it errors. Create parent
+> dirs. Write atomically: write to `{resolved}.tmp`, then
+> `os.replace(str(resolved) + ".tmp", resolved)`. Return
+> `"Written N bytes to {resolved}"` (N = resolved.stat().st_size post-write).
+> On OSError return `"Error writing to {resolved}: {e}"`. Never raise.
 > Follow the error-string convention of `_build_context_block` in this file.
 
 ---
@@ -212,7 +232,12 @@ output_only: If True and output_file is set, write to file and return only
              Ignored if output_file is not set.
 ```
 
-Add body (after `return response.content`, insert before returning):
+**Pre-validate before the Ollama call (advisor blocker #2):** If `output_file`
+is set, call `_resolve_output_path(output_file)` at the top of the function
+body (before persona validation). Return error immediately if it fails — don't
+waste 5–30s of GPU time on a path that can't be written.
+
+**Body change:** Replace the single `return response.content` line with:
 ```python
     content = response.content
     if output_file:
@@ -224,37 +249,52 @@ Add body (after `return response.content`, insert before returning):
     return content
 ```
 
+**Persona:** `my-mcp-q25c14` (MCP tool signature + docstring, session 63 validated).
+
 **Context to send to `generate_code`:**
 ```
 context_files:
   - path: mcp-server/src/ollama_mcp/server.py
     start_line: 209
-    end_line: 297           # full ask_ollama tool
+    end_line: 297           # full ask_ollama tool (already has refs params from Plan 1)
 ```
 
 **Prompt:**
 > Add `output_file: str | None = None` and `output_only: bool = False` parameters
-> to the `ask_ollama` async tool function shown in context. After getting
-> `response.content`, if `output_file` is set, call `await _write_output_file(output_file, content)`.
-> If the result starts with "Error:", return it. If `output_only` is True, return
-> the write status instead of content. Otherwise return content as usual.
+> to the `ask_ollama` async tool function shown in context. At the top of the
+> function body (before persona validation), if output_file is set, call
+> `_resolve_output_path(output_file)` and return immediately on error.
+> Replace the final `return response.content` line with the output_file block:
+> get content, write if output_file set, return status if output_only else content.
 > Add docstring entries for both params in the existing style.
+> MUST NOT modify any other line.
 
 ---
 
 ### Step 3 — Modify `generate_code` signature and body
 
-Same as Step 2 but for `generate_code` (lines 480–556).
+Same as Step 2. **Use the few-shot sibling pattern (session 63):** do Step 2
+first, then pass the already-modified `ask_ollama` as context when prompting
+for `generate_code`. This approach went from verdict-0 (wholesale rewrite) to
+verdict-1 (single mechanical error) in Plan 1 execution.
+
+**Persona:** `my-mcp-q25c14`.
 
 **Context to send to `generate_code`:**
 ```
 context_files:
   - path: mcp-server/src/ollama_mcp/server.py
-    start_line: 480
-    end_line: 556           # full generate_code tool
+    start_line: <updated ask_ollama start>
+    end_line: <updated ask_ollama end>  # the already-modified ask_ollama — use as template
+  - path: mcp-server/src/ollama_mcp/server.py
+    start_line: <generate_code start>
+    end_line: <generate_code end>       # the unmodified generate_code — apply same pattern
 ```
 
-**Prompt:** Same pattern as Step 2, adapted for `generate_code`.
+**Prompt:** "Apply the same `output_file` / `output_only` addition to
+`generate_code` that was already applied to `ask_ollama` (shown in context).
+Copy the two new parameters, docstring entries, pre-validation call, and
+return block verbatim. MUST NOT modify any other line."
 
 ---
 

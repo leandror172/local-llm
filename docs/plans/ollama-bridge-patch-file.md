@@ -75,7 +75,7 @@ mistake of replacing the wrong occurrence when `old_string` is non-unique.
 | `replace_all` param | `bool = False` | Mirrors Edit tool; enables rename/refactor without a separate tool |
 | Uniqueness check | Error if count > 1 and `replace_all=False` | Prevents silent wrong-site replacement; same rule makes Edit tool safe |
 | Path resolution | Same helper logic as `_write_output_file` | Consistency; don't invent a second resolution strategy |
-| Extract shared helper? | No — inline 4-line resolution in `patch_file` | 4 lines don't justify a shared helper; avoid premature abstraction |
+| Extract shared helper? | Yes — use `_resolve_output_path` from Plan 2 | Plan 2 Step 1 extracts this helper explicitly; use it here to prevent drift (advisor cross-plan refactor note) |
 | Return on success | `"Patched /abs/path (1 replacement)"` or `"Patched /abs/path (N replacements)"` | Gives Claude the resolved path + count for confirmation |
 | New file creation | Error — do not create | `patch_file` edits existing files; use `output_file` to create |
 <!-- /ref:mcp-patch-file-decisions -->
@@ -174,12 +174,13 @@ context_files:
   - path: mcp-server/src/ollama_mcp/config.py  # for REPO_ROOT
 ```
 
+**Persona:** `my-mcp-q25c14` (MCP tool, session 63 validated for this class of task).
+
 **Prompt:**
 > Write a new `@mcp.tool()` async function `patch_file` for a Python FastMCP
 > server. Parameters: `path: str`, `old_string: str`, `new_string: str`,
-> `replace_all: bool = False`. Path resolution: if absolute use as-is; if
-> relative prepend REPO_ROOT (from config); if REPO_ROOT is None and path is
-> relative return an error string. Check file exists (error if not). Read as
+> `replace_all: bool = False`. Path resolution: call `_resolve_output_path(path)`
+> (already defined above this function in the file); return error string if it errors. Check file exists (error if not). Read as
 > UTF-8. Count occurrences of old_string: if 0 return error; if >1 and
 > replace_all=False return error listing count. Replace using str.replace with
 > count=1 or no limit depending on replace_all. Write back UTF-8. Return

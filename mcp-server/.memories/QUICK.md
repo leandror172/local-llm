@@ -13,6 +13,12 @@ Python/FastMCP server, stdio transport (JSON-RPC 2.0 over stdin/stdout).
 Claude Code spawns it as a subprocess — no network ports, pure local IPC.
 Single async HTTP client (httpx) with connection pooling via lifespan pattern.
 
+## Persona Routing (for MCP development work)
+
+Use `my-mcp-q25c14` for MCP tool modifications (signatures, docstrings, return contracts).
+Use `my-python-q25c14` for pure Python helpers (data flow, async patterns, path logic).
+Both share `qwen2.5-coder:14b` base — no warm_model call needed when switching between them.
+
 ## Tool Catalog
 
 ask_ollama, generate_code, summarize, classify_text, translate,
