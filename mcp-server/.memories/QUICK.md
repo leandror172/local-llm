@@ -28,6 +28,7 @@ list_models, warm_model, query_personas, detect_persona, build_persona
 
 - **Server-side file context** — reads files on server, injects into prompt (zero Claude token cost)
 - **Ref context injection** — `refs: list[str]` + `refs_root: str | None` on ask_ollama and generate_code; server resolves ref keys via ref-lookup.sh, prepends as `<refs>` block (zero Claude token cost; any folder with `<!-- ref:KEY -->` markers accepted)
+- **Output to file** — `output_file: str | None` on ask_ollama and generate_code; writes response to disk (relative paths from REPO_ROOT); `output_only=True` returns compact status instead of content (defers verdict to file inspection)
 - **Language routing** — auto-selects best persona per language from registry
 - **Call logging** — every call → JSONL (prompt, response, model, latency, tokens)
 - **Cold-start management** — warm_model pre-loads into VRAM, in-flight tracking prevents mid-request eviction

@@ -90,6 +90,26 @@ More signal in `context_files` means a higher verdict tier. Include:
   is written and validated — a working file from the same framework is the
   strongest prompt context you have.
 
+### Output to file: generate directly into the codebase
+
+Use `output_file="rel/path/to/file.py"` to write the model's response directly
+to a file. Relative paths resolve from the project root (`REPO_ROOT`); absolute
+paths are used as-is. The response is returned to you AND written to the file.
+
+**Edit loop pattern:**
+1. `generate_code(prompt="...", output_file="src/foo.py")` — generates + writes
+2. Review the returned content, give a verdict
+3. For edits: `generate_code(prompt="fix X", context_files=[{"path": "/abs/src/foo.py"}])` —
+   local model edits its own prior output
+
+**`output_only=True`:** Returns only a compact status (`"Written N bytes to /path"`)
+instead of the full content. Use when the generated file is large and you plan to
+validate via tests rather than inline review. You MUST still give a verdict —
+read the file afterwards with `context_files` if needed to assess quality.
+
+Do NOT use `output_only=True` as a way to skip verdicts. The verdict (0/1/2) is
+required regardless of how you inspect the output.
+
 ## After you call
 
 ### Step 1: Record a verdict for every local model call
