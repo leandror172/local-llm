@@ -159,22 +159,34 @@ def _resolve_output_path(path: str) -> pathlib.Path | str:
 
     Absolute paths are used as-is. Relative paths are anchored to REPO_ROOT.
     Returns an error string if path is relative and REPO_ROOT is not set.
+    Note: does NOT call .resolve() — callers that need canonical paths should
+    call .resolve() after ensuring parent directories exist.
     """
     p = pathlib.Path(path)
     if p.is_absolute():
-        return p.resolve()
+        return p
     if REPO_ROOT is not None:
-        return (pathlib.Path(REPO_ROOT) / path).resolve()
+        return pathlib.Path(REPO_ROOT) / path
     return "Error: output_file is a relative path but REPO_ROOT is not set"
 
 
-def _write_output_file(path: str, content: str) -> str:
-    """Write content to path atomically. Returns a status string or Error: string."""
-    resolved = _resolve_output_path(path)
-    if isinstance(resolved, str):
-        return resolved
+def _write_output_file(path: pathlib.Path | str, content: str) -> str:
+    """Write content to path atomically. Returns a status string or Error: string.
+
+    Accepts either a pre-resolved pathlib.Path (from an earlier _resolve_output_path
+    call) or a raw string (resolved internally). Callers that already validated the
+    path should pass the Path directly to avoid resolving twice.
+    """
+    if isinstance(path, str):
+        resolved = _resolve_output_path(path)
+        if isinstance(resolved, str):
+            return resolved
+    else:
+        resolved = path
     try:
         resolved.parent.mkdir(parents=True, exist_ok=True)
+        # Resolve AFTER mkdir so symlinked parents are traversable for canonicalization.
+        resolved = resolved.resolve()
         tmp = pathlib.Path(str(resolved) + ".tmp")
         tmp.write_text(content, encoding="utf-8")
         os.replace(tmp, resolved)
@@ -407,7 +419,7 @@ async def ask_ollama(
         )
         content = response.content
         if output_file:
-            write_result = _write_output_file(output_file, content)
+            write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
                 return write_result
             if output_only:
@@ -718,7 +730,7 @@ async def generate_code(
         )
         content = response.content
         if output_file:
-            write_result = _write_output_file(output_file, content)
+            write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
                 return write_result
             if output_only:

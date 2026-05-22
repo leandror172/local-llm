@@ -14,6 +14,7 @@ async def test_file_is_written_when_output_file_set(tmp_path, mock_ollama):
 async def test_returned_content_equals_file_content(tmp_path, mock_ollama):
     output_file = tmp_path / "output.txt"
     result = await ask_ollama(prompt="test", output_file=str(output_file))
+    assert result == "mocked-model-output"
     assert result == output_file.read_text(encoding="utf-8")
 
 
@@ -29,8 +30,9 @@ async def test_output_only_returns_status_not_content(tmp_path, mock_ollama):
 async def test_output_only_status_contains_byte_count_and_path(tmp_path, mock_ollama):
     output_file = tmp_path / "output.txt"
     result = await ask_ollama(prompt="test", output_file=str(output_file), output_only=True)
+    assert "Written" in result
     assert str(output_file) in result
-    assert any(ch.isdigit() for ch in result)
+    assert str(len("mocked-model-output".encode())) in result
 
 
 async def test_output_only_without_output_file_returns_full_content(mock_ollama):
@@ -61,3 +63,4 @@ async def test_generate_code_file_written_and_content_returned(tmp_path, mock_ol
     result = await generate_code(prompt="test", language="python", output_file=str(output_file))
     assert output_file.exists()
     assert result == output_file.read_text(encoding="utf-8")
+    assert "[Language: python]" in mock_ollama.chat.call_args.kwargs["prompt"]
