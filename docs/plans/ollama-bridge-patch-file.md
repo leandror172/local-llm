@@ -50,7 +50,7 @@ mistake of replacing the wrong occurrence when `old_string` is non-unique.
 | File | Lines | Why |
 |------|-------|-----|
 | `mcp-server/src/ollama_mcp/server.py` | 51–87 | `_build_context_block` — error-string convention; new tool follows same pattern |
-| `mcp-server/src/ollama_mcp/server.py` | 480–556 | `generate_code` — tool structure to mirror for `patch_file` |
+| `mcp-server/src/ollama_mcp/server.py` | 615–730 | `generate_code` — tool structure to mirror for `patch_file` |
 | `mcp-server/src/ollama_mcp/config.py` | all | `REPO_ROOT` — path resolution anchor |
 | `docs/plans/ollama-bridge-output-file.md` | Step 1 | `_write_output_file` path-resolution logic — `patch_file` reuses the same pattern |
 | `overlays/ollama-scaffolding/files/local-model-conventions.md` | 44–70 | Context files + output_file sections — `patch_file` usage goes adjacent |
@@ -148,7 +148,7 @@ context_files:
 ### Step 1 — Add `patch_file` tool (~50 lines)
 
 **Location:** `mcp-server/src/ollama_mcp/server.py`, after `ref_lookup` tool
-(end of file, around line 1118).
+(`ref_lookup` starts at line 1233; add `patch_file` after it, around line 1290).
 
 **What it does:**
 1. Resolve path (same logic as `_write_output_file`): absolute as-is; relative prepend `REPO_ROOT`; error if can't resolve.
@@ -166,8 +166,8 @@ context_files:
 ```
 context_files:
   - path: mcp-server/src/ollama_mcp/server.py
-    start_line: 480
-    end_line: 556            # generate_code tool — @mcp.tool() structure to mirror
+    start_line: 615
+    end_line: 730            # generate_code tool — @mcp.tool() structure to mirror
   - path: mcp-server/src/ollama_mcp/server.py
     start_line: 51
     end_line: 87             # _build_context_block — error-string + pathlib pattern
@@ -180,13 +180,15 @@ context_files:
 > Write a new `@mcp.tool()` async function `patch_file` for a Python FastMCP
 > server. Parameters: `path: str`, `old_string: str`, `new_string: str`,
 > `replace_all: bool = False`. Path resolution: call `_resolve_output_path(path)`
-> (already defined above this function in the file); return error string if it errors. Check file exists (error if not). Read as
-> UTF-8. Count occurrences of old_string: if 0 return error; if >1 and
-> replace_all=False return error listing count. Replace using str.replace with
-> count=1 or no limit depending on replace_all. Write back UTF-8. Return
-> "Patched {abs_path} (N replacement/s)" on success. Catch OSError → error
-> string. Never raise. Follow the @mcp.tool() decorator pattern and
-> error-string convention from the tools already in this file.
+> (already defined above this function in the file); return error string if it errors.
+> Check file exists (error if not). Read as UTF-8. Count occurrences of old_string:
+> if 0 return error; if >1 and replace_all=False return error listing count. Replace
+> using str.replace with count=1 or no limit depending on replace_all. Write back
+> atomically: write to `str(resolved) + ".tmp"` then `os.replace(tmp, resolved)`
+> (same pattern as `_write_output_file` in this file — never use write_text directly).
+> Return "Patched {abs_path} (N replacement/s)" on success. Catch OSError → error
+> string. Never raise. Follow the @mcp.tool() decorator pattern and error-string
+> convention from the tools already in this file.
 
 ---
 
@@ -243,21 +245,21 @@ After implementation, verify manually:
 
 ```python
 # 1. Basic replacement
-generate_code(prompt="Write a function foo() that returns 1.", language="python", output_file="/tmp/p.py")
-patch_file("/tmp/p.py", old_string="return 1", new_string="return 42")
-# Expected: "Patched /tmp/p.py (1 replacement)" — verify file content changed
+generate_code(prompt="Write a function foo() that returns 1.", language="python", output_file="~/workspaces/tmp/p.py")
+patch_file("~/workspaces/tmp/p.py", old_string="return 1", new_string="return 42")
+# Expected: "Patched ~/workspaces/tmp/p.py (1 replacement)" — verify file content changed
 
 # 2. Not found → error
-patch_file("/tmp/p.py", old_string="this_does_not_exist", new_string="x")
-# Expected: "Error: old_string not found in /tmp/p.py"
+patch_file("~/workspaces/tmp/p.py", old_string="this_does_not_exist", new_string="x")
+# Expected: "Error: old_string not found in ~/workspaces/tmp/p.py"
 
 # 3. Non-unique → error
 # (First write a file with a repeated string, then try to patch it)
-patch_file("/tmp/p.py", old_string="42", new_string="99")
+patch_file("~/workspaces/tmp/p.py", old_string="42", new_string="99")
 # If "42" appears multiple times: "Error: old_string found N times..."
 
 # 4. replace_all=True — renames all occurrences
-patch_file("/tmp/p.py", old_string="42", new_string="99", replace_all=True)
+patch_file("~/workspaces/tmp/p.py", old_string="42", new_string="99", replace_all=True)
 # Expected: all occurrences replaced, count in return message
 
 # 5. Relative path
@@ -266,7 +268,7 @@ patch_file("retrieval/test_patch.py", old_string="print", new_string="sys.stdout
 # Expected: resolved to /mnt/i/workspaces/llm/retrieval/test_patch.py
 
 # 6. File does not exist → error
-patch_file("/tmp/nonexistent_xyz.py", old_string="x", new_string="y")
+patch_file("~/workspaces/tmp/nonexistent_xyz.py", old_string="x", new_string="y")
 # Expected: "Error: ..." — not a crash
 ```
 <!-- /ref:mcp-patch-file-acceptance -->
