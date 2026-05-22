@@ -47,3 +47,6 @@ __pycache__/
 .idea/modules.xml
 .idea/vcs.xml
 .idea/inspectionProfiles/profiles_settings.xml
+
+docs/plans/verdict-numeric-migration.md
+docs/plans/verdict-numeric-migration-report.md

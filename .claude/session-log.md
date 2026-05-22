@@ -1,8 +1,39 @@
 # Session Log
 
-**Current Layer:** LTG Phase 2 — embedding + storage (Phase 1 extractor fully frozen)
-**Current Session:** 2026-05-16 — Session 60: Consolidate Ollama directives into ollama-scaffolding overlay
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
+**Current Layer:** LTG Phase 2 — embedding + storage (Phase 2 gate cleared; plan written)
+**Current Session:** 2026-05-20 — Session 61: VRAM probe + Phase 2 implementation plan
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
+
+---
+
+## 2026-05-20 - Session 61: VRAM probe + Phase 2 implementation plan
+
+### Context
+Resumed with all prior PRs merged (master clean). Two goals: clear the Phase 2 gate (VRAM co-residence probe for bge-m3 + qwen3:14b) and write a detailed Phase 2 implementation plan ready to execute next session.
+
+### What Was Done
+- **Updated tracking files:** Corrected stale open-PR references in `ref:current-status` and `.memories/QUICK.md`; retrieval QUICK.md stale "freeze pending" line fixed.
+- **VRAM co-residence probe:** Wrote `retrieval/run-vram-probe.sh` (4-stage script: preflight, sequential load, co-residence check, 5-round interleaved stress). Fixed `set -euo pipefail` + SIGPIPE bug in preflight (grep exits early on first match → `ollama list` gets SIGPIPE → pipefail propagates 141; fix: capture output first, grep the variable).
+- **Probe result:** WARN verdict — bge-m3 evicts qwen3:14b at load time (11,384 + 1,200 MiB > 12,288 MiB), but 0 query-time evictions across 4 warm rounds, avg infer 3,559 ms. **bge-m3 locked. Sequential constraint established.**
+- **Stored probe findings:** Updated `retrieval/DECISIONS.md` (`ref:ltg-embedding` probe marked complete with actual VRAM figures); updated root `.memories/QUICK.md` and `retrieval/.memories/QUICK.md`.
+- **Created `retrieval/.memories/KNOWLEDGE.md`:** New semantic memory file with 3 ref blocks: `ref:ltg-vram-probe` (full probe findings + SIGPIPE gotcha), `ref:ltg-phase1-summary` (consolidated extractor findings), `ref:ltg-phase0-decisions-index` (all 8 Phase 0 decisions in summary table). QUICK.md trimmed to pointer + "Deeper Memory" section.
+- **Discussed Phase 2 implementation choices:** Corpus validation scope (8-file first), input source (reuse Phase 1 JSONL, filter to winning models), embedding text (description-only; A/B deferred), script structure (3 separate scripts + wrappers).
+- **Wrote `docs/plans/ltg-phase2-implementation.md`:** Full execution plan with: required reading (7 files in order), decisions in force, Phase 1 JSONL input format + routing rule, LanceDB schema (with `"vector"` naming rationale), per-script CLI/logic/API spec for embed.py + store.py + inspect.py, bash wrapper pattern, 4-probe acceptance test table, `.gitignore` additions, post-completion memory update checklist, deferred items table.
+- **Registered:** plan in `.claude/index.md`; `retrieval/` added to `ref:memory-files`; Retrieval/LTG Tools table in `ref:bash-wrappers` updated.
+- **Committed:** `feature/ltg-phase2-plan` branch, commit `16a9483`, 10 files.
+
+### Decisions Made
+- **8-file validation first** (Option A) before full corpus expansion — validates pipeline on trusted, scored extractions before widening scope.
+- **Reuse Phase 1 JSONL** (filter to winning models) rather than re-extracting — the scored outputs are the ground truth; fresh extraction is unreviewed and takes ~10 min.
+- **Description-only embedding** to start; A/B test (description+spans) deferred as explicit future task with trigger: probe query underperforms.
+- **3 separate scripts** (`embed.py`, `store.py`, `inspect.py`) with individual bash wrappers — composable, independently runnable.
+- **bge-m3 locked** — sequential constraint (no parallel embed+infer) applies to embed.py only; indexing pipeline is inherently sequential anyway.
+
+### Next
+- **Execute `docs/plans/ltg-phase2-implementation.md`** — start by reading the Required Reading section (7 files listed in order). Then write `embed.py`, `store.py`, `inspect.py` and their bash wrappers. Run the 4-probe acceptance test to close Phase 2.
+
+### Notable
+- **`set -euo pipefail` + `grep -q` SIGPIPE trap:** `cmd | grep -q pattern` fails when grep exits on first match and sends SIGPIPE to `cmd`. With pipefail, the pipe returns 141 (SIGPIPE), not grep's 0. Appears as a false negative on the first matching entry in the output. Fix: `OUT=$(cmd); echo "$OUT" | grep -q pattern`. A generic bash gotcha worth remembering for any probe/filter script.
 
 ---
 
@@ -104,44 +135,6 @@ Resumed mid-day on `feature/ltg-phase1-scoring-and-notes` (session 57's branch).
 - **Coder borderline:** under user track, qwen2.5-coder:14b finishes at 2.16 adjusted (0.04 below threshold) vs Claude 1.76 (0.44 below). Same verdict but margin is small enough that 2-3 more code files in the corpus could flip it.
 - **Methodological insight for Layer 7:** rubric is fit-for-purpose for binary decisions; absolute scores diverge by ~0.2–0.4 weighted-quality points across raters. Continuous reuse (DPO scoring) would need inter-rater calibration.
 - **Pre-registered decision tree paid off.** Session 57 wrote down what each user-track outcome would mean before seeing the user's scores. Branch C applied mechanically rather than getting argued into Branch A on weak grounds. Worth carrying forward to determinism + MoE eval (pre-register what each outcome means).
-
----
-
-## 2026-04-25 - Session 57: Score remaining 3 corpus files + capture rater notes (Claude draft 8/8 complete)
-
-### Context
-Resumed mid-day on `feature/ltg-rater-redesign` (session 56 had landed the new rater template + viz_sweep wiring earlier today). User asked first about the in-flight viz refactor (since-resolved by session 56), then directed three sequential scoring sessions: KNOWLEDGE.md, smart-rag-index.md, smart-rag3.md. Closed at 8/8 + captured all unwritten insights to ref blocks before session ended.
-
-### What Was Done
-- **Scored `.memories/KNOWLEDGE.md` (file 6 of 8):** 214-line, 10-section repo knowledge doc. qwen3:14b 2.85 (joint-best in spike), qwen3:8b 2.25, coder 2.30, gemma3 1.60. Confirmed insight-#4 reproduction (qwen3:8b dropped Smart RAG section 117-151 entirely; gemma3 conflated Smart RAG + LTG into one mega-topic).
-- **Scored `docs/research/smart-rag-index.md` (file 7 of 8):** 64-line cross-reference index with 7 dense numbered pattern bullets. **First file in spike where qwen3:8b (2.55) outscored qwen3:14b (2.43)** — qwen3:14b had off-by-one errors on 3 of 7 pattern bullets (graph_exploitation→[23] should be [24], etc.). coder 1.83 with rule-3 violation (`cross_cutting_patterns [21,29]` structural meta-topic) and "kitchen-sink line 35" pattern. gemma3 1.35 with coverage 0.344 (below rule-2 floor).
-- **Scored `docs/ideas/smart-rag3.md` (file 8 of 8):** 84-line architectural design doc. qwen3:14b 2.85 (rebound, tied with KNOWLEDGE.md for joint-best). qwen3:8b drops back to 2.30 (kitchen-sink span [10,22], three topics claiming [76,81]). coder 1.55 — **worst single-file score in the entire spike** (three structural-meta topics, all rule-3 violations). gemma3 1.40 with self-overlapping spans + crossed-overlap on [63,64].
-- **Final 8-file Claude draft averages (after speed penalty):** qwen3:14b 2.44 (winner), qwen3:8b 2.27 (backup, best on cross-ref index), coder 1.76 (fails), gemma3 1.61 (fails).
-- **Added 3 new numbered insights to `ref:ltg-phase1-insights`:**
-  - **#6** Section-drop pattern reproduces (qwen3:8b confirmed structural, not anecdotal — KNOWLEDGE.md + persona-template.md); rubric under-penalises (dim 8 only 10% — qwen3:8b cleared 2.2 threshold despite missing 22% of file content).
-  - **#7** Cross-reference index breaks qwen3:14b's lead via off-by-one on dense bullets with inline punctuation density. Off-by-one is **model-agnostic format failure** — coder hit it on smart-rag-repowise.md, qwen3:14b hits it on smart-rag-index.md.
-  - **#8** Paired-file natural experiment (smart-rag-index ↔ smart-rag3, same content opposite format) shows 0.55-point swing for qwen3:8b and 0.42-point swing for qwen3:14b in opposite directions — **cleanest evidence in spike that format-sensitivity dominates content-sensitivity**.
-- **Created `retrieval/spike-rater-notes.md`** with three new ref blocks (held outside `.memories/KNOWLEDGE.md` deliberately to avoid biasing user-track HTML-viz scoring):
-  - `ltg-phase1-claude-rater-notes` — per-cell scoring rationale + evidence quotes for all 3 files scored this session
-  - `ltg-phase1-meta-insights` — file-class taxonomy (4 roles, n=1/n=2 caveats), paired-file methodology recommendation, per-model trend observations, reconciliation priorities, mechanical post-pass guards (coverage cap >60%, containment overlap check)
-  - `ltg-phase1-pending-revisions` — stale-wording cleanup queue (3 items) + three conditional drafts (A/B/C) for routing-hypothesis revision based on user-track outcome, with decision tree
-- **Updated `.claude/index.md`** Phase 1 Spike Results table: refreshed counts (4/8 → 8/8), refreshed numbered findings list (#1-#3 → #1-#8), added rows for the 3 new ref keys.
-- **Branch + commit:** Created `feature/ltg-phase1-scoring-and-notes` off `feature/ltg-rater-redesign`. Single commit `2330e04` adds spike-results.md edits + spike-rater-notes.md + index.md updates.
-
-### Decisions Made
-- **Hold-until-reconciliation policy:** Per-cell rationale, meta-insights, and pending revisions all live in `retrieval/spike-rater-notes.md` rather than `.memories/KNOWLEDGE.md`. Codifying findings into knowledge-tier memory before user-track scores arrive would bias the user's independent rater calibration.
-- **Pre-written conditional revisions (A/B/C):** Three drafts of the routing-hypothesis revision queued in `ref:ltg-phase1-pending-revisions`, conditional on whether user track agrees on insight #8 ranking flip (Branch A: 3-arm; Branch B: 2-arm; Branch C: mixed). Decision tree included so a future session can execute mechanically.
-- **New branch instead of committing to `feature/ltg-rater-redesign`:** Scoring + insights are findings, not infrastructure. Splitting them into separate PRs lets reviewers engage with the patterns without re-litigating the tooling.
-- **3-arm routing story is empirically backed but n=1 on cross-ref arm:** Insight #8 is the cleanest controlled experiment in the spike; routing-hypothesis revision Branch A captures it but with explicit "n=1, fragile" caveats and gating on determinism re-run.
-
-### Next
-- **Open PR for `feature/ltg-phase1-scoring-and-notes`** (queued — final step of this session).
-- **User completes HTML-viz scoring track** (in progress; manual-rubric.md.1.md/.2.md/.3/.4 backups present in working tree).
-- **Two-rater reconciliation:** Diff Claude draft vs user track per cell. Apply Branch A/B/C from `ref:ltg-phase1-pending-revisions` based on outcome. Then apply stale-wording cleanup (3 items) and update `.memories/KNOWLEDGE.md` "LTG Phase 1 Extractor Spike — Findings" section to final 8/8 numbers.
-- **Determinism re-run on `smart-rag-index.md` for qwen3:14b** (cheap; ~30s of compute) — does the off-by-one on the 7 pattern bullets reproduce, or was the sweep sample-unlucky? This is gating evidence for the 3-arm routing arm.
-- **Prompt-iteration experiment** (deferred from session 55): topic-count floor `max(5, major_section_count)` + containment-only overlap rule. Cheap re-sweep on existing 8 files; would directly test whether qwen3:8b's whole-section-drop failure mode is fixable.
-- **Then:** MoE probe (qwen3:30b-a3b, qwen3-coder:30b) folded into Phase 2 VRAM co-residence work; formal `ref:ltg-extractor` decision-replacement in `retrieval/DECISIONS.md`; routing-hypothesis revision applied per chosen branch.
-- **Still open:** PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
 
 ---
 

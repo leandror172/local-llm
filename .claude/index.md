@@ -50,6 +50,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
 | Verdict numeric migration plan | `docs/plans/verdict-numeric-migration.md` | Replace ACCEPTED/IMPROVED/REJECTED string verdicts with 0/1/2 integers across all repos, hooks, data, docs, and memory. 8 phases. |
+| **LTG Phase 2 implementation plan** | `docs/plans/ltg-phase2-implementation.md` | embed.py + store.py + inspect.py. Decisions locked, ready to execute. `ref:ltg-phase2-plan` |
 | Overlay wizard idea | `docs/ideas/overlay-wizard.md` | Deferred: running overlay install interactively inside an AI CLI; wizard pattern generalization; eventual local TUI |
 | Claude Code source + related repos | `docs/ideas/claude-code-python-port.md` | Leaked TS source (cloned locally), open-multi-agent (MIT TS framework). Key files: `services/mcp/normalization.ts` (MCP response format), `services/autoDream/` (memory consolidation). open-multi-agent supports Ollama via baseURL; verified tool-calling with Gemma 4 + Qwen 3. |
 | ollama-scaffolding overlay | `overlays/ollama-scaffolding/` | Local model usage conventions: verdict protocol, decision tree, stubs-then-Ollama, cold-start policy |
@@ -77,6 +78,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Personas | `personas/.memories/QUICK.md` | `personas/.memories/KNOWLEDGE.md` |
 | Benchmarks | `benchmarks/.memories/QUICK.md` | `benchmarks/.memories/KNOWLEDGE.md` |
 | Overlays | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` |
+| Retrieval | `retrieval/.memories/QUICK.md` | `retrieval/.memories/KNOWLEDGE.md` |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
 <!-- /ref:memory-files -->
@@ -122,6 +124,11 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/tools/benchmark-status.sh` | Rubrics/prompts/personas/results overview | Before any benchmark session |
 | `.claude/tools/ollama-stats.py` | DPO evaluation stats: total calls, model usage, verdict distribution | After evaluating local model outputs; track progress |
 | `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
+
+### Retrieval / LTG Tools
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `retrieval/run-vram-probe.sh` | VRAM co-residence probe: qwen3:14b + bge-m3 simultaneous load + interleaved stress. PASS/WARN/FAIL verdict. | Phase 2 gate before writing embed pipeline; re-run if embedding model changes |
 
 ### MCP Server
 | Script | Purpose | When to Use |
