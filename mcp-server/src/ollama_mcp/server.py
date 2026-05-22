@@ -119,7 +119,7 @@ async def _resolve_ref_key(key: str, root: str | None) -> str:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
 
         if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
+            err_msg = stdout.decode().strip() or stderr.decode().strip() or "Unknown error"
             return f"Error: ref:'{key}' not found — {err_msg}"
 
         return stdout.decode().strip()
