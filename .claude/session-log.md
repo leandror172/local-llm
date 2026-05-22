@@ -1,8 +1,35 @@
 # Session Log
 
-**Current Layer:** LTG Phase 2 — embedding + storage (Phase 2 gate cleared; plan written)
-**Current Session:** 2026-05-20 — Session 61: VRAM probe + Phase 2 implementation plan
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
+**Current Layer:** MCP server feature planning (ollama-bridge new tools) — side session before LTG Phase 2 execution
+**Current Session:** 2026-05-22 — Session 62: ollama-bridge 3-feature plans (refs param, output_file, patch_file)
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`
+
+---
+
+## 2026-05-22 - Session 62: ollama-bridge 3-feature plans
+
+### Context
+Side session before executing LTG Phase 2. User proposed augmenting `generate_code`/`ask_ollama` with a `refs` parameter that resolves `<!-- ref:KEY -->` markers server-side (zero Claude token cost). This grew into a set of three related MCP server features planned together.
+
+### What Was Done
+- **Designed and wrote 3 implementation plans** (all in `docs/plans/`, all with TDD test specs and ref markers):
+  1. `ollama-bridge-refs-param.md` — `refs: list[str]` + `refs_root: str | None` params on `ask_ollama` and `generate_code`; server runs `ref-lookup.sh` per key via subprocess, prepends as `<refs>…</refs>` block. Any folder with `<!-- ref:KEY -->` markdown markers qualifies as `refs_root`.
+  2. `ollama-bridge-output-file.md` — `output_file: str | None` + `output_only: bool` params; server writes response to disk (relative paths from `REPO_ROOT`); `output_only=True` returns compact status instead of content; verdict still required.
+  3. `ollama-bridge-patch-file.md` — new `patch_file` MCP tool; server-side exact string replace (Python `str.replace`); same semantics as Edit tool (uniqueness check, `replace_all` flag); zero Claude read cost.
+- **Added TDD specs to all plans:** pyproject.toml dev deps (`pytest`, `pytest-asyncio`, `asyncio_mode = "auto"`), shared `conftest.py` fixture spec (repo_root, ref_dir, mock_ollama), and 8–9 per-plan test cases with explicit assertions.
+- **Added `<!-- ref:KEY -->` markers** to every major section of all 3 plans, with shared prefixes: `mcp-refs-param-*`, `mcp-output-file-*`, `mcp-patch-file-*`. Wildcard fetch (`ref:mcp-patch-file-*`) returns the full plan. Verified 21 new keys visible via `ref-lookup.sh --list`.
+- **Plan 3 cross-references Plan 2:** `mcp-patch-file-reading` refs `mcp-output-file-decisions` — demonstrates inter-plan ref lookup working as designed.
+
+### Decisions Made
+- **`refs_root` = any folder** (not repo-specific) — any folder with `*.md` files using `<!-- ref:KEY -->` markers qualifies; `ref_lookup` tool already had `path` param, consistent.
+- **Fail-fast on missing ref keys** — same contract as `context_files` path errors; partial injection would be worse than no injection.
+- **`output_only=True` defers verdict, doesn't skip it** — Claude must still give a 0/1/2 verdict after inspecting the written file.
+- **`patch_file` uses Python `str.replace` server-side** — no subprocess, no regex; same exact-string semantics as the Edit tool; file read → replace → write, all in-process.
+- **TDD across all 3 plans** — test files written before implementation; key non-tautological tests include: `test_resolve_ref_key_root_is_respected` (proves `--root` actually forwarded), `test_build_refs_block_fails_fast_on_missing_key` (proves no partial block returned), `test_multiline_old_string` (guards against naive single-line implementation).
+
+### Next
+- **Execute the 3 plans** — start with Plan 1 (refs param); implement TDD: setup pyproject.toml + conftest.py, write tests, run red, implement, run green. Plans ready: `ref:mcp-refs-param-*`, `ref:mcp-output-file-*`, `ref:mcp-patch-file-*`.
+- **Then execute LTG Phase 2** — `docs/plans/ltg-phase2-implementation.md` (`ref:ltg-phase2-plan`); unchanged from session 61.
 
 ---
 
@@ -96,45 +123,6 @@ Resumed on `feature/ltg-phase1-reconciliation-session-58`. PR was already open. 
 - The original 4/7 determinism score was a *favorable* draw — the re-run landed 1–3/7, worse than the original. Single-run spike studies may overestimate model stability.
 - qwen3-coder:30b's span-anchoring failure (keyword pointer vs section range) is qualitatively different from qwen3:8b's section-drop — content recognition is correct but the model can't extend a concept to the paragraphs that develop it.
 - Pre-committed decision trees (determinism + two-rater reconciliation) paid off again — both branches applied mechanically without post-hoc negotiation.
-
----
-
-## 2026-04-30 - Session 58: LTG Phase 1 two-rater reconciliation closes Phase 1 (Branch C)
-
-### Context
-Resumed mid-day on `feature/ltg-phase1-scoring-and-notes` (session 57's branch). User signaled "Manual viz is done; ltg-rater-...-215756Z.json also has individual scores for (almost) each topic" — i.e., the user-track HTML-viz scoring complete, with richer per-topic data than the original rater. This was the queued reconciliation step from session 57's "Next" pointer. User explicitly directed: commit on a new branch, then session-handoff, then PR.
-
-### What Was Done
-- **Reconciled user track (manual-rubric.md, 32/32 cells) with Claude draft.** Per-cell delta analysis: **identical 4-model ranking and identical pass/fail verdicts** under both raters. User track systematically more lenient (per-model Δ_avg: gemma +0.21, qwen3:14b +0.18, coder +0.40, qwen3:8b +0.36) but the relative ordering and gating decisions hold.
-- **Applied Branch C** from `ref:ltg-phase1-pending-revisions` per the pre-registered decision tree. Cross-rater agreement: agree on `smart-rag3.md` (qwen3:14b wins, both raters); disagree on `smart-rag-index.md` (Claude: qwen3:8b > qwen3:14b by +0.12; User: qwen3:14b > qwen3:8b by +0.15). Mixed → Branch C: keep 2-arm production routing (qwen2.5-coder:14b for code, qwen3:14b for prose); cross-ref-index 3rd-arm hypothesis preserved as deferred Phase 2 item.
-- **Final 8/8 adjusted scores (Claude / User):** qwen3:14b 2.44 / 2.61 ✅ winner; qwen3:8b 2.27 / 2.63 ✅ backup; qwen2.5-coder:14b 1.76 / 2.16 ❌ (borderline under user, 0.04 below threshold — corpus expansion could plausibly flip); gemma3:12b 1.61 / 1.82 ❌.
-- **Edited `retrieval/spike-results.md`** (5 surgical edits): filled user scores table (32 cells, was placeholder); added Two-rater reconciliation section with decisive cells + Branch C resolution + largest single-cell disagreement note (QUICK.md × gemma3 Δ=−0.93) + dim-8 reweight question; softened pre-reconciliation routing claims in Claude draft block; added insight #9 to `ref:ltg-phase1-insights` (rubric fit-for-purpose for binary decisions; ~0.2–0.4 calibration drift for continuous reuse); rewrote `ref:ltg-phase1-routing-hypothesis` block per Branch C with explicit 2-arm production + 3 deferred Phase 2 items.
-- **Updated `.memories/KNOWLEDGE.md`** "LTG Phase 1 Extractor Spike — Findings" section: replaced preliminary 5/8 table with final 8/8 reconciled (Claude + User columns), added production-routing summary + rater-calibration takeaway for Layer 7 / DPO scoring.
-- **Updated `.claude/tasks.md`:** marked "score remaining 4 corpus files" complete; added 2 new deferred items in `ref:deferred-infra` — (a) cross-reference-index 3rd-arm routing hypothesis (defer-to-Phase-2 with re-eval triggers), (b) per-topic JSON (648 scores) as Phase 2 input.
-- **Updated `.memories/QUICK.md` (root) + `retrieval/.memories/QUICK.md`:** refreshed status blocks from "session 56, 5/8 in progress, preliminary winner" to "session 58, reconciliation closed, 2-arm production, freeze pending determinism + MoE". Confirmed other per-folder QUICK.md / KNOWLEDGE.md files (evaluator, mcp-server, overlays, personas, benchmarks) do not reference Phase 1 content — left untouched.
-- **Branch + commits:** Created `feature/ltg-phase1-reconciliation-session-58` off `feature/ltg-phase1-scoring-and-notes` (session 57's branch — not master, because the reconciliation depends on session 57's `ref:ltg-phase1-pending-revisions`). Two commits: `c3fdcdd` (reconciliation core: spike-results.md + KNOWLEDGE.md + tasks.md + tracked manual-rubric.md + tracked latest JSON export) and `34cfaa8` (chore: QUICK.md memory updates).
-
-### Decisions Made
-- **Branch C selected mechanically** per the pre-registered decision tree from session 57 (`ref:ltg-phase1-pending-revisions`). Rationale: agree on `smart-rag3` flip but disagree on `smart-rag-index` flip → Branch C (mixed). The pre-registration prevented post-hoc rationalization of which branch fits the data.
-- **3rd-arm hypothesis preserved as deferred, not killed.** Re-eval triggers documented: (a) determinism re-run on smart-rag-index × qwen3:14b confirms/refutes off-by-one, (b) more cross-reference-index files added to corpus (n=1 → n≥3), (c) MoE candidates evaluated. Determinism re-run is cheapest (~30s) and answers the deferred question directly.
-- **Dim-8 reweight question (insight #6) NOT load-bearing for ranking** — both rater tracks produce identical pass/fail; deferred to Phase 2 as a refinement that would matter only if the rubric is later repurposed for continuous DPO scoring.
-- **Per-topic JSON (648 scores in 29/32 cells) deferred to Phase 2** — could supply per-topic boundary evidence to disambiguate the 3rd arm without corpus expansion. Out of scope for Phase 1 binary freeze.
-- **Branch off current session 57 branch, not master** — reconciliation depends on the `ref:ltg-phase1-pending-revisions` block introduced in session 57; branching off master would create a base where the decision tree doesn't exist.
-- **Tracked the user-track source files** (`retrieval/runs/manual-rubric.md` + `…215756Z.json`) alongside the doc edits because spike-results.md cites them. Other intermediate exports + manual-rubric backups left untracked.
-
-### Next
-- **Push `feature/ltg-phase1-reconciliation-session-58`** + open PR (final step of this session).
-- **Determinism re-run on `smart-rag-index.md` × qwen3:14b** — now the cheapest gating evidence remaining (~30s of compute). If the off-by-one on the 7 pattern bullets reproduces under 2 more sweeps, that's the missing Phase 1 evidence for the deferred 3rd arm. Apply stability bonus (+0.5 if Jaccard ≥ 0.85, +0.25 if ≥ 0.80) to weighted_quality before the formal freeze decision.
-- **Prompt-iteration experiment** (still deferred from sessions 55/57): topic-count floor `max(5, major_section_count)` + containment-only overlap rule. Cheap re-sweep on existing 8 files; would directly test whether qwen3:8b's whole-section-drop failure mode is fixable in-prompt.
-- **Phase 2 VRAM co-residence probe** (qwen3:14b + bge-m3 ≈ 12 GB on 12 GB card) folded with **MoE extractor eval** (qwen3:30b-a3b, qwen3-coder:30b) per `ref:ltg-phase1-routing-hypothesis`.
-- **Formal `ref:ltg-extractor` decision-replacement** in `retrieval/DECISIONS.md` once determinism + MoE evidence lands. Branch C does NOT pre-commit the freeze; only the routing hypothesis.
-- **Still open:** session 57 PR for `feature/ltg-phase1-scoring-and-notes`; PR for `feature/gemma3-benchmark`; Phase 3 chatbot convergence with LTG; Layer 4 stragglers; registry hot-reload; server.py refactor.
-
-### Notable
-- **Largest single-cell disagreement: `.memories/QUICK.md` × `gemma3:12b` (Δ=−0.93).** The only cell of 32 where the user track is harsher than Claude. User scored d5=0 with explicit note about semantic hallucination ("infers wrong ideas, strange decisions on spans"). Sharpens gemma's `❌` rather than weakening it — the failure mode is *semantic hallucination on dense memory files*, which Claude's per-file scalar underweighted.
-- **Coder borderline:** under user track, qwen2.5-coder:14b finishes at 2.16 adjusted (0.04 below threshold) vs Claude 1.76 (0.44 below). Same verdict but margin is small enough that 2-3 more code files in the corpus could flip it.
-- **Methodological insight for Layer 7:** rubric is fit-for-purpose for binary decisions; absolute scores diverge by ~0.2–0.4 weighted-quality points across raters. Continuous reuse (DPO scoring) would need inter-rater calibration.
-- **Pre-registered decision tree paid off.** Session 57 wrote down what each user-track outcome would mean before seeing the user's scores. Branch C applied mechanically rather than getting argued into Branch A on weak grounds. Worth carrying forward to determinism + MoE eval (pre-register what each outcome means).
 
 ---
 
