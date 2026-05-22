@@ -29,16 +29,20 @@ Claude Code spawns the MCP server as a subprocess on startup. The server maintai
 
 ## Tools
 
-### `ask_ollama(prompt, model?, temperature?)`
+### `ask_ollama(prompt, model?, temperature?, persona?, context_files?, refs?, refs_root?, output_file?, output_only?)`
 General-purpose Q&A, explanations, brainstorming. Default model: `my-coder-q3` (Qwen3-8B).
+- `context_files`: inject file slices server-side (zero Claude token cost)
+- `refs`: inject ref-marker documentation blocks (zero Claude token cost)
+- `output_file`: write response to disk (relative paths anchor to `REPO_ROOT`)
+- `output_only`: return compact status string instead of full content; defers verdict to file inspection
 
-### `generate_code(prompt, language?, model?)`
+### `generate_code(prompt, language?, model?, context_files?, refs?, refs_root?, output_file?, output_only?)`
 Code generation with smart persona routing:
 - Java, Go → `my-coder-q3` (backend specialist)
 - HTML, JavaScript, CSS → `my-creative-coder-q3` (browser/Canvas specialist)
 - All other languages → `my-codegen-q3` (general-purpose)
 
-An explicit `model` parameter overrides routing.
+An explicit `model` parameter overrides routing. Accepts the same `context_files`, `refs`, `output_file`, and `output_only` parameters as `ask_ollama`.
 
 ### `summarize(text, max_points?, model?)`
 Summarizes text into concise bullet points. Default model: `my-summarizer-q3`.

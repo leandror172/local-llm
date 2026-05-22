@@ -92,3 +92,18 @@ strings lets Claude handle the situation conversationally ("The model timed out,
 let me try a different approach").
 **Implication:** Claude never sees Python tracebacks — only human-readable error
 descriptions. This is a deliberate UX choice, not defensive programming.
+
+## Output File Design — Server-Side Write (2026-05, session 64)
+
+`ask_ollama` and `generate_code` accept `output_file: str | None` and `output_only: bool = False`.
+Path resolution via `_resolve_output_path` (shared helper, reused by `patch_file` in Plan 3).
+Atomic write via `_write_output_file`: writes to `{path}.tmp`, then `os.replace` — never `write_text` directly.
+
+**Key design choices:**
+- Path pre-validated at top of function (before Ollama call) — fail-fast avoids wasting 5–30s GPU time on a bad path
+- `_resolve_output_path` extracted as a standalone helper so Plan 3 (`patch_file`) reuses it without drift
+- `output_only=True` returns `"Written N bytes to /abs/path"` — compact status for large files Claude doesn't need inline; verdict still required (read via `context_files` if needed)
+- `output_only` without `output_file` is silently ignored — returns full content as normal
+- Encoding: UTF-8 throughout, consistent with `_build_context_block` and all other file I/O
+
+**Implication:** The edit loop pattern — `generate_code(output_file=...)` then `generate_code(context_files=[written_file])` — is now zero-overhead on both ends: write costs no extra Claude tokens, subsequent read passes through the server.

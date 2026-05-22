@@ -187,11 +187,11 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 
 | Topic | File | Key Content |
 |-------|------|-------------|
-| MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, 6 tools |
+| MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, 10 tools |
 | Usage patterns & limitations docs | `mcp-server/README.md` | Architecture, tools, delegation guide, troubleshooting |
 | Server config (defaults, env vars) | `mcp-server/src/ollama_mcp/config.py` | OLLAMA_URL, model, timeout, think, temps |
 | Ollama async client | `mcp-server/src/ollama_mcp/client.py` | httpx connection pooling, ChatResponse, error types |
-| MCP tools (6 total) | `mcp-server/src/ollama_mcp/server.py` | ask_ollama, list_models, generate_code, summarize, classify_text, translate |
+| MCP tools (10 total) | `mcp-server/src/ollama_mcp/server.py` | ask_ollama, generate_code, summarize, classify_text, translate, list_models, warm_model, query_personas, detect_persona, build_persona; ask_ollama + generate_code support context_files, refs, output_file |
 | Bash wrapper | `mcp-server/run-server.sh` | `uv run` launcher (project convention) |
 | Claude Code integration (project) | `.mcp.json` (repo root) | Project-level MCP server registration |
 | Claude Code integration (user) | `~/.claude.json` → top-level `mcpServers` | System-wide — available in every Claude Code session |
