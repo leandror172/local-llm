@@ -1,8 +1,47 @@
 # Session Log
 
 **Current Layer:** MCP server feature execution (ollama-bridge Plans 1-3) — side track before LTG Phase 2
-**Current Session:** 2026-05-22 — Session 64: MCP Plan 2 executed (output_file + output_only params)
+**Current Session:** 2026-05-22 — Session 65: MCP Plan 3 (patch_file) + pre-work fixes
 **Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`
+
+---
+
+## 2026-05-22 - Session 65: MCP Plan 3 (patch_file) + pre-work fixes
+
+### Context
+Continued from session 64 on branch `feature/ollama-bridge-output-file`. Goal: execute Plan 2 advisor pre-work fixes, then implement Plan 3 (`patch_file` tool). User also chose Option A for fence-stripping (auto-strip markdown fences in `generate_code` output).
+
+### What Was Done
+- **Read advisor review files** before starting: `docs/plans/advisor-review-session-64.md`, `docs/plans/ollama-bridge-plans-advisor-notes.md`, `.claude/overlays/local-model-conventions.md`.
+- **Pre-work commit `fc48526`** on `feature/ollama-bridge-patch-file` (new branch off `feature/ollama-bridge-output-file`):
+  - Deleted stray `retrieval/test_output.py` (never committed, wrong dir — LTG artifact area)
+  - Fixed double path resolution: `ask_ollama`/`generate_code` now pass pre-resolved `_pre` (Path) directly to `_write_output_file`, avoiding a second `_resolve_output_path` call
+  - `_resolve_output_path` no longer calls `.resolve()` prematurely; `.resolve()` now happens inside `_write_output_file` AFTER `mkdir()` for accurate canonicalization of symlinked parents
+  - `_write_output_file` updated to accept `pathlib.Path | str` (fast path for pre-resolved callers)
+  - Test 2: restored `assert result == "mocked-model-output"` as first assertion
+  - Test 4: replaced `any(ch.isdigit() ...)` with `assert "Written" in result` + `assert str(output_file) in result` + `assert str(len("mocked-model-output".encode())) in result`
+  - Test 9: added `assert "[Language: python]" in mock_ollama.chat.call_args.kwargs["prompt"]`
+  - 19/19 tests green
+- **Plan 3 branch** `feature/ollama-bridge-patch-file-impl` (off pre-work branch):
+  - `_strip_code_fences()` helper added to `server.py` (strips ` ```lang\n` opening and `\n``` ` closing fences from model output); applied to `generate_code` only (not `ask_ollama`)
+  - `test_patch_file.py` generated via `my-mcp-q25c14` local model (verdict 1 — fixed read-before-write order bug in tests 3+4); fence artifacts stripped + corrections applied directly
+  - `patch_file` MCP tool implemented via `my-mcp-q25c14` (verdict 2 — accepted as-is); inserted at end of `server.py`
+  - 10 new tests: basic replace, count in return, not-found, non-unique error with "found 2 times", replace_all × 2 occurrences, replace_all × 1 occurrence, multiline old_string, missing file, relative path, UTF-8 round-trip
+  - 29/29 tests green
+  - Docs: `mcp-server/.memories/QUICK.md` (tool count 10→12, catalog, key patterns); `overlays/ollama-scaffolding/files/local-model-conventions.md` + `.claude/overlays/local-model-conventions.md` (output_file + patch_file sections added)
+  - Commit `d206e6e`. PR #38 created (base: `feature/ollama-bridge-output-file`).
+
+### Decisions Made
+- **Auto-strip fences in `generate_code`** (Option A) — `generate_code` always writes code files; fences are never valid. Implemented as `_strip_code_fences()` using `splitlines(keepends=True)` to preserve line endings.
+- **Haiku handoff file instead of direct session-handoff** — user running on extra usage; session 65 handoff delegated to a cheaper Haiku session via this instruction file.
+
+### Local Model Verdicts
+- `test_patch_file.py` generation: `TIMEOUT_COLD_START` × 2 (not verdicts), then verdict **1** (improved — read-before-write order bug in tests 3+4 fixed inline + markdown fences stripped; ~2000 est. Claude tokens saved)
+- `patch_file` implementation: verdict **2** (accepted as-is; ~1250 est. Claude tokens saved)
+
+### Next
+- **Merge PR #37 (Plans 1+2) and PR #38 (pre-work + Plan 3) into master.**
+- **LTG Phase 2** — `docs/plans/ltg-phase2-implementation.md` (`ref:ltg-phase2-plan`). Read Required Reading section (7 files) first, then implement `embed.py`, `store.py`, `inspect.py` + bash wrappers.
 
 ---
 
