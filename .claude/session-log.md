@@ -1,12 +1,56 @@
 # Session Log
 
 **Current Layer:** MCP server feature execution (ollama-bridge Plans 1-3) — side track before LTG Phase 2
-**Current Session:** 2026-05-22 — Session 65: MCP Plan 3 (patch_file) + pre-work fixes
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`
+**Current Session:** 2026-05-25 — Session 66: MCP debug logging + ~ expansion fix
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`
 
 ---
 
-## 2026-05-22 - Session 65: MCP Plan 3 (patch_file) + pre-work fixes
+## 2026-05-25 - Session 66: MCP debug logging + ~ expansion fix
+
+### Context
+Restart after session 65 handoff. Goal: live-test the new `patch_file` MCP tool from Plan 3. First `patch_file` call hung for minutes with no diagnostic surface (pure file I/O wedged unexplained), so the session pivoted into building optional structured logging — then used that logging on the next attempt to find and fix an unrelated `~`-expansion bug in `_resolve_output_path`.
+
+### What Was Done
+- **Structured debug logging infra** (`feat(mcp): structured debug logging for tool-call hang diagnosis`, `1af8542`):
+  - `mcp-server/src/ollama_mcp/debug_log.py` — env-driven (`OLLAMA_BRIDGE_LOG_LEVEL`, `OLLAMA_BRIDGE_LOG_FILE`); JSONL formatter with reserved-fields filter (`t/level/ev/client_id/pid` cannot be shadowed by user fields); per-process `client_id` (random hex) + `pid` stamped on every record; `fields`-dict-over-`**kwargs` at the emit boundary so user keys can never collide with positional params.
+  - `_lifespan` emits stderr banner (`pid/ppid/git/branch/client_id/log_level/log_file`) and INFO `server_start`/`server_stop` events.
+  - Instrumented (explicitly, no decorator — user chose Option B) `patch_file`, `generate_code`, `ask_ollama` with DEBUG `tool_enter`/`tool_exit` events; `client.py:chat()` brackets the httpx POST with `http_post_start/http_post_done/http_post_error`.
+  - `run-server.sh` defaults `OLLAMA_BRIDGE_LOG_LEVEL=INFO`; both `.mcp.json` files (repo + `~/.claude/.mcp.json`) bump to DEBUG via `env` block.
+  - `mcp-server/scripts/which-bridge.sh` — lists live bridges with banner info (python3-based, no jq dependency).
+  - Docs: README (env vars table, "Debug Logging" subsection, hang-diagnostic playbook in Troubleshooting); `.memories/QUICK.md` (Key Patterns bullet + Deeper Memory pointer); `.memories/KNOWLEDGE.md` (full design-decision section with rationale, key choices, deliberate-scope note).
+- **Make/watch helpers** (`feat(mcp): make logs target + watch-logs.sh prettifier`, `3bb2e46`):
+  - `mcp-server/Makefile` — `help/logs/logs-raw/bridges` targets; `make logs CLIENT=abcd1234` filters to one bridge; `LOG_FILE=/path` overrides location.
+  - `mcp-server/scripts/watch-logs.sh` — `tail -F` + Python prettifier that columnizes time/level/event and shows per-event fields inline.
+  - README updated to recommend `make logs` over raw `tail -F`.
+- **`~` expansion fix** (`fix(mcp): expand ~ in _resolve_output_path`, `f48c3ca`):
+  - Live-test surfaced: `generate_code(output_file="~/workspaces/tmp/p.py")` + `patch_file("~/...")` were treating `~` as a literal directory character (Claude passes strings unprocessed by any shell, so no expansion happens), silently writing to `<repo>/~/workspaces/tmp/p.py`.
+  - Fix: `Path(path).expanduser()` at top of `_resolve_output_path`; also fixed the REPO_ROOT-join branch to use the *expanded* `p` rather than re-using the raw `path` string (a latent bug that would have re-dropped any expansion).
+  - TDD: wrote red regression test in `test_patch_file.py`, ran (red), applied fix, ran (green). Then added analogous test to `test_output_file.py` for symmetry. Both call sites share `_resolve_output_path`, so one fix covers both.
+  - 21/21 tests green across `test_patch_file.py` + `test_output_file.py`.
+- **Live hang verification:** the original `patch_file` hang did NOT reproduce on the fresh, debug-logged bridge. Strongly suggests it was specific to whichever stale bridge served the prior session, not structural — but we now have the instrumentation to catch it if it returns.
+- **Handoff doc:** `.claude/handoff-session-66.md` (161 lines) with verification checklist, resume-testing plan, file-reading priorities, and the user's three additional testing scenarios quoted verbatim.
+
+### Decisions Made
+- **Log levels**: Python stdlib `DEBUG/INFO/WARNING/ERROR` (skipped TRACE per user "we might not need that many"). All levels structurally available; only `debug/info/error` helpers exposed since `warning` had no current call site.
+- **Option B explicit logging** over `@traced_tool` decorator (user chose) — tool body shows exactly when logs fire; small `_done()` closure pattern in `patch_file`/`ask_ollama` dedupes the timing field without adding magic.
+- **Shared log file across bridges, demultiplex by `client_id`** — POSIX `O_APPEND` guarantees atomic writes up to `PIPE_BUF` (4 KB); our ~200-400 byte JSON lines are well inside. No file locking needed, no per-PID file rotation.
+- **Reserved-fields filter on the JSONL formatter** — `t/level/ev/client_id/pid` are pinned to formatter-authoritative values; user fields with the same name are silently dropped. Belt and suspenders alongside renaming the banner's `level → log_level` to avoid the original collision.
+- **Default INFO in `run-server.sh`, DEBUG via `.mcp.json` env block** — bridge always records the startup banner + Ollama errors; cranking to DEBUG (per-tool timing) is a one-file edit.
+- **Deliberately narrow instrumentation** — only the three tools involved in the hang got `tool_enter`/`tool_exit`. The other nine MCP tools are uninstrumented; add coverage when a specific tool needs investigation rather than preemptively.
+- **`~/.claude/.mcp.json` edited in place** — out of any git tree; user-level DEBUG env applies whenever Claude Code falls back to user config. User aware; can revert manually.
+
+### Local Model Verdicts
+- `generate_code(prompt="Write a Python function foo() that returns 1...")` during the live-test seeding: verdict **2** (~60 est. Claude tokens saved) — exact function requested, no extras.
+
+### Next
+- **Reconnect the `ollama-bridge` MCP server** so a fresh bridge picks up the `~` expansion fix (the in-memory bridge code is still stale).
+- **Live-verify the fix**: re-run `generate_code(output_file="~/workspaces/tmp/p.py")` + `patch_file("~/workspaces/tmp/p.py", ...)`; confirm both resolve under `/home/leandror/workspaces/tmp/` and no `<repo>/~/` directory is created.
+- **Run the original 6 acceptance scenarios** from `docs/plans/ollama-bridge-patch-file.md` (`ref:mcp-patch-file-acceptance`).
+- **Run the user's three additional scenarios** (quoted verbatim in `.claude/handoff-session-66.md`): multi-line generation + correction loop; adding functionality to an existing file via `context_files` + `output_file`; complex generation then `patch_file` surgical fix.
+- **PR #38** — three commits ahead of origin (`1af8542`, `3bb2e46`, `f48c3ca`); user will push manually.
+
+---
 
 ### Context
 Continued from session 64 on branch `feature/ollama-bridge-output-file`. Goal: execute Plan 2 advisor pre-work fixes, then implement Plan 3 (`patch_file` tool). User also chose Option A for fence-stripping (auto-strip markdown fences in `generate_code` output).
@@ -111,64 +155,6 @@ Resumed on `feature/ollama-bridge-refs-param` branch (created this session). Pla
 - **Continue `feature/ollama-bridge-refs-param` branch — execute Plan 2** (`output_file` param): read `ref:mcp-output-file-advisor-notes`, implement `_resolve_output_path` + `_write_output_file`, TDD (`test_output_file.py`), then modify `ask_ollama` + `generate_code`. Plan: `docs/plans/ollama-bridge-output-file.md`.
 - **Then Plan 3** (`patch_file` tool): `docs/plans/ollama-bridge-patch-file.md`.
 - **Then LTG Phase 2** — `docs/plans/ltg-phase2-implementation.md` (`ref:ltg-phase2-plan`).
-
----
-
-## 2026-05-22 - Session 62: ollama-bridge 3-feature plans
-
-### Context
-Side session before executing LTG Phase 2. User proposed augmenting `generate_code`/`ask_ollama` with a `refs` parameter that resolves `<!-- ref:KEY -->` markers server-side (zero Claude token cost). This grew into a set of three related MCP server features planned together.
-
-### What Was Done
-- **Designed and wrote 3 implementation plans** (all in `docs/plans/`, all with TDD test specs and ref markers):
-  1. `ollama-bridge-refs-param.md` — `refs: list[str]` + `refs_root: str | None` params on `ask_ollama` and `generate_code`; server runs `ref-lookup.sh` per key via subprocess, prepends as `<refs>…</refs>` block. Any folder with `<!-- ref:KEY -->` markdown markers qualifies as `refs_root`.
-  2. `ollama-bridge-output-file.md` — `output_file: str | None` + `output_only: bool` params; server writes response to disk (relative paths from `REPO_ROOT`); `output_only=True` returns compact status instead of content; verdict still required.
-  3. `ollama-bridge-patch-file.md` — new `patch_file` MCP tool; server-side exact string replace (Python `str.replace`); same semantics as Edit tool (uniqueness check, `replace_all` flag); zero Claude read cost.
-- **Added TDD specs to all plans:** pyproject.toml dev deps (`pytest`, `pytest-asyncio`, `asyncio_mode = "auto"`), shared `conftest.py` fixture spec (repo_root, ref_dir, mock_ollama), and 8–9 per-plan test cases with explicit assertions.
-- **Added `<!-- ref:KEY -->` markers** to every major section of all 3 plans, with shared prefixes: `mcp-refs-param-*`, `mcp-output-file-*`, `mcp-patch-file-*`. Wildcard fetch (`ref:mcp-patch-file-*`) returns the full plan. Verified 21 new keys visible via `ref-lookup.sh --list`.
-- **Plan 3 cross-references Plan 2:** `mcp-patch-file-reading` refs `mcp-output-file-decisions` — demonstrates inter-plan ref lookup working as designed.
-
-### Decisions Made
-- **`refs_root` = any folder** (not repo-specific) — any folder with `*.md` files using `<!-- ref:KEY -->` markers qualifies; `ref_lookup` tool already had `path` param, consistent.
-- **Fail-fast on missing ref keys** — same contract as `context_files` path errors; partial injection would be worse than no injection.
-- **`output_only=True` defers verdict, doesn't skip it** — Claude must still give a 0/1/2 verdict after inspecting the written file.
-- **`patch_file` uses Python `str.replace` server-side** — no subprocess, no regex; same exact-string semantics as the Edit tool; file read → replace → write, all in-process.
-- **TDD across all 3 plans** — test files written before implementation; key non-tautological tests include: `test_resolve_ref_key_root_is_respected` (proves `--root` actually forwarded), `test_build_refs_block_fails_fast_on_missing_key` (proves no partial block returned), `test_multiline_old_string` (guards against naive single-line implementation).
-
-### Next
-- **Execute the 3 plans** — start with Plan 1 (refs param); implement TDD: setup pyproject.toml + conftest.py, write tests, run red, implement, run green. Plans ready: `ref:mcp-refs-param-*`, `ref:mcp-output-file-*`, `ref:mcp-patch-file-*`.
-- **Then execute LTG Phase 2** — `docs/plans/ltg-phase2-implementation.md` (`ref:ltg-phase2-plan`); unchanged from session 61.
-
----
-
-## 2026-05-20 - Session 61: VRAM probe + Phase 2 implementation plan
-
-### Context
-Resumed with all prior PRs merged (master clean). Two goals: clear the Phase 2 gate (VRAM co-residence probe for bge-m3 + qwen3:14b) and write a detailed Phase 2 implementation plan ready to execute next session.
-
-### What Was Done
-- **Updated tracking files:** Corrected stale open-PR references in `ref:current-status` and `.memories/QUICK.md`; retrieval QUICK.md stale "freeze pending" line fixed.
-- **VRAM co-residence probe:** Wrote `retrieval/run-vram-probe.sh` (4-stage script: preflight, sequential load, co-residence check, 5-round interleaved stress). Fixed `set -euo pipefail` + SIGPIPE bug in preflight (grep exits early on first match → `ollama list` gets SIGPIPE → pipefail propagates 141; fix: capture output first, grep the variable).
-- **Probe result:** WARN verdict — bge-m3 evicts qwen3:14b at load time (11,384 + 1,200 MiB > 12,288 MiB), but 0 query-time evictions across 4 warm rounds, avg infer 3,559 ms. **bge-m3 locked. Sequential constraint established.**
-- **Stored probe findings:** Updated `retrieval/DECISIONS.md` (`ref:ltg-embedding` probe marked complete with actual VRAM figures); updated root `.memories/QUICK.md` and `retrieval/.memories/QUICK.md`.
-- **Created `retrieval/.memories/KNOWLEDGE.md`:** New semantic memory file with 3 ref blocks: `ref:ltg-vram-probe` (full probe findings + SIGPIPE gotcha), `ref:ltg-phase1-summary` (consolidated extractor findings), `ref:ltg-phase0-decisions-index` (all 8 Phase 0 decisions in summary table). QUICK.md trimmed to pointer + "Deeper Memory" section.
-- **Discussed Phase 2 implementation choices:** Corpus validation scope (8-file first), input source (reuse Phase 1 JSONL, filter to winning models), embedding text (description-only; A/B deferred), script structure (3 separate scripts + wrappers).
-- **Wrote `docs/plans/ltg-phase2-implementation.md`:** Full execution plan with: required reading (7 files in order), decisions in force, Phase 1 JSONL input format + routing rule, LanceDB schema (with `"vector"` naming rationale), per-script CLI/logic/API spec for embed.py + store.py + inspect.py, bash wrapper pattern, 4-probe acceptance test table, `.gitignore` additions, post-completion memory update checklist, deferred items table.
-- **Registered:** plan in `.claude/index.md`; `retrieval/` added to `ref:memory-files`; Retrieval/LTG Tools table in `ref:bash-wrappers` updated.
-- **Committed:** `feature/ltg-phase2-plan` branch, commit `16a9483`, 10 files.
-
-### Decisions Made
-- **8-file validation first** (Option A) before full corpus expansion — validates pipeline on trusted, scored extractions before widening scope.
-- **Reuse Phase 1 JSONL** (filter to winning models) rather than re-extracting — the scored outputs are the ground truth; fresh extraction is unreviewed and takes ~10 min.
-- **Description-only embedding** to start; A/B test (description+spans) deferred as explicit future task with trigger: probe query underperforms.
-- **3 separate scripts** (`embed.py`, `store.py`, `inspect.py`) with individual bash wrappers — composable, independently runnable.
-- **bge-m3 locked** — sequential constraint (no parallel embed+infer) applies to embed.py only; indexing pipeline is inherently sequential anyway.
-
-### Next
-- **Execute `docs/plans/ltg-phase2-implementation.md`** — start by reading the Required Reading section (7 files listed in order). Then write `embed.py`, `store.py`, `inspect.py` and their bash wrappers. Run the 4-probe acceptance test to close Phase 2.
-
-### Notable
-- **`set -euo pipefail` + `grep -q` SIGPIPE trap:** `cmd | grep -q pattern` fails when grep exits on first match and sends SIGPIPE to `cmd`. With pipefail, the pipe returns 141 (SIGPIPE), not grep's 0. Appears as a false negative on the first matching entry in the output. Fix: `OUT=$(cmd); echo "$OUT" | grep -q pattern`. A generic bash gotcha worth remembering for any probe/filter script.
 
 ---
 
