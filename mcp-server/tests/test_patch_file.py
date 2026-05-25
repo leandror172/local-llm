@@ -88,6 +88,25 @@ async def test_relative_path_resolved_from_repo_root(tmp_path, monkeypatch):
     assert file_path.read_text(encoding="utf-8") == "x = 2\n"
 
 
+async def test_tilde_in_path_expands_to_home(tmp_path, monkeypatch):
+    """`~/foo` must resolve to $HOME/foo, not be treated as a literal directory.
+
+    Regression: prior to expanduser() in _resolve_output_path, both output_file
+    and patch_file would join the literal "~" onto REPO_ROOT, silently writing
+    to `<repo>/~/foo` instead of the user's home directory.
+    """
+    monkeypatch.setenv("HOME", str(tmp_path))
+    file_path = tmp_path / "foo.py"
+    file_path.write_text("return 1\n", encoding="utf-8")
+
+    result = await patch_file(path="~/foo.py", old_string="return 1", new_string="return 42")
+
+    assert "1 replacement" in result
+    assert file_path.read_text(encoding="utf-8") == "return 42\n"
+    # Confirm we didn't write to a literal "~" directory anywhere.
+    assert not (tmp_path / "~").exists()
+
+
 async def test_utf8_round_trip(tmp_path):
     file_path = tmp_path / "test.py"
     file_path.write_text("# café\nreturn 1\n", encoding="utf-8")

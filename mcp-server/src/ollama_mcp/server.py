@@ -159,16 +159,18 @@ async def _build_refs_block(refs: list[str], root: str | None) -> str:
 def _resolve_output_path(path: str) -> pathlib.Path | str:
     """Resolve a path string to an absolute Path, or return an Error: string.
 
-    Absolute paths are used as-is. Relative paths are anchored to REPO_ROOT.
-    Returns an error string if path is relative and REPO_ROOT is not set.
-    Note: does NOT call .resolve() — callers that need canonical paths should
-    call .resolve() after ensuring parent directories exist.
+    Leading ``~`` is expanded to ``$HOME`` first (Claude passes strings
+    unprocessed by any shell, so we must expand them ourselves). Absolute paths
+    are used as-is. Relative paths are anchored to REPO_ROOT. Returns an error
+    string if path is relative and REPO_ROOT is not set. Note: does NOT call
+    .resolve() — callers that need canonical paths should call .resolve()
+    after ensuring parent directories exist.
     """
-    p = pathlib.Path(path)
+    p = pathlib.Path(path).expanduser()
     if p.is_absolute():
         return p
     if REPO_ROOT is not None:
-        return pathlib.Path(REPO_ROOT) / path
+        return pathlib.Path(REPO_ROOT) / p
     return "Error: output_file is a relative path but REPO_ROOT is not set"
 
 

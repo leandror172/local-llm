@@ -58,6 +58,21 @@ async def test_relative_path_without_repo_root_returns_error(monkeypatch, mock_o
     assert result.startswith("Error:")
 
 
+async def test_tilde_in_output_file_expands_to_home(tmp_path, monkeypatch, mock_ollama):
+    """`output_file="~/foo.txt"` must resolve to $HOME/foo.txt, not <repo>/~/foo.txt.
+
+    Regression: prior to expanduser() in _resolve_output_path, the literal "~"
+    was joined onto REPO_ROOT, silently writing to <repo>/~/foo.txt.
+    """
+    monkeypatch.setenv("HOME", str(tmp_path))
+    await ask_ollama(prompt="test", output_file="~/foo.txt")
+
+    assert (tmp_path / "foo.txt").exists()
+    assert (tmp_path / "foo.txt").read_text(encoding="utf-8") == "mocked-model-output"
+    # Confirm we didn't write to a literal "~" directory anywhere.
+    assert not (tmp_path / "~").exists()
+
+
 async def test_generate_code_file_written_and_content_returned(tmp_path, mock_ollama):
     output_file = tmp_path / "output.py"
     result = await generate_code(prompt="test", language="python", output_file=str(output_file))
