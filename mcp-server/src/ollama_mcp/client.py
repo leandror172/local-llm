@@ -13,11 +13,13 @@ Key design choices:
 import datetime
 import hashlib
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
 
+from ollama_mcp import debug_log
 from ollama_mcp.config import (
     CALL_LOG_PATH,
     DEFAULT_MODEL,
@@ -175,6 +177,14 @@ class OllamaClient:
 
         # Track in-flight requests so warm_model can check before evicting.
         self.mark_inflight(model)
+        t0 = time.perf_counter()
+        debug_log.debug(
+            "http_post_start",
+            model=model,
+            url="/api/chat",
+            timeout=timeout,
+            payload_chars=len(json.dumps(payload)),
+        )
         try:
             # Use a fresh client per call to avoid stale connection state from
             # previously cancelled or timed-out requests.  The TCP handshake
@@ -187,12 +197,31 @@ class OllamaClient:
                     json=payload,
                     timeout=timeout,
                 )
+            debug_log.debug(
+                "http_post_done",
+                model=model,
+                status=response.status_code,
+                ms=round((time.perf_counter() - t0) * 1000, 2),
+                body_bytes=len(response.content),
+            )
         except httpx.ConnectError:
+            debug_log.error(
+                "http_post_error",
+                model=model,
+                reason="ConnectError",
+                ms=round((time.perf_counter() - t0) * 1000, 2),
+            )
             raise OllamaConnectionError(
                 f"Cannot connect to Ollama at {self._base_url}. "
                 "Is Ollama running? Start it with: ollama serve"
             )
         except httpx.TimeoutException:
+            debug_log.error(
+                "http_post_error",
+                model=model,
+                reason="TimeoutException",
+                ms=round((time.perf_counter() - t0) * 1000, 2),
+            )
             raise OllamaTimeoutError(
                 f"Ollama did not respond within {timeout}s. "
                 "The model may be loading (cold start) — try again."

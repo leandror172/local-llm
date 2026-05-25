@@ -17,6 +17,7 @@ import json
 import os
 import pathlib
 import sys
+import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
@@ -25,6 +26,7 @@ from pydantic import BaseModel
 
 from ollama_mcp.client import OllamaClient, OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError
 from ollama_mcp.config import DEFAULT_MODEL, MODELS, REGISTRY_PATH, REPO_ROOT, TEMPS
+from ollama_mcp import debug_log
 from ollama_mcp import registry
 
 # ---------------------------------------------------------------------------
@@ -244,6 +246,16 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
     global _client
     _client = OllamaClient()
 
+    banner = debug_log.setup()
+    print(
+        f"[ollama-bridge] pid={banner['pid']} ppid={banner['ppid']} "
+        f"git={banner['git']} branch={banner['branch']} "
+        f"client_id={banner['client_id']} log_level={banner['log_level']} "
+        f"log_file={banner['log_file']}",
+        file=sys.stderr,
+    )
+    debug_log.info("server_start", **banner)
+
     # Non-blocking health probe — log Ollama status at startup for diagnostics.
     # Tools handle errors individually, so failure here doesn't block the server.
     try:
@@ -288,6 +300,7 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        debug_log.info("server_stop")
         await _client.close()
         _client = None
 
@@ -377,9 +390,31 @@ async def ask_ollama(
         The model's text response. If Ollama is unreachable, returns an error
         message instead of raising (so Claude can handle it gracefully).
     """
+    t0 = time.perf_counter()
+    debug_log.debug(
+        "tool_enter",
+        tool="ask_ollama",
+        model=model,
+        persona=persona,
+        output_file=output_file,
+        output_only=output_only,
+        timeout=timeout,
+        prompt_chars=len(prompt),
+    )
+
+    def _done(ok: bool, **fields):
+        debug_log.debug(
+            "tool_exit",
+            tool="ask_ollama",
+            ok=ok,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+            **fields,
+        )
+
     if output_file is not None:
         _pre = _resolve_output_path(output_file)
         if isinstance(_pre, str):
+            _done(False, reason="resolve_failed")
             return _pre
 
     # Persona override: validate against registry and use as model name
@@ -392,6 +427,7 @@ async def ask_ollama(
             if suggestions:
                 msg += f" Similar: {', '.join(suggestions[:5])}"
             msg += " Use query_personas() to list available personas."
+            _done(False, reason="persona_not_found", persona=persona)
             return msg
         model = persona
 
@@ -402,11 +438,13 @@ async def ask_ollama(
     if context_files:
         context_block = _build_context_block(context_files)
         if context_block.startswith("Error:"):
+            _done(False, reason="context_block_error")
             return context_block
         full_prompt = f"{context_block}\n\n{full_prompt}"
     if refs:
         refs_block = await _build_refs_block(refs, refs_root)
         if refs_block.startswith("Error:"):
+            _done(False, reason="refs_block_error")
             return refs_block
         full_prompt = f"{refs_block}\n\n{full_prompt}"
 
@@ -421,22 +459,28 @@ async def ask_ollama(
         if output_file:
             write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
+                _done(False, reason="write_failed", model=model)
                 return write_result
             if output_only:
+                _done(True, model=model, output_only=True, content_chars=len(content))
                 return write_result
+        _done(True, model=model, content_chars=len(content))
         return content
 
     except OllamaConnectionError:
+        _done(False, reason="OllamaConnectionError", model=model)
         return (
             "Error: Cannot connect to Ollama. "
             "Is it running? Start with: ollama serve"
         )
     except OllamaModelNotFoundError:
+        _done(False, reason="OllamaModelNotFoundError", model=model)
         return (
             f"Error: Model '{model}' not found. "
             f"Available models: {', '.join(MODELS)}"
         )
     except OllamaTimeoutError:
+        _done(False, reason="OllamaTimeoutError", model=model)
         return (
             "Error: Ollama timed out. The model may be loading (cold start). "
             "Try again in a few seconds."
@@ -703,9 +747,28 @@ async def generate_code(
         Generated code (typically in a fenced code block). Returns an error
         message string if Ollama is unreachable.
     """
+    t0 = time.perf_counter()
+    debug_log.debug(
+        "tool_enter",
+        tool="generate_code",
+        language=language,
+        model=model,
+        output_file=output_file,
+        output_only=output_only,
+        timeout=timeout,
+        prompt_chars=len(prompt),
+    )
+
     if output_file is not None:
         _pre = _resolve_output_path(output_file)
         if isinstance(_pre, str):
+            debug_log.debug(
+                "tool_exit",
+                tool="generate_code",
+                ok=False,
+                reason="resolve_failed",
+                ms=round((time.perf_counter() - t0) * 1000, 2),
+            )
             return _pre
 
     client = _get_client()
@@ -753,11 +816,44 @@ async def generate_code(
         if output_file:
             write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
+                debug_log.debug(
+                    "tool_exit",
+                    tool="generate_code",
+                    ok=False,
+                    reason="write_failed",
+                    model=chosen_model,
+                    ms=round((time.perf_counter() - t0) * 1000, 2),
+                )
                 return write_result
             if output_only:
+                debug_log.debug(
+                    "tool_exit",
+                    tool="generate_code",
+                    ok=True,
+                    model=chosen_model,
+                    output_only=True,
+                    content_chars=len(content),
+                    ms=round((time.perf_counter() - t0) * 1000, 2),
+                )
                 return write_result
+        debug_log.debug(
+            "tool_exit",
+            tool="generate_code",
+            ok=True,
+            model=chosen_model,
+            content_chars=len(content),
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+        )
         return content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
+        debug_log.debug(
+            "tool_exit",
+            tool="generate_code",
+            ok=False,
+            reason=type(e).__name__,
+            model=chosen_model,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+        )
         return _format_error(e)
 
 
@@ -1352,20 +1448,43 @@ async def patch_file(
     Returns:
         "Patched {path} (N replacement/s)" on success, or an "Error: ..." string.
     """
+    t0 = time.perf_counter()
+    debug_log.debug(
+        "tool_enter",
+        tool="patch_file",
+        path=path,
+        replace_all=replace_all,
+        old_len=len(old_string),
+        new_len=len(new_string),
+    )
+
+    def _done(ok: bool, **fields):
+        debug_log.debug(
+            "tool_exit",
+            tool="patch_file",
+            ok=ok,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+            **fields,
+        )
+
     resolved = _resolve_output_path(path)
     if isinstance(resolved, str):
+        _done(False, reason="resolve_failed")
         return resolved
 
     try:
         if not resolved.is_file():
+            _done(False, reason="not_found", resolved=str(resolved))
             return f"Error: file not found: {resolved}"
 
         content = resolved.read_text(encoding="utf-8")
         count = content.count(old_string)
 
         if count == 0:
+            _done(False, reason="old_string_absent", resolved=str(resolved))
             return f"Error: old_string not found in {resolved}."
         if count > 1 and not replace_all:
+            _done(False, reason="non_unique", resolved=str(resolved), count=count)
             return (
                 f"Error: old_string found {count} times in {resolved}. "
                 "Use replace_all=True to replace all, or provide a more specific old_string."
@@ -1377,6 +1496,8 @@ async def patch_file(
         tmp.write_text(new_content, encoding="utf-8")
         os.replace(tmp, resolved)
 
+        _done(True, resolved=str(resolved), count=count)
         return f"Patched {resolved} ({count} replacement{'s' if count != 1 else ''})"
     except OSError as e:
+        _done(False, reason="oserror", error=str(e))
         return f"Error: {e}"

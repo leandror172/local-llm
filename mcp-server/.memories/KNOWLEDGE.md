@@ -107,3 +107,62 @@ Atomic write via `_write_output_file`: writes to `{path}.tmp`, then `os.replace`
 - Encoding: UTF-8 throughout, consistent with `_build_context_block` and all other file I/O
 
 **Implication:** The edit loop pattern — `generate_code(output_file=...)` then `generate_code(context_files=[written_file])` — is now zero-overhead on both ends: write costs no extra Claude tokens, subsequent read passes through the server.
+
+## Debug Logging — Structured JSONL (2026-05, session 65)
+
+The server can emit a structured JSONL log to disk for hang diagnosis and
+post-mortem inspection. Gated by `OLLAMA_BRIDGE_LOG_LEVEL` (one of `DEBUG`,
+`INFO`, `WARNING`, `ERROR`) and `OLLAMA_BRIDGE_LOG_FILE` (defaults to
+`/tmp/ollama-bridge.jsonl`). Implemented in `src/ollama_mcp/debug_log.py`,
+called from `_lifespan` (banner + start/stop), `chat()` in client.py
+(httpx start/done/error), and the bodies of `patch_file`, `generate_code`,
+`ask_ollama` (tool_enter/tool_exit with per-tool fields).
+
+**Rationale:** A multi-minute hang on `patch_file` (pure file I/O, no Ollama
+involvement) revealed we had no way to localize the wedge — was it the tool
+body, the FastMCP request loop, the stdio transport, or Claude Code's MCP
+client? Stderr `print()` calls in `_lifespan` already existed but disappeared
+into Claude Code's MCP subsystem; nothing was recorded per-tool. A small
+structured log file changes "we don't know" into "the missing event tells you."
+
+**Key design choices:**
+- **Append-only shared file, demultiplexed by `client_id`.** Multiple bridges
+  (one per Claude Code session) write to the same file. POSIX guarantees
+  atomic writes up to `PIPE_BUF` (4 KB) on `O_APPEND` — our JSON lines are
+  ~200-400 bytes, well inside that. No lock files, no rotation per process,
+  just `grep '"client_id": "abcd1234"'` to filter.
+- **Reserved-fields filter.** The JSONL formatter strips any user-supplied
+  field that collides with reserved names (`t`, `level`, `ev`, `client_id`,
+  `pid`). Without this, calling `info("server_start", level="DEBUG")` would
+  have shown `level=DEBUG` instead of the record's actual severity. Belt and
+  suspenders: the banner dict was also renamed `level → log_level` so the two
+  concepts never share a word.
+- **`fields` dict over `**kwargs` at the emit boundary.** Public helpers
+  (`debug/info/error`) take `**fields`, but `_emit(level, event, fields)`
+  takes a dict — so a user field named `level` or `event` can never collide
+  with a positional parameter (the original splat-based design crashed
+  immediately when banner was forwarded into `info`).
+- **Lazy formatting via `logger.isEnabledFor(level)` short-circuit.** Field
+  dicts are built unconditionally (cheap), but JSON serialization only runs
+  when the level is enabled. Production cost at default `WARNING` is one
+  level check per call.
+- **Defaults set in `run-server.sh`, overridden via `.mcp.json` env block.**
+  The script defaults `OLLAMA_BRIDGE_LOG_LEVEL=INFO` (banner + errors always
+  recorded). The repo's `.mcp.json` env block bumps to `DEBUG` for live hang
+  diagnosis; flip back by editing one file.
+
+**Where it's wired (deliberately narrow):**
+- `_lifespan` — `server_start` (with full banner: pid, ppid, git SHA, branch,
+  client_id, log_level, log_file) and `server_stop`.
+- `client.py:chat()` — `http_post_start` / `http_post_done` (with status and
+  body bytes) / `http_post_error` (ERROR level).
+- `server.py` — `tool_enter` / `tool_exit` on **only** `patch_file`,
+  `generate_code`, `ask_ollama` (the three involved in the session-65 hang).
+  The other 9 tools are deliberately uninstrumented — add coverage when a
+  specific tool needs investigation, not preemptively.
+
+**Implication:** `scripts/which-bridge.sh` reads back the banner from the
+log to enrich `pgrep` output. The diagnostic playbook becomes mechanical:
+`tail -f` the log, reproduce the bug, and the missing event tells you which
+half wedged. `tool_enter` without `tool_exit` → server-side; no `tool_enter`
+after a previous tool returned → MCP stdio or Claude Code's client.

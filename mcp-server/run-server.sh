@@ -28,6 +28,13 @@ export PATH="$HOME/.local/bin:$PATH"
 # and other repo-level resources without fragile path traversal from Python.
 export LLM_REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Structured debug logging (see src/ollama_mcp/debug_log.py).
+# Default to INFO so the startup banner and Ollama errors are always recorded;
+# crank to DEBUG via the env block in .mcp.json (or `OLLAMA_BRIDGE_LOG_LEVEL=DEBUG`
+# before launching) to capture per-tool timing for hang diagnosis.
+export OLLAMA_BRIDGE_LOG_LEVEL="${OLLAMA_BRIDGE_LOG_LEVEL:-INFO}"
+export OLLAMA_BRIDGE_LOG_FILE="${OLLAMA_BRIDGE_LOG_FILE:-/tmp/ollama-bridge.jsonl}"
+
 # `uv run` does three things automatically:
 #   1. Creates a virtual environment if one doesn't exist
 #   2. Installs/syncs dependencies from pyproject.toml

@@ -34,6 +34,7 @@ ref_lookup, patch_file
 - **Language routing** — auto-selects best persona per language from registry
 - **Call logging** — every call → JSONL (prompt, response, model, latency, tokens)
 - **Cold-start management** — warm_model pre-loads into VRAM, in-flight tracking prevents mid-request eviction
+- **Debug logging** — opt-in structured JSONL at `/tmp/ollama-bridge.jsonl`, gated by `OLLAMA_BRIDGE_LOG_LEVEL` env var (DEBUG/INFO/WARNING/ERROR); per-process `client_id` so multiple bridges can share one log file; `scripts/which-bridge.sh` lists live bridges with banner info
 
 ## Deeper Memory -> KNOWLEDGE.md
 
@@ -41,3 +42,4 @@ ref_lookup, patch_file
 - **File Context Design** — why server reads files instead of Claude
 - **Call Logging Format** — JSONL schema, DPO data connection
 - **In-Flight Safety** — warm_model eviction guards
+- **Debug Logging Design** — JSONL schema, reserved-fields filter, banner shape, where it's wired in
