@@ -151,6 +151,39 @@ async def _build_refs_block(refs: list[str], root: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# output_file support
+# ---------------------------------------------------------------------------
+
+def _resolve_output_path(path: str) -> pathlib.Path | str:
+    """Resolve a path string to an absolute Path, or return an Error: string.
+
+    Absolute paths are used as-is. Relative paths are anchored to REPO_ROOT.
+    Returns an error string if path is relative and REPO_ROOT is not set.
+    """
+    p = pathlib.Path(path)
+    if p.is_absolute():
+        return p.resolve()
+    if REPO_ROOT is not None:
+        return (pathlib.Path(REPO_ROOT) / path).resolve()
+    return "Error: output_file is a relative path but REPO_ROOT is not set"
+
+
+def _write_output_file(path: str, content: str) -> str:
+    """Write content to path atomically. Returns a status string or Error: string."""
+    resolved = _resolve_output_path(path)
+    if isinstance(resolved, str):
+        return resolved
+    try:
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        tmp = pathlib.Path(str(resolved) + ".tmp")
+        tmp.write_text(content, encoding="utf-8")
+        os.replace(tmp, resolved)
+    except OSError as e:
+        return f"Error writing to {resolved}: {e}"
+    return f"Written {resolved.stat().st_size} bytes to {resolved}"
+
+
+# ---------------------------------------------------------------------------
 # Language → persona routing for generate_code
 # ---------------------------------------------------------------------------
 
@@ -278,6 +311,8 @@ async def ask_ollama(
     context_files: list[ContextFile] | None = None,
     refs: list[str] | None = None,
     refs_root: str | None = None,
+    output_file: str | None = None,
+    output_only: bool = False,
     timeout: int = 120,
 ) -> str:
     """Ask a question to a local Ollama model.
@@ -315,6 +350,14 @@ async def ask_ollama(
                    using <!-- ref:KEY --> convention). Defaults to REPO_ROOT.
                    Must be an absolute path. Pass any project folder to look up
                    its own refs.
+        output_file: Path to write the response to (relative or absolute).
+                     Relative paths are resolved from REPO_ROOT. Parent directories
+                     are created automatically. Content is always returned to the
+                     caller as well, unless output_only=True.
+        output_only: If True and output_file is set, write to file and return only
+                     a compact status string ("Written N bytes to /path") instead
+                     of the full response. Defers verdict assessment to after file
+                     inspection. Ignored if output_file is not set.
         timeout: Max seconds to wait for a response. Default 120. Increase for
                  large models (30B+) or complex prompts (e.g., 300 for hybrid models).
 
@@ -322,6 +365,11 @@ async def ask_ollama(
         The model's text response. If Ollama is unreachable, returns an error
         message instead of raising (so Claude can handle it gracefully).
     """
+    if output_file is not None:
+        _pre = _resolve_output_path(output_file)
+        if isinstance(_pre, str):
+            return _pre
+
     # Persona override: validate against registry and use as model name
     if persona is not None:
         reg = registry.get_registry()
@@ -357,7 +405,14 @@ async def ask_ollama(
             temperature=temperature,
             timeout=timeout,
         )
-        return response.content
+        content = response.content
+        if output_file:
+            write_result = _write_output_file(output_file, content)
+            if write_result.startswith("Error:"):
+                return write_result
+            if output_only:
+                return write_result
+        return content
 
     except OllamaConnectionError:
         return (
@@ -564,6 +619,8 @@ async def generate_code(
     context_files: list[ContextFile] | None = None,
     refs: list[str] | None = None,
     refs_root: str | None = None,
+    output_file: str | None = None,
+    output_only: bool = False,
     timeout: int = 120,
 ) -> str:
     """Generate code using a local Ollama model with smart persona routing.
@@ -598,6 +655,14 @@ async def generate_code(
                    using <!-- ref:KEY --> convention). Defaults to REPO_ROOT.
                    Must be an absolute path. Pass any project folder to look up
                    its own refs.
+        output_file: Path to write the response to (relative or absolute).
+                     Relative paths are resolved from REPO_ROOT. Parent directories
+                     are created automatically. Content is always returned to the
+                     caller as well, unless output_only=True.
+        output_only: If True and output_file is set, write to file and return only
+                     a compact status string ("Written N bytes to /path") instead
+                     of the full response. Defers verdict assessment to after file
+                     inspection. Ignored if output_file is not set.
         timeout: Max seconds to wait for a response. Default 120. Increase for
                  large models (30B+) or complex prompts (e.g., 300 for hybrid models).
 
@@ -605,6 +670,11 @@ async def generate_code(
         Generated code (typically in a fenced code block). Returns an error
         message string if Ollama is unreachable.
     """
+    if output_file is not None:
+        _pre = _resolve_output_path(output_file)
+        if isinstance(_pre, str):
+            return _pre
+
     client = _get_client()
 
     # Determine which persona to use: explicit override > language route > default
@@ -646,7 +716,14 @@ async def generate_code(
             think=False,
             timeout=timeout,
         )
-        return response.content
+        content = response.content
+        if output_file:
+            write_result = _write_output_file(output_file, content)
+            if write_result.startswith("Error:"):
+                return write_result
+            if output_only:
+                return write_result
+        return content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
         return _format_error(e)
 
