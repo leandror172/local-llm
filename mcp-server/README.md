@@ -178,19 +178,21 @@ To enable per-tool tracing during a hang investigation, add an env block to
 }
 ```
 
-To list live bridge processes with their banner info:
+Diagnostic helpers (run from the repo root):
 
 ```bash
-./mcp-server/scripts/which-bridge.sh
-# PID PPID CLIENT_ID GIT_SHA LEVEL BRANCH STARTED
+make -C mcp-server logs                       # tail + pretty-print, all bridges
+make -C mcp-server logs CLIENT=ab12cd34       # filter to one bridge
+make -C mcp-server logs-raw                   # raw JSONL for grep / jq
+make -C mcp-server bridges                    # which-bridge.sh: PID/git/branch/...
+make -C mcp-server help                       # list all targets
 ```
 
-To filter the log to a single bridge:
+Filter a static log file without `make`:
 
 ```bash
 grep '"client_id": "ab12cd34"' /tmp/ollama-bridge.jsonl
-# or with jq:
-jq 'select(.client_id=="ab12cd34")' /tmp/ollama-bridge.jsonl
+jq 'select(.client_id=="ab12cd34")' /tmp/ollama-bridge.jsonl   # if jq is installed
 ```
 
 Diagnostic rule of thumb: if a tool hangs, look for the matching `tool_enter`
