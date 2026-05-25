@@ -458,3 +458,12 @@ my-python-g3-27b:
   num_ctx: 8192
   tier: full
   status: inactive  # benchmarked 2026-04-09: 3.2 tok/s, timeout on all coding tasks
+
+my-mcp-q25c14:
+  modelfile: modelfiles/mcp-q25c14-qwen25c14.Modelfile
+  base_model: qwen2.5-coder:14b
+  role: MCP (Model Context Protocol) server and tool developer using Python FastMCP.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active

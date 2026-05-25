@@ -88,6 +88,69 @@ def _build_context_block(context_files: list[ContextFile]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# refs param support
+# ---------------------------------------------------------------------------
+
+async def _resolve_ref_key(key: str, root: str | None) -> str:
+    """Run ref-lookup.sh for a single key. Return stdout or an Error: string.
+
+    root is forwarded as --root only when not None (matches ref_lookup tool
+    behaviour — lets the script handle its own default when omitted).
+    Expected to be called against small ref folders; the script has no
+    internal timeout, so keep ref roots compact.
+    """
+    if not REPO_ROOT:
+        return "Error: LLM_REPO_ROOT not set — cannot locate ref-lookup script."
+
+    script = os.path.join(REPO_ROOT, ".claude", "tools", "ref-lookup.sh")
+    if not os.path.isfile(script):
+        return f"Error: ref-lookup script not found at {script}"
+
+    args = [script, key]
+    if root is not None:
+        args += ["--root", root]
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
+
+        if proc.returncode != 0:
+            err_msg = stdout.decode().strip() or stderr.decode().strip() or "Unknown error"
+            return f"Error: ref:'{key}' not found — {err_msg}"
+
+        return stdout.decode().strip()
+
+    except asyncio.TimeoutError:
+        proc.kill()
+        return "Error: ref-lookup timed out after 10 seconds."
+    except Exception as e:
+        return f"Error running ref-lookup: {e}"
+
+
+async def _build_refs_block(refs: list[str], root: str | None) -> str:
+    """Resolve each ref key and format as a <refs>…</refs> block.
+
+    Returns a <refs>...</refs> string ready to prepend to the prompt,
+    or an error string if any resolution fails.
+    """
+    if root is not None:
+        if not pathlib.Path(root).is_absolute():
+            return f"Error: refs_root must be an absolute path: {root!r}"
+
+    results = await asyncio.gather(*(_resolve_ref_key(key, root) for key in refs))
+
+    for result in results:
+        if result.startswith("Error:"):
+            return result
+
+    return "<refs>\n" + "\n\n".join(results) + "\n</refs>"
+
+
+# ---------------------------------------------------------------------------
 # Language → persona routing for generate_code
 # ---------------------------------------------------------------------------
 
@@ -213,6 +276,8 @@ async def ask_ollama(
     temperature: float | None = None,
     persona: str | None = None,
     context_files: list[ContextFile] | None = None,
+    refs: list[str] | None = None,
+    refs_root: str | None = None,
     timeout: int = 120,
 ) -> str:
     """Ask a question to a local Ollama model.
@@ -241,6 +306,15 @@ async def ask_ollama(
                        `end_line` (1-based, inclusive) select a slice. Content
                        is prepended as fenced code blocks — avoids passing file
                        content through Claude's context (saves tokens).
+        refs: Reference keys to resolve and inject as documentation context.
+              Each key must match a <!-- ref:KEY --> marker in a *.md file under
+              refs_root. Resolved content is prepended as a <refs> block before
+              the prompt — no Claude token cost. Use ref_lookup(key="list") to
+              see available keys in a folder.
+        refs_root: Folder to search for ref markers (any folder with *.md files
+                   using <!-- ref:KEY --> convention). Defaults to REPO_ROOT.
+                   Must be an absolute path. Pass any project folder to look up
+                   its own refs.
         timeout: Max seconds to wait for a response. Default 120. Increase for
                  large models (30B+) or complex prompts (e.g., 300 for hybrid models).
 
@@ -263,13 +337,18 @@ async def ask_ollama(
 
     client = _get_client()
 
-    # Prepend file context if provided (server reads files — no Claude token cost)
+    # Build prompt outward: context_files first, refs outermost (<refs> → <context> → prompt)
     full_prompt = prompt
     if context_files:
         context_block = _build_context_block(context_files)
         if context_block.startswith("Error:"):
             return context_block
-        full_prompt = f"{context_block}\n\n{prompt}"
+        full_prompt = f"{context_block}\n\n{full_prompt}"
+    if refs:
+        refs_block = await _build_refs_block(refs, refs_root)
+        if refs_block.startswith("Error:"):
+            return refs_block
+        full_prompt = f"{refs_block}\n\n{full_prompt}"
 
     try:
         response = await client.chat(
@@ -483,6 +562,8 @@ async def generate_code(
     language: str | None = None,
     model: str | None = None,
     context_files: list[ContextFile] | None = None,
+    refs: list[str] | None = None,
+    refs_root: str | None = None,
     timeout: int = 120,
 ) -> str:
     """Generate code using a local Ollama model with smart persona routing.
@@ -508,6 +589,15 @@ async def generate_code(
                        a slice. Content is prepended as fenced code blocks —
                        avoids passing file content through Claude's context
                        (saves tokens). Use for "modify this existing file" tasks.
+        refs: Reference keys to resolve and inject as documentation context.
+              Each key must match a <!-- ref:KEY --> marker in a *.md file under
+              refs_root. Resolved content is prepended as a <refs> block before
+              the prompt — no Claude token cost. Use ref_lookup(key="list") to
+              see available keys in a folder.
+        refs_root: Folder to search for ref markers (any folder with *.md files
+                   using <!-- ref:KEY --> convention). Defaults to REPO_ROOT.
+                   Must be an absolute path. Pass any project folder to look up
+                   its own refs.
         timeout: Max seconds to wait for a response. Default 120. Increase for
                  large models (30B+) or complex prompts (e.g., 300 for hybrid models).
 
@@ -537,12 +627,17 @@ async def generate_code(
     else:
         full_prompt = prompt
 
-    # Prepend file context if provided (server reads files — no Claude token cost)
+    # Build prompt outward: context_files first, refs outermost (<refs> → <context> → [Language] → prompt)
     if context_files:
         context_block = _build_context_block(context_files)
         if context_block.startswith("Error:"):
             return context_block
         full_prompt = f"{context_block}\n\n{full_prompt}"
+    if refs:
+        refs_block = await _build_refs_block(refs, refs_root)
+        if refs_block.startswith("Error:"):
+            return refs_block
+        full_prompt = f"{refs_block}\n\n{full_prompt}"
 
     try:
         response = await client.chat(

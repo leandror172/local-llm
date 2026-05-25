@@ -62,6 +62,26 @@ file is missing (falls back to default model).
 **Implication:** Adding a new language-specific persona automatically improves
 routing — just register it with the right keywords.
 
+## Refs Param Design — Server-Side Ref Resolution (2026-05, session 63)
+
+`ask_ollama` and `generate_code` accept `refs: list[str]` and `refs_root: str | None`.
+The server calls `_resolve_ref_key(key, root)` (subprocess to `ref-lookup.sh`) for each
+key, gathers results in parallel via `asyncio.gather`, then wraps them in `<refs>…</refs>`
+and prepends before the prompt. Zero Claude token cost — ref content never passes through
+Claude's context.
+
+**Prompt ordering:** `<refs>` → `<context_files>` → `[Language hint]` → user prompt.
+Each layer wraps outward: content_files first, refs outermost.
+
+**Key design choices:**
+- `root=None` omits `--root` arg (lets shell script use its own default) — matches existing `ref_lookup` tool
+- Non-absolute `refs_root` returns error immediately (fail-loud, not silent resolve)
+- Fail-fast on missing key: `asyncio.gather` + exception wrapping; no partial block returned
+- Shell script output includes HTML comment markers (`<!-- ref:KEY -->`); no extra labels added
+
+**Implication:** Any folder with `*.md` files using `<!-- ref:KEY -->` convention works.
+Not limited to the LLM repo. Validated in acceptance testing with `ltg-embedding` and `ltg-extractor`.
+
 ## Error Handling as Return Values (2026-02)
 
 All tool functions catch exceptions and return error strings instead of raising.

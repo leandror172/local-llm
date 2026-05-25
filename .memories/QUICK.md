@@ -6,11 +6,13 @@
 
 Layers 0-4 complete (of 10-layer plan). Infrastructure fully operational.
 Layer 5+ active: expense classifier, chatbot Phases 1+2 (cross-repo context + LLM routing).
-Session 59 (2026-05-04): LTG Phase 1 **fully closed**. All 3 freeze gates cleared:
-determinism re-run (Branch C — off-by-one confirmed model property) + MoE eval
-(qwen3:30b-a3b unusable TTFT > 9min; qwen3-coder:30b fails adj. 2.06 < 2.2).
+Session 59 (2026-05-04): LTG Phase 1 **fully closed**. All 3 freeze gates cleared.
 **ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code.
 Phase 2 active: VRAM probe complete (bge-m3 locked, sequential constraint). embed.py + store.py next.
+Session 63 (2026-05-22): MCP Plan 1 complete — `refs`/`refs_root` on `ask_ollama` + `generate_code`,
+10 green tests, live-tested. New persona `my-mcp-q25c14` (qwen2.5-coder:14b MCP specialist).
+SOLID + scope constraints added to 3 × 14B coding personas. Plans 2+3 ready.
+Branch: `feature/ollama-bridge-refs-param`.
 
 ## Repo Structure
 
