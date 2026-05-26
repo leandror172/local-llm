@@ -1,8 +1,51 @@
 # Session Log
 
 **Current Layer:** MCP server feature execution (ollama-bridge Plans 1-3) — side track before LTG Phase 2
-**Current Session:** 2026-05-25 — Session 66: MCP debug logging + ~ expansion fix
+**Current Session:** 2026-05-26 — Session 67: patch_file acceptance testing + error-handling analysis
 **Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`
+
+---
+
+## 2026-05-26 - Session 67: patch_file acceptance testing + error-handling analysis
+
+### Context
+Resumed from session 66 handoff. MCP server had been fully restarted (computer reboot). Goal: live-verify the `~` expansion fix and run the full acceptance suite for the `patch_file` tool.
+
+### What Was Done
+- **Verified bridge freshness:** `server_start` banner in `/tmp/ollama-bridge.jsonl` confirmed git SHA `238873a` — new code running.
+- **Tilde expansion fix — live end-to-end:** `generate_code(output_file="~/workspaces/tmp/p.py")` wrote to `/home/leandror/workspaces/tmp/p.py` (not `<repo>/~/...`); `patch_file("~/...")` resolved and patched correctly; error messages for missing files show the resolved absolute path (fix order confirmed correct).
+- **6 original acceptance scenarios:** all pass — basic replace + content verification, not-found error string, non-unique error with count, `replace_all=True`, relative path from REPO_ROOT, missing file error.
+- **3 user-requested complex scenarios:**
+  1. **Multi-line + correction loop:** ISO-8601 duration parser — local model produced correct core regex but missed `P1W` week format. Fixed via `patch_file` (week fast-path + `not any(match.groups())` guard). Smoke test 5/5 cases pass.
+  2. **Add functionality via `context_files` + `output_file`:** Added `format_duration(seconds) -> str` to the same file. `context_files` preserved all prior patches verbatim. Zero-duration edge case broken (`format_duration(0)` raised ValueError → should return `"PT0S"`); fixed via `patch_file`. 8/8 smoke tests pass incl. round-trips.
+  3. **Complex generation + surgical patch_file fix:** LRU cache via OrderedDict — correct LRU semantics, but key type hardcoded to `str`. Three `patch_file` calls changed key type to `Hashable` and removed unused imports. 6/6 behavioral assertions pass incl. tuple key.
+- **All 5 `generate_code` verdicts:** all `1` (improved) — consistent pattern: correct core logic, unrequested `logging.basicConfig()` side effect + catch-log-reraise noise.
+- **Error-handling analysis discussion:** identified two Python antipatterns in local model output, then extended to Java and Go equivalents. User confirmed this is language-specific and worth a dedicated session.
+- **`docs/ideas/persona-error-handling-conventions.md`** — full analysis: what triggers the antipatterns, why each is wrong per language, proposed Modelfile directive language for Python/Java/Go, implementation plan, and where delegation is and isn't trustworthy.
+- **`docs/plans/ollama-bridge-patch-file-acceptance-results.md`** — complete test results: 10/10 scenarios, per-scenario smoke test tables, verdicts, corrections made.
+- **Updated `.claude/index.md`** with entries for both new docs.
+- **Updated `.claude/tasks.md`** with new deferred task: per-language error handling + logging conventions for persona Modelfiles.
+- **Updated PR #38** with full test plan including live acceptance results, tilde fix, and link to results doc.
+- **2 commits this session:** `53c8566` (error handling doc + task) and `e3405b3` (acceptance results + index).
+
+### Decisions Made
+- **Per-language error-handling conventions:** flagged as a dedicated session (not done inline). Python rule: `getLogger(__name__)` only, no `basicConfig()`, no catch-log-reraise same type. Java: no catch-log-rethrow. Go: `fmt.Errorf("context: %w", err)`, no log-and-return mid-library. See `docs/ideas/persona-error-handling-conventions.md`.
+- **"Programming by proxy" limit acknowledged:** the directive should eliminate noise, not prescribe which errors to handle — that remains the model's judgment call.
+- **Pair error-handling Modelfile work with backfill-persona-constraints session** — same class of Modelfile audit work.
+
+### Local Model Verdicts
+All 5 calls to `qwen2.5-coder:14b` via `my-python-q25c14`:
+- ISO-8601 parser: **1** (~700 est. Claude tokens saved) — missing week support, unused imports
+- `format_duration`: **1** (~1200 est. Claude tokens saved) — zero-duration bug, dead code
+- LRU cache: **1** (~650 est. Claude tokens saved) — key type too narrow, unused imports
+- Scenario 1 seeding (`get_answer`): **1** (~150 est. Claude tokens saved) — logging boilerplate only
+- Scenario 3 seeding (`foo/bar`): **2** (~150 est. Claude tokens saved) — output_only write, accepted
+
+### Next
+- **Push the 2 session-67 commits** (ahead of origin on `feature/ollama-bridge-patch-file-impl`).
+- **Merge PR #37** (Plans 1+2: refs param + output_file) into master.
+- **Merge PR #38** (pre-work fixes + Plan 3 patch_file + logging + ~ fix + acceptance results) into master. Base is `feature/ollama-bridge-output-file` — merge #37 first.
+- **LTG Phase 2** — `docs/plans/ltg-phase2-implementation.md` (`ref:ltg-phase2-plan`). Read Required Reading section (7 files) first, then implement `embed.py`, `store.py`, `inspect.py` + bash wrappers.
 
 ---
 
