@@ -1,6 +1,6 @@
 # LTG Phase 2 Implementation Plan — Embedding + Storage
 
-*Written 2026-05-20 (session 61). Decisions locked; ready to execute.*
+*Written 2026-05-20 (session 61). Updated 2026-05-27 (session 70) — model_client.py + config.yaml added to scope.*
 
 ---
 
@@ -8,8 +8,10 @@
 ## Goal and Scope
 
 Build the embedding + storage layer for the Latent Topic Graph (LTG):
-- **`retrieval/embed.py`** — reads Phase 1 extraction JSONL, filters to winning models, embeds topic descriptions via bge-m3, writes embedding JSONL
-- **`retrieval/store.py`** — reads embedding JSONL, creates and populates a LanceDB table at `retrieval/index/`
+- **`retrieval/config.yaml`** — role-keyed model config (inline for Phase 2; two-level design deferred to Phase 3+)
+- **`retrieval/model_client.py`** — isolation layer (~100 LOC); scripts never touch httpx or provider URLs directly
+- **`retrieval/embed.py`** — reads Phase 1 extraction JSONL, filters to winning models, embeds via `ModelClient`, writes embedding JSONL
+- **`retrieval/store.py`** — reads embedding JSONL, creates/populates a LanceDB table at `retrieval/index/`
 - **`retrieval/inspect.py`** — opens the index, runs top-K nearest-neighbour queries, prints results (primary acceptance test runner)
 - **Bash wrappers** for each script (`run-embed.sh`, `run-store.sh`, `run-inspect.sh`)
 
@@ -31,6 +33,7 @@ Read these in order. Each answers a specific question the implementer will face.
 | `retrieval/extract_topics.py` | Source of truth for the extraction JSONL format; dependency pattern (`httpx`, standalone script, no pyproject.toml) |
 | `retrieval/runs/20260416-181839.jsonl` | The actual Phase 1 data to be filtered and embedded (32 rows, 8 files × 4 models) |
 | `docs/plans/2026-04-13-latent-topic-graph-implementation.md` (`ref:ltg-plan-phase-2`) | High-level Phase 2 plan with acceptance criteria |
+| `docs/ideas/ltg-model-registry-design.md` | model_client.py interface spec, config.yaml shape, naming convention, two-level upgrade design |
 
 ---
 
@@ -45,6 +48,9 @@ Read these in order. Each answers a specific question the implementer will face.
 | Schema | See below | `ref:ltg-storage-layout` |
 | Input | Phase 1 JSONL filtered to winning models | Session 61 decision |
 | Scripts | Separate files, bash wrappers, no pyproject.toml | Project convention |
+| Model isolation | `model_client.py` + `config.yaml`; scripts never call httpx directly | Session 70 decision |
+| `embed_dim` validation | **Option B** — assert `len(vector) == config.embed_dim` on first embed call; fail with message pointing to config | Session 70 decision |
+| `config.yaml` shape | Inline (flat) for Phase 2 — one role, no indirection. Comment in file documents two-level upgrade path. | Session 70 decision; two-level design: `docs/ideas/ltg-model-registry-design.md` |
 
 ---
 
@@ -322,6 +328,7 @@ When Phase 2 passes acceptance:
 3. **`retrieval/.memories/KNOWLEDGE.md`** — add `ref:ltg-phase2-findings` section: probe query results, actual topic counts, any surprises
 4. **`.claude/session-context.md`** (`ref:current-status`) — add session entry, update Next pointer to Phase 3 (anchor integration)
 5. **`.claude/index.md`** (`ref:bash-wrappers`) — add `run-embed.sh`, `run-store.sh`, `run-inspect.sh` to the Retrieval / LTG Tools table
+6. **`.claude/tasks.md`** — mark Phase 2 task complete; update M-P0b task to note probe should now be scheduled (qwen3-embedding:8b swap)
 
 ---
 
