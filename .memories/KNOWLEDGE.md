@@ -249,9 +249,9 @@ post-processing or retry loops.
 
 Comprehensive model survey covering Qwen, Microsoft, Llama 4, Mistral, frontier-distilled models, and embedding models. Full findings: `docs/findings/model-updates-2026-05.md`.
 
-**Key supersessions:**
-- `qwen2.5-coder:14b` → `qwen3.6-coder:14b` (HumanEval ~85%→~88%, LiveCodeBench ~55%→~62%, Ollama: `qwen3.6-coder:14b`)
-- `bge-m3` → `qwen3-embedding:8b` (MTEB 63.0→70.58, +7.5pts, ~5GB VRAM, already on Ollama)
+**Claimed supersessions (gated on local benchmark — not yet confirmed):**
+- `qwen2.5-coder:14b` → `qwen3.6-coder:14b` (HumanEval ~85%→~88%, LiveCodeBench ~55%→~62% — **from secondary sources, not independently verified**; swap gated on M-P0a local benchmark; keep both until confirmed. Ollama: `qwen3.6-coder:14b` — tag unverified)
+- `bge-m3` → `qwen3-embedding:8b` (MTEB 63.0→70.58, +7.5pts, ~5GB VRAM, on Ollama — MTEB numbers independently verifiable via HF leaderboard; **VRAM co-residence probe is a hard gate** before LTG Phase 2 embed.py; bge-m3 used 0.6GB vs ~5GB for this model)
 
 **What has NOT changed:**
 - `qwen3:14b` — still SOTA for reasoning at ≤14B (no model has surpassed it)

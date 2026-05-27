@@ -12,11 +12,11 @@ Phase 2 active: VRAM probe complete. **Use qwen3-embedding:8b (not bge-m3)** —
 Sessions 63-65 (2026-05-22): MCP Plans 1+2+3 complete — `refs`/`refs_root`, `output_file`/`output_only`,
 `patch_file` tool. 29 green tests total. PRs #37 (Plans 1+2) and #38 (Plan 3) open, pending merge.
 Session 68 (2026-05-26): Model survey complete. Key findings:
-- **qwen3.6-coder:14b** supersedes qwen2.5-coder:14b (new SOTA at 14B, ~88% HumanEval vs ~85%)
-- **qwen3-embedding:8b** supersedes bge-m3 — on Ollama now, use for LTG Phase 2
-- **llama4:scout** — new capability: 10M context, multimodal, fits 12GB (~10GB Q4)
+- **qwen3.6-coder:14b** candidate to supersede qwen2.5-coder:14b (claimed SOTA — secondary source; not locally benchmarked; swap gated on M-P0a)
+- **qwen3-embedding:8b** candidate to replace bge-m3 — on Ollama, MTEB 70.58 vs 63.0 (MTEB-verifiable); VRAM probe required before LTG Phase 2 (hard gate, M-P0b)
+- **llama4:scout** — new long-context capability (~200K–1M effective for RAG, advertised 10M); multimodal, fits 12GB (~10GB Q4)
 - qwen3:14b still SOTA reasoning ≤14B; qwen3:4b-q8_0 still best classifier
-- Full survey: `docs/findings/model-updates-2026-05.md`
+- Full survey + advisor review: `docs/findings/model-updates-2026-05.md`
 Active branch: `feature/model-survey-2026-05`.
 
 ## Repo Structure
