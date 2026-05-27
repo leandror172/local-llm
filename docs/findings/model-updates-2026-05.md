@@ -13,8 +13,8 @@
 | Priority | Action | Command | Impact | Verification Status |
 |---|---|---|---|---|
 | **P0 — Pull + Benchmark** | Pull qwen3.6-coder:14b; swap only if local benchmark confirms | `ollama pull qwen3.6-coder:14b` | Claimed new SOTA coder at 14B; benchmark before migrating personas | tag-unverified, bench-unverified |
-| **P0 — Pull + Probe** | Pull qwen3-embedding:8b; swap only after VRAM probe passes | `ollama pull qwen3-embedding:8b` | MTEB 70.58 vs 63.0; VRAM probe is a hard gate before LTG Phase 2 | tag-unverified, bench-medium |
-| **P1 — Add** | Pull llama4:scout | `ollama pull llama4:scout` | 10GB VRAM, long-context capability; multimodal | tag-unverified |
+| **P0 — Pull + Probe** | Pull qwen3-embedding:8b; swap only after VRAM probe passes | `ollama pull qwen3-embedding:8b` | MTEB 70.58 vs 63.0; VRAM probe is a hard gate before LTG Phase 2 | verified-tag, bench-medium |
+| **P1 — Add** | Pull llama4:scout | `ollama pull llama4:scout` | 10GB VRAM, long-context capability; multimodal | verified-tag |
 | **P1 — Add** | Pull qwen3.5:0.8b | `ollama pull qwen3.5:0.8b` | 1GB, multimodal, ultra-fast classifier; co-resides with 14B | tag-unverified |
 | **P1 — Add** | Pull qwen3.5:2b | `ollama pull qwen3.5:2b` | 2.7GB, strong tiny model | tag-unverified |
 | **P2 — Add** | Pull phi4-mini | `ollama pull phi4-mini` | 2.3GB, strong reasoning per param | tag-unverified |
@@ -132,7 +132,7 @@ FIM (fill-in-middle) optimized for IDE autocomplete.
 
 ### Multimodal — Gemma 4 E4B
 
-Multimodal (text + image), 256K context, 140+ languages.
+Multimodal (text + image), 256K context ⚠, 140+ languages. *(⚠ 256K figure from secondary source; Gemma 3 had 128K — verify at primary source before relying on)*
 - Ollama: `gemma4`, ~10GB — fits with little headroom
 - **Skip** unless vision input becomes a use case. Qwen3.6-Coder beats it on SWE-Bench.
 
@@ -156,10 +156,12 @@ Multimodal (text + image), 256K context, 140+ languages.
 
 | Rank | Model | ArenaHard | Notes |
 |---|---|---|---|
-| 1 | **qwen3:14b** | 85.5 | Think-mode; still best-in-class; keep |
+| 1 | **qwen3:14b** | *85.5* ¹ | Think-mode; still best-in-class; keep |
 | 2 | deepseek-r1:14b | — | Close competitor; already in setup |
 | 3 | phi4 (14B) | — | Strongest MATH-500; weaker on code |
 | 4 | gemma4 (12B) | — | Good; loses to Qwen3 on pure reasoning |
+
+*¹ ArenaHard 85.5 from secondary blog aggregator; same secondary-source caveat as the Code Generation numbers above. Directional signal only.*
 
 **Verdict:** No ≤14B model has surpassed qwen3:14b for reasoning as of May 2026.
 
@@ -296,7 +298,8 @@ Run via `benchmarks/lib/run-compare-models.sh`:
 
 ### Category 3 — TeichAI Multi-Teacher Distillations (Experimental)
 
-**Teachers:** Claude Opus 4.6, GPT-5.2, Gemini 3 Pro, DeepSeek V3.2
+**Teachers:** Claude Opus 4.6, GPT-5.2 ⚠, Gemini 3 Pro, DeepSeek V3.2
+*(⚠ "GPT-5.2" is not a verified OpenAI model identifier — unverified secondary source)*
 **Method:** Behavior cloning (SFT, 250+ samples per teacher); no logit distillation
 **HuggingFace:** `TeichAI/` org — 102 models, GGUF quantizations 2-bit to 16-bit
 
@@ -464,3 +467,11 @@ Applied on branch `feature/model-survey-advisor-review`, PR targeting `feature/m
 | Also: `.memories/KNOWLEDGE.md` | Qualified HumanEval/LiveCodeBench numbers with "from secondary sources, not independently verified; swap gated on M-P0a" |
 | Also: `.claude/tasks.md` M-P0a | Reframed as "Pull + benchmark; swap only if confirmed"; added explicit note that published numbers are from unverified sources |
 | Also: `.claude/tasks.md` M-P0b | Added "hard gate" language; added explicit note: "Do not start embed.py until probe passes" |
+
+## Polish Edits (session 70, 2026-05-27 — post-second-advisor-review)
+
+| Issue | Change Made |
+|---|---|
+| Verification Status too conservative on P0 rows | `qwen3-embedding:8b` changed from `tag-unverified, bench-medium` → `verified-tag, bench-medium`; `llama4:scout` changed from `tag-unverified` → `verified-tag` (both backed by official announcements + independently verifiable sources) |
+| Reasoning/Math ArenaHard 85.5 missing `¹` footnote | Added `*85.5* ¹` marker + footnote noting secondary-source provenance (same caveat as Code Generation numbers) |
+| TeichAI section — per-claim warnings for weak claims | Added `⚠` inline + parenthetical note for "GPT-5.2" teacher (unverified model identifier); added `⚠` inline + parenthetical note for Gemma 4 "256K context" claim (from secondary source; Gemma 3 had 128K) |
