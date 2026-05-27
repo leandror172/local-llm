@@ -7,12 +7,17 @@
 Layers 0-4 complete (of 10-layer plan). Infrastructure fully operational.
 Layer 5+ active: expense classifier, chatbot Phases 1+2 (cross-repo context + LLM routing).
 Session 59 (2026-05-04): LTG Phase 1 **fully closed**. All 3 freeze gates cleared.
-**ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code.
-Phase 2 active: VRAM probe complete (bge-m3 locked, sequential constraint). embed.py + store.py next.
+**ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code. ⚠ See session 68 — coder arm superseded.
+Phase 2 active: VRAM probe complete. **Use qwen3-embedding:8b (not bge-m3)** — already on Ollama, MTEB 70.58 vs 63.0.
 Sessions 63-65 (2026-05-22): MCP Plans 1+2+3 complete — `refs`/`refs_root`, `output_file`/`output_only`,
-`patch_file` tool. 29 green tests total. `_strip_code_fences()` added to `generate_code`.
-PRs #37 (Plans 1+2) and #38 (pre-work + Plan 3) open, pending merge.
-Branches: `feature/ollama-bridge-patch-file` + `feature/ollama-bridge-patch-file-impl`.
+`patch_file` tool. 29 green tests total. PRs #37 (Plans 1+2) and #38 (Plan 3) open, pending merge.
+Session 68 (2026-05-26): Model survey complete. Key findings:
+- **qwen3.6-coder:14b** candidate to supersede qwen2.5-coder:14b (claimed SOTA — secondary source; not locally benchmarked; swap gated on M-P0a)
+- **qwen3-embedding:8b** candidate to replace bge-m3 — on Ollama, MTEB 70.58 vs 63.0 (MTEB-verifiable); VRAM probe required before LTG Phase 2 (hard gate, M-P0b)
+- **llama4:scout** — new long-context capability (~200K–1M effective for RAG, advertised 10M); multimodal, fits 12GB (~10GB Q4)
+- qwen3:14b still SOTA reasoning ≤14B; qwen3:4b-q8_0 still best classifier
+- Full survey + advisor review: `docs/findings/model-updates-2026-05.md`
+Active branch: `feature/model-survey-2026-05`.
 
 ## Repo Structure
 
