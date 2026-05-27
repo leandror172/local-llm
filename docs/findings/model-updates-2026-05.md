@@ -335,3 +335,103 @@ Same ToS caution applies for Claude-teacher models.
 - TeichAI frontier distillations: https://huggingface.co/TeichAI
 - DeepSeek-R1-Distill-Qwen-14B: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
 - DeepSeek R1 technical paper: https://arxiv.org/html/2501.12948v1
+
+---
+
+## Advisor Review (2026-05-26)
+
+> **Reviewer note:** Full session transcript reviewed. The qualitative analysis is strong; the benchmark numbers and some model-existence claims need primary-source verification before engineering commitments are made.
+
+### Overall Assessment
+
+The document is well-organized and the qualitative analysis (especially the frontier-distilled taxonomy and the "Maternion/Fara" identification) is strong. However, **the P0 "swap" recommendations rest on benchmark numbers and model-existence claims sourced almost entirely from secondary blog-aggregator sites**, not from primary sources (Ollama library, HuggingFace model cards, Qwen official blog, Meta AI blog, Microsoft Research). Before committing engineering time to benchmark + persona migration, verify the primary sources.
+
+---
+
+### Source-Quality Concerns (Read Before Acting)
+
+The sub-agent research drew heavily from sites that are likely AI-generated content farms: `awesomeagents.ai`, `theplanettools.ai`, `decodethefuture.org`, `knightli.com`, `insiderllm.com`, `promptquorum.com`, `pricepertoken.com`, `codesota.com`, `aithinkerlab.com`, `localaimaster.com`, `aurigait.com`, `stationx.net`, `compute-market.com`, `apxml.com`. None of these are authoritative.
+
+**Authoritative primary sources for verification:**
+- `https://ollama.com/library/<model>` — single source of truth for what's actually pullable
+- `https://huggingface.co/Qwen` — official Qwen model cards
+- `https://qwenlm.github.io/blog/` — official Qwen blog
+- `https://ai.meta.com/blog/` — Meta releases
+- `https://www.microsoft.com/en-us/research/` — Microsoft Research
+- `https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard` — independent eval
+- `https://lmarena.ai` — head-to-head independent eval
+
+**Verification gate before pulling anything:** for each P0/P1 model, hit `ollama.com/library/<tag>` directly and confirm (a) the tag exists, (b) parameter count matches, (c) file size matches the VRAM estimate in this doc.
+
+---
+
+### Claims Ranked by Verification Confidence
+
+**Strong (likely correct — keep as-is):**
+- Llama 4 Scout 10M context, ~10GB Q4, Ollama tag `llama4:scout` — Meta's official announcement is consistent; 10M context is the headline and verifiable from Meta's own release
+- `deepseek-r1:14b` already is a distilled model — correct; official Ollama tags map to DeepSeek-R1-Distill-* HuggingFace weights. Most useful insight in the document.
+- bge-m3 → Qwen embedding swap is real and impactful — Qwen3-Embedding was an officially announced family; MTEB ranking independently verifiable from HuggingFace MTEB leaderboard
+- No open-weight Claude exists — correct; unchanged
+- Fara-7B exists as a computer-use SLM — verifiable via Microsoft Research blog and HuggingFace
+
+**Medium (verify primary source before relying on):**
+- Specific Ollama tags: `qwen3.6-coder:14b`, `qwen3.5:{0.8b,2b,4b}`, `qwen3-embedding:{8b,4b}`, `phi4-mini`, `qwen3.6:27b`, `mistral-small3.2`, `gemma4` — may exist but accepted on the word of secondary blogs. Confirm each with `curl -sI https://ollama.com/library/<tag>` or a browser visit before adding to `models.yaml`.
+- DeepSeek R2 32B — plausible; "watch for Ollama tag" framing is correct regardless
+
+**Weak (flagged — likely overstated, possibly fabricated):**
+- **"Qwen3.7 Max released May 20, 2026, API-only, 1M context"** — single source (`codersera.com`); naming convention unusual for Qwen. Recommend striking or marking as unverified.
+- **"Qwen3.6-coder:14b HumanEval ~88%, LiveCodeBench ~62%"** — single citation from a content farm (`theplanettools.ai`). **Do not treat as a verified supersession.** The qualitative claim (Qwen team released a Qwen3.6 coder iteration) is plausible; the specific numbers are not independently citable.
+- **"qwen2.5-coder:14b HumanEval ~85%, LiveCodeBench ~55%" as baseline** — the published Qwen2.5-Coder-14B HumanEval numbers from the official technical report were higher (closer to 90% pass@1). If the baseline is wrong, the "+3% improvement" delta is artificially inflated.
+- **"TeichAI distilled frontier models for $52.30"** — viral-style stat; verify against actual TeichAI HuggingFace org
+- **"GPT-5.2" as teacher model** — verify this is a real OpenAI model identifier
+- **Gemma 4 with 256K context** — plausible (Gemma 3 had 128K) but verify version numbering at primary source
+
+---
+
+### Specific Edits Recommended
+
+1. **Re-frame TL;DR from "P0 — Swap" to "P0 — Verify then Swap."** Benchmark numbers come from unverified secondary sources; the swap decision should be gated on local benchmark results, not blog claims.
+
+2. **Add a "Verification Status" column** to the recommendation table: `verified-tag`, `tag-unverified`, `bench-unverified`, `inferred-from-blog`.
+
+3. **Strike or qualify the Qwen3.7 Max line** — remove or mark "single-source, unverified."
+
+4. **Replace `~88%` / `~55%` benchmark numbers** with "claimed by secondary source; not independently verified" or cite the actual Qwen3.6-Coder technical report when published.
+
+5. **Embedding swap co-residence probe is a hard gate, not a follow-up.** Moving bge-m3 (~0.6GB) → qwen3-embedding:8b (~5GB) changes the VRAM math significantly. The existing probe was run with bge-m3; a fresh probe is required before declaring the swap viable for LTG Phase 2.
+
+6. **Qualify Llama 4 Scout's 10M context.** In practice, attention quality degrades well before the advertised ceiling. Effective useful context for RAG use cases is probably 200K–1M, not 10M — don't oversell.
+
+7. **Frontier-distilled section:** add "Independent benchmark: Y/N" column. Jackrong and TeichAI rows are all N — make that the headline conclusion.
+
+8. **Add methodology footnote at top:** *"Many model-existence and benchmark claims came from web searches of secondary sources. Before acting on any recommendation, verify the Ollama tag and parameter claims at ollama.com/library/<tag> directly."*
+
+---
+
+### Practical Risk Assessment for M-P0 Tasks
+
+| Action | Risk if claims wrong | Mitigation |
+|---|---|---|
+| `ollama pull qwen3.6-coder:14b` | Tag doesn't exist → pull fails harmlessly | `ollama pull` is the verification |
+| `ollama pull qwen3-embedding:8b` | Tag doesn't exist → pull fails harmlessly | Same |
+| Update `models.yaml` on blog benchmark numbers | Wrong baseline → wasted persona migration | Run local benchmark first; don't trust blog numbers |
+| Update `ref:ltg-extractor` in DECISIONS.md | Locks in wrong choice mid-Phase-2 | Wait for at least one full LTG corpus extraction showing quantitative improvement |
+| Mark `qwen2.5-coder:14b` deprecated | Premature if qwen3.6-coder:14b underperforms locally | Keep both until at least one DPO-data-generating week proves superiority |
+
+The blast radius of being wrong is small for the pulls themselves but real for downstream persona/registry/DECISIONS migrations. **Keep verification cheap and commitment late.**
+
+---
+
+### What This Document Does Well
+
+- The Maternion → MAI / Fara → Fara-7B identification is solid investigative reasoning
+- The frontier-distilled taxonomy (distillation vs behavior cloning, with the Anthropic ToS flag) is methodologically sharp
+- The cross-repo impact table is well-structured and actionable
+- The "What hasn't changed" callouts protect against unnecessary churn
+- The benchmark plan in "What to Benchmark Next Session" is the correct answer to source-quality concerns — *if executed before the swap*
+
+---
+
+### Single Most Important Revision
+
+Change the TL;DR table's **"P0 — Swap" framing to "P0 — Pull, Benchmark Locally, Then Swap if Confirmed."** The current framing treats third-party blog benchmark numbers as ground truth and creates downstream commitments (persona updates, DECISIONS.md edits, models.yaml deprecations) on unverified premises. Inverting the order — verify on our own prompts first, commit to migrations second — costs ~1 hour of benchmark runtime and protects multi-day downstream work.
