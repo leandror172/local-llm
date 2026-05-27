@@ -17,6 +17,7 @@ import json
 import os
 import pathlib
 import sys
+import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
@@ -25,6 +26,7 @@ from pydantic import BaseModel
 
 from ollama_mcp.client import OllamaClient, OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError
 from ollama_mcp.config import DEFAULT_MODEL, MODELS, REGISTRY_PATH, REPO_ROOT, TEMPS
+from ollama_mcp import debug_log
 from ollama_mcp import registry
 
 # ---------------------------------------------------------------------------
@@ -157,24 +159,38 @@ async def _build_refs_block(refs: list[str], root: str | None) -> str:
 def _resolve_output_path(path: str) -> pathlib.Path | str:
     """Resolve a path string to an absolute Path, or return an Error: string.
 
-    Absolute paths are used as-is. Relative paths are anchored to REPO_ROOT.
-    Returns an error string if path is relative and REPO_ROOT is not set.
+    Leading ``~`` is expanded to ``$HOME`` first (Claude passes strings
+    unprocessed by any shell, so we must expand them ourselves). Absolute paths
+    are used as-is. Relative paths are anchored to REPO_ROOT. Returns an error
+    string if path is relative and REPO_ROOT is not set. Note: does NOT call
+    .resolve() — callers that need canonical paths should call .resolve()
+    after ensuring parent directories exist.
     """
-    p = pathlib.Path(path)
+    p = pathlib.Path(path).expanduser()
     if p.is_absolute():
-        return p.resolve()
+        return p
     if REPO_ROOT is not None:
-        return (pathlib.Path(REPO_ROOT) / path).resolve()
+        return pathlib.Path(REPO_ROOT) / p
     return "Error: output_file is a relative path but REPO_ROOT is not set"
 
 
-def _write_output_file(path: str, content: str) -> str:
-    """Write content to path atomically. Returns a status string or Error: string."""
-    resolved = _resolve_output_path(path)
-    if isinstance(resolved, str):
-        return resolved
+def _write_output_file(path: pathlib.Path | str, content: str) -> str:
+    """Write content to path atomically. Returns a status string or Error: string.
+
+    Accepts either a pre-resolved pathlib.Path (from an earlier _resolve_output_path
+    call) or a raw string (resolved internally). Callers that already validated the
+    path should pass the Path directly to avoid resolving twice.
+    """
+    if isinstance(path, str):
+        resolved = _resolve_output_path(path)
+        if isinstance(resolved, str):
+            return resolved
+    else:
+        resolved = path
     try:
         resolved.parent.mkdir(parents=True, exist_ok=True)
+        # Resolve AFTER mkdir so symlinked parents are traversable for canonicalization.
+        resolved = resolved.resolve()
         tmp = pathlib.Path(str(resolved) + ".tmp")
         tmp.write_text(content, encoding="utf-8")
         os.replace(tmp, resolved)
@@ -232,6 +248,16 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
     global _client
     _client = OllamaClient()
 
+    banner = debug_log.setup()
+    print(
+        f"[ollama-bridge] pid={banner['pid']} ppid={banner['ppid']} "
+        f"git={banner['git']} branch={banner['branch']} "
+        f"client_id={banner['client_id']} log_level={banner['log_level']} "
+        f"log_file={banner['log_file']}",
+        file=sys.stderr,
+    )
+    debug_log.info("server_start", **banner)
+
     # Non-blocking health probe — log Ollama status at startup for diagnostics.
     # Tools handle errors individually, so failure here doesn't block the server.
     try:
@@ -276,6 +302,7 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        debug_log.info("server_stop")
         await _client.close()
         _client = None
 
@@ -365,9 +392,31 @@ async def ask_ollama(
         The model's text response. If Ollama is unreachable, returns an error
         message instead of raising (so Claude can handle it gracefully).
     """
+    t0 = time.perf_counter()
+    debug_log.debug(
+        "tool_enter",
+        tool="ask_ollama",
+        model=model,
+        persona=persona,
+        output_file=output_file,
+        output_only=output_only,
+        timeout=timeout,
+        prompt_chars=len(prompt),
+    )
+
+    def _done(ok: bool, **fields):
+        debug_log.debug(
+            "tool_exit",
+            tool="ask_ollama",
+            ok=ok,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+            **fields,
+        )
+
     if output_file is not None:
         _pre = _resolve_output_path(output_file)
         if isinstance(_pre, str):
+            _done(False, reason="resolve_failed")
             return _pre
 
     # Persona override: validate against registry and use as model name
@@ -380,6 +429,7 @@ async def ask_ollama(
             if suggestions:
                 msg += f" Similar: {', '.join(suggestions[:5])}"
             msg += " Use query_personas() to list available personas."
+            _done(False, reason="persona_not_found", persona=persona)
             return msg
         model = persona
 
@@ -390,11 +440,13 @@ async def ask_ollama(
     if context_files:
         context_block = _build_context_block(context_files)
         if context_block.startswith("Error:"):
+            _done(False, reason="context_block_error")
             return context_block
         full_prompt = f"{context_block}\n\n{full_prompt}"
     if refs:
         refs_block = await _build_refs_block(refs, refs_root)
         if refs_block.startswith("Error:"):
+            _done(False, reason="refs_block_error")
             return refs_block
         full_prompt = f"{refs_block}\n\n{full_prompt}"
 
@@ -407,24 +459,30 @@ async def ask_ollama(
         )
         content = response.content
         if output_file:
-            write_result = _write_output_file(output_file, content)
+            write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
+                _done(False, reason="write_failed", model=model)
                 return write_result
             if output_only:
+                _done(True, model=model, output_only=True, content_chars=len(content))
                 return write_result
+        _done(True, model=model, content_chars=len(content))
         return content
 
     except OllamaConnectionError:
+        _done(False, reason="OllamaConnectionError", model=model)
         return (
             "Error: Cannot connect to Ollama. "
             "Is it running? Start with: ollama serve"
         )
     except OllamaModelNotFoundError:
+        _done(False, reason="OllamaModelNotFoundError", model=model)
         return (
             f"Error: Model '{model}' not found. "
             f"Available models: {', '.join(MODELS)}"
         )
     except OllamaTimeoutError:
+        _done(False, reason="OllamaTimeoutError", model=model)
         return (
             "Error: Ollama timed out. The model may be loading (cold start). "
             "Try again in a few seconds."
@@ -584,6 +642,27 @@ async def warm_model(
 
 
 # ---------------------------------------------------------------------------
+# Code-fence stripper (generate_code output cleanup)
+# ---------------------------------------------------------------------------
+
+def _strip_code_fences(content: str) -> str:
+    """Remove markdown code fences that models sometimes wrap generated code in.
+
+    Handles opening fences with or without a language tag (```python, ```, etc.)
+    and a matching closing fence. Content without fences is returned unchanged.
+    Uses splitlines(keepends=True) to preserve original line endings exactly.
+    """
+    lines = content.splitlines(keepends=True)
+    if not lines:
+        return content
+    if lines[0].startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].rstrip() == "```":
+        lines = lines[:-1]
+    return "".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Shared error handler
 # ---------------------------------------------------------------------------
 
@@ -670,9 +749,28 @@ async def generate_code(
         Generated code (typically in a fenced code block). Returns an error
         message string if Ollama is unreachable.
     """
+    t0 = time.perf_counter()
+    debug_log.debug(
+        "tool_enter",
+        tool="generate_code",
+        language=language,
+        model=model,
+        output_file=output_file,
+        output_only=output_only,
+        timeout=timeout,
+        prompt_chars=len(prompt),
+    )
+
     if output_file is not None:
         _pre = _resolve_output_path(output_file)
         if isinstance(_pre, str):
+            debug_log.debug(
+                "tool_exit",
+                tool="generate_code",
+                ok=False,
+                reason="resolve_failed",
+                ms=round((time.perf_counter() - t0) * 1000, 2),
+            )
             return _pre
 
     client = _get_client()
@@ -716,15 +814,48 @@ async def generate_code(
             think=False,
             timeout=timeout,
         )
-        content = response.content
+        content = _strip_code_fences(response.content)
         if output_file:
-            write_result = _write_output_file(output_file, content)
+            write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
+                debug_log.debug(
+                    "tool_exit",
+                    tool="generate_code",
+                    ok=False,
+                    reason="write_failed",
+                    model=chosen_model,
+                    ms=round((time.perf_counter() - t0) * 1000, 2),
+                )
                 return write_result
             if output_only:
+                debug_log.debug(
+                    "tool_exit",
+                    tool="generate_code",
+                    ok=True,
+                    model=chosen_model,
+                    output_only=True,
+                    content_chars=len(content),
+                    ms=round((time.perf_counter() - t0) * 1000, 2),
+                )
                 return write_result
+        debug_log.debug(
+            "tool_exit",
+            tool="generate_code",
+            ok=True,
+            model=chosen_model,
+            content_chars=len(content),
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+        )
         return content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
+        debug_log.debug(
+            "tool_exit",
+            tool="generate_code",
+            ok=False,
+            reason=type(e).__name__,
+            model=chosen_model,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+        )
         return _format_error(e)
 
 
@@ -1287,3 +1418,88 @@ async def ref_lookup(key: str, path: str | None = None) -> str:
         return "Error: ref-lookup timed out after 10 seconds."
     except Exception as e:
         return f"Error running ref-lookup: {e}"
+
+
+@mcp.tool()
+async def patch_file(
+    path: str,
+    old_string: str,
+    new_string: str,
+    replace_all: bool = False,
+) -> str:
+    """Edit a file by exact string replacement — without reading it into Claude's context.
+
+    Use this when the file was just generated by generate_code / output_file and you
+    already know its content. Zero Claude token cost for the read step.
+
+    When to use vs the Edit tool:
+    - patch_file: file was just generated; you know exactly what's in it; no prior Read.
+    - Edit tool: file already existed; you read it during orientation.
+
+    replace_all semantics:
+    - False (default): exactly one occurrence must exist — errors if 0 or >1.
+      Prevents accidental mass-changes and forces a specific old_string.
+    - True: replaces every occurrence; succeeds with count >= 1.
+
+    Args:
+        path: Absolute or relative path to the file (relative resolves from REPO_ROOT).
+        old_string: Exact string to find in the file.
+        new_string: Replacement string.
+        replace_all: Replace all occurrences instead of requiring uniqueness.
+
+    Returns:
+        "Patched {path} (N replacement/s)" on success, or an "Error: ..." string.
+    """
+    t0 = time.perf_counter()
+    debug_log.debug(
+        "tool_enter",
+        tool="patch_file",
+        path=path,
+        replace_all=replace_all,
+        old_len=len(old_string),
+        new_len=len(new_string),
+    )
+
+    def _done(ok: bool, **fields):
+        debug_log.debug(
+            "tool_exit",
+            tool="patch_file",
+            ok=ok,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+            **fields,
+        )
+
+    resolved = _resolve_output_path(path)
+    if isinstance(resolved, str):
+        _done(False, reason="resolve_failed")
+        return resolved
+
+    try:
+        if not resolved.is_file():
+            _done(False, reason="not_found", resolved=str(resolved))
+            return f"Error: file not found: {resolved}"
+
+        content = resolved.read_text(encoding="utf-8")
+        count = content.count(old_string)
+
+        if count == 0:
+            _done(False, reason="old_string_absent", resolved=str(resolved))
+            return f"Error: old_string not found in {resolved}."
+        if count > 1 and not replace_all:
+            _done(False, reason="non_unique", resolved=str(resolved), count=count)
+            return (
+                f"Error: old_string found {count} times in {resolved}. "
+                "Use replace_all=True to replace all, or provide a more specific old_string."
+            )
+
+        new_content = content.replace(old_string, new_string) if replace_all else content.replace(old_string, new_string, 1)
+
+        tmp = pathlib.Path(str(resolved) + ".tmp")
+        tmp.write_text(new_content, encoding="utf-8")
+        os.replace(tmp, resolved)
+
+        _done(True, resolved=str(resolved), count=count)
+        return f"Patched {resolved} ({count} replacement{'s' if count != 1 else ''})"
+    except OSError as e:
+        _done(False, reason="oserror", error=str(e))
+        return f"Error: {e}"

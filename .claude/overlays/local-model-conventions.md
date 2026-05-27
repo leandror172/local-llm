@@ -110,6 +110,30 @@ read the file afterwards with `context_files` if needed to assess quality.
 Do NOT use `output_only=True` as a way to skip verdicts. The verdict (0/1/2) is
 required regardless of how you inspect the output.
 
+### patch_file: pinpoint edits without reading
+
+Use `patch_file(path, old_string, new_string)` to edit a file the local model
+wrote — without reading it back into Claude's context. Same semantics as the
+Edit tool: exact match, uniqueness check, error if not found or non-unique.
+
+```python
+# Generate a file
+generate_code(prompt="...", output_file="src/foo.py")
+
+# Fix one thing without re-reading the whole file
+patch_file("src/foo.py", old_string="def foo():", new_string="def foo(x: int):")
+
+# Use replace_all=True for renames across the file
+patch_file("src/foo.py", old_string="old_name", new_string="new_name", replace_all=True)
+```
+
+**When to use vs. Edit tool:**
+- `patch_file`: file was just generated; you already know what's in it; no prior Read in conversation.
+- Edit tool: file already existed in the codebase; you read it during orientation.
+
+Do not use `patch_file` as a way to avoid reading files you should understand
+before editing. It's for the specific case of editing freshly generated output.
+
 ## After you call
 
 ### Step 1: Record a verdict for every local model call

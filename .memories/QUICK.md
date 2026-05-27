@@ -9,10 +9,10 @@ Layer 5+ active: expense classifier, chatbot Phases 1+2 (cross-repo context + LL
 Session 59 (2026-05-04): LTG Phase 1 **fully closed**. All 3 freeze gates cleared.
 **ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code.
 Phase 2 active: VRAM probe complete (bge-m3 locked, sequential constraint). embed.py + store.py next.
-Session 63 (2026-05-22): MCP Plan 1 complete — `refs`/`refs_root` on `ask_ollama` + `generate_code`,
-10 green tests, live-tested. New persona `my-mcp-q25c14` (qwen2.5-coder:14b MCP specialist).
-SOLID + scope constraints added to 3 × 14B coding personas. Plans 2+3 ready.
-Branch: `feature/ollama-bridge-refs-param`.
+Sessions 63-65 (2026-05-22): MCP Plans 1+2+3 complete — `refs`/`refs_root`, `output_file`/`output_only`,
+`patch_file` tool. 29 green tests total. `_strip_code_fences()` added to `generate_code`.
+PRs #37 (Plans 1+2) and #38 (pre-work + Plan 3) open, pending merge.
+Branches: `feature/ollama-bridge-patch-file` + `feature/ollama-bridge-patch-file-impl`.
 
 ## Repo Structure
 

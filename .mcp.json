@@ -1,7 +1,11 @@
 {
   "mcpServers": {
     "ollama-bridge": {
-      "command": "/mnt/i/workspaces/llm/mcp-server/run-server.sh"
+      "command": "/mnt/i/workspaces/llm/mcp-server/run-server.sh",
+      "env": {
+        "OLLAMA_BRIDGE_LOG_LEVEL": "DEBUG",
+        "OLLAMA_BRIDGE_LOG_FILE": "/tmp/ollama-bridge.jsonl"
+      }
     },
     "web-research": {
       "command": "/mnt/i/workspaces/web-research/tools/web-research/run-server.sh"

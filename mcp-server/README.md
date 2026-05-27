@@ -149,6 +149,55 @@ The `wsl --` prefix lets Claude Desktop (a Windows process) spawn the server ins
 | `OLLAMA_MODEL` | `my-coder-q3` | Default model for `ask_ollama` |
 | `OLLAMA_TIMEOUT` | `120` | Max seconds to wait for Ollama response |
 | `OLLAMA_THINK` | `false` | Enable Qwen3 thinking mode globally |
+| `OLLAMA_BRIDGE_LOG_LEVEL` | `INFO` (via `run-server.sh`) | Threshold for structured debug log. One of `DEBUG`, `INFO`, `WARNING`, `ERROR`. |
+| `OLLAMA_BRIDGE_LOG_FILE` | `/tmp/ollama-bridge.jsonl` | Where the structured log is appended. Safe to share across bridges (POSIX `O_APPEND` keeps per-line writes atomic). |
+
+### Debug Logging
+
+The server writes a structured JSONL log to disk for diagnosing tool hangs and
+Ollama hiccups. Each line is a JSON object with `t` (UTC timestamp), `level`,
+`ev` (event name), plus per-process `client_id` (random hex per bridge) and
+`pid`. Multiple bridges can write to the same file safely — demultiplex by
+`client_id`.
+
+Levels in use:
+- `INFO` — `server_start` (banner: git SHA, branch, log_level, log_file), `server_stop`
+- `DEBUG` — `tool_enter` / `tool_exit` (with timing in ms) on `patch_file`, `generate_code`, `ask_ollama`; `http_post_start` / `http_post_done` on the Ollama `/api/chat` call
+- `ERROR` — `http_post_error` (connect failures, timeouts)
+
+To enable per-tool tracing during a hang investigation, add an env block to
+`.mcp.json` and restart Claude Code:
+
+```json
+"ollama-bridge": {
+  "command": "/mnt/i/workspaces/llm/mcp-server/run-server.sh",
+  "env": {
+    "OLLAMA_BRIDGE_LOG_LEVEL": "DEBUG",
+    "OLLAMA_BRIDGE_LOG_FILE": "/tmp/ollama-bridge.jsonl"
+  }
+}
+```
+
+Diagnostic helpers (run from the repo root):
+
+```bash
+make -C mcp-server logs                       # tail + pretty-print, all bridges
+make -C mcp-server logs CLIENT=ab12cd34       # filter to one bridge
+make -C mcp-server logs-raw                   # raw JSONL for grep / jq
+make -C mcp-server bridges                    # which-bridge.sh: PID/git/branch/...
+make -C mcp-server help                       # list all targets
+```
+
+Filter a static log file without `make`:
+
+```bash
+grep '"client_id": "ab12cd34"' /tmp/ollama-bridge.jsonl
+jq 'select(.client_id=="ab12cd34")' /tmp/ollama-bridge.jsonl   # if jq is installed
+```
+
+Diagnostic rule of thumb: if a tool hangs, look for the matching `tool_enter`
+without a `tool_exit` (hang inside the tool body) or a missing `tool_enter`
+entirely (hang in the MCP stdio transport or Claude Code's client).
 
 ## Running
 
@@ -182,10 +231,13 @@ The bash wrapper uses `uv run` to manage the virtual environment and dependencie
 mcp-server/
 ├── run-server.sh                    # Bash wrapper (project convention)
 ├── pyproject.toml                   # uv project config
+├── scripts/
+│   └── which-bridge.sh              # List live bridge processes with banner info
 └── src/ollama_mcp/
     ├── __main__.py                  # Entry point (stdio transport)
     ├── config.py                    # Defaults + env var overrides
     ├── client.py                    # Async Ollama HTTP client
+    ├── debug_log.py                 # Optional structured JSONL logging
     └── server.py                    # FastMCP server + all tool definitions
 ```
 
@@ -207,3 +259,11 @@ The persona hasn't been created. Run `ollama create <persona-name> -f modelfiles
 - For project-only setup: verify `.mcp.json` is in the repo root
 - Run `/mcp` in Claude Code to check server status
 - Restart Claude Code after config changes
+
+**A tool call hangs (no result returned)**
+- Run `./mcp-server/scripts/which-bridge.sh` to confirm which bridge is serving this session and that it's running post-logging code (git SHA column).
+- `tail -f /tmp/ollama-bridge.jsonl` in another terminal while reproducing. The missing event tells you where the hang lives:
+  - `tool_enter` but no `tool_exit` → hang inside the tool body
+  - No `tool_enter` after a prior tool returned → hang in MCP stdio transport or Claude Code's client (not the bridge)
+  - `http_post_start` but no `http_post_done` → Ollama itself is wedged on the request
+- Multiple stale bridges from old sessions can accumulate; `kill <ppid>` from the `which-bridge.sh` output removes one cleanly (the `uv run` wrapper plus its Python child).
