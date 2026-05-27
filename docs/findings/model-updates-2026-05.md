@@ -4,28 +4,32 @@
 **Context:** RTX 3060 12GB VRAM + 32GB RAM total. 3 repos: llm (MCP platform), expenses (Go CLI), web-research (Python pipeline).
 **Scope:** New models since current setup was frozen (session 50, 2026-04-09).
 
+> ⚠ **Methodology note:** Many model-existence and benchmark claims in this document came from web searches of secondary sources (blogs, aggregators). Before acting on any recommendation, verify the Ollama tag and parameter claims at `ollama.com/library/<tag>` directly. Specific benchmark numbers should be treated as indicative, not authoritative, until locally validated via `benchmarks/lib/run-compare-models.sh`.
+
 ---
 
 ## TL;DR — Recommended Actions (Updated with Benchmarks)
 
-| Priority | Action | Command | Impact |
-|---|---|---|---|
-| **P0 — Swap** | Replace qwen2.5-coder:14b → qwen3.6-coder:14b | `ollama pull qwen3.6-coder:14b` | New SOTA coder at 14B class; supersedes current primary |
-| **P0 — Swap** | Replace bge-m3 → qwen3-embedding:8b | `ollama pull qwen3-embedding:8b` | MTEB 70.58 vs 63.0; already on Ollama; direct LTG Phase 2 impact |
-| **P1 — Add** | Pull llama4:scout | `ollama pull llama4:scout` | 10GB VRAM, 10M context window; multimodal; new capability class |
-| **P1 — Add** | Pull qwen3.5:0.8b | `ollama pull qwen3.5:0.8b` | 1GB, multimodal, ultra-fast classifier; co-resides with 14B |
-| **P1 — Add** | Pull qwen3.5:2b | `ollama pull qwen3.5:2b` | 2.7GB, strong tiny model |
-| **P2 — Add** | Pull phi4-mini | `ollama pull phi4-mini` | 2.3GB, strong reasoning per param |
-| **P2 — Add** | Pull qwen3.5:4b | `ollama pull qwen3.5:4b` | 3.4GB, multimodal; benchmark against qwen3:4b-q8_0 for routing |
-| **Watch** | DeepSeek R2 32B (q2_K) | — | 92.7% AIME, need q2_K ~11GB — not stable on Ollama yet |
-| **Defer** | qwen3.5:35b | `ollama pull qwen3.5:35b` | Multimodal 35B MoE, same hybrid footprint as qwen3:30b-a3b |
-| **Defer** | qwen3.6:27b | `ollama pull qwen3.6:27b` | Vision + 201 languages, 17GB hybrid — only if vision needed |
-| **Retire** | llama3.1:8b (creative writing) | — | qwen3:8b in non-think mode now covers this role better |
-| **Skip** | Fara-7B | — | Computer-use agent (Qwen2.5-VL-7B base); no Ollama tag |
-| **Skip** | phi4 14B | — | 8.3GB, eclipsed by qwen3:14b for reasoning tasks |
-| **Skip** | Gemma 4 E4B | — | 10GB multimodal, but leaves minimal headroom; niche |
-| **Skip** | Codestral 22B | — | FIM/autocomplete niche; 14GB hybrid; qwen2.5-coder:14b better for generation |
-| **N/A** | Claude distilled | — | Anthropic has not released any open weights; no local Claude possible |
+| Priority | Action | Command | Impact | Verification Status |
+|---|---|---|---|---|
+| **P0 — Pull + Benchmark** | Pull qwen3.6-coder:14b; swap only if local benchmark confirms | `ollama pull qwen3.6-coder:14b` | Claimed new SOTA coder at 14B; benchmark before migrating personas | tag-unverified, bench-unverified |
+| **P0 — Pull + Probe** | Pull qwen3-embedding:8b; swap only after VRAM probe passes | `ollama pull qwen3-embedding:8b` | MTEB 70.58 vs 63.0; VRAM probe is a hard gate before LTG Phase 2 | tag-unverified, bench-medium |
+| **P1 — Add** | Pull llama4:scout | `ollama pull llama4:scout` | 10GB VRAM, long-context capability; multimodal | tag-unverified |
+| **P1 — Add** | Pull qwen3.5:0.8b | `ollama pull qwen3.5:0.8b` | 1GB, multimodal, ultra-fast classifier; co-resides with 14B | tag-unverified |
+| **P1 — Add** | Pull qwen3.5:2b | `ollama pull qwen3.5:2b` | 2.7GB, strong tiny model | tag-unverified |
+| **P2 — Add** | Pull phi4-mini | `ollama pull phi4-mini` | 2.3GB, strong reasoning per param | tag-unverified |
+| **P2 — Add** | Pull qwen3.5:4b | `ollama pull qwen3.5:4b` | 3.4GB, multimodal; benchmark against qwen3:4b-q8_0 for routing | tag-unverified |
+| **Watch** | DeepSeek R2 32B (q2_K) | — | 92.7% AIME, need q2_K ~11GB — not stable on Ollama yet | inferred-from-blog |
+| **Defer** | qwen3.5:35b | `ollama pull qwen3.5:35b` | Multimodal 35B MoE, same hybrid footprint as qwen3:30b-a3b | tag-unverified |
+| **Defer** | qwen3.6:27b | `ollama pull qwen3.6:27b` | Vision + 201 languages, 17GB hybrid — only if vision needed | tag-unverified |
+| **Retire** | llama3.1:8b (creative writing) | — | qwen3:8b in non-think mode now covers this role better | verified-tag |
+| **Skip** | Fara-7B | — | Computer-use agent (Qwen2.5-VL-7B base); no Ollama tag | verified-tag |
+| **Skip** | phi4 14B | — | 8.3GB, eclipsed by qwen3:14b for reasoning tasks | tag-unverified |
+| **Skip** | Gemma 4 E4B | — | 10GB multimodal, but leaves minimal headroom; niche | tag-unverified |
+| **Skip** | Codestral 22B | — | FIM/autocomplete niche; 14GB hybrid; qwen2.5-coder:14b better for generation | tag-unverified |
+| **N/A** | Claude distilled | — | Anthropic has not released any open weights; no local Claude possible | verified-tag |
+
+*Verification Status key: `verified-tag` = confirmed on ollama.com/library; `tag-unverified` = tag from secondary source only — run `ollama pull` to verify existence; `bench-unverified` = benchmark numbers from secondary blog, not independently cited; `bench-medium` = MTEB numbers independently verifiable via HuggingFace leaderboard; `inferred-from-blog` = model existence plausible but unconfirmed.*
 
 ---
 
@@ -62,9 +66,11 @@ Same hybrid offload pain as qwen3:30b-a3b. Only compelling if vision input is ne
 
 Claims >70% SWE-Bench Verified. **Not officially on Ollama** — community model only (`bazobehram/qwen3-coder-next`). Skip until official release.
 
-### Qwen3.7 Max (May 2026)
+### Qwen3.7 Max (May 2026) — ⚠ Single-source, unverified
 
-API-only (DashScope), 1M context. No open weights. Skip.
+**Claimed:** API-only (DashScope), 1M context. No open weights. Skip.
+
+> ⚠ This entry is sourced from a single secondary site (`codersera.com`). The naming convention "Qwen3.7" is unusual for the Qwen family (which uses generational numbers like 3, 3.5, 3.6). Treat as unverified until confirmed from `qwenlm.github.io/blog/` or the official Qwen HuggingFace org.
 
 ---
 
@@ -138,11 +144,13 @@ Multimodal (text + image), 256K context, 140+ languages.
 
 | Rank | Model | HumanEval | LiveCodeBench | Notes |
 |---|---|---|---|---|
-| 1 | **qwen3.6-coder:14b** | ~88% | ~62% | NEW SOTA in class — our new primary |
-| 2 | qwen2.5-coder:14b | ~85% | ~55% | Current primary — being replaced |
-| 3 | gemma4 (12B) | ~80% | — | Better math than SWE; multimodal |
+| 1 | **qwen3.6-coder:14b** | *claimed ~88%* ¹ | *claimed ~62%* ¹ | Claimed new SOTA — pending local validation (M-P0a) |
+| 2 | qwen2.5-coder:14b | *claimed ~85%* ¹ | *claimed ~55%* ¹ | Current primary — keep until M-P0a benchmark confirms replacement |
+| 3 | gemma4 (12B) | *~80%* ¹ | — | Better math than SWE; multimodal |
 | 4 | phi4 (14B) | Competitive | Solid | Math/reasoning focus, less pure coding |
-| 5 | qwen3:8b | ~75% | ~48% | Best 8B coder; keep as secondary |
+| 5 | qwen3:8b | *~75%* ¹ | *~48%* ¹ | Best 8B coder; keep as secondary |
+
+*¹ Numbers from secondary blog sources (`theplanettools.ai`, `insiderllm.com`); not independently cited from primary technical reports. Treat as directional only. The published Qwen2.5-Coder-14B HumanEval from the official report was closer to 90% pass@1 — if the baseline is wrong, the delta is artificially narrowed. Run `benchmarks/lib/run-compare-models.sh` for ground truth.*
 
 ### Reasoning / Math (≤14B)
 
@@ -189,8 +197,8 @@ Two released models, both MoE, natively multimodal (text + image):
 **Llama 4 Scout assessment:**
 - Fits our 12GB GPU at Q4 (~10GB, ~12–16 tok/s est.)
 - Does NOT beat qwen3:14b on reasoning or qwen3.6-coder:14b on coding
-- **Unique value: 10M token context window** — a capability class none of our current models has
-- Worth pulling as a complementary model for long-context RAG experiments ahead of LTG Phase 2
+- **Unique value: advertised 10M token context window** — a capability class none of our current models has. In practice, attention quality degrades well before the advertised ceiling; effective useful context for RAG use cases is likely 200K–1M, not 10M. Still a step change over our current 128K ceiling.
+- Worth pulling as a complementary model for long-context RAG experiments ahead of LTG Phase 2 — but don't design around 10M as if it reliably works end-to-end
 - `ollama pull llama4:scout`
 
 ---
@@ -219,7 +227,7 @@ Two released models, both MoE, natively multimodal (text + image):
 | Area | Impact |
 |---|---|
 | **Primary coder** | Swap my-mcp-q25c14 + my-python-q25c14 personas to qwen3.6-coder:14b after benchmarking |
-| **LTG Phase 2 embeddings** | qwen3-embedding:8b is on Ollama NOW — use it for embed.py instead of bge-m3 |
+| **LTG Phase 2 embeddings** | qwen3-embedding:8b candidate for embed.py. **Hard gate:** re-run VRAM co-residence probe with qwen3:14b before starting embed.py. bge-m3 used 0.6GB; qwen3-embedding:8b uses ~5GB — the probe result will differ significantly and may change the sequential-vs-parallel constraint. Do not commit to this swap until probe passes. |
 | **Long-context** | Llama 4 Scout's 10M ctx opens future LTG experiments with whole-repo context |
 | **New tiny personas** | qwen3.5:0.8b/2b for ultra-fast routing; phi4-mini for compact reasoning |
 | **models.yaml** | Add: qwen3.5:{0.8b,2b,4b}, qwen3.6-coder:14b, phi4-mini, llama4:scout, qwen3-embedding:{8b,4b} |
@@ -262,11 +270,11 @@ Run via `benchmarks/lib/run-compare-models.sh`:
 **Teacher:** DeepSeek-R1's own frontier reasoning (~800K verified CoT traces)
 **License:** MIT | **Status:** Benchmarked, validated, on Ollama
 
-| Model | Params | VRAM (Q4) | AIME 2024 | Ollama Tag |
-|---|---|---|---|---|
-| DeepSeek-R1-Distill-Qwen-7B | 7B | ~5GB | 55.5% | `deepseek-r1:7b` |
-| **DeepSeek-R1-Distill-Qwen-14B** | **14B** | **~9GB** | **Beats QwQ-32B** | **`deepseek-r1:14b` — already in setup** |
-| DeepSeek-R1-Distill-Qwen-32B | 32B | ~20GB hybrid | 72.6% | `deepseek-r1:32b` |
+| Model | Params | VRAM (Q4) | AIME 2024 | Ollama Tag | Independent Benchmark |
+|---|---|---|---|---|---|
+| DeepSeek-R1-Distill-Qwen-7B | 7B | ~5GB | 55.5% | `deepseek-r1:7b` | ✅ Yes (official DeepSeek-R1 paper) |
+| **DeepSeek-R1-Distill-Qwen-14B** | **14B** | **~9GB** | **Beats QwQ-32B** | **`deepseek-r1:14b` — already in setup** | ✅ Yes (official paper + HF leaderboard) |
+| DeepSeek-R1-Distill-Qwen-32B | 32B | ~20GB hybrid | 72.6% | `deepseek-r1:32b` | ✅ Yes (official paper) |
 
 **Already running:** `deepseek-r1:14b` in our setup *is* a frontier-distilled model. The distillation (smaller Qwen base + R1 reasoning traces) produces better math/reasoning than applying RL directly to the smaller model.
 
@@ -275,11 +283,11 @@ Run via `benchmarks/lib/run-compare-models.sh`:
 **Teacher:** Claude 4.6 Opus (behavior cloning via SFT on ~14K CoT samples)
 **Creator:** Jackrong (HuggingFace community) | **Method:** LoRA SFT via Unsloth
 
-| Model | Params | VRAM (Q4) | Fits 12GB? | Notes |
-|---|---|---|---|---|
-| Qwen3.5-9B-Claude-4.6-Opus-Reasoning-Distilled-v2 | 9B | ~6GB | ✅ Yes | Adopts `<think>` CoT pattern |
-| Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled | 27B | ~16.5GB | ❌ Hybrid only | Context drops 128K→8K — regression |
-| Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled | 35B MoE | ~20GB | Hybrid | Community fine-tune on MoE base |
+| Model | Params | VRAM (Q4) | Fits 12GB? | Notes | Independent Benchmark |
+|---|---|---|---|---|---|
+| Qwen3.5-9B-Claude-4.6-Opus-Reasoning-Distilled-v2 | 9B | ~6GB | ✅ Yes | Adopts `<think>` CoT pattern | ❌ No — anecdotal only |
+| Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled | 27B | ~16.5GB | ❌ Hybrid only | Context drops 128K→8K — regression | ❌ No |
+| Qwen3.6-35B-A3B-Claude-4.6-Opus-Reasoning-Distilled | 35B MoE | ~20GB | Hybrid | Community fine-tune on MoE base | ❌ No |
 
 **HuggingFace:** `Jackrong/Qwen3.5-9B-Claude-4.6-Opus-Reasoning-Distilled-v2-GGUF`
 **No Ollama tag** — must load GGUF manually.
@@ -294,10 +302,10 @@ Run via `benchmarks/lib/run-compare-models.sh`:
 
 Relevant fits for 12GB:
 
-| Model | Base | Teacher | Params | VRAM |
-|---|---|---|---|---|
-| TeichAI/Qwen3-4B-...-GPT-5.2-High-Reasoning-Distill | Qwen3 4B | GPT-5.2 | 4B | ~3GB ✅ |
-| TeichAI/gemma-4-26B-A4B-it-Claude-Opus-Distill | Gemma 4 26B MoE | Claude Opus 4.6 | 26B | Hybrid |
+| Model | Base | Teacher | Params | VRAM | Independent Benchmark |
+|---|---|---|---|---|---|
+| TeichAI/Qwen3-4B-...-GPT-5.2-High-Reasoning-Distill | Qwen3 4B | GPT-5.2 | 4B | ~3GB ✅ | ❌ No |
+| TeichAI/gemma-4-26B-A4B-it-Claude-Opus-Distill | Gemma 4 26B MoE | Claude Opus 4.6 | 26B | Hybrid | ❌ No |
 
 **No Ollama support** — GGUF only, manual load via `ollama create` from GGUF.
 Same ToS caution applies for Claude-teacher models.
@@ -435,3 +443,24 @@ The blast radius of being wrong is small for the pulls themselves but real for d
 ### Single Most Important Revision
 
 Change the TL;DR table's **"P0 — Swap" framing to "P0 — Pull, Benchmark Locally, Then Swap if Confirmed."** The current framing treats third-party blog benchmark numbers as ground truth and creates downstream commitments (persona updates, DECISIONS.md edits, models.yaml deprecations) on unverified premises. Inverting the order — verify on our own prompts first, commit to migrations second — costs ~1 hour of benchmark runtime and protects multi-day downstream work.
+
+---
+
+## Changes Made in Response to Advisor Review (session 69, 2026-05-27)
+
+Applied on branch `feature/model-survey-advisor-review`, PR targeting `feature/model-survey-2026-05`.
+
+| Advisor Point | Change Made |
+|---|---|
+| 1. Re-frame TL;DR "P0 — Swap" to "P0 — Verify then Swap" | TL;DR P0 rows now read "Pull + Benchmark" and "Pull + Probe"; swap is explicitly conditional |
+| 2. Add "Verification Status" column to TL;DR | Added column with `verified-tag`, `tag-unverified`, `bench-unverified`, `bench-medium`, `inferred-from-blog` values + legend |
+| 3. Strike or qualify Qwen3.7 Max | Added ⚠ header + blockquote noting single-source origin and unusual naming convention |
+| 4. Replace unverified benchmark numbers (~88%/~55%) | Replaced with `*claimed ~88%* ¹` notation; added ¹ footnote citing specific secondary sources and noting baseline discrepancy vs official Qwen2.5-Coder report |
+| 5. Embedding probe as hard gate | Updated LTG Phase 2 impact table row to say "Hard gate: re-run VRAM co-residence probe before starting embed.py" with explicit rationale (0.6GB → ~5GB VRAM change) |
+| 6. Qualify Llama 4 Scout 10M context | Added note: "effective useful context for RAG likely 200K–1M, not 10M" and updated pull recommendation accordingly |
+| 7. Add "Independent benchmark: Y/N" column | Added column to all three frontier-distilled tables (DeepSeek-R1, Jackrong, TeichAI); ✅ Yes for official-paper-backed models, ❌ No for community models with no benchmarks |
+| 8. Add methodology footnote at top | Added ⚠ blockquote after header warning about secondary source provenance |
+| Also: `.memories/QUICK.md` | Removed unverified ~88% HumanEval claim; replaced with "claimed SOTA — secondary source; not locally benchmarked yet" |
+| Also: `.memories/KNOWLEDGE.md` | Qualified HumanEval/LiveCodeBench numbers with "from secondary sources, not independently verified; swap gated on M-P0a" |
+| Also: `.claude/tasks.md` M-P0a | Reframed as "Pull + benchmark; swap only if confirmed"; added explicit note that published numbers are from unverified sources |
+| Also: `.claude/tasks.md` M-P0b | Added "hard gate" language; added explicit note: "Do not start embed.py until probe passes" |
