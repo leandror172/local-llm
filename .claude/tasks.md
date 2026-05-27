@@ -72,6 +72,21 @@ Completed items → `.claude/archive/deferred-completed.md`
 
 ---
 
+## Model Update Tasks (session 68, 2026-05-26)
+
+Survey complete → `docs/findings/model-updates-2026-05.md`. Branch: `feature/model-survey-2026-05`.
+
+- [ ] **M-P0a — Benchmark + swap coder:** `ollama pull qwen3.6-coder:14b` → run `benchmarks/lib/run-compare-models.sh` against `qwen2.5-coder:14b`. Update `models.yaml`, coding personas (`my-mcp-q25c14`, `my-python-q25c14`, `my-go-q25c14`), and `ref:ltg-extractor` note in `retrieval/DECISIONS.md` if benchmark confirms quality.
+- [ ] **M-P0b — Swap embedding for LTG Phase 2:** `ollama pull qwen3-embedding:8b` → re-run VRAM co-residence probe with `qwen3:14b` (was 0.6GB; now ~5GB — result will differ). Update `ref:ltg-embedding` in `retrieval/DECISIONS.md` + `retrieval/.memories/QUICK.md`.
+- [ ] **M-P1a — Pull Llama 4 Scout:** `ollama pull llama4:scout` (~10GB, 10M ctx). Create persona `my-longctx-llama4`. Test on long-context retrieval prompt.
+- [ ] **M-P1b — Pull tiny models:** `ollama pull qwen3.5:0.8b qwen3.5:2b`. Add to `models.yaml`. Benchmark vs `qwen3:4b-q8_0` for expense classification. Verify co-residence with qwen3:14b (should fit: 14B=9.3GB + 0.8B=1GB < 12GB).
+- [ ] **M-P2 — Pull phi4-mini:** `ollama pull phi4-mini`. Benchmark vs `qwen3:4b-q8_0` for classification. Add to `models.yaml` if it passes threshold.
+- [ ] **M-update — models.yaml:** Add: `qwen3.5:{0.8b,2b,4b}`, `qwen3.6-coder:14b`, `phi4-mini`, `llama4:scout`, `qwen3-embedding:{8b,4b}`. Mark deprecated: `qwen2.5-coder:14b` (post-swap), `llama3.1:8b` (covered by qwen3:8b non-think).
+- [ ] **M-watch — DeepSeek R2 32B:** Watch for stable q2_K/q3_K Ollama tag (~11GB). Would upgrade reasoning ceiling. Check monthly.
+- [ ] **M-watch — Claude-distilled Qwen3.5-9B:** Watch `Jackrong/Qwen3.5-9B-Claude-4.6-Opus-Reasoning-Distilled-v2` for independent benchmarks. Do not pull until benchmarks confirm meaningful gain AND ToS situation clarifies.
+
+---
+
 ## Layer 5: Expense Classifier
 
 **Goal:** Local model classifies expenses, auto-inserts into Excel via expense-reporter Go tool.

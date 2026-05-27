@@ -244,3 +244,39 @@ Never rely on prompt instructions alone for structured output.
 Grammar-constrained decoding makes it deterministic.
 **Implication:** Every tool that needs structured output uses `format` param, not
 post-processing or retry loops.
+
+## Model Landscape Update (2026-05-26, session 68)
+
+Comprehensive model survey covering Qwen, Microsoft, Llama 4, Mistral, frontier-distilled models, and embedding models. Full findings: `docs/findings/model-updates-2026-05.md`.
+
+**Key supersessions:**
+- `qwen2.5-coder:14b` → `qwen3.6-coder:14b` (HumanEval ~85%→~88%, LiveCodeBench ~55%→~62%, Ollama: `qwen3.6-coder:14b`)
+- `bge-m3` → `qwen3-embedding:8b` (MTEB 63.0→70.58, +7.5pts, ~5GB VRAM, already on Ollama)
+
+**What has NOT changed:**
+- `qwen3:14b` — still SOTA for reasoning at ≤14B (no model has surpassed it)
+- `qwen3:4b-q8_0` — still best classifier/router at its tier
+- `deepseek-r1:14b` — still the best validated reasoning-distilled model in 12GB VRAM
+
+**New capability class — Llama 4 Scout (`llama4:scout`):**
+- 10M token context window (no current model in our stack approaches this)
+- Multimodal (text + image), ~10GB Q4, ~12–16 tok/s on RTX 3060
+- Does NOT replace qwen3:14b for reasoning; adds a new long-context use case
+
+**New tiny models (256K ctx, multimodal, Qwen3.5 family):**
+- `qwen3.5:0.8b` (1GB), `qwen3.5:2b` (2.7GB) — can co-reside in VRAM alongside a 14B model
+- First time a classifier and a 14B generation model can be simultaneously warm in 12GB
+- `phi4-mini` (3.8B, 2.3GB) — Microsoft, strong reasoning per parameter, on Ollama
+
+**Frontier-distilled models:**
+- `deepseek-r1:14b` (already in setup) IS a distilled model — distilled from DeepSeek-R1's reasoning traces
+- Community Claude-distilled models exist (`Jackrong/Qwen3.5-9B-Claude-4.6-Opus-Reasoning-Distilled`) but: no verified benchmarks, Anthropic ToS gray area, no Ollama tag — watch, don't pull yet
+- TeichAI org (102 models) distills from Claude/GPT-5.2/Gemini — same caveats
+
+**LTG Phase 2 implications:**
+- Start with `qwen3-embedding:8b` not `bge-m3` — already available, meaningfully better
+- VRAM: ~5GB for embedding model vs ~0.6GB for bge-m3; re-run co-residence probe with qwen3:14b
+- The extractor routing decision (qwen2.5-coder:14b for code) needs re-evaluation after benchmarking qwen3.6-coder:14b
+
+**Rationale:** Qwen3.6-Coder was released April 2026; qwen3-embedding:8b released alongside it. Both are now production-stable on Ollama. The survey was triggered by a user question about model updates.
+**Implication:** Before starting LTG Phase 2, pull and validate the two P0 swaps. Update models.yaml + affected personas after benchmarking confirms quality. Full benchmark plan in `docs/findings/model-updates-2026-05.md` § "What to Benchmark Next Session".
