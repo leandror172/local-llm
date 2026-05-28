@@ -40,26 +40,27 @@ import pyarrow as pa
 import lancedb
 
 REPO_ROOT = Path(__file__).parent.parent
-SCHEMA = pa.schema([
-    pa.field("id",                   pa.string()),
-    pa.field("file_path",            pa.string()),
-    pa.field("topic_name",           pa.string()),
-    pa.field("description",          pa.string()),
-    pa.field("spans",                pa.string()),
-    pa.field("vector",               pa.list_(pa.float32(), 1024)),
-    pa.field("embed_model",          pa.string()),
-    pa.field("embed_dim",            pa.int32()),
-    pa.field("embed_mode",           pa.string()),
-    pa.field("embedding_timestamp",  pa.string()),
-    pa.field("extractor_model",      pa.string()),
-    pa.field("extraction_run_id",    pa.string()),
-    pa.field("extraction_timestamp", pa.string()),
-    pa.field("file_role",            pa.string()),
-    pa.field("node_kind",            pa.string()),
-    pa.field("scope_tags",           pa.string()),
-    pa.field("segment_id",           pa.string(), nullable=True),
-    pa.field("segment_range",        pa.string(), nullable=True),
-])
+def build_schema(embed_dim: int) -> pa.Schema:
+    return pa.schema([
+        pa.field("id",                   pa.string()),
+        pa.field("file_path",            pa.string()),
+        pa.field("topic_name",           pa.string()),
+        pa.field("description",          pa.string()),
+        pa.field("spans",                pa.string()),
+        pa.field("vector",               pa.list_(pa.float32(), embed_dim)),
+        pa.field("embed_model",          pa.string()),
+        pa.field("embed_dim",            pa.int32()),
+        pa.field("embed_mode",           pa.string()),
+        pa.field("embedding_timestamp",  pa.string()),
+        pa.field("extractor_model",      pa.string()),
+        pa.field("extraction_run_id",    pa.string()),
+        pa.field("extraction_timestamp", pa.string()),
+        pa.field("file_role",            pa.string()),
+        pa.field("node_kind",            pa.string()),
+        pa.field("scope_tags",           pa.string()),
+        pa.field("segment_id",           pa.string(), nullable=True),
+        pa.field("segment_range",        pa.string(), nullable=True),
+    ])
 
 RUNS_DIR = Path(__file__).parent / "runs"
 
@@ -74,15 +75,17 @@ def load_embedding_jsonl(path: Path) -> List[Dict]:
     return rows
 
 def rows_to_arrow_table(rows: List[Dict]) -> pa.Table:
-    """Converts embedding dicts to a PyArrow Table matching SCHEMA."""
+    """Converts embedding dicts to a PyArrow Table. Infers embed_dim from first row."""
+    embed_dim = rows[0]["embed_dim"]
+    schema = build_schema(embed_dim)
     vectors = pa.array(
         [pa.array(r["vector"], type=pa.float32()) for r in rows],
-        type=pa.list_(pa.float32(), 1024),
+        type=pa.list_(pa.float32(), embed_dim),
     )
-    scalar_fields = [f.name for f in SCHEMA if f.name != "vector"]
+    scalar_fields = [f.name for f in schema if f.name != "vector"]
     col_data = {name: [r.get(name) for r in rows] for name in scalar_fields}
     col_data["vector"] = vectors
-    return pa.table(col_data, schema=SCHEMA)
+    return pa.table(col_data, schema=schema)
 
 def backup_index(index_path: Path, backup_path: Path) -> None:
     """Backups the index directory."""
@@ -144,7 +147,8 @@ def main():
     rows = load_embedding_jsonl(args.input)
     arrow_table = rows_to_arrow_table(rows)
     table = open_or_create_table(db, args.table, arrow_table)
-    validate_table(table, expected_count=len(rows), embed_dim=1024)
+    embed_dim = rows[0]["embed_dim"]
+    validate_table(table, expected_count=len(rows), embed_dim=embed_dim)
     
     write_run_log(args.log_dir, args.input, args.index)
     print(f"{len(rows)} rows written to {args.index}.")
