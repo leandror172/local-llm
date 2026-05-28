@@ -88,7 +88,7 @@ Build the embedding + storage layer for the Latent Topic Graph:
 | Embedding text (alt, switchable) | Description + concatenated span text | New in v2 — flag added now, A/B run when triggered |
 | Sequential constraint | embed.py must NOT run alongside qwen3:14b inference | `ref:ltg-vram-probe` |
 | Vector store | LanceDB at `retrieval/index/` | `ref:ltg-vector-store` |
-| LanceDB pin | `lancedb>=0.20,<0.30` | v1 advisor #4 |
+| LanceDB pin | `lancedb>=0.20,<0.29` (verified `0.25.0`) | v1 advisor #4; tightened session 71 — 0.29.2 has a broken `lance_namespace` import (`CreateEmptyTableRequest` not exported) |
 | Input | Phase 1 JSONL filtered to winning models per file role | Session 61 |
 | File → extractor routing | `.py/.go/.ts/.java → qwen2.5-coder:14b`; else `qwen3:14b` | `ref:ltg-extractor` |
 | Scripts | Separate files, bash wrappers, no `pyproject.toml` | Project convention |
@@ -385,7 +385,7 @@ Per v1's advisor #1: for the 8-file MVP, every re-run is a full rebuild. Append-
 ### Dependencies
 
 ```
-pip install 'lancedb>=0.20,<0.30' pyarrow
+pip install 'lancedb>=0.20,<0.29' pyarrow
 ```
 
 ---
@@ -531,7 +531,7 @@ echo "== LTG Phase 2 pre-flight =="
 echo -n "[1/5] Python deps... "
 $PY -c "import httpx, lancedb, pyarrow" 2>/dev/null \
   && echo "ok" \
-  || { echo "MISSING — run: pip install httpx 'lancedb>=0.20,<0.30' pyarrow"; exit 2; }
+  || { echo "MISSING — run: pip install httpx 'lancedb>=0.20,<0.29' pyarrow"; exit 2; }
 
 # 2. Ollama reachable
 echo -n "[2/5] Ollama reachable at $OLLAMA_URL... "
