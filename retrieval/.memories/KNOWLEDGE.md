@@ -123,3 +123,46 @@ Full rationale in `retrieval/DECISIONS.md`. Summary of what was decided and why:
 Ref keys for individual decisions: `ltg-scope`, `ltg-embedding`, `ltg-vector-store`,
 `ltg-graph-lib`, `ltg-extractor`, `ltg-placement`, `ltg-storage-layout`, `ltg-corpus`.
 <!-- /ref:ltg-phase0-decisions-index -->
+
+---
+
+<!-- ref:ltg-phase2-findings -->
+## Phase 2 — Embedding + Storage Results (2026-05-28, session 72)
+
+### Pipeline runs
+
+| Step | Command | Output | Time |
+|------|---------|--------|------|
+| Embed | `run-embed.sh --input retrieval/runs/20260416-181839.jsonl` | `retrieval/embeddings.jsonl` | 5.2s |
+| Store | `run-store.sh --input retrieval/embeddings.jsonl --index retrieval/index` | `retrieval/index/` | 1.1s |
+| Acceptance | `run-inspect.sh --acceptance --output-md retrieval/probes/acceptance-2026-05-28.md` | probe markdown | 2.3s |
+
+**Total acceptance run: 2.3s (target < 5s) ✅**
+
+### Acceptance query results
+
+| # | Query | Top-1 file | Top-1 L2 score | Pass? |
+|---|-------|-----------|---------------|-------|
+| R1 | git co-change analysis | `smart-rag-repowise.md` | 0.73 | ✅ |
+| R2 | memory across sessions | `.claude/plan-v2.md` | 0.84 | ❌ borderline |
+| R3 | models for topic extraction | `.claude/plan-v2.md` | 0.96 | ✅ (KNOWLEDGE.md in top-3) |
+| R4 | Repowise analyzes repos | `smart-rag-repowise.md` | 0.80 | ✅ |
+| N1 | expense report accuracy | `.memories/QUICK.md` | 1.08 | ✅ (L2 > 0.95 → cos < 0.55) |
+| N2 | Kubernetes deployment YAML | `smart-rag-index.md` | 1.01 | ✅ |
+| P1 | relate repowise vs smart-rag3 | — | mean cos 0.66 | ✅ (10 pairs > 0.55) |
+
+**Note on scores:** LanceDB returns L2 distance (not cosine similarity). For unit-normalised vectors: `L2 = sqrt(2*(1-cosine))`. So L2 < 0.95 ≈ cosine > 0.55.
+
+### R2 underperformance analysis
+
+Query "how do we handle memory across sessions" — `.memories/QUICK.md`'s extracted topics (`repo_structure_and_conventions`, `prompt_decomposition`) don't mention session memory explicitly. `.claude/plan-v2.md`'s `memory_and_learning_systems` topic wins. Per plan: one borderline recall query with small divergence → document and proceed, no A/B needed.
+
+**If R2 matters for Phase 3:** Re-embed `.memories/QUICK.md` with `embed_mode=description_plus_spans` to include span text in the vector, which would surface the "Working memory for the repo" line.
+
+### Surprising findings
+
+1. **`inspect.py` name collision:** `retrieval/inspect.py` shadowed Python stdlib `inspect` module via `sys.path[0]`, breaking `httpx` and `pyarrow` imports in all other retrieval scripts. Renamed to `ltg_inspect.py`.
+2. **L2 vs cosine:** LanceDB defaults to L2 distance for ANN search. The plan's acceptance thresholds (cosine < 0.55) translate to L2 > 0.949 for unit-normalised vectors. Both negative queries scored L2 > 1.0 ✅.
+3. **Relate preview:** No divergences between `smart-rag-repowise.md` and `smart-rag3.md` (both cover smart-RAG concepts). Mean cosine 0.663 — semantically very close. The acceptance relate file `smart-rag-claude-mem.md` was not in the Phase 1 corpus; substituted `smart-rag3.md`.
+4. **qwen2.5-coder:14b timeout issue:** 3 consecutive timeouts during test generation (warm model confirmed). Escalated to qwen3:14b which generated both test functions and implementation within the 300s timeout.
+<!-- /ref:ltg-phase2-findings -->

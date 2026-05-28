@@ -40,6 +40,8 @@ All three are a one-line config swap.
 
 **Sparse signal option:** If exact-token recall (model names, ref keys, flags) proves insufficient with dense-only, add a sidecar BM25 index via `bm25s` (pure Python, light). Evaluated if/when Phase 2 probe queries underperform on technical terms.
 
+**Phase 2 complete (2026-05-28, session 72):** embed.py ran 69 topics from 8 corpus files in 5.2s. `embed_mode=description` validated as default. Acceptance run: 7/8 criteria pass (R2 borderline — `.memories/QUICK.md` topics don't surface "session memory" explicitly; `.claude/plan-v2.md`'s `memory_and_learning_systems` wins instead). A/B with `description_plus_spans` deferred — only 1 query underperforms, divergence small. See `ref:ltg-phase2-findings`.
+
 **Revisit when:** Phase 2 VRAM probe fails at query time; Phase 2 probe queries show exact-match recall problems; a future Ollama release exposes bge-m3 sparse/multi-vector outputs (would unlock hybrid retrieval for free).
 <!-- /ref:ltg-embedding -->
 
@@ -132,7 +134,7 @@ All three are a one-line config swap.
 
 **Why:** Single store = single ingest path = fewer sync bugs. Filter-after-search is a single Lance query rather than two round trips + a manual join. Arrow/Parquet underneath means the "inspect" UX is tool-agnostic. Versioned time-travel is free.
 
-**Debuggability patch:** `retrieval/inspect.py` — ~30-line CLI that takes table name + optional filter and prints rows as a rich-formatted table. Replaces the shell-level debuggability that raw SQLite would provide. Built in Phase 2 alongside the first `store.py`.
+**Debuggability patch:** `retrieval/ltg_inspect.py` — ~30-line CLI that takes table name + optional filter and prints rows as a rich-formatted table. Replaces the shell-level debuggability that raw SQLite would provide. Built in Phase 2 alongside the first `store.py`.
 
 **Schema additions anticipated:**
 - `embedding` dimension = 1024 (bge-m3)
@@ -141,7 +143,7 @@ All three are a one-line config swap.
 
 **Alternatives considered:** SQLite (nodes/edges/metadata) + LanceDB (vectors only) split — rejected because: (a) two sources of truth with write-ordering risk, (b) filter-after-search becomes two round trips, (c) SQL joins are not needed until Phase 4 at earliest, and at that point adding SQLite as a metadata overlay is a 2-hour add, not a rewrite. Pure JSON — rejected for non-trivial corpus.
 
-**Known loss (accepted):** Shell-level debuggability (`sqlite3 db.sqlite "SELECT..."`) is replaced by `retrieval/inspect.py`. Mitigated, not recovered.
+**Known loss (accepted):** Shell-level debuggability (`sqlite3 db.sqlite "SELECT..."`) is replaced by `retrieval/ltg_inspect.py`. Mitigated, not recovered.
 
 **Revisit when:** Phase 4 surfaces a community-level query that Lance can't express cleanly, or multi-table transaction semantics become load-bearing.
 <!-- /ref:ltg-storage-layout -->
@@ -171,6 +173,42 @@ All three are a one-line config swap.
 
 **Revisit when:** Phase 1 completes and the two branch points above have evidence.
 <!-- /ref:ltg-corpus -->
+
+---
+
+<!-- ref:ltg-phase2-schema -->
+## Phase 2 Schema — 16-field LanceDB row (2026-05-28, session 72)
+
+Final PyArrow schema as committed in `retrieval/store.py`. All fields are strings unless noted.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | `"{file_path}:{topic_slug}"` |
+| `file_path` | string | Relative to repo root |
+| `topic_name` | string | Snake-case slug from extractor |
+| `description` | string | Topic description — embedded text (default mode) |
+| `spans` | string | JSON-encoded list of `[start, end]` line pairs |
+| `vector` | list<float32>[1024] | bge-m3 dense embedding |
+| `embed_model` | string | e.g. `"bge-m3"` |
+| `embed_dim` | int32 | 1024 |
+| `embed_mode` | string | `"description"` or `"description_plus_spans"` |
+| `embedding_timestamp` | string | ISO 8601 UTC |
+| `extractor_model` | string | `"qwen3:14b"` or `"qwen2.5-coder:14b"` |
+| `extraction_run_id` | string | UUID from Phase 1 JSONL |
+| `extraction_timestamp` | string | ISO 8601 UTC |
+| `file_role` | string | From Phase 1 JSONL (e.g. `"long_research_doc"`) |
+| `node_kind` | string | `"extracted"` (Phase 2 default; anchor/community added in Phases 3–4) |
+| `scope_tags` | string | JSON-encoded list; `"[]"` in Phase 2 |
+| `segment_id` | string (nullable) | Null in Phase 2; used if chunking added in Phase 2.5 |
+| `segment_range` | string (nullable) | Null in Phase 2 |
+
+**Key design notes:**
+- `spans` and `scope_tags` are JSON-encoded strings, not nested struct types — LanceDB nested types add schema complexity with no query benefit at MVP scale.
+- `vector` field is named `"vector"` (not `"embedding"`) — LanceDB's default ANN builder convention.
+- Forward-compat fields (`node_kind`, `scope_tags`, `segment_id`, `segment_range`) written with defaults in Phase 2 so Phase 3/4 can filter without a schema migration.
+- LanceDB pin: `lancedb>=0.20,<0.29` (verified `0.25.0`) — 0.29.x has a broken `lance_namespace` import (`CreateEmptyTableRequest` not exported).
+- Script renamed: `retrieval/ltg_inspect.py` (not `inspect.py` — shadows Python stdlib `inspect` module via `sys.path[0]`).
+<!-- /ref:ltg-phase2-schema -->
 
 ---
 

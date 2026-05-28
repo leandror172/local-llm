@@ -6,7 +6,7 @@
 
 Session 59 (2026-05-04): Phase 1 **fully closed**. ref:ltg-extractor frozen: qwen3:14b prose, qwen2.5-coder:14b code.
 Session 61 (2026-05-20): VRAM probe complete → **bge-m3 locked** (sequential constraint applies). → `ref:ltg-vram-probe`
-Phase 2 active: embed.py + store.py (LanceDB) next.
+Session 72 (2026-05-28): **Phase 2 complete.** Index at `retrieval/index/`, 69 topics from 8 files. 7/8 acceptance queries pass (R2 borderline — documented). Total acceptance run 2.3s. **Next: Phase 3 — anchor integration.** → `ref:ltg-phase2-findings`
 
 ## Deeper Memory → KNOWLEDGE.md
 
@@ -37,7 +37,7 @@ retrieval/
 - **Graph lib:** networkx + leidenalg → `ref:ltg-graph-lib`
 - **Extractor:** empirical A/B in Phase 1, no pre-commit → `ref:ltg-extractor`
 - **Placement:** `retrieval/` top-level directory → `ref:ltg-placement`
-- **Storage layout:** pure LanceDB + JSON/YAML sidecars + `inspect.py` → `ref:ltg-storage-layout`
+- **Storage layout:** pure LanceDB + JSON/YAML sidecars + `ltg_inspect.py` → `ref:ltg-storage-layout`
 - **Corpus:** curated subset + 2 branch points → `ref:ltg-corpus`
 
 ## Key Rules
