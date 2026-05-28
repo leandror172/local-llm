@@ -5,8 +5,9 @@
 ## Status
 
 Session 59 (2026-05-04): Phase 1 **fully closed**. ref:ltg-extractor frozen: qwen3:14b prose, qwen2.5-coder:14b code.
-Session 61 (2026-05-20): VRAM probe complete → **bge-m3 locked** (sequential constraint applies). → `ref:ltg-vram-probe`
-Session 72 (2026-05-28): **Phase 2 complete.** Index at `retrieval/index/`, 69 topics from 8 files. 7/8 acceptance queries pass (R2 borderline — documented). Total acceptance run 2.3s. **Next: Phase 3 — anchor integration.** → `ref:ltg-phase2-findings`
+Session 61 (2026-05-20): VRAM probe complete → bge-m3 locked (sequential constraint). → `ref:ltg-vram-probe`
+Session 72 (2026-05-28): **Phase 2 complete.** Index at `retrieval/index/`, 69 topics from 8 files. 7/8 acceptance queries pass (R2 borderline). → `ref:ltg-phase2-findings`
+Session 73 (2026-05-28): **M-P0b complete.** Upgraded embedding model: bge-m3 (1024-dim) → **qwen3-embedding:8b (4096-dim)**. WARN verdict (same as bge-m3 — load-time eviction only, zero query-time). Acceptance equivalent (R1/R3/R4 ✅, R2 ⚠️ same gap, relate 0.663→0.697). **Next: Phase 3 — anchor integration.** → `ref:ltg-embedding`
 
 ## Deeper Memory → KNOWLEDGE.md
 
@@ -32,7 +33,7 @@ retrieval/
 ## Frozen Phase 0 Decisions (see DECISIONS.md for full rationale)
 
 - **Scope:** per-repo index, federation deferred to Phase 9 → `ref:ltg-scope`
-- **Embedding:** `bge-m3` via Ollama (1024-dim dense) → `ref:ltg-embedding`
+- **Embedding:** `qwen3-embedding:8b` via Ollama (4096-dim dense; upgraded from bge-m3 session 73) → `ref:ltg-embedding`
 - **Vector store:** LanceDB (no separate SQL layer) → `ref:ltg-vector-store`
 - **Graph lib:** networkx + leidenalg → `ref:ltg-graph-lib`
 - **Extractor:** empirical A/B in Phase 1, no pre-commit → `ref:ltg-extractor`
@@ -43,6 +44,6 @@ retrieval/
 ## Key Rules
 
 - **Phase 1 is load-bearing.** Extractor freeze gates Phase 2. If quality is poor, iterate prompt — not model.
-- **VRAM probe complete (session 61):** bge-m3 locked; sequential-only constraint applies to embed.py.
+- **Sequential constraint:** embed.py and infer calls must not run in parallel. Applies to both bge-m3 (session 61) and qwen3-embedding:8b (session 73).
 - **Raw extractions gitignored** — only scores + narrative results committed.
 - **Warm models before batch runs** via `warm_model` MCP tool to eliminate cold starts.

@@ -56,6 +56,42 @@ and re-run `retrieval/run-vram-probe.sh`.
 
 ---
 
+<!-- ref:ltg-m-p0b-probe -->
+## VRAM Co-Residence: qwen3:14b + qwen3-embedding:8b (2026-05-28, session 73)
+
+**Verdict:** WARN → proceed. qwen3-embedding:8b adopted. Sequential constraint unchanged.
+
+### What was tested
+Same script (`retrieval/run-vram-probe.sh`) with `EMBED_MODEL=qwen3-embedding:8b`.
+
+### Findings
+
+**VRAM footprint:**
+- qwen3:14b runtime: **11,499 MiB** (consistent with session 61)
+- qwen3-embedding:8b: **~5,000 MiB** (vs bge-m3's 1,200 MiB — 4× larger)
+- Combined exceeds 12,288 MiB — eviction at load time confirmed
+
+**Load-time behavior:** Same as bge-m3 — Ollama evicts qwen3:14b when embedding model loads. Only one in VRAM at a time.
+
+**Query-time behavior:** 5 interleaved rounds. Zero evictions. Avg infer latency: **4,168 ms** (vs 3,559 ms with bge-m3 — +18% overhead, acceptable). Max: 4,850 ms.
+
+### Acceptance results (post-upgrade)
+- R1/R3/R4 ✅ — same correct top-1 files as Phase 2
+- R2 ⚠️ borderline — same corpus gap (`.memories/QUICK.md` doesn't surface "session memory" explicitly)
+- P1 relate ✅ — mean similarity improved 0.663 → 0.697
+- N-threshold note: original > 1.0 threshold was calibrated for bge-m3's 1024-dim L2 scale. Noise queries land at 0.84–0.98 in 4096-dim space — proportionally equivalent, threshold recalibration deferred to Phase 3.
+
+Probe: `retrieval/probes/20260528_202835.md`
+
+### Script fix (session 73)
+`run-vram-probe.sh` hardcoded `EMBED_MODEL="bge-m3"` — env override was silently ignored. Fixed to `EMBED_MODEL="${EMBED_MODEL:-bge-m3}"` (bash default-if-unset idiom). Both model variables now honor env overrides.
+
+### Code fix (session 73)
+`embed.py` hardcoded `embed_dim=1024` in two `main()` call sites. Fixed to read `embed_dim` from `config.yaml` via `load_config`. `store.py` hardcoded `1024` in `SCHEMA` constant and `rows_to_arrow_table`. Fixed: `SCHEMA` → `build_schema(embed_dim: int)` function; `rows_to_arrow_table` infers dim from first input row's `embed_dim` field.
+<!-- /ref:ltg-m-p0b-probe -->
+
+---
+
 <!-- ref:ltg-phase1-summary -->
 ## Phase 1 Extractor — Final Findings (sessions 54–59)
 

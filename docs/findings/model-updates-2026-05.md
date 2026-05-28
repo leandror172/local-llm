@@ -13,7 +13,7 @@
 | Priority | Action | Command | Impact | Verification Status |
 |---|---|---|---|---|
 | **P0 — Pull + Benchmark** | Pull qwen3.6-coder:14b; swap only if local benchmark confirms | `ollama pull qwen3.6-coder:14b` | Claimed new SOTA coder at 14B; benchmark before migrating personas | tag-unverified, bench-unverified |
-| **P0 — Pull + Probe** | Pull qwen3-embedding:8b; swap only after VRAM probe passes | `ollama pull qwen3-embedding:8b` | MTEB 70.58 vs 63.0; VRAM probe is a hard gate before LTG Phase 2 | verified-tag, bench-medium |
+| **P0 — Pull + Probe** ✅ **COMPLETE (session 73)** | Probed + adopted. bge-m3 replaced. WARN verdict (load-time eviction only, zero query-time). Acceptance equivalent; relate improved 0.663→0.697. | — | 1024→4096 dim; `ref:ltg-embedding`; `ref:ltg-m-p0b-probe` | verified-tag, bench-medium |
 | **P1 — Add** | Pull llama4:scout | `ollama pull llama4:scout` | 10GB VRAM, long-context capability; multimodal | verified-tag |
 | **P1 — Add** | Pull qwen3.5:0.8b | `ollama pull qwen3.5:0.8b` | 1GB, multimodal, ultra-fast classifier; co-resides with 14B | tag-unverified |
 | **P1 — Add** | Pull qwen3.5:2b | `ollama pull qwen3.5:2b` | 2.7GB, strong tiny model | tag-unverified |
@@ -178,12 +178,12 @@ Multimodal (text + image), 256K context ⚠, 140+ languages. *(⚠ 256K figure f
 
 | Rank | Model | MTEB | VRAM | Ollama Tag |
 |---|---|---|---|---|
-| 1 | **qwen3-embedding:8b** | 70.58 | ~5GB | `qwen3-embedding:8b` ✅ available now |
+| 1 | **qwen3-embedding:8b** ✅ **adopted (session 73)** | 70.58 | ~5GB | `qwen3-embedding:8b` — live in LTG |
 | 2 | qwen3-embedding:4b | ~68 | ~3GB | `qwen3-embedding:4b` |
 | 3 | jina-embeddings-v5-small | 71.7 (v2) | small | API-first |
-| 4 | **bge-m3** (current) | 63.0 | 0.6GB | `bge-m3` — being replaced |
+| 4 | ~~**bge-m3** (current)~~ **replaced** | 63.0 | 0.6GB | `bge-m3` — superseded; `index.bak` retained |
 
-**+7.5 MTEB points** from bge-m3 → qwen3-embedding:8b. Direct LTG Phase 2 impact.
+**+7.5 MTEB points** from bge-m3 → qwen3-embedding:8b. Adopted session 73.
 
 ---
 
