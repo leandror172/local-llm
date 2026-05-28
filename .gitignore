@@ -58,3 +58,5 @@ retrieval/embeddings.jsonl
 
 docs/plans/verdict-numeric-migration.md
 docs/plans/verdict-numeric-migration-report.md
+
+.idea/
