@@ -147,7 +147,7 @@ def main():
     validate_table(table, expected_count=len(rows), embed_dim=1024)
     
     write_run_log(args.log_dir, args.input, args.index)
-    logger.info(f"{len(rows)} rows written to {args.index}.")
+    print(f"{len(rows)} rows written to {args.index}.")
 
 if __name__ == "__main__":
     main()

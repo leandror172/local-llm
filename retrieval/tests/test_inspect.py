@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 RETRIEVAL_DIR = Path(__file__).resolve().parent.parent
 
-_spec = importlib.util.spec_from_file_location("retrieval_inspect", RETRIEVAL_DIR / "inspect.py")
+_spec = importlib.util.spec_from_file_location("retrieval_inspect", RETRIEVAL_DIR / "ltg_inspect.py")
 retrieval_inspect = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(retrieval_inspect)
 sys.modules["retrieval_inspect"] = retrieval_inspect
