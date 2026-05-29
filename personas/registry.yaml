@@ -467,3 +467,64 @@ my-mcp-q25c14:
   num_ctx: 16384
   tier: full
   status: active
+
+my-go-deepcoder:
+  modelfile: modelfiles/go-deepcoder-deepcoder.Modelfile
+  base_model: deepcoder:14b
+  role: Go 1.22+ backend developer following Effective Go and standard project layout.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: benchmark
+  note: 'Constrained variant (SYSTEM prompt matches my-go-q25c14). Benchmark vs my-go-q25c14
+    and my-go-deepcoder-vanilla. DeepCoder-14B: HumanEval+ 92.6%, LiveCodeBench 60.6%.'
+my-go-deepcoder-vanilla:
+  modelfile: modelfiles/go-deepcoder-vanilla.Modelfile
+  base_model: deepcoder:14b
+  role: Go 1.22+ backend developer (DeepCoder-14B, no system prompt — model recommended settings)
+  temperature: 0.6
+  num_ctx: 16384
+  tier: full
+  status: benchmark
+  note: 'Vanilla variant: temp=0.6, top_p=0.95, no SYSTEM per model docs. Tests raw
+    capability vs constrained variant.'
+
+my-python-deepcoder:
+  modelfile: modelfiles/python-deepcoder-deepcoder.Modelfile
+  base_model: deepcoder:14b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: benchmark
+  note: 'Constrained variant (SYSTEM prompt matches my-python-q25c14). Benchmark vs
+    my-python-q25c14 and my-python-deepcoder-vanilla.'
+my-python-deepcoder-vanilla:
+  modelfile: modelfiles/python-deepcoder-vanilla.Modelfile
+  base_model: deepcoder:14b
+  role: Python 3.11+ developer (DeepCoder-14B, no system prompt — model recommended settings)
+  temperature: 0.6
+  num_ctx: 16384
+  tier: full
+  status: benchmark
+  note: 'Vanilla variant: temp=0.6, top_p=0.95, no SYSTEM per model docs.'
+
+my-mcp-deepcoder:
+  modelfile: modelfiles/mcp-deepcoder-deepcoder.Modelfile
+  base_model: deepcoder:14b
+  role: MCP (Model Context Protocol) server and tool developer using Python FastMCP.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: benchmark
+  note: 'Constrained variant (SYSTEM prompt matches my-mcp-q25c14). Benchmark vs
+    my-mcp-q25c14 and my-mcp-deepcoder-vanilla.'
+my-mcp-deepcoder-vanilla:
+  modelfile: modelfiles/mcp-deepcoder-vanilla.Modelfile
+  base_model: deepcoder:14b
+  role: MCP server/tool developer (DeepCoder-14B, no system prompt — model recommended settings)
+  temperature: 0.6
+  num_ctx: 16384
+  tier: full
+  status: benchmark
+  note: 'Vanilla variant: temp=0.6, top_p=0.95, no SYSTEM per model docs.'

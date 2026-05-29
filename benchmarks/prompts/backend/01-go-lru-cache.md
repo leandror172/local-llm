@@ -12,6 +12,6 @@ Write a concurrent-safe LRU cache in Go with the following requirements:
 - TTL (time-to-live) expiration per entry
 - Thread-safe Get, Put, and Delete operations using sync.RWMutex
 - Automatic eviction of expired entries on access
-- A background goroutine that periodically cleans expired entries (configurable interval)
+- A background goroutine that periodically cleans expired entries (configurable interval); must accept a context.Context stop signal so the goroutine exits cleanly — no goroutine leaks
 - Maximum capacity with LRU eviction when full
-- Include a complete main() demonstrating usage with 3+ concurrent goroutines performing Get/Put operations
+- Include a complete main() demonstrating usage with 3+ concurrent goroutines performing Get/Put operations; must be runnable with `go run -race` without data race warnings

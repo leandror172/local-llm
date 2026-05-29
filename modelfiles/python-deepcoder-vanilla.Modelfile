@@ -1,0 +1,19 @@
+FROM deepcoder:14b
+
+# Context window: 16K tokens — same as my-python-q25c14 for apples-to-apples benchmark.
+PARAMETER num_ctx 16384
+
+# Temperature: 0.6 — model's own recommendation.
+PARAMETER temperature 0.6
+
+# top_p: 0.95 per model recommendation.
+PARAMETER top_p 0.95
+PARAMETER repeat_penalty 1.1
+
+# Stop sequences: DeepSeek-R1 ChatML end markers.
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# No SYSTEM prompt — per DeepCoder docs: "Avoid adding a system prompt;
+# all instructions should be contained within the user prompt."
+# Used in benchmark to test model's raw capability vs constrained variant.
