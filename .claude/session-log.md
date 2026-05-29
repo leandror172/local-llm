@@ -1,8 +1,38 @@
 # Session Log
 
 **Current Layer:** LTG Phase 3 — Anchor Integration
-**Current Session:** 2026-05-29 — Session 74: M-P0a benchmark — DeepCoder-14B vs qwen2.5-coder:14b
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`
+**Current Session:** 2026-05-29 — Session 75: Infrastructure, model pulls, context-limit audit
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`
+
+---
+
+## 2026-05-29 - Session 75: Infrastructure, model pulls, context-limit audit
+
+### Context
+Started with all PRs merged, master clean. Branched conversation (/btw) for a side question about context limits; both branches had work. Primary session focused on infrastructure (Ollama model store migration, KV cache quant), model pulls, and persona fixes. Branch covered context-limit doc audit.
+
+### What Was Done
+- **MCP persona fixes:** `my-mcp-q25c14` + `my-mcp-q3` — added CANONICAL EXAMPLE block with correct `from mcp.server.fastmcp import FastMCP` import. Also backfilled SOLID constraints to `my-mcp-q3`. Both rebuilt + smoke-tested.
+- **Layer 5 status sync:** Queried expense-reporter repo; all 5.1–5.8 tasks complete (439 tests). Created `.claude/adjacent-projects.md` for loose cross-repo tracking. Updated tasks.md — Layer 5 ACTIVE (not COMPLETE; retrieval upgrades remain).
+- **Ollama model store migrated C: → I:\\:** Moved 156GB blobs to `/mnt/i/ollama-models/`. Updated systemd override with `OLLAMA_MODELS=/mnt/i/ollama-models` + `Requires=mnt-i.mount`. 78/78 models verified. C:\\ no longer grows from model pulls (406GB free on I:\\). VHD compaction optional cleanup.
+- **`OLLAMA_KV_CACHE_TYPE=q8_0` enabled system-wide:** Added to systemd override. Halves KV cache VRAM cost. Effect: 8B models → 32K effective ctx; 14B → 16K with headroom (re-probe pending).
+- **Model pulls:** `qwen3.5:0.8b` (1.0GB), `qwen3.5:2b` (2.7GB), `phi4-mini` (2.5GB) pulled. `llama4:scout` pulled (67GB) then removed — not viable on 12GB (smallest quant 33.8GB needs 24GB VRAM; long-context reasoning quality also poor at 15.6% on Fiction.liveBench@128K).
+- **M-P1a closed:** Opus subagent + web-research confirmed Scout not viable at any quant on this hardware. Closed as permanent; watch note added for future ≤15GB long-context synthesis model.
+- **Context-limit audit (branched session):** Subagent identified 18 stale references to old limits (4K/10240). All 18 applied across CLAUDE.md, session-context.md, extract_topics.py, DECISIONS.md, models.yaml, mcp-server/README.md, persona-template.md, modelfile-reference.md, closing-the-gap.md, model-strategy.md, layer-0-runtime-refs.md, advisor-notes.md, README.md, portfolio mirrors.
+- **`extract_topics.py` num_ctx:** 8192 → 16384 (direct LTG quality impact — was truncating files before extraction).
+- **Deferred task added:** Re-probe 14B models at 24K–32K after q8_0 before committing to higher num_ctx.
+
+### Decisions Made
+- **Adjacent-projects pattern:** Other repos tracked loosely in `.claude/adjacent-projects.md` — not mirrored in tasks.md. Internal tracking stays in each repo.
+- **Layer 5 status:** ACTIVE not COMPLETE — 5.R1 TF-IDF, 5.R2 embeddings, RUI-3/4 remain in expense-reporter.
+- **Llama 4 Scout: permanently closed.** Hardware wall is absolute (33.8GB minimum, 24GB VRAM floor). Wrong model for synthesis use case regardless.
+- **Long-context path forward:** `OLLAMA_KV_CACHE_TYPE=q8_0` + existing qwen3:8b at 32K is the right answer for document analysis. Chunk-and-retrieve via LTG beats single-model long-context dump.
+
+### Next
+- **LTG Phase 3** — anchor integration (`retrieval/anchors.py`, embed ref:KEY blocks, merge with extracted topics). See `docs/plans/2026-04-13-latent-topic-graph-implementation.md` § Phase 3.
+- **Classifier benchmark (M-P1b/P2):** `qwen3.5:0.8b`, `qwen3.5:2b`, `phi4-mini` vs `qwen3:4b-q8_0`. Now that models are pulled.
+- **14B num_ctx re-probe:** Deferred task. Run before any session needing >16K context on 14B.
+- **M-P0a cleanup:** Retire 6 DeepCoder benchmark personas + `deepcoder:14b` base (still installed, 9GB on I:\\).
 
 ---
 
@@ -87,79 +117,6 @@ Continuation of Phase 2 implementation. Resumed from `.claude/prompt-ltg-phase2-
 - **Create PR** for `feature/ltg-phase2-implementation` → master
 - **LTG Phase 3** — anchor integration (anchor nodes, Phase 1 JSONL → anchor table, relate() with anchor overlay)
 - **M-P0b** — VRAM probe for `qwen3-embedding:8b` + qwen3:14b (now unblocked)
-
----
-
-## 2026-05-27 - Session 71: LTG Phase 2 Tasks 3–6 (model_client, preflight, embed, store)
-
-### Context
-Continuation of Phase 2 implementation (session 70 was design-only). Resumed from `.claude/prompt-ltg-phase2-continuation.md`. Branch: `feature/ltg-phase2-implementation`. Tasks 3–6 of 9 completed this session.
-
-### What Was Done
-- **Task 3 — model_client.py:** `load_config()` + `ModelClient` (embed_dim, embed_texts) isolation layer. 13 tests green. Ollama verdict 1 — async/await on sync httpx.post (2-site fix).
-- **Task 4 — preflight.sh + run-preflight.sh:** 5-check fail-fast script (python deps, Ollama reachable, bge-m3 pulled, Phase 1 JSONL exists, disk space). All 5 checks pass. Ollama verdict 2.
-- **Task 5 — embed.py + run-embed.sh:** Reads Phase 1 JSONL, routes to winning extractor (code vs prose), batches embed via bge-m3 `/api/embed`, writes 16-field embedding JSONL. Includes sequential constraint header comment. 23 tests green. Ollama generated helpers at verdict 1 (4 fixes: unique_slugs -1→-2, wrong join, utcnow→timezone.utc, missing json import). main() written by Claude after 4 Ollama attempts (3 cold-start timeouts + 1 rejected for wrong generator/list handling).
-- **Task 6 — store.py + run-store.sh:** 16-field PyArrow SCHEMA, load_embedding_jsonl, rows_to_arrow_table (fixed-size float32 list), backup_index (shutil.move, replace prior backup), open_or_create_table (mode=overwrite), validate_table, write_run_log, main(). 11 tests green. Ollama verdict 1 — missing shutil/datetime imports + LanceTable.column() doesn't exist (use .to_arrow().column()).
-- **4 commits pushed** to `feature/ltg-phase2-implementation`.
-
-### Decisions Made
-- **Ollama prompts:** behavioral intent only, not code stubs — confirmed by user correction mid-session. Sending function stubs as prompts defeats the purpose of delegation.
-- **Tests should also go to Ollama** when they contain non-trivial logic — not just implementations.
-- **Prompt splitting:** large prompts (>2000 chars + 3 large context files) time out on 14B; split helpers-first + main()-second.
-
-### Gotchas Discovered
-- **httpx async slip:** qwen2.5-coder generates `async def`/`await httpx.post` even when context is sync. Fix prompt: explicitly say "use `httpx.post(url, json=payload, timeout=120.0)` — NOT async."
-- **LanceTable API:** `.column("vector")` does not exist on LanceTable; use `.to_arrow().column("vector").to_pylist()`.
-- **generate_code timeout pattern:** Not cold start — model loaded but 14B + large context = real timeout. Split context or reduce prompt size.
-
-### Next
-- **Task 7:** `inspect.py` — 5 modes: `--query` (ANN top-k), `--list`, `--stats`, `--relate` (pairwise cosine preview), `--acceptance` (runs all 7 probe queries, writes markdown to `retrieval/probes/`). TDD + Ollama. See v2 plan lines 393–469.
-- **Task 8:** Run acceptance — embed Phase 1 JSONL → store → inspect --acceptance. 4 recall + 2 negative + 1 relate-preview queries. Latency target: <5s for all 7 queries.
-- **Task 9:** Post-completion doc updates (DECISIONS.md, .memories/, session-context.md, index.md).
-- **Read before starting Task 7:** v2 plan lines 393–469 (inspect.py spec) + 567–606 (acceptance test definitions).
-- **Reminder for next session:** delegate test-writing to Ollama too; use behavioral prompts not code stubs.
-
----
-
-## 2026-05-27 - Session 70: LTG Phase 2 design decisions (no implementation yet)
-
-### Context
-All PRs merged (treated as merged per user instruction: #37 Plans 1+2, #38 Plan 3+logging, #39 model survey). Session focused entirely on design decisions for LTG Phase 2 before any code is written. A context-bloat incident (advisor call doubled context past 100K) truncated the session mid-design; key decisions were recovered from an extracted session file and decisions committed to the plan doc.
-
-### What Was Done
-- **Oriented on Phase 2 state:** plan ready, Phase 1 JSONL exists (8 files × 4 models), bge-m3 + qwen3:14b pulled, lancedb/pyarrow not yet installed, .gitignore missing two entries.
-- **Decided embedding model path:** bge-m3 for Phase 2 as planned; VRAM probe for qwen3-embedding:8b deferred to *after* Phase 2 completes (not a gate for Phase 2 start). Confirmed changing models later = 2 config lines only (model name + embed_dim).
-- **model_client.py isolation layer designed:** scripts never touch httpx or provider URLs; all model calls go through `ModelClient(config)`. Interface: `embed()`, `embed_batch()`, `embed_dim()`, `generate()`. Ollama-only for Phase 2; provider branches extensible later.
-- **config.yaml shape decided:** flat/inline for Phase 2 (one role: `embedding`). Comment in file documents two-level upgrade path. Upgrade trigger: ≥2 roles share same base model with different params, OR ≥3 roles total.
-- **embed_dim validation:** Option B — assert `len(vector) == config.embed_dim` on first embed call; fail with message pointing to config key. Lazy (not at init), no extra network cost.
-- **extract_topics.py:** untouched for Phase 2; retrofit to model_client.py is a deferred task.
-- **Naming convention for registered models:** `{provider}-{model-slug}-{key-params}` e.g. `ollama-bge-m3-dim-1024`, `ollama-qwen3-14b-no-think`. Append only differentiating properties.
-- **New file:** `docs/ideas/ltg-model-registry-design.md` — full two-level design, naming convention, load_config() resolution pseudocode, note on parallel registry + LTG repo separation.
-- **Updated:** `docs/plans/ltg-phase2-implementation.md` — added model_client.py + config.yaml to scope, Decisions In Force table (3 new rows), Required Reading table (1 new row), post-completion checklist.
-- **Updated:** `.claude/tasks.md` — replaced old ModelCaller Protocol stub with concrete retrofit task; added LTG config two-level upgrade task.
-- **Updated:** `.claude/index.md` — entry for `docs/ideas/ltg-model-registry-design.md`.
-
-### Decisions Made
-- **bge-m3 for Phase 2** (probe qwen3-embedding:8b after Phase 2, not before)
-- **model_client.py is new Phase 2 scope** alongside embed.py/store.py/inspect.py
-- **embed_dim: assert on first embed** (Option B, lazy)
-- **config.yaml: flat inline for Phase 2;** two-level design at Phase 3+ trigger
-- **LTG likely moving to own repo** before Phase 3+ integration (noted in registry design doc)
-
-### Next
-- **Start LTG Phase 2 implementation.** Read before coding (in order):
-  1. `retrieval/.memories/QUICK.md`
-  2. `retrieval/.memories/KNOWLEDGE.md` (`ref:ltg-vram-probe` + `ref:ltg-phase1-summary`)
-  3. `docs/plans/ltg-phase2-implementation.md` — full spec (authoritative)
-  4. `docs/ideas/ltg-model-registry-design.md` — model_client.py interface + config.yaml shape
-  5. `retrieval/DECISIONS.md` (`ref:ltg-embedding`, `ref:ltg-vector-store`, `ref:ltg-storage-layout`)
-  6. `retrieval/extract_topics.py` — JSONL format + dependency pattern (httpx, no pyproject.toml)
-  7. First 5 lines of `retrieval/runs/20260416-181839.jsonl` — see actual Phase 1 data
-  8. `.memories/QUICK.md` — repo-level status
-- **Pre-implementation checklist before writing any code:**
-  - `pip install 'lancedb>=0.20,<0.30' pyarrow` (httpx already present)
-  - Add `retrieval/index/` and `retrieval/embeddings.jsonl` to `.gitignore`
-- Build order: config.yaml → model_client.py → embed.py → store.py → inspect.py → bash wrappers → acceptance test
 
 ---
 
