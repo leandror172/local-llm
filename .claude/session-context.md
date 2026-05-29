@@ -102,7 +102,7 @@ Cold-start timeouts → `TIMEOUT_COLD_START`, not 0 (rejected). No DPO triple re
 
 **Prompt anti-patterns (confirmed session 71):**
 - Do NOT send code stubs to Ollama — describe behavior, not implementation. Stubs = you wrote the code and the model transcribed it.
-- Do delegate test-writing to Ollama when tests contain non-trivial logic.
+- Do delegate test-writing to Ollama when tests contain non-trivial logic - you may pass test names.
 - Large prompts (>2000 chars + 3 large context files) time out on 14B even when model is warm. Split into helper-first + main()-second calls.
 
 **LanceDB API gotcha (session 71):** `LanceTable` has no `.column()` method. Use `.to_arrow().column("field_name").to_pylist()` to read a column. `table.count_rows()` is available directly.
