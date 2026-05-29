@@ -37,6 +37,12 @@ docs/portfolio/hf-space/context/*.md
 # Python bytecode cache
 __pycache__/
 
+# LTG retrieval artifacts (binary index + transient embedding output)
+# Keep tracked: retrieval/probes/*.md, retrieval/runs/embed-*.jsonl, retrieval/runs/store-*.jsonl
+retrieval/index/
+retrieval/index.bak/
+retrieval/embeddings.jsonl
+
 # Environment variables (API keys, secrets)
 .env
 # Aider working files (chat history, cache, tags — not config)
@@ -52,3 +58,5 @@ __pycache__/
 
 docs/plans/verdict-numeric-migration.md
 docs/plans/verdict-numeric-migration-report.md
+
+.idea/

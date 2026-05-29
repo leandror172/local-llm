@@ -1,0 +1,18 @@
+# LTG retrieval — model client config (Phase 2).
+#
+# Flat/inline shape: one role, embedded model config directly under it.
+#
+# Upgrade to the two-level `models:` + `roles:` design when EITHER:
+#   - ≥2 roles reference the same base model with different params, OR
+#   - ≥3 roles total
+# (Expected at Phase 3 when extraction roles join the embedding role.)
+#
+# Full upgrade design + naming convention: docs/ideas/ltg-model-registry-design.md
+# Phase 2 plan: docs/plans/ltg-phase2-implementation-v2.md (`ref:ltg-phase2-plan-v2`)
+
+roles:
+  embedding:
+    provider: ollama
+    model: bge-m3
+    address: http://localhost:11434
+    embed_dim: 1024

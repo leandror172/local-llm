@@ -8,7 +8,7 @@ Layers 0-4 complete (of 10-layer plan). Infrastructure fully operational.
 Layer 5+ active: expense classifier, chatbot Phases 1+2 (cross-repo context + LLM routing).
 Session 59 (2026-05-04): LTG Phase 1 **fully closed**. All 3 freeze gates cleared.
 **ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code. ⚠ See session 68 — coder arm superseded.
-Phase 2 active: VRAM probe complete. **Use qwen3-embedding:8b (not bge-m3)** — already on Ollama, MTEB 70.58 vs 63.0.
+Phase 2 active: VRAM probe complete (bge-m3 locked, sequential constraint). **Phase 2 uses bge-m3.** qwen3-embedding:8b VRAM probe deferred to *after* Phase 2 completes (M-P0b — hard gate, ~5GB vs bge-m3's ~1.2GB, requires re-probe). Session 70 added `model_client.py` + `config.yaml` to Phase 2 scope. Authoritative plan: `docs/plans/ltg-phase2-implementation-v2.md` + session 70 additions.
 Sessions 63-65 (2026-05-22): MCP Plans 1+2+3 complete — `refs`/`refs_root`, `output_file`/`output_only`,
 `patch_file` tool. 29 green tests total. PRs #37 (Plans 1+2) and #38 (Plan 3) open, pending merge.
 Session 68 (2026-05-26): Model survey complete. Key findings:

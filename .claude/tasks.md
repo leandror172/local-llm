@@ -59,7 +59,12 @@ Completed items → `.claude/archive/deferred-completed.md`
 - [x] **MCP server — `refs` + `refs_root` params on `ask_ollama` + `generate_code` (TDD):** Completed session 63. 10 green tests. Live acceptance tested. Branch: `feature/ollama-bridge-refs-param`.
 - [x] **MCP server — `output_file` + `output_only` params on `ask_ollama` + `generate_code` (TDD):** Completed session 64. 9 green tests. Live acceptance tested (basic write, relative path, output_only, edit loop). Branch: `feature/ollama-bridge-output-file`.
 - [x] **MCP server — `patch_file` tool (TDD):** Completed session 65. 10 green tests (29 total). Atomic write via tmp+rename, uniqueness check, replace_all flag, UTF-8 round-trip. Also added `_strip_code_fences()` to `generate_code`. Branch: `feature/ollama-bridge-patch-file-impl`. PR #38 (base: feature/ollama-bridge-output-file).
-- [ ] **LTG Phase 2 — embed.py + store.py + inspect.py + bash wrappers:** Plan ready and decisions locked → `docs/plans/ltg-phase2-implementation.md` (`ref:ltg-phase2-plan`). Read Required Reading section (7 files) before starting.
+- [x] **LTG Phase 2 — model_client.py + config.yaml:** Done session 71. 13 tests green.
+- [x] **LTG Phase 2 — preflight.sh + run-preflight.sh:** Done session 71. 5/5 checks pass.
+- [x] **LTG Phase 2 — embed.py + run-embed.sh:** Done session 71. 23 tests green. Sequential constraint header included.
+- [x] **LTG Phase 2 — store.py + run-store.sh:** Done session 71. 11 tests green. 16-field schema, auto-backup, mode=overwrite.
+- [x] **LTG Phase 2 — ltg_inspect.py + acceptance run + post-completion docs:** Tasks 7–9 complete session 72. 14/14 tests green. Acceptance 7/8 pass (R2 borderline), 2.3s. Renamed from inspect.py (stdlib shadow). See `ref:ltg-phase2-findings`.
+- [x] **LTG Phase 2 — delegate test-writing to Ollama:** Applied session 72 — scaffold written manually, 14 test function bodies delegated to qwen3:14b (qwen2.5-coder:14b timed out 3×; escalation to tier 2 confirmed working).
 - [ ] **LTG Phase 2 — A/B: description-only vs description+spans embedding:** Deferred from session 61. Embed topic description only (current) vs description + concatenated span text. Measure recall difference on the 4 probe queries. Trigger: any probe query underperforms dense-only. See `ref:ltg-embedding` "sparse signal option".
 - [ ] **LTG Phase 2.5 — full corpus expansion:** After 8-file acceptance test passes, run `extract_topics.py` on full MVP corpus (`docs/research/`, `docs/ideas/`, `.claude/`, `.memories/`) with the frozen 2-arm routing, embed all output, populate index. Deferred from session 61.
 - [ ] **Subagent MCP server integration discoverability:** See `docs/findings/mcp-subagent-integration.md`. Short-term: `~/.claude/agents/ollama-worker.md` template.

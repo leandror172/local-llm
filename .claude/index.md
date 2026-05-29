@@ -133,6 +133,10 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `retrieval/run-vram-probe.sh` | VRAM co-residence probe: qwen3:14b + bge-m3 simultaneous load + interleaved stress. PASS/WARN/FAIL verdict. | Phase 2 gate before writing embed pipeline; re-run if embedding model changes |
+| `retrieval/run-preflight.sh` | 5-check preflight: deps, Ollama, bge-m3, JSONL input, disk space. | Before any embed/store run |
+| `retrieval/run-embed.sh` | Reads Phase 1 JSONL, routes by extension, batches embed via bge-m3, writes 16-field embedding JSONL. | Phase 2 step 1: produce embeddings.jsonl |
+| `retrieval/run-store.sh` | Reads embedding JSONL, creates/overwrites LanceDB `topics` table with backup. | Phase 2 step 2: build the index |
+| `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |
 
 ### MCP Server
 | Script | Purpose | When to Use |

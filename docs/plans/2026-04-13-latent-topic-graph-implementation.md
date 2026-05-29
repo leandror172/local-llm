@@ -87,6 +87,8 @@ The executing session should confirm or revise each of these before Phase 1. Dec
 **Deliverables:** `retrieval/embed.py`, `retrieval/store.py`, `retrieval/schema.sql` (if SQLite metadata), populated `retrieval/index/`.
 
 **Session 52 notes:** Embedding model is `bge-m3` via Ollama (1024-dim dense) per `ref:ltg-embedding`. Storage is pure LanceDB per `ref:ltg-storage-layout` — no `schema.sql`; the LanceDB schema includes optional `segment_id` / `segment_start` / `segment_end` fields if Phase 1 long-file findings require chunking. A VRAM co-residence probe (qwen3:14b + bge-m3) is required before locking the embedding choice.
+
+**Session 72 expansion (2026-05-28):** Phase 2 fully closed. Authoritative v2 plan: `docs/plans/ltg-phase2-implementation-v2.md`. Key additions over v1: `model_client.py` isolation layer, `config.yaml` role-keyed config, `--embed-mode` flag (description vs description_plus_spans), 16-field schema (forward-compat fields: `node_kind`, `scope_tags`, `segment_id`, `segment_range`), `ltg_inspect.py` 5-mode CLI (renamed from `inspect.py` — stdlib naming collision), TDD throughout. Final schema: `ref:ltg-phase2-schema`. Results: 69 topics, 8 files, 7/8 acceptance queries pass, 2.3s total runtime.
 <!-- /ref:ltg-plan-phase-2 -->
 
 <!-- ref:ltg-plan-phase-3 -->
