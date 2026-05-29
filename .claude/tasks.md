@@ -96,34 +96,9 @@ Survey complete → `docs/findings/model-updates-2026-05.md`. Branch: `feature/m
 
 ---
 
-## Layer 5: Expense Classifier
+## Layer 5: Expense Classifier — ACTIVE (expense-reporter repo)
 
-**Goal:** Local model classifies expenses, auto-inserts into Excel via expense-reporter Go tool.
-**Context:** `docs/vision/expense-classifier-vision.md` (full vision + iterative plan)
-**Data inventory:** `docs/vision/expense-classifier-data-inventory.md`
-**External data:** `I:\workspaces\expenses\` (auto-category analysis + expense-reporter source)
-**Two-repo workflow (session 36):** Layer 5 feature work lives in `~/workspaces/expenses/code/` (expense-reporter repo). This repo holds the MCP thin wrapper (5.8) only. Scaffolding template: `docs/scaffolding-template.md`. Expense repo branch: `feature/claude-code-scaffolding`.
-
-> **REPO BOUNDARY:** Tasks 5.1–5.7 are executed in `~/workspaces/expenses/code/` (expense-reporter repo).
-> This file tracks their status only — do NOT execute them here.
-> Only task **5.8** (MCP thin wrapper) runs in this repo.
-
-### Pre-work — COMPLETE (sessions 32–35)
-JSONL logging, local-model-first CLAUDE.md instruction, model audit (qwen2.5-coder:14b + 14B personas), multi-model comparison tooling, `think: false` fix, num_ctx tuning. All done.
-
-### Layer 5 Tasks (next)
-- [ ] **5.1** Port training data into expense-reporter: copy `feature_dictionary_enhanced.json` + `training_data_complete.json` to `data/` in expense-reporter; document format
-- [ ] **5.2** `classify` command in expense-reporter: 3-field input → Ollama HTTP → structured JSON → top-N subcategories with confidence
-- [ ] **5.3** `auto` command: classify + insert if HIGH confidence (≥0.85), else print candidates
-- [ ] **5.4** `batch-auto` command: classify a CSV, write classified.csv (HIGH) + review.csv (LOW)
-- [ ] **5.5** Correction logging: `corrections.jsonl` — {input, predicted, actual, confidence} on user override
-- [ ] **5.6** Expense persistence: hash ID (sha256[:12] of normalized item+date+value), `expenses_log.jsonl` appended on insert
-- [ ] **5.7** Few-shot injection: keyword pre-match against training data, inject top-K examples into classify prompt
-- [ ] **5.8** MCP thin wrapper in llm repo: `classify_expense` / `add_expense` / `auto_add` tools
-
-### Key decisions (from session 32 design)
-- Classification logic in **expense-reporter** (Go) — it's a product feature, not LLM infrastructure
-- MCP wrapper in **llm repo** — thin, calls the Go binary as subprocess
-- Training data strategy: hybrid (feature dict + correction rules as system + top-K few-shot per request)
-- Structured output via Ollama `format` param — already proven reliable
-- Model to benchmark: Qwen3-8B (`my-classifier-q3`) vs Qwen2.5-Coder-7B (speed)
+All tasks 5.1–5.8 done as of 2026-05-29. 439 tests passing. Work tracked in `~/workspaces/expenses/code/`.
+Note: MCP wrapper (5.8) ended up in expense-reporter's own `mcp-server/`, not this repo.
+Deferred work (5.R1 TF-IDF, 5.R2 embeddings, RUI-3 apply, RUI-4 3-level path) tracked there.
+Cross-repo status + implications → `.claude/adjacent-projects.md`
