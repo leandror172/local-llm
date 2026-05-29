@@ -29,7 +29,10 @@ from typing import Dict, List, Optional
 
 import httpx
 
+from model_client import ModelClient, load_config
+
 REPO_ROOT = Path(__file__).parent.parent
+CONFIG_PATH = Path(__file__).parent / "config.yaml"
 RUNS_DIR = Path(__file__).parent / "runs"
 
 CODE_EXTENSIONS = {".py", ".go", ".ts", ".java"}
@@ -232,10 +235,14 @@ def write_run_log(log_dir: Path, output_rows: List[dict], elapsed_s: float) -> N
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="LTG Phase 2 embed — topic embedding via bge-m3")
+    cfg = load_config(CONFIG_PATH)
+    cfg_model    = cfg.get("embedding", {}).get("model", "bge-m3")
+    cfg_dim      = cfg.get("embedding", {}).get("embed_dim", 1024)
+
+    parser = argparse.ArgumentParser(description="LTG Phase 2 embed — topic embedding")
     parser.add_argument("--input",         required=True,  type=Path)
     parser.add_argument("--output",        required=True,  type=Path)
-    parser.add_argument("--embed-model",   default="bge-m3")
+    parser.add_argument("--embed-model",   default=cfg_model)
     parser.add_argument("--embed-mode",    default="description",
                         choices=["description", "description_plus_spans"])
     parser.add_argument("--batch-size",    default=32,  type=int)
@@ -258,9 +265,9 @@ def main() -> None:
     all_tuples = list(collect_embed_tuples(grouped, args.embed_mode, REPO_ROOT))
     results = list(process_batches(
         all_tuples, args.batch_size, args.embed_model,
-        args.ollama_url, 1024, args.max_failures,
+        args.ollama_url, cfg_dim, args.max_failures,
     ))
-    output_rows = write_output_jsonl(results, args.output, args.embed_model, 1024, args.embed_mode)
+    output_rows = write_output_jsonl(results, args.output, args.embed_model, cfg_dim, args.embed_mode)
     elapsed = time.monotonic() - t0
     write_run_log(args.log_dir, output_rows, elapsed)
     print(f"{len(grouped)} files, {len(output_rows)} topics emitted, "

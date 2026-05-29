@@ -1,8 +1,36 @@
 # Session Log
 
-**Current Layer:** LTG Phase 2 — Embedding + Storage
-**Current Session:** 2026-05-28 — Session 72: LTG Phase 2 Tasks 7–9 (ltg_inspect.py, acceptance, docs)
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`
+**Current Layer:** LTG Phase 3 — Anchor Integration
+**Current Session:** 2026-05-28 — Session 73: M-P0b VRAM probe + embedding upgrade (bge-m3 → qwen3-embedding:8b)
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`
+
+---
+
+## 2026-05-28 - Session 73: M-P0b VRAM probe + embedding upgrade (bge-m3 → qwen3-embedding:8b)
+
+### Context
+Started by running `resume.sh`. PR#42 (`feature/ltg-phase2-implementation` → master) was already open. Moved directly to M-P0b — the VRAM co-residence probe for `qwen3-embedding:8b` + `qwen3:14b`, which was unblocked now that Phase 2 was complete. All session work committed to new branch `feature/ltg-embedding-upgrade-qwen3`.
+
+### What Was Done
+- **M-P0b VRAM probe:** Re-used `retrieval/run-vram-probe.sh` with `EMBED_MODEL=qwen3-embedding:8b`. Fixed the script first — `EMBED_MODEL="bge-m3"` was hardcoded (env override silently ignored); changed to `${EMBED_MODEL:-bge-m3}` idiom. Probe verdict: **WARN** (same as bge-m3) — load-time eviction, zero query-time evictions, avg infer 4.2s (vs 3.5s with bge-m3).
+- **Decision: re-embed before Phase 3 (Option A):** Re-embedding cost is small (69 topics, ~3s); deferring would multiply the re-embed scope each phase (corpus + anchors vs corpus only). Embedding upgraded immediately.
+- **config.yaml updated:** `model: bge-m3 → qwen3-embedding:8b`, `embed_dim: 1024 → 4096`.
+- **embed.py fixed:** Hardcoded `embed_dim=1024` in two `main()` call sites replaced with `cfg_dim` from `load_config(CONFIG_PATH)`. Also imports `ModelClient, load_config` from `model_client`.
+- **store.py fixed:** `SCHEMA` constant → `build_schema(embed_dim: int)` function. `rows_to_arrow_table` infers `embed_dim` from first input row's field. `main()` reads `rows[0]["embed_dim"]` for `validate_table`.
+- **Pipeline re-run:** `run-embed.sh` → 69 topics, 2.9s, 4096-dim. `run-store.sh` → 69 rows, old index auto-backed up to `index.bak`. Acceptance: R1/R3/R4 ✅, R2 ⚠️ same corpus gap, P1 relate improved 0.663→0.697.
+- **Docs/memories updated:** `retrieval/DECISIONS.md` (`ref:ltg-embedding` rewritten, schema table updated), `retrieval/.memories/QUICK.md`, `retrieval/.memories/KNOWLEDGE.md` (new `ref:ltg-m-p0b-probe`), `.memories/QUICK.md`, `docs/findings/model-updates-2026-05.md` (M-P0b row marked complete, embedding table updated).
+- **2 commits** on `feature/ltg-embedding-upgrade-qwen3`: `a0f1e92` (code + probe + artifacts) + `5f04a4e` (memories + docs). **61 tests green.**
+
+### Decisions Made
+- **Re-embed before Phase 3** — Option A chosen; cost is small and avoiding it multiplies re-embed scope at every future phase.
+- **N-criteria threshold recalibration deferred to Phase 3** — original `> 1.0` threshold was bge-m3 1024-dim calibrated. Noise queries at 0.84–0.98 in 4096-dim are proportionally equivalent; recalibrate when Phase 3 anchors join corpus.
+- **embed.py config-driven** — model + embed_dim now come from `config.yaml`; future model swaps require only one config edit.
+- **store.py schema-dynamic** — `build_schema(embed_dim)` replaces `SCHEMA` constant; dimension flows from input JSONL, not from code.
+
+### Next
+- **Open PR** for `feature/ltg-embedding-upgrade-qwen3` (branches off `feature/ltg-phase2-implementation` — coordinate merge order with PR#42)
+- **LTG Phase 3** — anchor integration (anchor nodes, Phase 1 JSONL → anchor table, `relate()` with anchor overlay)
+- **M-P0a** — still pending: pull + benchmark `qwen3.6-coder:14b` vs `qwen2.5-coder:14b`
 
 ---
 
@@ -101,42 +129,6 @@ All PRs merged (treated as merged per user instruction: #37 Plans 1+2, #38 Plan 
   - `pip install 'lancedb>=0.20,<0.30' pyarrow` (httpx already present)
   - Add `retrieval/index/` and `retrieval/embeddings.jsonl` to `.gitignore`
 - Build order: config.yaml → model_client.py → embed.py → store.py → inspect.py → bash wrappers → acceptance test
-
----
-
-## 2026-05-27 - Session 69: Advisor review applied to model survey (session 68)
-
-### Context
-Session 68 produced `docs/findings/model-updates-2026-05.md` (model update survey) and the advisor reviewed it. The advisor identified source-quality issues: benchmark numbers and Ollama tag existence claims sourced from secondary blogs, not primary sources. This session applies 8 specific edits to the survey doc plus cascading updates to memory and tracking files.
-
-### What Was Done
-- **PR #39 details:** Existing open PR `feature/model-survey-2026-05` → `master`, 29 changed files, 2344 additions, clean/mergeable.
-- **New branch `feature/model-survey-advisor-review`** off `feature/model-survey-2026-05`.
-- **8 edits to `docs/findings/model-updates-2026-05.md`:**
-  1. Methodology footnote added at top (secondary source warning)
-  2. TL;DR P0 rows re-framed: "Swap" → "Pull + Benchmark" / "Pull + Probe"; swap made conditional
-  3. Verification Status column added to TL;DR table with 5-value legend
-  4. Qwen3.7 Max qualified: single-source, unusual naming, verify from official blog
-  5. Benchmark numbers (~88%/~62% etc.) footnoted as secondary-source claims; ¹ notation added
-  6. Embedding co-residence probe marked as hard gate (not follow-up) in LTG Phase 2 impact table
-  7. Llama 4 Scout 10M context qualified: effective useful range ~200K–1M for RAG
-  8. Independent benchmark Y/N column added to all 3 frontier-distilled tables
-  9. "Changes Made in Response to Advisor Review" section added at doc bottom
-- **`.memories/QUICK.md`:** Replaced "supersedes (~88%)" with "candidate to supersede (secondary source; not benchmarked; swap gated on M-P0a)"
-- **`.memories/KNOWLEDGE.md`:** Qualified HumanEval/LiveCodeBench numbers as "from secondary sources, not independently verified"; marked embedding VRAM probe as hard gate
-- **`.claude/tasks.md`:** M-P0a reframed as "Pull + benchmark; swap only if confirmed"; M-P0b: added "hard gate" language + "Do not start embed.py until probe passes"; M-update: deferred deprecation until local benchmark confirms
-- **`.claude/session-context.md`:** Session 68 entry corrected (superseded → candidate to supersede); Session 69 entry added; Next pointer updated
-
-### Decisions Made
-- **Keep both coder models until M-P0a benchmark confirms** — premature deprecation of qwen2.5-coder:14b could disrupt active MCP work
-- **Embedding VRAM probe = hard gate** — VRAM delta (0.6GB → ~5GB) is large enough that the old WARN verdict doesn't apply; new probe required before embed.py design
-- **No changes to DECISIONS.md** — ref:ltg-extractor and ref:ltg-embedding remain unchanged; those are updated after benchmark/probe confirms, not before
-
-### Next
-- **Merge this PR** into `feature/model-survey-2026-05`, then merge #39 to master.
-- **M-P0a** — pull `qwen3.6-coder:14b`, run local benchmark, swap if confirmed.
-- **M-P0b** — pull `qwen3-embedding:8b`, run VRAM co-residence probe, update LTG Phase 2 plan if probe passes.
-- **LTG Phase 2** — start `embed.py` only after M-P0b probe passes.
 
 ---
 

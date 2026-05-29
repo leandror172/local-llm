@@ -22,8 +22,8 @@ OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
 ROUNDS=5
 EVICTION_THRESHOLD_MS=15000
 VERBOSE=0
-INFER_MODEL="qwen3:14b"
-EMBED_MODEL="bge-m3"
+INFER_MODEL="${INFER_MODEL:-qwen3:14b}"
+EMBED_MODEL="${EMBED_MODEL:-bge-m3}"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
