@@ -38,6 +38,27 @@ models:
     num_ctx: 32768              # 4.4GB weights, 7.6GB free — plenty of headroom
     default_temp: correctness
 
+  qwen3.5:0.8b:
+    display_name: Qwen3.5-0.8B
+    file_suffix: qwen35-0.8b
+    name_suffix: "-q35-0.8b"
+    num_ctx: 32768              # 1.0GB weights — co-resident with 14B (10.3GB total); pulled session 75
+    default_temp: correctness
+
+  qwen3.5:2b:
+    display_name: Qwen3.5-2B
+    file_suffix: qwen35-2b
+    name_suffix: "-q35-2b"
+    num_ctx: 32768              # 2.7GB weights — co-resident with 14B (12GB total, tight); pulled session 75
+    default_temp: correctness
+
+  phi4-mini:
+    display_name: Phi4-Mini
+    file_suffix: phi4-mini
+    name_suffix: "-phi4mini"
+    num_ctx: 32768              # 2.5GB weights — benchmark vs qwen3:4b-q8_0 for classification; pulled session 75
+    default_temp: correctness
+
   qwen2.5-coder:7b:
     display_name: Qwen2.5-Coder-7B
     file_suffix: qwen25
