@@ -39,6 +39,7 @@ Core tasks (4.1–4.4) + shell rubric + Java/Python validators + prompt decompos
 
 Completed items → `.claude/archive/deferred-completed.md`
 
+- [ ] **Re-probe 14B num_ctx after KV cache quant (q8_0):** `OLLAMA_KV_CACHE_TYPE=q8_0` halves KV VRAM — 14B models (previously 16K ceiling, ~3GB free) likely have headroom to 24K–32K. Re-run VRAM probe with qwen3:14b + qwen2.5-coder:14b at 24K, 32K. Update `personas/models.yaml` comments + `registry.yaml` values if probes pass. Gate: do before any session that would benefit from longer 14B context.
 - [ ] **Hook-based auto-resume:** `UserPromptSubmit` hook injects `resume.sh` output on session start. Needs `.claude/local/session-started` flag to gate (fires every message, not just first).
 - [ ] **Qwen3-Coder-Next feasibility study (80B MoE, 3B active):** ~24GB at 3-bit quant. Needs VRAM headroom profiling + native Linux eval. Not priority until 30B models proven insufficient.
 - [ ] **expense-reporter config reader: replace runtime.Caller with os.Executable:** `internal/config/config.go` uses `runtime.Caller(0)` — breaks on deployment. Fix: `os.Executable()` + walk up. Low priority until binary deployed.

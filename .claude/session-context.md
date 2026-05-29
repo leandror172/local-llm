@@ -135,7 +135,7 @@ Or manually:
 - **Layer 5 preferred codegen model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~25-32s, 2 (accepted) quality
 - **MCP server work persona split:** `my-mcp-q25c14` for tool signatures/docstrings; `my-python-q25c14` for helpers — both share qwen2.5-coder:14b (no warm_model needed when switching)
 - **qwen3:8b think:false:** Must be top-level payload param, not inside `options{}` — Ollama silently ignores it there
-- **num_ctx 10240 for 14B:** Balances context vs VRAM. KV cache formula: `2 × layers × kv_heads × head_dim × ctx × 2bytes`
+- **num_ctx for personas:** 14B models → 16384 (personas/models.yaml); 8B models → 32768. `OLLAMA_KV_CACHE_TYPE=q8_0` enabled system-wide (halves KV VRAM, no quality cost). 14B ceiling may rise after re-probe — tracked as deferred task.
 - **Multi-model comparison → DPO pairs:** `run-compare-models.sh` + `run-record-verdicts.sh` → Layer 7 pipeline
 
 **Frozen layer decisions (Layers 1/2/3):** `.claude/archive/decisions-layers-1-3.md`

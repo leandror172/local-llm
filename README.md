@@ -237,8 +237,7 @@ With 12GB VRAM as the constraint:
 - **Q4_K_M quantization**: 4-bit weights, ~75% memory reduction, minimal quality loss
 - **Flash Attention** (`OLLAMA_FLASH_ATTENTION=1`): ~30% VRAM reduction for attention
 - **Hybrid offload**: 30B MoE models split across VRAM + system RAM (~19GB total)
-- **`num_ctx` tuning**: KV cache grows linearly with context length; 10240 chosen for
-  14B models as balance between context and VRAM pressure
+- **`num_ctx` tuning**: KV cache grows linearly with context length; 16384 for 14B models, 32768 for 8B models (OLLAMA_KV_CACHE_TYPE=q8_0 halves KV VRAM cost)
 
 ---
 

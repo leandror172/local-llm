@@ -54,7 +54,7 @@ SYSTEM """<system-prompt>"""
 | Field | Required | Default | Notes |
 |-------|:--------:|---------|-------|
 | `FROM` | Yes | — | Base model tag from Ollama. See Model Selection below |
-| `num_ctx` | Yes | 16384 | Context window in tokens. Only reduce for 14B models (use 4096) |
+| `num_ctx` | Yes | 32768 | Context window in tokens. Use 16384 for 14B models; 32768 for 8B models |
 | `temperature` | Yes | 0.3 | See Temperature Guide below |
 | `top_p` | Full | 0.9 | Nucleus sampling cutoff. No reason to change from 0.9 |
 | `repeat_penalty` | Full | 1.1 | Prevents loops without breaking natural patterns |

@@ -69,7 +69,7 @@ Lists all models available in Ollama with sizes. Useful for checking what's pull
 - Architectural decisions and design reasoning
 - Subtle bug analysis
 - Tasks requiring full codebase context
-- Anything requiring >4K context window (14B models) or >8K (7-8B models)
+- Anything requiring >16K context window (14B models) or >32K (7-8B models)
 
 ## Available Model Personas
 
@@ -215,7 +215,7 @@ The bash wrapper uses `uv run` to manage the virtual environment and dependencie
 
 1. **Single GPU, single model at a time.** Ollama loads one model into VRAM. Switching between personas (e.g., `my-codegen-q3` → `my-summarizer-q3`) incurs a cold-start delay of ~10-30s while the new model loads. Same-base models (all Qwen3-8B) share weights, so Ollama may keep them hot.
 
-2. **Context window.** 7-8B models handle ~8K tokens effectively. 14B models are limited to ~4K tokens on 12GB VRAM. Prompts exceeding these limits produce degraded output without error.
+2. **Context window.** 7-8B models handle ~32K tokens effectively. 14B models handle ~16K tokens on 12GB VRAM (OLLAMA_KV_CACHE_TYPE=q8_0 in effect). Prompts exceeding these limits produce degraded output without error.
 
 3. **Quality ceiling.** Local 7-8B models fail at complex spatial reasoning, multi-step logic chains, and tasks requiring broad world knowledge. These should stay on Claude.
 

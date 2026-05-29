@@ -21,7 +21,7 @@
 
 **5. `refs_root` relative-path semantics unspecified.** If a caller passes `refs_root="docs/plans"`, behaviour depends on server CWD at subprocess launch. Pick: (a) resolve client-side via `pathlib.Path(refs_root).resolve()` before invoking, or (b) reject non-absolute paths with error. Document.
 
-**6. Caller responsibility for context-window size not stated.** A 10-ref call could deliver 50KB of text — beyond the 10240-token default `num_ctx` for 14B personas. Add one line to the docstring; optional: warn above a threshold (~32KB combined).
+**6. Caller responsibility for context-window size not stated.** A 10-ref call could deliver 50KB of text — beyond the 16384-token default `num_ctx` for 14B personas. Add one line to the docstring; optional: warn above a threshold (~48KB combined).
 
 **7. Private-function testing convention.** Tests import `_resolve_ref_key` and `_build_refs_block` by underscore name. Decide: keep underscore and document that direct unit-testing is intentional, or rename without underscore. Don't leave it ambiguous.
 

@@ -21,7 +21,7 @@ models:
     display_name: Qwen3-8B-Q8
     file_suffix: qwen3-q8
     name_suffix: "-q3-q8"
-    num_ctx: 16384              # 8.9GB weights, only 3.1GB free — keep at 16K
+    num_ctx: 16384              # 8.9GB weights; q8_0 KV halves cost — 16K confirmed, re-probe 24-32K pending
     default_temp: quality
 
   qwen3.5:9b:
@@ -71,21 +71,21 @@ models:
     display_name: DeepSeek-Coder-V2-16B
     file_suffix: dsc16
     name_suffix: "-dsc16"
-    num_ctx: 16384              # 8.9GB weights, 3.1GB free — same as other 14B-class
+    num_ctx: 16384              # 8.9GB weights; q8_0 KV halves cost — 16K confirmed, re-probe 24-32K pending
     default_temp: quality
 
   deepseek-r1:14b:
     display_name: DeepSeek-R1-14B
     file_suffix: dsr14
     name_suffix: "-dsr14"
-    num_ctx: 16384              # 9.0GB weights, 3.0GB free
+    num_ctx: 16384              # 9.0GB weights; q8_0 KV halves cost — 16K confirmed, re-probe pending
     default_temp: quality
 
   deepcoder:14b:
     display_name: DeepCoder-14B
     file_suffix: deepcoder
     name_suffix: "-deepcoder"
-    num_ctx: 16384              # 9.0GB weights, 3.0GB free — same tier as other 14B
+    num_ctx: 16384              # 9.0GB weights; q8_0 KV halves cost — 16K confirmed, re-probe pending
     default_temp: quality       # skill default; model recommends 0.6 (between quality/creative)
 
   # --- Gemma 3 (Google, VRAM-only + hybrid) ---

@@ -90,7 +90,7 @@ Each entry records the decision, the reasoning, alternatives considered, and the
 
 **Single-model fallback:** `qwen3:14b` — loses ≤0.15 quality on cross-reference-index files, gains operational simplicity. Acceptable for MVP.
 
-**Frozen parameters:** `temperature=0.1`, `think=False`, `num_ctx=8192`, `format=json_schema` (structured output, 100% reliable).
+**Frozen parameters:** `temperature=0.1`, `think=False`, `num_ctx=16384`, `format=json_schema` (structured output, 100% reliable).
 
 **Prompt:** `retrieval/prompts/extract.txt` (single-stage, no iteration needed — qwen3:14b cleared threshold on first sweep).
 

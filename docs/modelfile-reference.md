@@ -7,7 +7,7 @@ Configuration rationale for `modelfiles/coding-assistant.Modelfile`, which defin
 | Setting | Value | Purpose |
 |---------|-------|---------|
 | `FROM` | qwen2.5-coder:7b | Base model weights (4.7GB, Q4_K_M quantization) |
-| `num_ctx` | 16384 | 16K context window — fits full source files with room for response. Costs ~1-2GB extra VRAM over default 2048. |
+| `num_ctx` | 16384 | 16K context window — fits full source files with room for response. KV cost halved by OLLAMA_KV_CACHE_TYPE=q8_0 (installed systemd-wide). |
 | `temperature` | 0.3 | Low randomness for precise code generation. High enough to suggest alternatives, low enough for correct syntax. |
 | `top_p` | 0.9 | Nucleus sampling — prunes the bottom 10% of unlikely tokens entirely. Works with temperature as a two-stage funnel. |
 | `repeat_penalty` | 1.1 | Gentle repetition penalty. Prevents degenerate loops without breaking natural code patterns like repeated keywords. |
@@ -17,7 +17,7 @@ Configuration rationale for `modelfiles/coding-assistant.Modelfile`, which defin
 ## Design Decisions
 
 **Why 16K context and not 32K or higher?**
-With 12GB VRAM and ~4.9GB used by model weights, 16K is the sweet spot. Each doubling of context window adds ~0.5-1GB VRAM at 7B scale. 16K fits a full Java class or Go file comfortably. Going to 32K would work but leaves less headroom.
+With 12GB VRAM and ~4.9GB used by model weights, 16K fits a full Java class or Go file comfortably. With OLLAMA_KV_CACHE_TYPE=q8_0 (installed systemd-wide since session 75), 32K is also viable for this 7B model — going higher would need a re-probe.
 
 **Why temperature 0.3 and not 0.0?**
 Zero temperature is fully deterministic — it always picks the single most likely token. While appealing for code, it can get stuck in local optima (e.g., always generating the same boilerplate pattern when a different approach fits better). 0.3 adds just enough variation to explore alternatives.

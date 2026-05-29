@@ -62,7 +62,7 @@
 | Persona | Base Model | Rationale |
 |---------|-----------|-----------|
 | my-coder | Qwen3-8B | Code-optimized, fast, full context |
-| my-architect | Qwen3-14B | Needs deeper reasoning, OK with 4K context |
+| my-architect | Qwen3-14B | Needs deeper reasoning, OK with 16K context |
 | my-reviewer | Qwen3-8B | Code review is a coding task |
 | my-classifier | Qwen3-4B / Phi-4-mini | Speed matters more than depth |
 | my-writer | Llama-3.1-8B | Broader training for non-code text |

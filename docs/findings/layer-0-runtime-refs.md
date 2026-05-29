@@ -16,7 +16,7 @@ Detailed benchmarks and selection rules → `.claude/archive/layer-0-findings.md
 | Quick code gen, boilerplate | 8B think:false | my-go-q3, my-python-q3 etc. |
 | Medium algorithms | 8B think:false | |
 | Complex architecture | 14B think:false | my-architect-q3 (qwen3:14b) |
-| Multi-file / long context | 8B (14B can't fit ~4K ctx) | |
+| Multi-file / long context | 8B preferred (14B fits 16K ctx, 8B fits 32K) | |
 | Retry after 8B failure | 14B think:true | |
 | Classification / routing | 8B or 4B | my-classifier-q3 |
 | Code gen (DPO comparison A) | qwen2.5-coder:14b | my-go-q25c14 — code-specialized, full VRAM |
@@ -61,6 +61,6 @@ Full test results → `.claude/archive/layer-0-findings.md` § "Task 0.7 Finding
 | Topic | File | Key Takeaway |
 |-------|------|-------------|
 | Qwen3 vs Qwen2.5 benchmarks | `.claude/archive/layer-0-findings.md` | 4 personas × 6 prompts; hidden thinking tokens discovery |
-| 14B performance profile | `.claude/archive/layer-0-findings.md` | 32 tok/s, ~4K context, best for complex single-Q |
+| 14B performance profile | `.claude/archive/layer-0-findings.md` | 32 tok/s, 16K context (q8_0 KV), best for complex single-Q |
 | Prompt decomposition results | `.claude/archive/layer-0-findings.md` | 3-stage sweet spot, reduces bug severity not count |
 | Few-shot example library | `benchmarks/examples/` | 6 examples (3 backend, 3 visual), `--examples` flag |

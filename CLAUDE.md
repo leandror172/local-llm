@@ -35,7 +35,7 @@ Local AI infrastructure on RTX 3060 12GB: multiple specialized models, benchmark
 
 ## Key Technical Facts
 
-- **12GB VRAM** — 7-8B models for full context; 14B fits but ~4K context limit [ref:model-selection]
+- **12GB VRAM** — 8B models: 32K ctx; 14B models: 16K ctx (personas); both benefit from `OLLAMA_KV_CACHE_TYPE=q8_0` (halves KV VRAM, enabled in systemd override) [ref:model-selection]
 - **Never install Linux NVIDIA drivers in WSL2** — uses Windows driver's `libcuda.so`
 - **Flash Attention** enabled (`OLLAMA_FLASH_ATTENTION=1`)
 - **Models (VRAM-only):** Qwen2.5-Coder-7B (4.7GB), Qwen3-4B-q8 (4.4GB), Qwen3-8B (5.2GB), Qwen3-8B-q8 (8.5GB), Qwen2.5-Coder-14B (9.0GB), Qwen3-14B (9.3GB), DeepSeek-R1-14B (9.0GB), DeepSeek-Coder-V2-16B (8.9GB) [ref:personas]

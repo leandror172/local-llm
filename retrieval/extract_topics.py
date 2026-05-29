@@ -55,7 +55,7 @@ MODEL_EXTRA_PARAMS: dict[str, dict] = {
 }
 
 OLLAMA_OPTIONS = {
-    "num_ctx": 8192,
+    "num_ctx": 16384,
     "temperature": 0.1,
 }
 

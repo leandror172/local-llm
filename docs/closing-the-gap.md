@@ -163,10 +163,10 @@ Stay under 200 tokens. Move task-specific instructions to the user message — a
 
 | Model | Strength | VRAM (Q4_K_M) | Context Limit |
 |-------|----------|----------------|---------------|
-| **Qwen3-14B** | Rivals Qwen2.5-32B quality | ~7.9 GB | ~4K on 12GB |
-| Qwen3-Coder-14B | Code-specialized, agentic | ~7.9 GB | ~4K on 12GB |
-| DeepSeek-R1-Distill-Qwen-14B | Strong reasoning/CoT | ~7.9 GB | ~4K on 12GB |
-| Phi-4 (14B) | Excellent code + reasoning | ~7.9 GB | ~4K on 12GB |
+| **Qwen3-14B** | Rivals Qwen2.5-32B quality | ~7.9 GB | ~16K on 12GB (q8_0 KV) |
+| Qwen3-Coder-14B | Code-specialized, agentic | ~7.9 GB | ~16K on 12GB (q8_0 KV) |
+| DeepSeek-R1-Distill-Qwen-14B | Strong reasoning/CoT | ~7.9 GB | ~16K on 12GB (q8_0 KV) |
+| Phi-4 (14B) | Excellent code + reasoning | ~7.9 GB | ~16K on 12GB (q8_0 KV) |
 
 **Recommended immediate upgrade:** `ollama pull qwen3:8b` — Qwen3-8B outperforms Qwen2.5-14B on most coding benchmarks, with the same VRAM footprint as our current model.
 
