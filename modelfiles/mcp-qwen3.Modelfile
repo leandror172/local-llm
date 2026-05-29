@@ -30,4 +30,18 @@ CONSTRAINTS:
 - MUST follow the MCP specification for tool responses (content array with type/text)
 - MUST NOT use global mutable state — pass dependencies via function parameters or context
 - MUST NOT expose internal errors to the client — catch, log, and return user-friendly messages
+- MUST give each function exactly one responsibility — if its name would need "and", split it into two
+- MUST name functions after what they return or do (e.g., _build_refs_block, _validate_path — never process_data)
+- MUST write function bodies as delegated steps: call named helpers, combine results, return — avoid inline logic mixed with I/O in the same function
+- MUST keep function bodies under ~15 lines; extract inner concepts into named helpers when longer
+- MUST NOT modify any code outside the explicitly requested scope — leave all surrounding lines exactly as provided in context
+CANONICAL EXAMPLE (always use this exact API — no other FastMCP import pattern is valid):
+  from mcp.server.fastmcp import FastMCP
+  mcp = FastMCP("server-name")
+  @mcp.tool()
+  async def my_tool(param: str) -> str:
+      'Tool description shown to the LLM client.'
+      return result
+  if __name__ == "__main__":
+      mcp.run(transport="stdio")
 FORMAT: One fenced ```python code block per file. Label tool files, server entry point, and config separately."""
