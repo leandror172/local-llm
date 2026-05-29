@@ -81,6 +81,13 @@ models:
     num_ctx: 16384              # 9.0GB weights, 3.0GB free
     default_temp: quality
 
+  deepcoder:14b:
+    display_name: DeepCoder-14B
+    file_suffix: deepcoder
+    name_suffix: "-deepcoder"
+    num_ctx: 16384              # 9.0GB weights, 3.0GB free — same tier as other 14B
+    default_temp: quality       # skill default; model recommends 0.6 (between quality/creative)
+
   # --- Gemma 3 (Google, VRAM-only + hybrid) ---
   gemma3:12b:
     display_name: Gemma3-12B
