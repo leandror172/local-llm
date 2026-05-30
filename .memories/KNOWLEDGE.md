@@ -2,11 +2,11 @@
 
 *Repo-wide accumulated decisions. Read on demand by agents and chatbot.*
 
-## VRAM Budget Constraints (2026-02, updated 2026-04)
+## VRAM Budget Constraints (2026-02, updated 2026-05-30)
 
 All architecture decisions are shaped by 12GB VRAM on an RTX 3060.
 7-8B models fit fully in VRAM with generous context (32K tokens).
-14B models fit but are limited to ~16K context before quality degrades.
+14B models fit at 32K context with `OLLAMA_KV_CACHE_TYPE=q8_0` (probed 2026-05-30; exception: deepseek-coder-v2:16b at 24K — tight at 32K).
 30B MoE models (Qwen3-30B-A3B) run hybrid VRAM+RAM at ~10-20 tok/s.
 Dense partial offload: a 27B dense model spilling 5GB to RAM runs at ~3.2 tok/s —
 slower than 30B MoE because dense models pay PCIe bandwidth on every layer; MoE

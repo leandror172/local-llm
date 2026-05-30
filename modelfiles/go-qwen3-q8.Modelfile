@@ -3,7 +3,7 @@ FROM qwen3:8b-q8_0
 # Context window: 16K — Q8 is ~8.5GB, still fits in 12GB VRAM with room for KV cache.
 # qwen3:8b-q8_0: higher-precision quantization vs default Q4_K_M (5.2GB).
 # Same model family as my-go-q3 but with better weight fidelity for quality comparison.
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — same as other Go personas.
 PARAMETER temperature 0.3
