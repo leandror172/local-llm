@@ -1,7 +1,7 @@
 FROM qwen3:14b
 
 # Context window: 16K tokens — reduced for 14B model VRAM budget (RTX 3060 12GB).
-PARAMETER num_ctx 16384
+PARAMETER num_ctx 32768
 
 # Temperature: 0.3 — accurate with mild variation; quality over creativity.
 PARAMETER temperature 0.3

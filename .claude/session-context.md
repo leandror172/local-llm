@@ -136,7 +136,7 @@ Or manually:
 - **Layer 5 preferred codegen model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~25-32s, 2 (accepted) quality
 - **MCP server work persona split:** `my-mcp-q25c14` for tool signatures/docstrings; `my-python-q25c14` for helpers — both share qwen2.5-coder:14b (no warm_model needed when switching)
 - **qwen3:8b think:false:** Must be top-level payload param, not inside `options{}` — Ollama silently ignores it there
-- **num_ctx for personas:** 14B models → 16384 (personas/models.yaml); 8B models → 32768. `OLLAMA_KV_CACHE_TYPE=q8_0` enabled system-wide (halves KV VRAM, no quality cost). 14B ceiling may rise after re-probe — tracked as deferred task.
+- **num_ctx for personas:** 14B models → **32768** (probed 2026-05-30 with `OLLAMA_KV_CACHE_TYPE=q8_0` — all pass); 8B models → 32768; deepseek-coder-v2:16b → 24576 (32K tight at 574 MiB). See `retrieval/probes/ctx-probe-2026-05-30.md`.
 - **Multi-model comparison → DPO pairs:** `run-compare-models.sh` + `run-record-verdicts.sh` → Layer 7 pipeline
 
 **Frozen layer decisions (Layers 1/2/3):** `.claude/archive/decisions-layers-1-3.md`
@@ -153,7 +153,7 @@ Or manually:
 
 | Task | Read first | Ref keys / notes |
 |------|-----------|-----------------|
-| **14B num_ctx re-probe** | `retrieval/run-vram-probe.sh`, `personas/models.yaml`, `CLAUDE.md` § Key Technical Facts | `ref:ltg-vram-probe`, `ref:ltg-m-p0b-probe` — prior probe methodology; update models.yaml + registry.yaml when done |
+| ~~**14B num_ctx re-probe**~~ | ~~DONE session 76~~ | All 4 14B models → 32768 (dsc16 → 24576). Results: `retrieval/probes/ctx-probe-2026-05-30.md` |
 | **LTG Phase 3 — anchors** | `ref:ltg-plan-phase-3`, `retrieval/DECISIONS.md`, `retrieval/store.py`, `retrieval/model_client.py` | prereq: `extract_topics.py` retrofit + 14B re-probe first; corpus currently 8 files only |
 | **extract_topics.py → model_client.py** | `retrieval/extract_topics.py`, `retrieval/model_client.py`, `docs/ideas/ltg-model-registry-design.md` | `ref:local-model-conventions`; no tests currently on extract_topics.py — add alongside retrofit |
 | **Classifier benchmark (M-P1b/P2)** | `docs/findings/model-updates-2026-05.md` § What to Benchmark, `personas/models.yaml`, `benchmarks/lib/run-compare-models.sh` | `ref:model-selection`; models pulled: `qwen3.5:0.8b`, `qwen3.5:2b`, `phi4-mini` vs `qwen3:4b-q8_0` |

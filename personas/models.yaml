@@ -78,28 +78,28 @@ models:
     display_name: Qwen2.5-Coder-14B
     file_suffix: qwen25c14
     name_suffix: "-q25c14"
-    num_ctx: 16384              # Probed: 35 tok/s at 16K, no degradation
+    num_ctx: 32768              # Probed 2026-05-30: 32K → 9498 MiB VRAM / 2790 MiB free / 14.9 tok/s ✅
     default_temp: quality
 
   qwen3:14b:
     display_name: Qwen3-14B
     file_suffix: qwen3-14b
     name_suffix: "-q3-14b"
-    num_ctx: 16384              # Probed: 33.5 tok/s at 16K, no degradation
+    num_ctx: 32768              # Probed 2026-05-30: 32K → 11237 MiB VRAM / 1051 MiB free / 16.5 tok/s ✅
     default_temp: quality
 
   deepseek-coder-v2:16b:
     display_name: DeepSeek-Coder-V2-16B
     file_suffix: dsc16
     name_suffix: "-dsc16"
-    num_ctx: 16384              # 8.9GB weights; q8_0 KV halves cost — 16K confirmed, re-probe 24-32K pending
+    num_ctx: 24576              # Probed 2026-05-30: 24K → 11554 MiB / 734 MiB free ✅; 32K passes at 574 MiB (tight)
     default_temp: quality
 
   deepseek-r1:14b:
     display_name: DeepSeek-R1-14B
     file_suffix: dsr14
     name_suffix: "-dsr14"
-    num_ctx: 16384              # 9.0GB weights; q8_0 KV halves cost — 16K confirmed, re-probe pending
+    num_ctx: 32768              # Probed 2026-05-30: 32K → 9505 MiB VRAM / 2783 MiB free / 14.0 tok/s ✅
     default_temp: quality
 
   deepcoder:14b:

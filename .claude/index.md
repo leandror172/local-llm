@@ -147,6 +147,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 ### Setup & Infrastructure Scripts
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
+| `scripts/run-ctx-probe.sh` | Context-window ceiling probe for 14B models — loads model at 16K/24K/32K, measures VRAM + tok/s per ctx size | Before raising num_ctx on any 14B+ model; re-run if KV cache type changes |
 | `scripts/setup-ollama.sh` | Idempotent Ollama install + configure + pull + create | Fresh setup or re-setup |
 | `scripts/verify-installation.sh` | 14-check verification (GPU, service, models, API, benchmark) | After setup or to diagnose issues |
 | `scripts/pull-layer0-models.sh` | Tiered model downloader (Tier 1-3) | Adding new models |
