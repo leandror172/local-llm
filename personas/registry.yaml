@@ -260,7 +260,7 @@ my-go-q3-q8:
   base_model: qwen3:8b-q8_0
   role: Go 1.22+ backend developer (Q8 quantization quality test)
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
   note: Quantization comparison vs my-go-q3 (Q4_K_M). Same model family, higher fidelity.
@@ -428,7 +428,7 @@ my-go-g3-12b:
   base_model: gemma3:12b
   role: Go 1.22+ backend developer following Effective Go and standard project layout.
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
 
@@ -446,7 +446,7 @@ my-python-g3-12b:
   base_model: gemma3:12b
   role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
   temperature: 0.3
-  num_ctx: 16384
+  num_ctx: 32768
   tier: full
   status: active
 
