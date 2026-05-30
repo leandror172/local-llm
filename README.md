@@ -50,6 +50,7 @@ The infrastructure is built in layers, each unlocking the next:
 | **Persona system** | Modelfiles + registry.yaml | 35+ specialized model configurations |
 | **Benchmark framework** | Python + bash + Puppeteer | Rubric-based multi-model evaluation |
 | **Containerization** | Docker Compose | Portable deployment (planned primary path for agentic tooling) |
+| **Monitoring** | Prometheus + Grafana + ollama-metrics proxy | Token throughput, latency, model memory — dashboard at localhost:3000 |
 | **GPU** | NVIDIA RTX 3060 12GB | CUDA-accelerated inference, Flash Attention |
 
 ### Model Lineup

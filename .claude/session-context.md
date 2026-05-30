@@ -143,3 +143,20 @@ Or manually:
 **Historical decisions (Phases 0-6, Layer 0):** `.claude/archive/phases-0-6.md`
 **LTG decisions:** `retrieval/DECISIONS.md` (ref keys: `ltg-scope`, `ltg-embedding`, `ltg-extractor`, etc.)
 <!-- /ref:active-decisions -->
+
+---
+
+<!-- ref:session-reading-guide -->
+## Pre-Session Reading Guide
+
+*What to read before starting each pending work item. Keeps context sharp without re-reading everything.*
+
+| Task | Read first | Ref keys / notes |
+|------|-----------|-----------------|
+| **14B num_ctx re-probe** | `retrieval/run-vram-probe.sh`, `personas/models.yaml`, `CLAUDE.md` § Key Technical Facts | `ref:ltg-vram-probe`, `ref:ltg-m-p0b-probe` — prior probe methodology; update models.yaml + registry.yaml when done |
+| **LTG Phase 3 — anchors** | `ref:ltg-plan-phase-3`, `retrieval/DECISIONS.md`, `retrieval/store.py`, `retrieval/model_client.py` | prereq: `extract_topics.py` retrofit + 14B re-probe first; corpus currently 8 files only |
+| **extract_topics.py → model_client.py** | `retrieval/extract_topics.py`, `retrieval/model_client.py`, `docs/ideas/ltg-model-registry-design.md` | `ref:local-model-conventions`; no tests currently on extract_topics.py — add alongside retrofit |
+| **Classifier benchmark (M-P1b/P2)** | `docs/findings/model-updates-2026-05.md` § What to Benchmark, `personas/models.yaml`, `benchmarks/lib/run-compare-models.sh` | `ref:model-selection`; models pulled: `qwen3.5:0.8b`, `qwen3.5:2b`, `phi4-mini` vs `qwen3:4b-q8_0` |
+| **Backfill SOLID + error-handling directives** | `docs/tasks/backfill-persona-constraints.md`, `docs/ideas/persona-error-handling-conventions.md`, `personas/registry.yaml` | grep: `git grep -L "MUST NOT modify"` modelfiles/; pair error-handling session with backfill |
+| **M-P0a cleanup — retire DeepCoder personas** | `personas/registry.yaml` (filter `status: benchmark`), `ref:deepcoder-benchmark-decision` | 6 personas to rm + archive Modelfiles; `deepcoder:14b` base (9GB on I:\\) optional |
+<!-- /ref:session-reading-guide -->

@@ -153,6 +153,8 @@ The executing session should confirm or revise each of these before Phase 1. Dec
 <!-- ref:ltg-plan-phase-6 -->
 ## Phase 6 — MCP `retrieve_context` Tool (0.5 session)
 
+> **Before starting this phase:** Evaluate whether `retrieval/` should be extracted to its own repo. By Phase 6 the schema is stable (anchors + graph + `relate()` complete) and this MCP tool is the first cross-repo consumer — the inflection point for separation. Extraction cost is ~1 session (`git subtree split --prefix retrieval/`, corpus-path parameterization via `configs/*.yaml`, per-repo `.mcp.json` entries). If separated, implement Phase 6 *in the new repo* as its first external-facing deliverable. Rationale: session 76. See also deferred task in `tasks.md`.
+
 **Goal:** Expose the substrate as an MCP tool callable from any Claude Code session.
 
 **Steps:**

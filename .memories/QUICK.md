@@ -8,6 +8,7 @@ Layers 0-4 complete (of 10-layer plan). Infrastructure fully operational.
 Layer 5+ active: expense classifier, chatbot Phases 1+2 (cross-repo context + LLM routing).
 Session 59 (2026-05-04): LTG Phase 1 **fully closed**. All 3 freeze gates cleared.
 **ref:ltg-extractor frozen**: qwen3:14b prose, qwen2.5-coder:14b code. ✅ Confirmed — session 74 benchmark closed M-P0a with NO SWAP.
+Session 76 (2026-05-30): **Ollama monitoring operational.** Prometheus + Grafana via ollama-metrics proxy (port-swap: clients→:11434 proxy→:11435 Ollama). `make proxy && make stack` in `~/workspaces/clones/ollama-metrics`. Dashboard at localhost:3000. See `ref:ollama-monitoring`.
 Session 72 (2026-05-28): **LTG Phase 2 complete.** 69 topics, 8 files, 7/8 acceptance pass.
 Session 73 (2026-05-28): **M-P0b complete.** Embedding upgraded bge-m3 (1024-dim) → **qwen3-embedding:8b (4096-dim)**. WARN verdict (load-time eviction only). `embed.py`/`store.py` config-driven.
 Session 74 (2026-05-29): **M-P0a closed — NO SWAP.** `qwen3.6-coder:14b` phantom tag. Benchmarked DeepCoder-14B: 5/6 timeout at 500s, no think-suppression, intrinsic R1-distill overhead. `qwen2.5-coder:14b` remains primary coder. Side finding: `my-mcp-q25c14` uses wrong FastMCP API (P1 fix pending). Report: `ref:deepcoder-benchmark-decision`. **Next: fix mcp-q25c14 persona OR LTG Phase 3.**

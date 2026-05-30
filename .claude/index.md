@@ -106,6 +106,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | Phases 0-6 completion details | `.claude/archive/phases-0-6.md` | All setup phases, decisions, gotchas, artifacts |
 | Hardware specs | `.claude/local/hardware-inventory.md` | RTX 3060 12GB, detailed system info (gitignored) |
 | Verification | `scripts/verify-installation.sh` | `./scripts/verify-installation.sh` (14 checks); manual: `nvidia-smi`, `ollama ps` |
+| **Ollama monitoring stack** | `docs/findings/ollama-monitoring-setup.md` | Prometheus + Grafana via ollama-metrics proxy (port-swap pattern); WSL2 networking gotcha; dashboard import. `ref:ollama-monitoring` |
 | Installation script | `scripts/setup-ollama.sh` | Idempotent native Ollama setup |
 | Docker portable setup | `docker/docker-compose.yml` | GPU config, healthcheck, named volume |
 | Ollama config rationale | `docs/modelfile-reference.md` | Why each Modelfile setting was chosen |

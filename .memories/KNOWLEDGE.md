@@ -234,6 +234,31 @@ Speed penalty: −0.25 if model runs <15 tok/s. Both rater tracks produce identi
 **Rationale:** Extractor quality is load-bearing for all downstream LTG phases — bad extraction means bad graph edges and bad retrieval. The spike gates Phase 2 VRAM co-residence probe.
 **Implication:** Do not freeze extractor choice until all 8 files scored + two-rater reconciliation (Claude draft vs user HTML-viz scores). qwen3:14b is the provisional winner; qwen3:8b is viable backup (4× faster, same threshold).
 
+## Ollama Monitoring Stack (2026-05-30, session 76)
+
+Prometheus + Grafana monitoring via the NorskHelsenett/ollama-metrics transparent proxy.
+
+**Architecture decision — port-swap over client reconfigure:** Moving Ollama to `:11435`
+(one systemd env var) avoids touching the MCP bridge, benchmarks, Aider, and Claude Code
+tool configs across three repos. Proxy takes `:11434`, all clients unaffected.
+
+**WSL2 networking gotcha:** `host.docker.internal` in Docker Desktop resolves to the
+Windows host IP, not the WSL2 instance. Fix: `extra_hosts: ["host.docker.internal:host-gateway"]`
+on the Prometheus service — `host-gateway` resolves dynamically to the bridge gateway at start,
+surviving network recreation. Do NOT hardcode the gateway IP (shifts with Docker network creation order).
+
+**node-exporter removed:** Known `/sys` mount compatibility issues in WSL2 make it
+unreliable. CPU/MEM panels in the pre-built dashboard are empty as a result; all
+Ollama-specific panels (token rates, latency, model memory) work correctly.
+
+**Native `/metrics` watch:** PR #11159 (OTel-based, per-model labels) is the long-term
+replacement. When merged, the port-swap proxy becomes unnecessary.
+
+**Rationale:** No native Prometheus endpoint in Ollama (issue #3144, open since 2024).
+Proxy pattern is the only option without modifying Ollama itself.
+**How to apply:** `make proxy && make stack` in `~/workspaces/clones/ollama-metrics`.
+Full setup details: `ref:ollama-monitoring`.
+
 ## Structured Output via Grammar-Constrained Decoding (2026-02)
 
 Always use Ollama's `format` parameter for JSON output — 100% reliable, no speed penalty.
