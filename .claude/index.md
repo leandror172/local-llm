@@ -48,6 +48,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | resume.sh ref audit & improvement plan | `docs/plans/resume-sh-ref-audit.md` | Which ref tags to add/remove + 3 structural fixes (session 60) |
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
+| **Code design conventions** | `docs/patterns/code-design-conventions.md` | Structural patterns: named semantic methods over role strings. Self-indexed via `ref:patterns-code-design-index` |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
 | Verdict numeric migration plan | `docs/plans/verdict-numeric-migration.md` | Replace ACCEPTED/IMPROVED/REJECTED string verdicts with 0/1/2 integers across all repos, hooks, data, docs, and memory. 8 phases. |
 | **LTG Phase 2 implementation plan** | `docs/plans/ltg-phase2-implementation.md` | embed.py + store.py + inspect.py. Decisions locked, ready to execute. `ref:ltg-phase2-plan` |

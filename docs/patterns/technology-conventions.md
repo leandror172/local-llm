@@ -22,6 +22,7 @@ to file paths instead of anchor keys.
 | `patterns-git-workflow` | Worktrees, safety protocol, branch naming | Parallel work without branch switching | Team size grows, repo size causes worktree slowness |
 | `patterns-persona-naming` | my-\<role\>[-model-suffix] | Registry as source of truth, naming rules | Non-Ollama backend, model ecosystem consolidation |
 | `patterns-licensing` | Check + honor + attribute | ATTRIBUTIONS.md for required attributions | — (hard requirement) |
+| `patterns-code-named-methods` | Named semantic methods | Public API names intent; private methods own generic dispatch | `docs/patterns/code-design-conventions.md` |
 <!-- /ref:patterns-index -->
 
 ---
