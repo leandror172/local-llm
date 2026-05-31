@@ -1,8 +1,43 @@
 # Session Log
 
-**Current Layer:** LTG Phase 3 — Anchor Integration
-**Current Session:** 2026-05-30 — Session 76: 14B num_ctx re-probe + LTG architectural note
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`
+**Current Layer:** LTG Phase 3 — Anchor Integration (prereq: extractor retrofit)
+**Current Session:** 2026-05-30 — Session 77: LTG extractor retrofit design
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`
+
+---
+
+## 2026-05-30 - Session 77: LTG extractor retrofit — design complete
+
+### Context
+All PRs merged, master current. Entire session focused on design for the `extract_topics.py` → `model_client.py` retrofit (prereq for LTG Phase 3). Two advisor reviews. No implementation started — context hit 62% and a full plan was written for a fresh session.
+
+### What Was Done
+- **Extensive file reading:** `extract_topics.py`, `model_client.py`, `embed.py`, `config.yaml`, all test files, `ltg-model-registry-design.md`, `extract.txt` prompt, Phase 3 plan, `run-embed.sh`.
+- **4 design Q&A settled:** ChatResult shape (`NamedTuple(content, model, prompt_tokens, eval_count)`), config YAML layout (YAML `options:` sub-dict + `think` as top-level sibling), role names (`extraction_prose`/`extraction_code`), schema location (`retrieval/schemas.py`).
+- **Fork decision (two advisor passes):** Path B (production 2-arm runner) + `sweep_extractors.py` (benchmark). `extract_topics.py` keeps canonical name; `sweep_extractors.py` is the new file. Named methods (`extract_prose`/`extract_code`) for production; generic `call(prompt, model_config, schema)` for benchmark (dynamic-roles exception per pattern doc).
+- **§1 pipeline contract identified:** `embed.py`'s `winning_extractor` + `select_winning_row` must agree with production runner's model name output. Fix: `routing.py` as single source of truth for `CODE_EXTENSIONS` + `route(path)→role`; `embed.py` imports from it.
+- **`docs/patterns/code-design-conventions.md` written:** Language-agnostic pattern for named semantic methods (code as documentation). Python + Go examples. `ref:patterns-code-named-methods`. Added to `technology-conventions.md` index + `index.md`.
+- **`feedback_code_as_documentation.md` saved to memory.**
+- **`retrieval/tests/test_routing.py` written (TDD):** 14 tests for `routing.py`, confirmed red (ModuleNotFoundError). Committed on branch.
+- **`docs/plans/ltg-extractor-retrofit.md` written:** Complete implementation guide — mandatory reading list, all settled decisions, per-task TDD guidance, local model call patterns (model: `my-python-q25c14`, timeout: 600), parity check criteria, out-of-scope items.
+- **Branch `feature/ltg-extractor-retrofit` created.** 2 commits.
+- **8-task list created** (session task tracker) covering routing.py → schemas.py → model_client.py → config.yaml → sweep_extractors.py → extract_topics.py → bash wrappers → parity check.
+
+### Decisions Made
+- **Fork B + sweep_extractors.py:** `extract_topics.py` → 2-arm production runner; benchmark sweep preserved in `sweep_extractors.py`.
+- **ModelClient surface:** `extract_prose()`, `extract_code()` (named, production); `call(prompt, model_config, schema, timeout)` (generic, benchmark); `_chat()` private, owns all Ollama quirks.
+- **`_chat` takes resolved config dict** (not role string) — named methods resolve role→dict; `call()` passes dict directly. Shared HTTP core.
+- **ChatResult:** `NamedTuple(content, model, prompt_tokens, eval_count)`. Caller keeps wall-clock for tok/s.
+- **config.yaml two-level:** `models:` + `roles:` with `options:` sub-dict for `num_ctx`/`temperature`; `think: false` as top-level sibling key (NOT inside `options{}`); `timeout_s` per model.
+- **`schemas.py`:** `TOPIC_FORMAT_SCHEMA` moves to `retrieval/schemas.py` (leaf module). Imported by `model_client.py` + `sweep_extractors.py`.
+- **Timeout:** config `timeout_s` default + caller override. 14B extractors: 600s. Never inherit `embed_texts`'s 120s.
+- **Error handling:** `_chat`/`call` raise; caller classifies status taxonomy.
+- **Code as documentation:** named methods over role strings — stored in memory + pattern doc.
+
+### Next
+- **Start implementation from `docs/plans/ltg-extractor-retrofit.md`** on branch `feature/ltg-extractor-retrofit`.
+- **Read mandatory list first** (plan file § "Mandatory reading") — especially `.claude/overlays/local-model-conventions.md`.
+- **Task 1 is ready:** `retrieval/tests/test_routing.py` exists (14 tests, confirmed red). Call `my-python-q25c14` with `timeout=600` to generate `routing.py`.
 
 ---
 
@@ -107,57 +142,4 @@ Started by running `resume.sh`. All PRs from session 73 merged. Moved to M-P0a �
 - **Fix `my-mcp-q25c14` persona** (P1 — wrong FastMCP API exposed by benchmark)
 - **LTG Phase 3** — anchor integration (anchor nodes, Phase 1 JSONL → anchor table, `relate()` with anchor overlay)
 - **M-P0a cleanup** — retire 6 deepcoder benchmark personas when no longer needed (deferred task added)
-
-## 2026-05-28 - Session 73: M-P0b VRAM probe + embedding upgrade (bge-m3 → qwen3-embedding:8b)
-
-### Context
-Started by running `resume.sh`. PR#42 (`feature/ltg-phase2-implementation` → master) was already open. Moved directly to M-P0b — the VRAM co-residence probe for `qwen3-embedding:8b` + `qwen3:14b`, which was unblocked now that Phase 2 was complete. All session work committed to new branch `feature/ltg-embedding-upgrade-qwen3`.
-
-### What Was Done
-- **M-P0b VRAM probe:** Re-used `retrieval/run-vram-probe.sh` with `EMBED_MODEL=qwen3-embedding:8b`. Fixed the script first — `EMBED_MODEL="bge-m3"` was hardcoded (env override silently ignored); changed to `${EMBED_MODEL:-bge-m3}` idiom. Probe verdict: **WARN** (same as bge-m3) — load-time eviction, zero query-time evictions, avg infer 4.2s (vs 3.5s with bge-m3).
-- **Decision: re-embed before Phase 3 (Option A):** Re-embedding cost is small (69 topics, ~3s); deferring would multiply the re-embed scope each phase (corpus + anchors vs corpus only). Embedding upgraded immediately.
-- **config.yaml updated:** `model: bge-m3 → qwen3-embedding:8b`, `embed_dim: 1024 → 4096`.
-- **embed.py fixed:** Hardcoded `embed_dim=1024` in two `main()` call sites replaced with `cfg_dim` from `load_config(CONFIG_PATH)`. Also imports `ModelClient, load_config` from `model_client`.
-- **store.py fixed:** `SCHEMA` constant → `build_schema(embed_dim: int)` function. `rows_to_arrow_table` infers `embed_dim` from first input row's field. `main()` reads `rows[0]["embed_dim"]` for `validate_table`.
-- **Pipeline re-run:** `run-embed.sh` → 69 topics, 2.9s, 4096-dim. `run-store.sh` → 69 rows, old index auto-backed up to `index.bak`. Acceptance: R1/R3/R4 ✅, R2 ⚠️ same corpus gap, P1 relate improved 0.663→0.697.
-- **Docs/memories updated:** `retrieval/DECISIONS.md` (`ref:ltg-embedding` rewritten, schema table updated), `retrieval/.memories/QUICK.md`, `retrieval/.memories/KNOWLEDGE.md` (new `ref:ltg-m-p0b-probe`), `.memories/QUICK.md`, `docs/findings/model-updates-2026-05.md` (M-P0b row marked complete, embedding table updated).
-- **2 commits** on `feature/ltg-embedding-upgrade-qwen3`: `a0f1e92` (code + probe + artifacts) + `5f04a4e` (memories + docs). **61 tests green.**
-
-### Decisions Made
-- **Re-embed before Phase 3** — Option A chosen; cost is small and avoiding it multiplies re-embed scope at every future phase.
-- **N-criteria threshold recalibration deferred to Phase 3** — original `> 1.0` threshold was bge-m3 1024-dim calibrated. Noise queries at 0.84–0.98 in 4096-dim are proportionally equivalent; recalibrate when Phase 3 anchors join corpus.
-- **embed.py config-driven** — model + embed_dim now come from `config.yaml`; future model swaps require only one config edit.
-- **store.py schema-dynamic** — `build_schema(embed_dim)` replaces `SCHEMA` constant; dimension flows from input JSONL, not from code.
-
-### Next
-- **Open PR** for `feature/ltg-embedding-upgrade-qwen3` (branches off `feature/ltg-phase2-implementation` — coordinate merge order with PR#42)
-- **LTG Phase 3** — anchor integration (anchor nodes, Phase 1 JSONL → anchor table, `relate()` with anchor overlay)
-- **M-P0a** — still pending: pull + benchmark `qwen3.6-coder:14b` vs `qwen2.5-coder:14b`
-
----
-
-## 2026-05-28 - Session 72: LTG Phase 2 Tasks 7–9 (ltg_inspect.py, acceptance, docs)
-
-### Context
-Continuation of Phase 2 implementation. Resumed from `.claude/prompt-ltg-phase2-continuation.md`. Branch: `feature/ltg-phase2-implementation`. Tasks 7–9 of 9 completed this session. Phase 2 fully closed.
-
-### What Was Done
-- **Orientation audit:** Discovered missed `test_embed.py` read + `ref:ltg-extractor` / `ref:ltg-phase1-summary` needed; completed additional reads before starting implementation.
-- **Task 7 — `retrieval/ltg_inspect.py`:** 5-mode CLI (--list, --stats, --query, --relate, --acceptance). Tests first: Ollama timed out 3× on `qwen2.5-coder:14b`; escalated to `qwen3:14b` (300s timeout). Generated test scaffold manually, delegated 14 test functions to Ollama, applied 3 inline fixes (double capsys.readouterr, missing ModelClient mock, wrong search assertion). 14/14 green. `run-inspect.sh` wrapper added.
-- **Key rename:** `inspect.py` → `ltg_inspect.py` — `inspect.py` shadows Python stdlib `inspect` module via `sys.path[0]`, breaking `httpx` and `pyarrow` imports in all other scripts. Discovered during `run-embed.sh` pipeline test.
-- **Task 8 — Acceptance run:** Full pipeline: embed (69 topics, 8 files, 5.2s) → store (1.1s) → inspect --acceptance (2.3s, target <5s). Results: R1/R3/R4 ✅, R2 borderline (`.memories/QUICK.md` topics don't surface "session memory" explicitly), N1/N2 ✅ (L2 > 1.0), P1 relate ✅ (mean cosine 0.663). Fixed 3 runtime bugs: store.py undefined `logger`, relate_mode crash on empty corpus file, acceptance_mode output_md as dir not file.
-- **Task 9 — Doc updates:** 6 files updated: `retrieval/DECISIONS.md` (Phase 2 note in `ref:ltg-embedding`, `inspect.py→ltg_inspect.py`, new `ref:ltg-phase2-schema`), `retrieval/.memories/QUICK.md` (Phase 2 complete status), `retrieval/.memories/KNOWLEDGE.md` (new `ref:ltg-phase2-findings`), `.claude/session-context.md` (session 72 entry + Next advanced), `.claude/index.md` (4 new LTG wrappers), v1 plan (session 72 expansion note).
-
-### Decisions Made
-- **`ltg_inspect.py` not `inspect.py`** — stdlib shadow is a hard blocker; documented in `ref:ltg-phase2-findings` as gotcha.
-- **R2 borderline → document and proceed** — only 1 underperforming query (plan threshold is 2+); A/B with `description_plus_spans` remains deferred.
-- **LanceDB uses L2 distance** (not cosine) — `L2 = sqrt(2*(1-cos))` for unit-normalised vectors; acceptance threshold "cosine < 0.55" → L2 > 0.949. Documented in `ref:ltg-phase2-findings`.
-- **`qwen2.5-coder:14b` unusable at current context size** — 3 consecutive timeouts with 300s budget (both full prompt and split prompt). Escalated to `qwen3:14b`. Worth re-testing M-P0a swap sooner.
-
-### Next
-- **Create PR** for `feature/ltg-phase2-implementation` → master
-- **LTG Phase 3** — anchor integration (anchor nodes, Phase 1 JSONL → anchor table, relate() with anchor overlay)
-- **M-P0b** — VRAM probe for `qwen3-embedding:8b` + qwen3:14b (now unblocked)
-
----
 
