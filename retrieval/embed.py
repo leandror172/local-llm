@@ -30,23 +30,19 @@ from typing import Dict, List, Optional
 import httpx
 
 from model_client import ModelClient, load_config
-from routing import CODE_EXTENSIONS
+from routing import CODE_EXTENSIONS, route
 
 REPO_ROOT = Path(__file__).parent.parent
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 RUNS_DIR = Path(__file__).parent / "runs"
 
-CODE_EXTRACTOR = "qwen2.5-coder:14b"
-PROSE_EXTRACTOR = "qwen3:14b"
-
-def winning_extractor(filepath: str) -> str:
+def winning_extractor(filepath: str, cfg: dict) -> str:
     """Return the winning extractor model name for a given file path."""
-    ext = Path(filepath).suffix.lower()
-    return CODE_EXTRACTOR if ext in CODE_EXTENSIONS else PROSE_EXTRACTOR
+    return cfg[route(filepath)]["model"]
 
-def select_winning_row(rows: List[Dict], file_path: str) -> Optional[Dict]:
+def select_winning_row(rows: List[Dict], file_path: str, cfg: dict) -> Optional[Dict]:
     """Select the winning row based on file path, model, and status."""
-    expected_model = winning_extractor(file_path)
+    expected_model = winning_extractor(file_path, cfg)
     for row in rows:
         if (row["file"] == file_path and
             row["model"] == expected_model and
@@ -157,9 +153,9 @@ def group_rows_by_file(rows: List[dict]) -> Dict[str, List[dict]]:
     return grouped
 
 
-def collect_embed_tuples(rows_by_file: Dict[str, List[dict]], embed_mode: str, repo_root: Path):
+def collect_embed_tuples(rows_by_file: Dict[str, List[dict]], embed_mode: str, repo_root: Path, cfg: dict):
     for file_path, rows in rows_by_file.items():
-        winning_row = select_winning_row(rows, file_path)
+        winning_row = select_winning_row(rows, file_path, cfg)
         if not winning_row:
             print(f"  WARNING: no winning row for {file_path}, skipping", file=sys.stderr)
             continue
@@ -262,7 +258,7 @@ def main() -> None:
     t0 = time.monotonic()
     rows = load_jsonl(args.input)
     grouped = group_rows_by_file(rows)
-    all_tuples = list(collect_embed_tuples(grouped, args.embed_mode, REPO_ROOT))
+    all_tuples = list(collect_embed_tuples(grouped, args.embed_mode, REPO_ROOT, cfg))
     results = list(process_batches(
         all_tuples, args.batch_size, args.embed_model,
         args.ollama_url, cfg_dim, args.max_failures,

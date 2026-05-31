@@ -31,12 +31,14 @@ from schemas import TOPIC_FORMAT_SCHEMA  # noqa: E402
 # ---------------------------------------------------------------------------
 
 VALID_CONFIG_YAML = """\
-roles:
-  embedding:
+models:
+  ollama-bge-m3-dim-1024:
     provider: ollama
     model: bge-m3
     address: http://localhost:11434
     embed_dim: 1024
+roles:
+  embedding: ollama-bge-m3-dim-1024
 """
 
 

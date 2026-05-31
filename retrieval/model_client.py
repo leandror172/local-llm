@@ -10,14 +10,14 @@ def load_config(path: Path | str) -> dict:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Config file {path} does not exist")
-    
     with path.open("r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-    
-    if "roles" not in config:
-        raise ValueError("Config must contain a top-level 'roles' key")
-    
-    return config["roles"]
+        raw = yaml.safe_load(f)
+    resolved = {}
+    for role, model_name in raw["roles"].items():
+        if model_name not in raw["models"]:
+            raise KeyError(f"Role '{role}' references undefined model '{model_name}'")
+        resolved[role] = raw["models"][model_name]
+    return resolved
 
 
 class ChatResult(NamedTuple):

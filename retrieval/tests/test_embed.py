@@ -24,6 +24,13 @@ RETRIEVAL_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(RETRIEVAL_DIR))
 
 import embed  # noqa: E402
+import model_client  # noqa: E402
+
+# Minimal extraction cfg for tests — mirrors config.yaml extraction roles
+EXTRACT_CFG = {
+    "extraction_prose": {"model": "qwen3:14b"},
+    "extraction_code": {"model": "qwen2.5-coder:14b"},
+}
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +74,13 @@ def fake_embed_response(texts):
     ("notes.txt",          "qwen3:14b"),
 ])
 def test_winning_extractor_routing(filepath, expected_model):
-    assert embed.winning_extractor(filepath) == expected_model
+    assert embed.winning_extractor(filepath, EXTRACT_CFG) == expected_model
+
+
+def test_routing_agreement():
+    cfg = model_client.load_config(embed.CONFIG_PATH)
+    assert embed.winning_extractor("src/main.py", cfg) == cfg["extraction_code"]["model"]
+    assert embed.winning_extractor("docs/design.md", cfg) == cfg["extraction_prose"]["model"]
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +92,7 @@ def test_select_winning_row_returns_correct_model():
         make_row("file.md", "gemma3:12b"),
         make_row("file.md", "qwen3:14b"),
     ]
-    result = embed.select_winning_row(rows, "file.md")
+    result = embed.select_winning_row(rows, "file.md", EXTRACT_CFG)
     assert result["model"] == "qwen3:14b"
 
 
@@ -89,13 +102,13 @@ def test_select_winning_row_skips_failed_status():
         make_row("file.md", "gemma3:12b", status="ok"),
     ]
     # qwen3:14b is the winner but failed — no winning row exists
-    result = embed.select_winning_row(rows, "file.md")
+    result = embed.select_winning_row(rows, "file.md", EXTRACT_CFG)
     assert result is None
 
 
 def test_select_winning_row_missing_file_returns_none():
     rows = [make_row("other.md", "qwen3:14b")]
-    assert embed.select_winning_row(rows, "missing.md") is None
+    assert embed.select_winning_row(rows, "missing.md", EXTRACT_CFG) is None
 
 
 # ---------------------------------------------------------------------------
