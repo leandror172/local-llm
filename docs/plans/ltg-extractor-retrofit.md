@@ -149,9 +149,7 @@ roles:
 ```python
 def load_config(path) -> dict:
     raw = yaml.safe_load(open(path))
-    # Support both flat (Phase 2 interim) and two-level shapes
-    if "models" not in raw:
-        return raw["roles"]   # flat — return as-is for backward compat
+    # Two-level shape required — no flat fallback (advisor: no backward-compat shims)
     resolved = {}
     for role, model_name in raw["roles"].items():
         if model_name not in raw["models"]:
@@ -208,9 +206,8 @@ generate_code(
 
 After green on routing tests, update `embed.py`:
 - Import `CODE_EXTENSIONS` from `routing` — remove its own copy
-- `winning_extractor` still returns model name string but uses imported `CODE_EXTENSIONS`
-- Keep `CODE_EXTRACTOR`/`PROSE_EXTRACTOR` for now; routing agreement verified by a new test
-- Add `test_routing_agreement` in `test_embed.py`: after config is loaded, assert `config["extraction_code"]["model"] == embed.CODE_EXTRACTOR` (or equivalent)
+- Keep `CODE_EXTRACTOR`/`PROSE_EXTRACTOR` constants unchanged for now (replaced in Task 4)
+- No config dependency in this task — config is still flat Phase-2 shape
 
 Run all retrieval tests after. Expect green on routing + embed, no regressions.
 
@@ -273,15 +270,17 @@ generate_code(
 )
 ```
 
-### Task 4 — Upgrade `config.yaml` + fix test fixtures (same commit)
+### Task 4 — Upgrade `config.yaml` + fix test fixtures + routing agreement (one atomic commit)
 
-**WARNING:** `test_model_client.py` fixtures use flat YAML shape. Upgrading `config.yaml` and fixing fixtures MUST happen together.
+**WARNING:** Several interdependent changes must land together — splitting them leaves the test suite broken between commits.
 
 1. Rewrite `retrieval/config.yaml` with the two-level shape from the spec above
 2. Update `VALID_CONFIG_YAML` fixture in `test_model_client.py` to two-level shape
-3. Run all tests — expect green
+3. In `embed.py`: replace `CODE_EXTRACTOR`/`PROSE_EXTRACTOR` hardcoded constants with `config[route(path)]["model"]` — thread the already-loaded cfg into `winning_extractor(filepath, cfg)`. Config becomes the single source of truth; no duplicate model name strings.
+4. Add `test_routing_agreement` in `test_embed.py`: assert that `winning_extractor` returns the config-derived model name for a code path and a prose path (not a hardcoded string).
+5. Run all tests — expect green
 
-This task has no local model delegation (it's config editing). Do it directly.
+This task has no local model delegation. Do it directly.
 
 After updating fixtures: tests that were green for the two-level `load_config` from Task 3 will now use the correct fixture.
 
@@ -418,6 +417,37 @@ Suggested granularity:
 6. `extract_topics.py` rewrite + new tests (Task 6)
 7. Bash wrappers + index update (Task 7)
 8. No commit for Task 8 (verification only, unless probe results are worth committing)
+
+---
+
+## Advisor Review (appended post-plan — read before Task 1)
+
+The design decisions (fork B, named methods, `ChatResult`, `schemas.py`, two-level config) are correct — do not relitigate them. Three fixes required before coding:
+
+### BLOCKING — sequencing bug: routing-agreement test can't pass in Task 1
+
+Task 1 mentions adding `test_routing_agreement` asserting `config["extraction_code"]["model"] == embed.CODE_EXTRACTOR`. But `config.yaml` is not upgraded to the two-level shape (the step that *adds* the `extraction_prose`/`extraction_code` roles) until **Task 4**. At Task 1 the config is still the flat Phase-2 shape with only the `embedding` role — `config["extraction_code"]` raises `KeyError` — TDD thrashes.
+
+**Fix:** Move `test_routing_agreement` and any embed.py change that reaches into `config[...extraction...]` to **Task 4**, in the same commit as the config upgrade. Task 1 scope: write `routing.py` (already-red `test_routing.py`) + swap embed.py's local `CODE_EXTENSIONS` for an import from `routing` only (no config dependency). That's it.
+
+### SHOULD-FIX — embed.py still has two sources of truth for model names
+
+§1 was meant to eliminate `CODE_EXTRACTOR`/`PROSE_EXTRACTOR` hardcoded constants. The plan re-introduced the guard-test approach instead. **In Task 4:** replace those constants with `config[route(path)]["model"]` (thread the already-loaded `cfg` into `winning_extractor`). This makes `config.yaml` the single source of truth, deletes the guard-test entirely, and naturally lands in Task 4 where the config dependency is satisfied. Update `test_embed.py`'s routing parametrization to assert the config-derived model name, not a hardcoded string.
+
+### SHOULD-FIX — drop the `load_config` backward-compat shim
+
+The plan's `load_config` adds `if "models" not in raw: return raw["roles"]`. Project guidelines forbid backwards-compat shims "when you can just change the code." After Task 4 every config + fixture is two-level, so the flat branch is dead (and a footgun). **Implement `load_config` to require the two-level shape with no flat fallback.** The config upgrade + fixture fix + `load_config` rewrite are one atomic commit (Task 4).
+
+### Implementation gotchas
+
+1. **`_chat` must use module-level `httpx.post(url, json=payload, timeout=...)` — NOT `httpx.Client`.** Existing `test_model_client.py` mocks `patch("httpx.post", ...)`. Using `httpx.Client` silently breaks every `_chat` test mock.
+2. **Spell out `ChatResult` field extraction** in `_chat`: `content = resp.json()["message"]["content"]`; `model = resp.json().get("model", model_config["model"])`; `prompt_tokens = resp.json().get("prompt_eval_count", 0)`; `eval_count = resp.json().get("eval_count", 0)`. Benchmark rubric depends on token counts being populated.
+3. **`_build_benchmark_config` must set `think: false` for ALL qwen3 variants** — qwen3:14b *and* qwen3:8b (old `MODEL_EXTRA_PARAMS` covered both). gemma3:12b and qwen2.5-coder:14b get no `think` key.
+4. **Before Task 2 (schema move) and Task 6 (rewrite): run `git grep -n "from extract_topics\|import extract_topics\|FORMAT_SCHEMA"`** to confirm nothing imports `FORMAT_SCHEMA`/`CORPUS` from `extract_topics.py`. Silent breakage otherwise.
+
+### Solid as-is
+
+Fork B + `sweep_extractors.py`; `extract_prose`/`extract_code` + private `_chat(model_config)`; `ChatResult` with `model` field; `schemas.py` leaf module; timeout = config `timeout_s` + caller override; raise-and-let-caller-classify; Task 6 integration test + Task 8 parity check as the §1 regression guard.
 
 ---
 
