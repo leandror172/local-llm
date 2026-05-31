@@ -48,7 +48,8 @@ Completed items → `.claude/archive/deferred-completed.md`
 - [ ] **`create-persona.py`: accept raw temperature values:** Currently named choices only. Should also accept numeric (e.g., `0.1`, `0.7`).
 - [ ] **Refactor `server.py` — separation of concerns:** Extract `_is_model_loaded`, `_check_busy_models`, `_evict_all`, `_load_model` helpers. Split into logical modules.
 - [ ] **File-based Ollama coordination layer (Option 2):** Watch Ollama PR #9392 first (`ACTIVE` field in `/api/ps`). Build trigger: VRAM thrash observed AND #9392 hasn't shipped. Design: `docs/ideas/ollama-coordination-layer.md`.
-- [ ] **ollama-metrics proxy — evaluate systemd unit:** Currently started via `make proxy` (~/workspaces/clones/ollama-metrics). Decide whether to make it a proper systemd service (survives WSL2 restarts, starts with Ollama). Also applies to the Prometheus+Grafana docker-compose stack. Gate: after monitoring setup is validated as useful long-term.
+- [x] **ollama-metrics proxy — systemd unit:** Done 2026-05-30. `/etc/systemd/system/ollama-metrics.service`, `After=ollama.service`, auto-starts on boot.
+- [ ] **Prometheus+Grafana stack — systemd/docker unit:** `make stack` still manual. Consider `docker compose` systemd unit if monitoring proves long-term useful.
 - [ ] **Watch Ollama native `/metrics` PR #11159:** OTel-based endpoint (eval/prompt/load/total duration + token counts, per model label). 41+ commits, actively rebased since June 2025, not yet merged. When merged: port-swap proxy (Option A) becomes unnecessary — switch to native endpoint directly. PR: https://github.com/ollama/ollama/pull/11159
 - [ ] **Extract `create-persona.py` into importable library:** MCP tools currently shell out via subprocess. Extract to `personas/lib/persona_builder.py`.
 - [ ] **MCP server: hot-reload persona registry:** New personas invisible until restart. Add `reload_registry` tool or file-watcher.
