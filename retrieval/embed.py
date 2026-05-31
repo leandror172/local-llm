@@ -30,12 +30,12 @@ from typing import Dict, List, Optional
 import httpx
 
 from model_client import ModelClient, load_config
+from routing import CODE_EXTENSIONS
 
 REPO_ROOT = Path(__file__).parent.parent
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 RUNS_DIR = Path(__file__).parent / "runs"
 
-CODE_EXTENSIONS = {".py", ".go", ".ts", ".java"}
 CODE_EXTRACTOR = "qwen2.5-coder:14b"
 PROSE_EXTRACTOR = "qwen3:14b"
 
