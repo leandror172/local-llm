@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 # Add retrieval/ dir to path so we can import model_client as a module
@@ -22,6 +23,7 @@ RETRIEVAL_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(RETRIEVAL_DIR))
 
 import model_client  # noqa: E402
+from schemas import TOPIC_FORMAT_SCHEMA  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -173,3 +175,256 @@ def test_embed_texts_wrong_vector_length_raises(client):
     with patch("httpx.post", return_value=bad_resp):
         with pytest.raises((ValueError, AssertionError)):
             client.embed_texts(texts, role="embedding")
+
+
+# ---------------------------------------------------------------------------
+# Two-level config fixtures
+# ---------------------------------------------------------------------------
+
+VALID_TWO_LEVEL_CONFIG_YAML = """\
+models:
+  ollama-qwen3-14b-no-think:
+    provider: ollama
+    model: qwen3:14b
+    address: http://localhost:11434
+    think: false
+    timeout_s: 600
+    options:
+      num_ctx: 32768
+      temperature: 0.1
+  ollama-qwen25coder-14b:
+    provider: ollama
+    model: qwen2.5-coder:14b
+    address: http://localhost:11434
+    timeout_s: 600
+    options:
+      num_ctx: 32768
+      temperature: 0.1
+roles:
+  extraction_prose: ollama-qwen3-14b-no-think
+  extraction_code: ollama-qwen25coder-14b
+"""
+
+
+@pytest.fixture
+def two_level_config_file(tmp_path):
+    p = tmp_path / "config.yaml"
+    p.write_text(VALID_TWO_LEVEL_CONFIG_YAML, encoding="utf-8")
+    return p
+
+
+@pytest.fixture
+def client_with_extraction(two_level_config_file):
+    cfg = model_client.load_config(two_level_config_file)
+    return model_client.ModelClient(cfg)
+
+
+# ---------------------------------------------------------------------------
+# ChatResult NamedTuple
+# ---------------------------------------------------------------------------
+
+def test_chat_result_is_namedtuple():
+    result = model_client.ChatResult(content="x", model="m", prompt_tokens=1, eval_count=2)
+    assert isinstance(result, tuple)
+
+
+def test_chat_result_has_content_field():
+    result = model_client.ChatResult(content="x", model="m", prompt_tokens=1, eval_count=2)
+    assert result.content == "x"
+
+
+def test_chat_result_has_model_field():
+    result = model_client.ChatResult(content="x", model="m", prompt_tokens=1, eval_count=2)
+    assert result.model == "m"
+
+
+def test_chat_result_has_prompt_tokens_field():
+    result = model_client.ChatResult(content="x", model="m", prompt_tokens=1, eval_count=2)
+    assert result.prompt_tokens == 1
+
+
+def test_chat_result_has_eval_count_field():
+    result = model_client.ChatResult(content="x", model="m", prompt_tokens=1, eval_count=2)
+    assert result.eval_count == 2
+
+
+# ---------------------------------------------------------------------------
+# load_config — two-level resolution
+# ---------------------------------------------------------------------------
+
+def test_load_config_two_level_returns_extraction_prose(two_level_config_file):
+    cfg = model_client.load_config(two_level_config_file)
+    assert "extraction_prose" in cfg
+
+
+def test_load_config_two_level_prose_model(two_level_config_file):
+    cfg = model_client.load_config(two_level_config_file)
+    assert cfg["extraction_prose"]["model"] == "qwen3:14b"
+
+
+def test_load_config_two_level_code_model(two_level_config_file):
+    cfg = model_client.load_config(two_level_config_file)
+    assert cfg["extraction_code"]["model"] == "qwen2.5-coder:14b"
+
+
+def test_load_config_undefined_model_raises(tmp_path):
+    invalid_yaml = "models: {}\nroles:\n  prose: nonexistent\n"
+    p = tmp_path / "config.yaml"
+    p.write_text(invalid_yaml, encoding="utf-8")
+    with pytest.raises(KeyError):
+        model_client.load_config(p)
+
+
+# ---------------------------------------------------------------------------
+# call() — payload shape
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def fake_ollama_resp():
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.json.return_value = {
+        "message": {"content": "topics..."},
+        "model": "qwen3:14b",
+        "prompt_eval_count": 10,
+        "eval_count": 50,
+    }
+    return resp
+
+
+def test_call_payload_has_stream_false(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config)
+    payload = mock_post.call_args[1]["json"]
+    assert payload["stream"] == False
+
+
+def test_call_payload_has_messages(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config)
+    payload = mock_post.call_args[1]["json"]
+    assert payload["messages"] == [{"role": "user", "content": "test prompt"}]
+
+
+def test_call_injects_format_when_schema_passed(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config, schema={"type": "object"})
+    payload = mock_post.call_args[1]["json"]
+    assert "format" in payload
+
+
+def test_call_omits_format_when_no_schema(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config)
+    payload = mock_post.call_args[1]["json"]
+    assert "format" not in payload
+
+
+def test_call_injects_think_when_in_config(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config)
+    payload = mock_post.call_args[1]["json"]
+    assert payload["think"] == False
+
+
+def test_call_omits_think_when_not_in_config(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_code"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config)
+    payload = mock_post.call_args[1]["json"]
+    assert "think" not in payload
+
+
+def test_call_passes_options_from_config(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config)
+    payload = mock_post.call_args[1]["json"]
+    assert payload["options"] == model_config["options"]
+
+
+def test_call_timeout_override_beats_config(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp) as mock_post:
+        client_with_extraction.call("test prompt", model_config, timeout=999)
+    assert mock_post.call_args[1]["timeout"] == 999
+
+
+def test_call_returns_chat_result(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp):
+        result = client_with_extraction.call("test prompt", model_config)
+    assert isinstance(result, model_client.ChatResult)
+
+
+def test_call_populates_content(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp):
+        result = client_with_extraction.call("test prompt", model_config)
+    assert result.content == "topics..."
+
+
+def test_call_populates_model(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp):
+        result = client_with_extraction.call("test prompt", model_config)
+    assert result.model == "qwen3:14b"
+
+
+def test_call_populates_prompt_tokens(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp):
+        result = client_with_extraction.call("test prompt", model_config)
+    assert result.prompt_tokens == 10
+
+
+def test_call_populates_eval_count(client_with_extraction, fake_ollama_resp):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", return_value=fake_ollama_resp):
+        result = client_with_extraction.call("test prompt", model_config)
+    assert result.eval_count == 50
+
+
+# ---------------------------------------------------------------------------
+# call() — error propagation
+# ---------------------------------------------------------------------------
+
+def test_call_timeout_exception_propagates(client_with_extraction):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", side_effect=httpx.TimeoutException("t")):
+        with pytest.raises(httpx.TimeoutException):
+            client_with_extraction.call("test prompt", model_config)
+
+
+def test_call_connect_error_propagates(client_with_extraction):
+    model_config = client_with_extraction.config["extraction_prose"]
+    with patch("httpx.post", side_effect=httpx.ConnectError("c")):
+        with pytest.raises(httpx.ConnectError):
+            client_with_extraction.call("test prompt", model_config)
+
+
+# ---------------------------------------------------------------------------
+# Named methods — dispatch to _chat with correct config + schema
+# ---------------------------------------------------------------------------
+
+def test_extract_prose_calls_chat_with_extraction_prose_config(client_with_extraction):
+    with patch.object(client_with_extraction, "_chat", return_value=MagicMock()) as mock_chat:
+        client_with_extraction.extract_prose("my prompt")
+        assert mock_chat.call_args[0][1] == client_with_extraction.config["extraction_prose"]
+
+
+def test_extract_code_calls_chat_with_extraction_code_config(client_with_extraction):
+    with patch.object(client_with_extraction, "_chat", return_value=MagicMock()) as mock_chat:
+        client_with_extraction.extract_code("my prompt")
+        assert mock_chat.call_args[0][1] == client_with_extraction.config["extraction_code"]
+
+
+def test_extract_prose_passes_topic_schema(client_with_extraction):
+    with patch.object(client_with_extraction, "_chat", return_value=MagicMock()) as mock_chat:
+        client_with_extraction.extract_prose("my prompt")
+        assert mock_chat.call_args[1].get("schema") == TOPIC_FORMAT_SCHEMA

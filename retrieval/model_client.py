@@ -3,6 +3,8 @@
 from pathlib import Path
 import yaml
 import httpx
+from typing import NamedTuple, Optional
+from schemas import TOPIC_FORMAT_SCHEMA
 
 def load_config(path: Path | str) -> dict:
     path = Path(path)
@@ -16,6 +18,13 @@ def load_config(path: Path | str) -> dict:
         raise ValueError("Config must contain a top-level 'roles' key")
     
     return config["roles"]
+
+
+class ChatResult(NamedTuple):
+    content: str
+    model: str
+    prompt_tokens: int
+    eval_count: int
 
 
 class ModelClient:
@@ -52,3 +61,39 @@ class ModelClient:
                 raise ValueError(f"Vector length {len(vector)} does not match expected dimension {embed_dim}")
         
         return embeddings
+
+    def _chat(self, prompt: str, model_config: dict, schema: Optional[dict] = None, timeout: Optional[float] = None) -> ChatResult:
+        payload = {
+            "model": model_config["model"],
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": model_config.get("options", {})
+        }
+        
+        if schema is not None:
+            payload["format"] = schema
+        
+        if "think" in model_config:
+            payload["think"] = model_config["think"]
+        
+        effective_timeout = timeout if timeout is not None else model_config.get("timeout_s", 120)
+        url = f'{model_config["address"]}/api/chat'
+        
+        resp = httpx.post(url, json=payload, timeout=effective_timeout)
+        resp.raise_for_status()
+        
+        return ChatResult(
+            content=resp.json()["message"]["content"],
+            model=resp.json().get("model", model_config["model"]),
+            prompt_tokens=resp.json().get("prompt_eval_count", 0),
+            eval_count=resp.json().get("eval_count", 0)
+        )
+
+    def call(self, prompt: str, model_config: dict, schema: Optional[dict] = None, timeout: Optional[float] = None) -> ChatResult:
+        return self._chat(prompt, model_config, schema=schema, timeout=timeout)
+
+    def extract_prose(self, prompt: str) -> ChatResult:
+        return self._chat(prompt, self.config["extraction_prose"], schema=TOPIC_FORMAT_SCHEMA)
+
+    def extract_code(self, prompt: str) -> ChatResult:
+        return self._chat(prompt, self.config["extraction_code"], schema=TOPIC_FORMAT_SCHEMA)
