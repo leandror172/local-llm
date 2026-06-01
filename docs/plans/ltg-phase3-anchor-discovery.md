@@ -102,6 +102,16 @@ Benefits: (a) both retrieval paths remain whole; (b) **multiplicity resolves cle
 
 High-salience recurring topics could be **suggested as new `ref:KEY` anchors** — the curated and discovered graphs feed each other over time. Connects to concept-paper property #5 (derived structure rebalances; salience promotion). Note for a later phase / concept-paper revision; do not build in Phase 3.
 
+### 3e. Path-selection binding time (NEW open axis — D7)
+
+User's framing: the RAG path — **"by span topics" / "by ref anchor" / "by both"** — could be selected at **query time (time of usage)** OR fixed at **build time (time of building the base)**. **Undecided.**
+
+- **Query-time (dynamic routing):** build & store both surfaces always; pick span-only / ref-only / both per query (or per input-class). Pros: maximal flexibility; the natural fit for input-class routing (§3b) and "strategies by reconfig without re-index"; one base serves every strategy. Cons: must always maintain both surfaces; routing logic lives in the retrieval layer.
+- **Build-time (static):** decide once which path(s) to materialize when building the index. Pros: simpler retrieval; potentially less storage. Cons: locks the strategy; changing requires a rebuild; loses per-query adaptivity.
+- **Mitigating fact:** at current scale a full rebuild is ~3s, so even "build-time" is cheaply reversible — the usual lock-in penalty is small here.
+
+**Lean (not decided):** query-time. It is strictly more expressive and is exactly the "configurable RAG strategies" payoff that putting weights/routing in `config.yaml` was meant to unlock; build both surfaces (which D2=A already implies), decide the blend at usage. But the user flagged this as genuinely open — it interacts with D2 (build-time-single-path would resurrect a scoping argument) and D5 (alias-link is what makes both-at-query-time cheap). **Decide alongside D2/D5.**
+
 ---
 
 ## 4. Empirical ground truth (enumeration, session 81)
@@ -141,6 +151,7 @@ personas/persona-template.md
 | **D4** | Schema extension now | yes | yes | **yes** | ✅ agreed |
 | **D5** | Merge representation + multiplicity | — | (raised) | **alias-link (keep both rows), many-topics:one-anchor** | ⚠️ OPEN |
 | **D6** | Acceptance example | — | (raised) | **retarget to 2 in-corpus refs; broad validation at Phase 2.5** | ⚠️ OPEN |
+| **D7** | Path-selection binding time | (raised) | — | **query-time (lean, undecided)** — build both, choose blend at usage | ⚠️ OPEN |
 
 ### D1 — Confidence/weight model
 - **A — binary stratification** (plan as-written): anchor 1.0, extracted = similarity. Pros: simplest, matches plan verbatim, ships fastest. Cons: discards weights vision; conflates retrieval-weight with edge-confidence; can't differentiate QUICK/KNOWLEDGE; certain rework.

@@ -157,7 +157,7 @@ Or manually:
 | Task | Read first | Ref keys / notes |
 |------|-----------|-----------------|
 | ~~**14B num_ctx re-probe**~~ | ~~DONE session 76~~ | All 4 14B models → 32768 (dsc16 → 24576). Results: `retrieval/probes/ctx-probe-2026-05-30.md` |
-| **LTG Phase 3 — anchors** | `ref:ltg-plan-phase-3`, `retrieval/DECISIONS.md`, `retrieval/store.py`, `retrieval/model_client.py`, `.claude/handoffs/session-80-ltg-extractor-retrofit-advisor-review.md` | Both prereqs now clear (retrofit ✓ session 80, 14B re-probe ✓ session 76). Open PR first: `feature/ltg-extractor-retrofit` → master. |
+| **LTG Phase 3 — anchors (DISCOVERY in progress)** | **`docs/plans/ltg-phase3-anchor-discovery.md` (read first, §4 onward)**, `.claude/handoffs/session-81-phase3-anchor-discovery-advisor-review.md`, `ref:ltg-plan-phase-3`, `retrieval/DECISIONS.md`, `retrieval/store.py`, `retrieval/model_client.py` | Discovery started session 81, NOT frozen. Dual-path RAG framing; D2/D5/D6/D7 open. No `anchors.py` until decisions confirmed. Branch `feature/ltg-phase3-anchors`. |
 | ~~**extract_topics.py retrofit**~~ | ~~DONE sessions 78–80~~ | All 8 tasks complete. 147 tests. Branch `feature/ltg-extractor-retrofit` ready to PR. |
 | **Classifier benchmark (M-P1b/P2)** | `docs/findings/model-updates-2026-05.md` § What to Benchmark, `personas/models.yaml`, `benchmarks/lib/run-compare-models.sh` | `ref:model-selection`; models pulled: `qwen3.5:0.8b`, `qwen3.5:2b`, `phi4-mini` vs `qwen3:4b-q8_0` |
 | **Backfill SOLID + error-handling directives** | `docs/tasks/backfill-persona-constraints.md`, `docs/ideas/persona-error-handling-conventions.md`, `personas/registry.yaml` | grep: `git grep -L "MUST NOT modify"` modelfiles/; pair error-handling session with backfill |
