@@ -83,6 +83,25 @@ def test_routing_agreement():
     assert embed.winning_extractor("docs/design.md", cfg) == cfg["extraction_prose"]["model"]
 
 
+def test_config_yaml_contract():
+    """Regression: pins the real config.yaml so a tag/dim change is caught immediately.
+
+    Guards Invariant D: winning-row match depends on Ollama echoing the exact tag that
+    config.yaml declares. If a model is re-tagged (e.g., ':latest' instead of ':8b'),
+    select_winning_row silently drops the row. This test will fail before that happens.
+    """
+    cfg = model_client.load_config(embed.CONFIG_PATH)
+    assert cfg["embedding"]["embed_dim"] == 4096, (
+        "embed_dim must be 4096 (qwen3-embedding:8b); update embed.py + this test if changed"
+    )
+    assert cfg["extraction_prose"]["model"] == "qwen3:14b", (
+        "extraction_prose model tag changed; verify Ollama echoes this exact tag"
+    )
+    assert cfg["extraction_code"]["model"] == "qwen2.5-coder:14b", (
+        "extraction_code model tag changed; verify Ollama echoes this exact tag"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Winning row selection
 # ---------------------------------------------------------------------------
