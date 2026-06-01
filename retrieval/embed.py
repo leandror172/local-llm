@@ -3,7 +3,7 @@
 Phase 2 embedding script for the Latent Topic Graph pipeline.
 
 Reads Phase 1 extraction JSONL, filters to winning extractor per file,
-embeds topic descriptions (batched) via bge-m3, writes embedding JSONL.
+embeds topic descriptions (batched) via qwen3-embedding:8b, writes embedding JSONL.
 
 Usage:
     retrieval/run-embed.sh --input retrieval/runs/20260416-181839.jsonl \\
@@ -11,10 +11,10 @@ Usage:
 """
 
 # Sequential constraint: do not run alongside qwen3:14b or qwen2.5-coder:14b inference.
-# bge-m3 (~700MB VRAM) + qwen3:14b (~9GB VRAM) co-fit, but a concurrent extraction +
-# embedding pass on the 12GB GPU has been observed to thrash. See ref:ltg-vram-probe.
-# In Phase 2's pipeline, embed.py runs after extraction is complete, so this is policy
-# (don't manually launch extraction in another shell while embed.py runs), not a lock.
+# qwen3-embedding:8b (~5GB VRAM) + qwen3:14b (~11.5GB VRAM) do NOT co-fit in 12GB.
+# The pipeline survives because embed.py always runs AFTER extraction is complete
+# (sequential policy, one model resident at a time). See ref:ltg-vram-probe.
+# Do not manually launch extraction in another shell while embed.py runs.
 
 import argparse
 import json
@@ -39,6 +39,12 @@ RUNS_DIR = Path(__file__).parent / "runs"
 def winning_extractor(filepath: str, cfg: dict) -> str:
     """Return the winning extractor model name for a given file path."""
     return cfg[route(filepath)]["model"]
+# Invariant D: select_winning_row matches row["model"] == cfg[role]["model"].
+# row["model"] comes from Ollama's echoed "model" field (resp.json()["model"]).
+# If Ollama ever echoes a tag that differs from config.yaml (e.g., ":latest" vs a
+# pinned digest), the winning-row match fails silently — the row is dropped with
+# "no winning row" instead of raising. Always verify config.yaml tags match what
+# Ollama echoes after pulling a new model version.
 
 def select_winning_row(rows: List[Dict], file_path: str, cfg: dict) -> Optional[Dict]:
     """Select the winning row based on file path, model, and status."""

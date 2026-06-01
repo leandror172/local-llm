@@ -59,7 +59,7 @@ MODEL_EXTRA_PARAMS: dict[str, dict] = {
 }
 
 OLLAMA_OPTIONS = {
-    "num_ctx": 16384,
+    "num_ctx": 16384,  # PENDING: benchmark intentionally uses 16384 (half of production 32768); aligning to 32768 would require re-running all benchmarks for validity — user decision required.
     "temperature": 0.1,
 }
 
