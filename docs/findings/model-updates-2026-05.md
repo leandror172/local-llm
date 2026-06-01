@@ -53,14 +53,14 @@ Next generation after Qwen3. All models: 256K native context, native tool callin
 
 ### Qwen3.6 (released Apr 2026)
 
-Vision-language fusion (early-fusion multimodal), 201 language support, hybrid Gated Delta Networks + sparse MoE.
+Vision-language fusion (multimodal), 201 language support. Two variants with different architectures:
 
-| Model | Disk | Fit |
-|---|---|---|
-| qwen3.6:27b | 17GB | Hybrid VRAM+RAM |
-| qwen3.6:35b-a3b | 24GB | Hybrid VRAM+RAM |
+| Model | Disk | Architecture | Fit |
+|---|---|---|---|
+| qwen3.6:27b | 17GB | **Dense** (Gated DeltaNet hybrid — linear attention, all 27B params active per token) | Hybrid VRAM+RAM |
+| qwen3.6:35b-a3b | 24GB | **MoE** (A3B = 3B active params per token) | Hybrid VRAM+RAM |
 
-Same hybrid offload pain as qwen3:30b-a3b. Only compelling if vision input is needed.
+⚠ **Do not conflate**: DeltaNet is a linear-attention mechanism (O(L) compute), not sparse MoE. The 27B activates all params every token; the 35B activates only 3B. Inference speed and VRAM pressure differ significantly. See `docs/findings/model-updates-2026-05.md` § "Long-Context + High-Quality" for 27B deep-dive.
 
 ### Qwen3-Coder-Next (80B MoE, Feb 2026)
 
@@ -138,6 +138,8 @@ Multimodal (text + image), 256K context ⚠, 140+ languages. *(⚠ 256K figure f
 
 ### Reasoning / Code — MiMo-7B-RL (Xiaomi, Watch, session 78)
 
+> ⚠ **Provenance:** specs and benchmarks below are WebFetch-summary-derived from HF model card. Treat as directional — verify before adopting.
+
 7B reasoning model from Xiaomi trained with rule-based RL (accuracy-only rewards, no hacking). Uses **Multiple-Token Prediction (MTP)** for speculative decoding at 90% acceptance rate — gives free throughput gain at inference.
 
 | Property | Value |
@@ -169,19 +171,21 @@ Multimodal (text + image), 256K context ⚠, 140+ languages. *(⚠ 256K figure f
 
 ### Long-Context + High-Quality — Qwen3.6-27B (Watch, session 78)
 
+> ⚠ **Provenance:** specs and benchmark numbers below are WebFetch-summary-derived from HF model card and `ollama.com/library`. Treat benchmark numbers as directional — verify at primary source before engineering commitments. Ollama tag confirmed via `ollama.com/library/qwen3.6` (1.9M downloads). Official Qwen blog post not found at research time; model confirmed real via Ollama download count.
+
 Dense hybrid (Gated DeltaNet + Attention, 48:16 ratio across 64 layers), Apache 2.0, released April 2026.
 
 | Property | Value |
 |---|---|
-| Params | 27B dense |
+| Params | 27B dense (all 27B active per token — DeltaNet is linear attention, not MoE) |
 | Context | **262K native** / 1M with YaRN |
-| VRAM (Q4_K_M) | 17GB → 12GB VRAM + ~5GB RAM offload |
-| Ollama tag | `qwen3.6:27b` ✅ (verified, session 78) |
+| VRAM (Q4_K_M) | 17GB → 12GB VRAM + ~5GB RAM offload *(estimated, not probed)* |
+| Ollama tag | `qwen3.6:27b` — tag-verified-via-ollama.com (session 78) |
 | License | **Apache 2.0** ✅ |
 | Multimodal | ✅ Vision encoder (image + video) — first in stack |
 | Thinking | ✅ on/off + "Preserve Thinking" across turns |
 
-**Benchmarks:**
+**Benchmarks** *(WebFetch-derived — directional only):*
 
 | Benchmark | Score |
 |---|---|
@@ -190,11 +194,11 @@ Dense hybrid (Gated DeltaNet + Attention, 48:16 ratio across 64 layers), Apache 
 | MMLU-Pro | 86.2% |
 | SWE-bench Verified | **77.2%** |
 
-**Coding variant:** `qwen3.6:27b-coding-*` exists but only in NVFP4 (Ada Lovelace+) and MLX (Apple Silicon) — **not accessible on RTX 3060**. No `27b-coding-q4_K_M` exists. Qwen3.6 released no 14B variant; the `qwen3.6-coder:14b` tag that was searched in M-P0a never existed.
+**Coding variant:** `qwen3.6:27b-coding-*` exists in NVFP4 (Ada Lovelace+) and MLX (Apple Silicon) formats — **not accessible on RTX 3060**. No `27b-coding-q4_K_M` visible in the 5 of 24 Ollama tags returned. A 14B coder variant was not found; `qwen3.6-coder:14b` searched in M-P0a was not on Ollama at that time — but full tag list was not verified.
 
-**35B variant:** `qwen3.6:35b` (24GB on Ollama) — likely MoE A3B (same footprint as qwen3.5-35B-A3B). HF page auth-gated; architecture unverified. If A3B: 3B active params, better speed than dense 27B at similar VRAM. Verify before pulling.
+**35B variant:** `qwen3.6:35b` (24GB on Ollama) — architecture unverified (HF page auth-gated). Likely MoE A3B based on naming convention and size. If A3B: 3B active params → faster than dense 27B at similar VRAM footprint. Verify before pulling.
 
-**Speed reality:** Dense 27B with ~5 layers CPU-offloaded → ~5–10 tok/s vs 32 tok/s for qwen3:14b (fully VRAM-resident). Acceptable for offline batch extraction; too slow for interactive MCP codegen.
+**Speed reality** *(estimated — not measured):* Dense 27B with ~5 layers CPU-offloaded → ~5–10 tok/s vs 32 tok/s for qwen3:14b (fully VRAM-resident). Acceptable for offline batch extraction; too slow for interactive MCP codegen.
 
 **Cross-project relevance:**
 - **LTG Phase 3+:** Best quality extractor available if batch speed is acceptable. 262K ctx handles entire large files without chunking — directly addresses non-contiguous topic recognition goal.
@@ -205,6 +209,8 @@ Dense hybrid (Gated DeltaNet + Attention, 48:16 ratio across 64 layers), Apache 
 **Watch trigger:** Phase 3 corpus expansion — benchmark 27B on 2-3 long extraction tasks vs qwen3:14b. If quality gap justifies the speed cost, use as quality arm for batch re-extraction runs.
 
 ### Long-Context Extraction — Mistral-Nemo-12B + Nemotron-Nano-8B (Watch, session 78)
+
+> ⚠ **Provenance:** specs and benchmarks below are WebFetch-summary-derived from HF model cards. VRAM estimates are calculated, not measured. Treat as directional.
 
 Evaluated as candidates for LTG Phase 3+ **long-document extraction arm** — files >20K tokens that currently require chunking before topic extraction. Both have 128K context windows vs qwen3:14b's 32K.
 

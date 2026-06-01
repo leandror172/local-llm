@@ -4,6 +4,16 @@
 **Context:** RTX 3060 12GB VRAM + 32GB RAM. Evaluating new model candidates beyond May 2026 survey.
 **Method:** Direct parquet download from `open-llm-leaderboard/contents` HF dataset (4,576 models); Arena.ai live rankings; per-model HF page fetches.
 
+## Data Trust Tiers
+
+| Tier | Source | Trust level | Sections |
+|---|---|---|---|
+| **Hard data** | HF leaderboard parquet (4,576 rows, downloaded directly) | High — raw dataset, not summarised | "HF Open LLM Leaderboard" table |
+| **WebFetch-summary** | Per-model HF pages, ollama.com/library, fetched and summarised by a small model | Directional — verify benchmarks before acting | Model deep-dives (Falcon3, AceMath, Kimi K2) |
+| **Partial page** | Arena.ai leaderboard (SPA — only top-10 visible rows extracted) | Incomplete — deeper open-weight rankings not captured | "Arena.ai" section |
+
+The parquet table is the one section that can be treated as reference-grade. Model deep-dive benchmark numbers (AIME, MATH, SWE-bench) came through a summarisation step and should be verified at the primary HF model card or official technical report before any engineering commitment.
+
 > ⚠ **Leaderboard staleness note:** The HF Open LLM Leaderboard v2 (benchmarks: IFEval, BBH, MATH Lvl 5, GPQA, MUSR, MMLU-PRO) has been de-prioritised by model developers since mid-2025. All major 2025-2026 releases are **absent** — Qwen3/3.5/3.6, DeepSeek-V3, Llama 4, Gemma 4, MiMo, Nemotron-H, Mistral-Nemo. Developers have shifted to AIME 2025/2026, SWE-bench, and LiveCodeBench as the de facto standard. Use this data for the 2024 generation only.
 
 ---
@@ -66,8 +76,9 @@ Filtered from 4,576 submissions: notable org prefixes, ≤30B params (or MoE wit
 | Context | 32K |
 | VRAM (Q4_K_M) | ~5GB |
 | Ollama | ✅ (community GGUF quants) |
+| VRAM (Q4_K_M) | ~5GB *(estimated)* |
 | License | **TII Falcon-LLM License 2.0** — permissive for commercial use, attribution required; NOT Apache/MIT |
-| Leaderboard avg | 36.4 (vs Qwen2.5-7B at 35.2) |
+| Leaderboard avg | 36.4 (vs Qwen2.5-7B at 35.2) — **parquet data, hard** |
 
 Key numbers from the benchmark suite: BBH 37.92 (Llama-3.1-8B: 29.89), MATH Lvl5 31.87 (Llama: 19.34). Trained on 14 trillion tokens, multilingual (EN/FR/ES/PT).
 
