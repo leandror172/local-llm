@@ -108,6 +108,32 @@ Atomic write via `_write_output_file`: writes to `{path}.tmp`, then `os.replace`
 
 **Implication:** The edit loop pattern — `generate_code(output_file=...)` then `generate_code(context_files=[written_file])` — is now zero-overhead on both ends: write costs no extra Claude tokens, subsequent read passes through the server.
 
+<!-- ref:mcp-keep-alive -->
+## keep_alive Default for KV Prefix Reuse (2026-06)
+
+`chat()` passes `keep_alive="15m"` in every Ollama payload. Inherited by all tools
+(`generate_code`, `ask_ollama`, `summarize`, etc.) without per-tool changes.
+
+**Rationale:** Ollama's default keep_alive is 5 minutes — too short for retry windows
+(a 120s timeout + immediate retry can land outside 5m) and for multi-call sessions
+where the same `context_files` or `refs` are passed repeatedly. llama.cpp automatically
+reuses KV states for any leading prefix that matches the cached slot; `keep_alive`
+controls how long that slot stays alive. 15 minutes covers normal interactive use.
+
+**What this enables:**
+- Retry after timeout: model still in VRAM → prefix (system prompt + stable docs)
+  not recomputed — only the new/diverged tail is processed.
+- Same `context_files` across two calls: identical leading bytes → cache hit on
+  all doc tokens.
+
+**What this does NOT do:** `keep_alive` does not pin tokens against sliding-window
+eviction during a single long call (that's `num_keep`). For typical `generate_code`
+workloads (32K ctx, output << 32K), sliding-window eviction does not occur.
+
+Full research: `docs/findings/ollama-kv-prefix-cache-findings.md`
+(`ref:ollama-kv-prefix-cache`, `ref:ollama-explicit-cache-api`)
+<!-- /ref:mcp-keep-alive -->
+
 ## Debug Logging — Structured JSONL (2026-05, session 65)
 
 The server can emit a structured JSONL log to disk for hang diagnosis and
