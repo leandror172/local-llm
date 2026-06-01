@@ -136,6 +136,37 @@ Multimodal (text + image), 256K context ⚠, 140+ languages. *(⚠ 256K figure f
 - Ollama: `gemma4`, ~10GB — fits with little headroom
 - **Skip** unless vision input becomes a use case. Qwen3.6-Coder beats it on SWE-Bench.
 
+### Reasoning / Code — MiMo-7B-RL (Xiaomi, Watch, session 78)
+
+7B reasoning model from Xiaomi trained with rule-based RL (accuracy-only rewards, no hacking). Uses **Multiple-Token Prediction (MTP)** for speculative decoding at 90% acceptance rate — gives free throughput gain at inference.
+
+| Property | Value |
+|---|---|
+| Params | 7B |
+| License | **MIT** ✅ |
+| Ollama | ✅ (community GGUF quants available) |
+| VRAM (Q4_K_M) | ~5GB |
+| MATH-500 | 95.8% |
+| AIME 2024 | **68.2%** (vs deepseek-r1:7b 55.5% — significant gap) |
+| LiveCodeBench v5 | 57.8% |
+| GPQA-Diamond | 54.4% |
+
+**vs current 7B reasoning slot:**
+
+| | deepseek-r1:7b | MiMo-7B-RL |
+|---|---|---|
+| AIME 2024 | 55.5% | **68.2%** |
+| MATH-500 | — | **95.8%** |
+| Inference speed | standard | faster (MTP speculative decoding) |
+
+- Stronger than deepseek-r1:7b on reasoning while the same size and likely faster
+- Same VRAM footprint as qwen3:8b (~5GB) — can slot in without disrupting co-residence budget
+- MIT license — clean for Layer 7 DPO pipeline
+- **Watch trigger:** when a 7B reasoning task appears where deepseek-r1:14b is overkill (VRAM or speed). Benchmark against deepseek-r1:7b on your task suite before adopting.
+
+**Kimi K2 (Moonshot AI) — cloud only:**
+1T total / 32B active MoE. GPQA 87.6%, SWE-bench 76.8% — top of open leaderboards. Modified MIT license. But 1T weights mean even Q2 exceeds 125GB — no local path exists. API only at `platform.moonshot.ai`.
+
 ### Long-Context + High-Quality — Qwen3.6-27B (Watch, session 78)
 
 Dense hybrid (Gated DeltaNet + Attention, 48:16 ratio across 64 layers), Apache 2.0, released April 2026.
