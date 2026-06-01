@@ -59,7 +59,7 @@ MODEL_EXTRA_PARAMS: dict[str, dict] = {
 }
 
 OLLAMA_OPTIONS = {
-    "num_ctx": 16384,  # PENDING: benchmark intentionally uses 16384 (half of production 32768); aligning to 32768 would require re-running all benchmarks for validity — user decision required.
+    "num_ctx": 16384,  # DECISION (c), session 81: benchmark deliberately stays at 16384 — matches the FROZEN Phase 1 extractor spec (ref:ltg-extractor), the operating point under which 2-arm routing was validated. Production config.yaml drifted to 32768 (inherited from session 75/76 ctx-ceiling upgrades). Kept divergent on purpose; RECHECK before Phase 2.5 corpus expansion (long files are where 16K-vs-32K bites). See DECISIONS.md ref:ltg-extractor.
     "temperature": 0.1,
 }
 
