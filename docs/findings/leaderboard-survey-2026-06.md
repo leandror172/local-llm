@@ -126,6 +126,105 @@ Covered in depth in `docs/findings/model-updates-2026-05.md` § "Reasoning / Cod
 
 ---
 
+## Research Methodology — What Was Tried and What Worked
+
+Documented for future research sessions doing similar leaderboard pulls.
+
+### Approaches tried (in order)
+
+**1. WebFetch on leaderboard SPAs — universally failed**
+
+All major leaderboards are React/Gradio single-page apps. WebFetch fetches the initial HTML skeleton, which contains no data:
+- `huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard` → loading state only
+- `livebench.ai/leaderboard` → 404 (correct URL is `livebench.ai`)
+- `livebench.ai` → page title only, no table data
+- `artificial-analysis.com/leaderboard/models` → ECONNREFUSED (rate-limited or blocked)
+- `labs.scale.com/leaderboard` → page title only (redirected from `scale.com/leaderboard`)
+- `lmarena.ai/leaderboard` → 301 redirect to `arena.ai/leaderboard`
+- `huggingface.co/spaces/lmsys/chatbot-arena-leaderboard` → metadata only
+
+**Lesson:** WebFetch cannot scrape SPAs. It gets the static shell, not the rendered data.
+
+**2. HF Space API endpoint guessing — wrong paths**
+
+The HF Space for the leaderboard has a FastAPI backend (`backend/app/api/endpoints/leaderboard.py` visible in the file tree). Tried:
+- `open-llm-leaderboard-open-llm-leaderboard.hf.space/api/leaderboard?limit=50&sort=average&order=desc` → `{"detail":"Not Found"}`
+- `open-llm-leaderboard-open-llm-leaderboard.hf.space/api/models?limit=40&sort_by=average_score` → returned rows but all fields were `null` (wrong schema guessing)
+
+**Lesson:** HF Space API paths are not standardised; guessing routes wastes attempts. The dataset-backed approach is more reliable.
+
+**3. HF datasets-server rows API — wrong dataset name, then schema error**
+
+```
+https://datasets-server.huggingface.co/rows?dataset=open-llm-leaderboard%2Fresults&...
+```
+→ `TypeError: Couldn't cast array of type struct<...>` — the `results` dataset schema changed.
+
+Correct dataset name is `open-llm-leaderboard/contents`. First row fetch confirmed the right field names (`Average ⬆️`, `#Params (B)`, `MoE`, `Hub License`, `fullname`).
+
+Then tried fetching 500 rows via the rows API — returned 0 rows (probable rate-limit or timeout on large requests).
+
+**4. Parquet download — what actually worked ✅**
+
+```bash
+curl -s "https://datasets-server.huggingface.co/parquet?dataset=open-llm-leaderboard%2Fcontents"
+```
+Returns a JSON with a direct `.parquet` URL:
+```
+https://huggingface.co/datasets/open-llm-leaderboard/contents/resolve/refs%2Fconvert%2Fparquet/default/train/0000.parquet
+```
+
+Download with `curl -sL <url> -o /tmp/llm_leaderboard.parquet`, then parse with `pyarrow` (available; `pandas` is not).
+
+**Full working pattern:**
+```bash
+# 1. Get parquet URL
+curl -s "https://datasets-server.huggingface.co/parquet?dataset=open-llm-leaderboard%2Fcontents"
+
+# 2. Download
+curl -sL "<url-from-step-1>" -o /tmp/llm_leaderboard.parquet
+
+# 3. Parse with pyarrow (pandas not installed in this WSL env)
+python3 -c "
+import pyarrow.parquet as pq
+tbl = pq.read_table('/tmp/llm_leaderboard.parquet')
+rows = tbl.to_pydict()
+# ... filter, sort, print
+"
+```
+
+File size: 1.1MB for 4,576 models. pyarrow reads it in <1s.
+
+**5. Arena.ai — worked with redirect handling**
+
+`lmarena.ai/leaderboard` redirects 301 → `arena.ai/leaderboard`. WebFetch returns the redirect notice; re-fetch the new URL. Got top-10 rankings but arena.ai's page only rendered the visible portion — deeper table data (open-weight models further down) was not in the extracted content. No API found for arena.ai.
+
+**6. Per-model HF page fetches — reliable for individual models**
+
+For specific models (Falcon3-7B, AceMath-7B, Kimi K2, Qwen3.6-27B, etc.), direct `huggingface.co/<org>/<model>` page fetches work well. Most model cards contain structured specs in the README. Some pages require authentication (401) — typically gated models or models from orgs that gate downloads. Workaround: not found; skip or use community GGUF repos instead.
+
+**7. HF collection pages — unreliable**
+
+`huggingface.co/collections/<org>/<slug>` pages return 404 more often than not (slugs are not stable/guessable). Use `huggingface.co/<org>` org page or search `huggingface.co/models?search=<name>` instead.
+
+### Environment notes
+
+- `pandas` is NOT installed in WSL2 env — use `pyarrow` for parquet parsing
+- `pyarrow` IS available
+- `curl` + `python3` stdlib available for all network + parsing tasks
+- Leaderboard parquet files are typically small (<5MB) — safe to download to `/tmp/`
+- Use `~/workspaces/tmp/` for anything to keep across session (per project convention); `/tmp/` is fine for throwaway data
+
+### What to try next time
+
+For leaderboard data:
+1. Check `datasets-server.huggingface.co/parquet?dataset=<org>%2F<name>` first — works for any HF-backed leaderboard
+2. For arena-style Elo rankings, no reliable API found — WebFetch on `arena.ai/leaderboard` gets partial top-N only
+3. For per-model specs, direct HF page fetch is reliable unless the model is gated (401)
+4. For Ollama availability, `ollama.com/library/<tag>` is the authoritative source — WebFetch works on it
+
+---
+
 ## Sources
 
 - HF Open LLM Leaderboard dataset: `open-llm-leaderboard/contents` (parquet, 4,576 models, downloaded 2026-06-01)
