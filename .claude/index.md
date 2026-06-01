@@ -139,6 +139,8 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 |--------|---------|-------------|
 | `retrieval/run-vram-probe.sh` | VRAM co-residence probe: qwen3:14b + bge-m3 simultaneous load + interleaved stress. PASS/WARN/FAIL verdict. | Phase 2 gate before writing embed pipeline; re-run if embedding model changes |
 | `retrieval/run-preflight.sh` | 5-check preflight: deps, Ollama, bge-m3, JSONL input, disk space. | Before any embed/store run |
+| `retrieval/run-extract-topics.sh` | 2-arm production runner: routes each CORPUS file by extension, calls qwen3:14b (prose) or qwen2.5-coder:14b (code), writes one JSONL row per file. | Phase 1 production extraction; feeds run-embed.sh |
+| `retrieval/run-sweep-extractors.sh` | Benchmark sweep runner: N models × CORPUS files × rubric scoring. Replaces old extract_topics.py sweep mode. | Evaluating new model candidates |
 | `retrieval/run-embed.sh` | Reads Phase 1 JSONL, routes by extension, batches embed via bge-m3, writes 16-field embedding JSONL. | Phase 2 step 1: produce embeddings.jsonl |
 | `retrieval/run-store.sh` | Reads embedding JSONL, creates/overwrites LanceDB `topics` table with backup. | Phase 2 step 2: build the index |
 | `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |
