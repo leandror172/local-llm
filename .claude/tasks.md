@@ -79,7 +79,7 @@ Completed items → `.claude/archive/deferred-completed.md`
 - [ ] **LTG Phase 1 — prompt iteration: topic-count floor + containment-only overlap:** (1) `max(5, major_section_count)` floor; (2) containment-only overlap (no crossed partial spans). See `ref:ltg-phase1-insights` findings #4 and #5.
 - [ ] **LTG Phase 1 — cross-reference-index 3rd-arm routing hypothesis:** Deferred from Branch C reconciliation. Re-evaluate when: determinism re-run on `smart-rag-index.md` × qwen3:14b, or corpus n≥3 cross-ref files, or MoE evaluated. See `ref:ltg-phase1-routing-hypothesis`.
 - [ ] **LTG Phase 1 — per-topic rubric JSON as Phase 2 input:** 648 per-topic scores in `ltg-rater-20260416-181839-20260430-215756Z.json`. Could disambiguate 3rd-arm hypothesis without new sweep.
-- [ ] **`retrieval/viz_sweep.py` — bash wrapper:** Add `retrieval/run-viz-sweep.sh` + `retrieval/run-extract-topics.sh`. Low priority (one-off tools).
+- [x] **`retrieval/viz_sweep.py` — bash wrapper:** `run-extract-topics.sh` + `run-sweep-extractors.sh` added (session 80). `run-viz-sweep.sh` still pending (low priority, one-off tool).
 - [ ] **resume.sh — ref tag audit + structural fixes:** Add `ref:quick-pointers` (high priority) and `ref:active-decisions` (medium, now compact); add open-deferred count one-liner. Fix 3 bugs: `head -20` truncation on current-status, user-prefs flattened to unreadable single line, key list unreadable. Full plan: `docs/plans/resume-sh-ref-audit.md`.
 <!-- /ref:deferred-infra -->
 
