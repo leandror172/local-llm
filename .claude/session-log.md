@@ -1,8 +1,39 @@
 # Session Log
 
-**Current Layer:** LTG Phase 3 — Anchor Integration (prereq: extractor retrofit complete ✓)
-**Current Session:** 2026-06-01 — Session 81: retrofit close-out + LTG Phase 3 anchor discovery (in progress)
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`
+**Current Layer:** LTG Phase 3 — Anchor Integration (decisions frozen ✓ — write `anchors.py` next)
+**Current Session:** 2026-06-02 — Session 82: LTG Phase 3 anchor decisions frozen
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-30-to-2026-05-30.md`
+
+---
+
+## 2026-06-02 - Session 82: LTG Phase 3 anchor decisions frozen
+
+### Context
+Resumed from session 81 where Phase 3 discovery was in progress (D2/D5/D6/D7 open). Entry: read all Phase 3 docs, advisor framing handoff, and session-81 advisor review.
+
+### What Was Done
+- Worked through all Phase 3 anchor integration decisions in depth (D1b, D2, D3, D5, D6, D7) with five advisor passes
+- Ran 2-pass anchor similarity probe (`retrieval/probes/anchor-similarity-probe-2026-06-02.py`) — 6 description methods against 69 stored topic vectors; key findings: mechanical+key validated, hyphenated > space-normalized, M:N multiplicity observed in data, `ref:ltg-corpus` honest orphan
+- **All decisions frozen** in `retrieval/DECISIONS.md` (`ref:ltg-phase3-decisions`)
+- Created `docs/plans/ltg-phase3-decisions-discussion.md` (`ref:ltg-phase3-discussion`) — full journey, all 5 advisor reviews, all angles
+- Applied 5 corrections via subagent: anchor row field-population spec, D6 distance numbers (mechanical+key), grep pattern fix (literal KEY → regex), `node_kind` enum Phase 4 annotation, integrity-check universe
+- Updated `tasks.md`: Phase 3 task updated to DECISIONS FROZEN; deferred task added for `ref-lookup.sh --paths` flag
+- Committed 14 files; PR pending
+
+### Decisions Made
+- **Dual-path = yes** (keystone): `ref:KEY` anchors as a parallel retrieval surface, not merge-targets
+- **D2 = A (repo-wide):** ingestion via `grep -rnoE '<!-- ref:[a-z0-9-]+ -->' . --include='*.md'`; `ref-lookup.sh --list` lacks file paths (verified)
+- **D5 = alias-link, M:N:** both rows survive; `alias_of` JSON list; `node_kind` drops `merged`; `confidence` 0.7 not upgraded on alias; M:N validated in probe data
+- **D3 = mechanical+key default:** key (hyphenated) + heading + first prose line; provisional on LTG-self-referential anchors; escalation = weak merge quality
+- **D6 verified (with hedge):** cross-file merges at cosine 0.97/0.90 (mechanical+key); abstract-to-abstract class; Phase 2.5 for applied mentions
+- **D7 → Phase 6:** Phase 3 = enablement only
+- **D1b = config projection:** `source_class` denormalized, coarse start, separate axis from `node_kind`
+- **Anchor confidence = structural authority:** not human-declared; `human_reviewed` deferred
+- **Threshold provisional:** 0.85 cosine / L2 0.547; recalibrate Phase 2.5
+
+### Next
+- **Rebase `feature/ltg-phase3-anchors` onto master** after retrofit PR merges
+- **Write `retrieval/anchors.py` TDD** — read `ref:ltg-phase3-decisions` as the full spec (ingestion grep, anchor row population, description method, alias-link, acceptance all specified)
 
 ---
 
@@ -91,47 +122,6 @@ All PRs merged, master current. Entire session focused on design for the `extrac
 - **Start implementation from `docs/plans/ltg-extractor-retrofit.md`** on branch `feature/ltg-extractor-retrofit`.
 - **Read mandatory list first** (plan file § "Mandatory reading") — especially `.claude/overlays/local-model-conventions.md`.
 - **Task 1 is ready:** `retrieval/tests/test_routing.py` exists (14 tests, confirmed red). Call `my-python-q25c14` with `timeout=600` to generate `routing.py`.
-
----
-
-## 2026-05-30 - Session 76: 14B num_ctx re-probe + LTG architectural note
-
-### Context
-Started from feature/ollama-monitoring (tracking commits). Branched to feature/14b-num-ctx-reprobe for probe work. Context window was limited; session ended with cozempic cleanup.
-
-### What Was Done
-- **LTG repo-separation architectural evaluation:** Decided not to separate now (Phase 3 too early — data model still evolving, no consumers yet). Natural breakpoint: after Phase 5, before Phase 6. Extracted gate notes into two places:
-  - `docs/plans/2026-04-13-latent-topic-graph-implementation.md` — blockquote at Phase 6 header
-  - `.claude/tasks.md` — new deferred task "LTG Phase 6 gate — evaluate repo separation"
-- **Pre-session reading guide:** Added `ref:session-reading-guide` block to `.claude/session-context.md` — compact table mapping each pending task to files/refs needed before starting. Wired into `resume.sh` as a new section between last-session and key-files blocks.
-- **`scripts/run-ctx-probe.sh` written:** New reusable probe tool for context-window ceiling testing. Loads each model at configurable ctx sizes, measures VRAM + tok/s, prints summary table. Added to `index.md` under bash wrappers.
-- **14B num_ctx re-probe — all models, 16K/24K/32K:** All pass at 32K with q8_0 KV enabled. Results:
-  - qwen3:14b        → 32K: 11,237 MiB / 1,051 MiB free / 16.5 tok/s ✅
-  - qwen2.5-coder:14b→ 32K:  9,498 MiB / 2,790 MiB free / 14.9 tok/s ✅
-  - deepseek-r1:14b  → 32K:  9,505 MiB / 2,783 MiB free / 14.0 tok/s ✅
-  - deepseek-coder-v2:16b → 24K: 11,554 MiB / 734 MiB free ✅ (32K tight at 574 MiB)
-  - qwen3:8b-q8_0    → 32K: 11,674 MiB /  614 MiB free / 35.4 tok/s ✅ (tight PASS)
-  - gemma3:12b       → 32K: 10,313 MiB / 1,975 MiB free / 41.2 tok/s ✅
-- **11 personas upgraded and rebuilt:** personas/models.yaml, personas/registry.yaml (11 entries), 11 Modelfiles updated. `ollama create` run for all 11, verified via `ollama show`.
-- **Stale references updated:** CLAUDE.md Key Technical Facts (14B ctx line), `.memories/KNOWLEDGE.md` VRAM Budget section, `session-context.md` ref:active-decisions num_ctx line, reading guide entry marked done.
-- **Probe results doc:** `retrieval/probes/ctx-probe-2026-05-30.md` — full tables for both probe runs.
-- **2 commits on feature/14b-num-ctx-reprobe:**
-  - `42b9fa3` probe: 14B num_ctx re-probe post OLLAMA_KV_CACHE_TYPE=q8_0
-  - `1ad9b72` probe: extend ctx-probe to qwen3:8b-q8_0 + gemma3:12b
-
-### Decisions Made
-- **LTG repo separation deferred to Phase 6 start:** Gate note placed in plan file + tasks.md. Extraction cost: ~1 session via `git subtree split`. Timing: after Phase 5 closes (stable schema + first cross-repo consumer).
-- **All 14B models → 32768:** q8_0 KV cache makes 32K viable for all standard 14B models. deepseek-coder-v2:16b exception at 24576 (16B weights, tighter margin).
-- **qwen3:8b-q8_0 → 32768:** 614 MiB headroom — tight but consistent with other PASS models.
-- **gemma3:12b → 32768:** 1,975 MiB headroom — comfortable. GQA architecture scales KV more slowly than Qwen3 series.
-
-### Next
-- **Open PR** for `feature/14b-num-ctx-reprobe` → master (or merge feature/ollama-monitoring first if it's ahead)
-- **Merge feature/ollama-monitoring** — contains tracking commits (LTG Phase 6 gate + reading guide)
-- **LTG Phase 3 — anchor integration** (`retrieval/anchors.py`) — next primary LTG milestone; prereqs now cleared (14B re-probe done)
-- **extract_topics.py → model_client.py retrofit** — do before Phase 3 integration
-- **Classifier benchmark (M-P1b/P2)** — qwen3.5:0.8b, 2b, phi4-mini vs qwen3:4b-q8_0; models pulled and waiting
-- **M-P0a cleanup** — retire 6 DeepCoder benchmark personas
 
 ---
 
