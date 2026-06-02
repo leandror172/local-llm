@@ -225,3 +225,185 @@ Final PyArrow schema as committed in `retrieval/store.py`. All fields are string
 - **Warm-up:** Use `warm_model` MCP tool before batch extraction runs to eliminate cold-start penalties.
 - **No git commits of raw Phase 1 extractions:** `retrieval/phase1-raw/` should be gitignored; scores and narrative results are committed, raw JSON outputs are reproducible and bulky.
 <!-- /ref:ltg-notes -->
+
+---
+
+<!-- ref:ltg-phase3-decisions -->
+## Phase 3 Decisions — Anchor Integration (frozen 2026-06-02, session 82)
+
+**Full decision discussion + reasoning:** `docs/plans/ltg-phase3-decisions-discussion.md` (`ref:ltg-phase3-discussion`)
+**Prereqs all clear:** extractor retrofit ✓ (session 80/81), qwen3-embedding:8b ✓ (session 73), num_ctx ✓ (session 76).
+
+---
+
+### Keystone — Dual-path architecture (yes)
+
+`ref:KEY` anchors are a **parallel retrieval surface**, not merely merge-targets. Two co-existing surfaces:
+- **Span-topics path** — fuzzy/discovery-oriented; ANN over LLM-extracted topic nodes; recall-oriented.
+- **Ref-keys path** — precise/authoritative; over the hand-curated `ref:KEY` graph; authority-oriented.
+
+This generalizes concept-paper property #4 (anchor stratification) from binary anchor-vs-extracted into configurable provenance-class weighting. Both surfaces must stay independently queryable for Phase 6 routing.
+
+---
+
+### D2 — Anchor scope: repo-wide (A)
+
+Walk all `*.md` files in the repo via: `grep -rnoE '<!-- ref:[a-z0-9-]+ -->' . --include='*.md'`. This gives `file:line:marker` — both source-file path and line number in one pass.
+
+**Not `ref-lookup.sh --list`** — it emits key names only, no file paths (verified session 82). Ingestion must use the repo grep.
+
+**Safety filter (mandatory):** exclude `.claude/local/` and all gitignored/sensitive paths from the grep results before ingesting. No ref block from a sensitive path should become an anchor node.
+
+**Integrity check:** "every ref key found by the ingestion grep in tracked, non-sensitive files appears as at least one anchor node." The check universe is the grep output after filtering — not literally "every key in the repo."
+
+**Empirical basis (session 81):** only 2 of 138 ref keys live inside the 8 extracted corpus files; orphan anchors cause no merge noise (nothing to merge with). The noise argument for corpus-scoped ingestion (option B) is dissolved. The ref-path needs the whole ref graph to function as an authoritative surface — corpus scoping would only produce tautological self-summary merges.
+
+---
+
+### D5 — Merge representation: alias-link, M:N
+
+Physical merge (row mutation) is incompatible with the dual-path architecture — it destroys the standalone anchor as a ref-path node. Both rows must survive.
+
+**Representation:**
+- Anchor row: `node_kind = anchor`, `confidence = 1.0`, `anchor_key = "ref:KEY"`.
+- Topic row: `node_kind = extracted`, `confidence = 0.7` (unchanged on alias), `alias_of = JSON list`.
+- `alias_of` stores a **JSON-encoded list of anchor keys** (e.g., `'["ref:concept-ltg", "ref:plan-ltg"]'`). A scalar is insufficient — M:N multiplicity observed in probe: both `ref:concept-ltg` and `ref:plan-ltg` alias the same two topics.
+
+**`node_kind` update:** drop `merged` from the enum. `node_kind ∈ {extracted, anchor}` (Phase 3; `community` added in Phase 4). Alias state = `alias_of != null`. Keeping `merged` would introduce a redundant second source of truth (with `alias_of`) that can diverge on partial writes and creates a Phase 4 migration burden.
+
+**Phase 4 flag:** `alias_of` on the topic row is a proto-edge — a `same_as`/`alias` edge at confidence ~1.0 produced early. Phase 4 will relocate it to the edge table. No downstream code should hard-depend on the topic-row location.
+
+**Anchor row field population (all Phase 2 fields + Phase 3 additions):**
+
+| Field | Anchor value | Notes |
+|---|---|---|
+| `id` | `anchor_key` | Globally unique; used by integrity check |
+| `file_path` | Source file from ingestion grep | `file:line` → `file` part |
+| `topic_name` | Snake-case of bare key | e.g., `concept_latent_topic_graph` |
+| `description` | `mechanical+key` description string | The embedded text |
+| `spans` | `"[[start_line, start_line]]"` | Single-line point; grep returns start line; raw body re-derived from `file_path`+`spans` (satisfies D3 retrieval-payload) |
+| `vector` | 4096-dim embedding of `mechanical+key` description | Same embedding model as topics |
+| `embed_model` | `"qwen3-embedding:8b"` | |
+| `embed_dim` | `4096` | |
+| `embed_mode` | `"description"` | `mechanical+key` is a description |
+| `embedding_timestamp` | ISO 8601 UTC at ingestion time | |
+| `extractor_model` | `""` | Not extracted; leave empty |
+| `extraction_run_id` | `""` | Not extracted |
+| `extraction_timestamp` | `""` | Not extracted |
+| `file_role` | `"anchor"` | Distinct from topic `file_role` values |
+| `node_kind` | `"anchor"` | |
+| `scope_tags` | `"[]"` | Phase 3 default |
+| `segment_id` | `null` | |
+| `segment_range` | `null` | |
+| `source_class` | `"anchor_ref"` | Phase 3 addition |
+| `confidence` | `1.0` | Phase 3 addition; structural authority |
+| `anchor_key` | `"ref:KEY"` | Phase 3 addition; full key string |
+| `alias_of` | `null` | Phase 3 addition; anchors do not alias other anchors |
+
+**Multiplicity:** many topics → one anchor (link all above threshold); one topic → many anchors (JSON list). Both directions confirmed in probe data.
+
+---
+
+### D1 — Confidence model: capture fields now, defer tuning (C)
+
+Three distinct concepts — do not smear:
+1. **Retrieval weight** — config-keyed by `source_class`; ranking multiplier. Phase 5 tunes.
+2. **Node provenance confidence** — "how much do I trust this node exists as stated." **Phase 3 writes this.**
+3. **Edge confidence** — anchor edge 1.0, extracted edge = similarity. **Phase 4**, not Phase 3.
+
+**`confidence` field in Phase 3 = node provenance (#2) only.** Not edge-weight, not retrieval-weight.
+
+Values:
+- Anchor: `1.0` — **structural authority** (follows explicit `<!-- ref:KEY -->` convention; likely PR-reviewed). NOT "human-declared" — most anchors in this repo were added by LLMs. A future `human_reviewed` boolean could split this if the distinction becomes load-bearing. Deferred.
+- Extracted: `0.7` — LLM-extracted default. Placeholder chosen for "reliable but uncertain." Nothing consumes it until Phase 4/5.
+- **Aliasing does NOT modify `topic.confidence`.** The plan's "merged nodes preserve anchor confidence" was written for physical merge. Under alias-link, 1.0 lives on the anchor row. The aliased topic row keeps 0.7 — it is still LLM-extracted; an alias link changes the relationship, not the provenance.
+
+---
+
+### D1b — Taxonomy granularity: config projection, coarse start
+
+`source_class` for an extracted node is a deterministic function of `(file_path, node_kind)` — stored fields. So the taxonomy is a **config-defined mapping**, not a data property.
+
+Start coarse: `anchor_ref` vs `topic_extracted`. Add QUICK/KNOWLEDGE split or other sub-classes via a config edit + ~3s re-tag whenever wanted. No migration needed.
+
+**Store `source_class` denormalized** (string column) — cheap, makes `ltg_inspect` filtering simple (`WHERE source_class = 'anchor_ref'`). Config mapping is the source of truth; the column is a convenience cache.
+
+`node_kind` and `source_class` are **separate axes**: `node_kind` = provenance/origin; `source_class` = content-type-for-weighting. They coincide only on the anchor row.
+
+---
+
+### D3 — Anchor description for embedding: `mechanical+key`
+
+**Default method:** `key_name (hyphenated, as-is) + heading + first_non_metadata_prose_line`
+
+```
+description = f"{bare_key}: {heading} — {first_prose_line}"
+```
+
+**Key-name inclusion is load-bearing.** Probe confirmed (session 82, 6 methods):
+- `ref:plan-ltg` mechanical (body only): top cosine 0.822, 0 merges. Key name rescues: 0.898/0.861, 2 merges.
+- Hyphenated key name (`key_only`) outperforms space-normalized (`key_words`) consistently — qwen3-embedding:8b treats hyphenated identifiers as meaningful compound units. **Do not space-normalize key names.**
+
+**`parse_first_prose_line` skip rules** (already implemented in probe): skip blank lines, italic-only metadata (`*...*`), sub-headings (`##`+), horizontal rules (`---`), HTML comment markers. `plan-ltg`'s first prose line was `**Status:** Ready for execution` — an operational line. Key-name inclusion compensates without needing LLM escalation.
+
+**Escalation:** LLM one-liner fallback if a key's top merge scores are **weak** (not based on first-line classification). Detection mechanics belong in `anchors.py`. The `concept-` / `plan-` naming prefix is a free signal for anchors likely to need escalation.
+
+**`key_only` as fast fallback:** key name alone (no body) gets 2 merges on concept-type anchors, 1 on plan-type. Useful for a batch/no-LLM mode.
+
+**Provisional hedge:** all positive merges in the probe were LTG-self-referential (key tokens `latent-topic-graph`, `ltg-` appear directly in target topics — the most favorable case). False-merge precision on generically-named anchors (`ref:git-safety`, `ref:patterns-index`) is **untested**. Key-name inclusion may cost precision on those. Recheck at Phase 2.5.
+
+---
+
+### D6 — Acceptance
+
+1. **Sanity check:** `ref:smart-rag-research` and `ref:rag-repowise` (the only 2 of 138 ref keys inside the 8 extracted corpus files) merge with topics from their own files. Largely tautological (self-summary blocks) — exercises embedding pipeline, not the anchor-merge mechanism. Fires trivially.
+
+2. **Real test (probe-verified, provisional):** Cross-file merges from orphan anchors:
+   - `ref:concept-ltg` ↔ `.memories/QUICK.md::ltg_implementation` (cosine 0.972) + `.memories/KNOWLEDGE.md::latent_topic_graph` (0.970) — both via `mechanical+key`.
+   - `ref:plan-ltg` ↔ `.memories/QUICK.md::ltg_implementation` (0.898) + `.memories/KNOWLEDGE.md::latent_topic_graph` (0.861) — both via `mechanical+key`.
+   - These are **abstract-to-abstract** merges (concept/plan anchor ↔ `.memories/` summary of the same concept). The harder cross-pollination case (anchor ↔ incidental applied mention, e.g., `graph_exploitation` at 0.836) sits below threshold. That is the Phase 2.5 story.
+   - Provisional: validated on LTG-self-referential anchors; broad validation defers to Phase 2.5.
+   - **M:N validated in data:** both concept and plan anchors alias the same two topics — `alias_of` as JSON list is correct.
+
+3. **Honest orphan example:** `ref:ltg-corpus` consistently no-merge (0.619–0.816 across all 6 methods). Correct — corpus-scope is a meta-decision not reflected in extracted content.
+
+4. **Stale corpus note:** the 8 corpus files have likely changed since Phase 2 extraction. Phase 3 anchor integration runs against the current snapshot. If re-extraction runs before Phase 2.5, re-run anchor linking against fresh topics.
+
+---
+
+### D7 — Path-selection binding time: deferred to Phase 6
+
+Phase 3's only obligation: **don't foreclose.** Store both surfaces (anchor rows + topic rows), keep them linked via `alias_of`. D2=A + D5=alias-link already deliver this.
+
+Phase 6 (`retrieve_context`) is the dual-path consumer and the correct home for the routing decision. Lean for Phase 6: query-time routing (one index, blend per query class via `config.yaml` weight table) — strictly more expressive, near-zero cost at current scale.
+
+---
+
+### New schema fields (extending `ref:ltg-phase2-schema`)
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `source_class` | string | `"topic_extracted"` / `"anchor_ref"` | Denormalized; config-projection of `(file_path, node_kind)`; coarse to start |
+| `confidence` | float | `0.7` (extracted), `1.0` (anchor) | Node-provenance only. Not edge-weight. Not upgraded on alias. |
+| `anchor_key` | string (nullable) | `null` | The `ref:KEY` string for anchor rows |
+| `alias_of` | string (nullable) | `null` | JSON-encoded list of anchor keys on topic rows. Phase 4 relocates to edge table. |
+
+---
+
+### Threshold mechanics
+
+- **cosine 0.85 → L2 ≤ 0.5477**: formula `L2 = sqrt(2 × (1 − cosine))`, valid only for unit-normalized vectors.
+- **Unit normalization confirmed**: qwen3-embedding:8b outputs unit-normalized vectors (probe: norm = 0.999999–1.000000 across all methods). The L2↔cosine conversion is valid.
+- **Probe distribution (3 anchors, session 82):** strong merges at cosine 0.86–0.98; noise floor 0.81–0.84; ~0.05 precision margin. `graph_exploitation` at cosine 0.836 is arguably a real semantic relation excluded for precision — the precision/recall tension is real.
+- **Provisional:** threshold set from a 3-anchor probe on LTG-self-referential anchors. Recalibrate from the observed full-distribution at Phase 2.5.
+- **Register-match diagnostic:** if the 2 in-corpus sanity-check merges come back weak, check register-mismatch first (heading-only vs LLM-summary) before touching the threshold.
+
+---
+
+### Phase integration notes
+
+- **Phase 4:** `alias_of` links are proto-edges (anchor-topic alias edge, confidence ~1.0). Phase 4 ingests them into the edge table when building the graph. Anchor↔anchor edges (from `index.md` cross-references) also land in Phase 4.
+- **Phase 5:** `source_class` weights get tuned against a retrieval loop. Phase 3 lands the field; Phase 5 sets non-default values.
+- **Phase 6:** dual-path `retrieve_context` consumer; D7 routing decision lives here.
+- **Phase 2.5:** threshold recalibration, key-name weighting recheck (false-merge precision on generic anchors), broad merge validation (non-LTG corpus), stale-corpus re-extraction.
+<!-- /ref:ltg-phase3-decisions -->
