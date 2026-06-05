@@ -4,8 +4,9 @@
 
 > Emergency one-file handoff (session limit ~91%), same pattern as session 84.
 > Next session: read this top-to-bottom, apply the tracking updates (§5), re-create
-> the to-do list (§6), then resume the build at **B4.1** (§7-8). All code is committed;
-> the full suite is **53/53 green**. No code commit pending. (Leave this file in place —
+> the to-do list (§6). **UPDATE — the session continued past a limit reset and B4.1 is now ALSO
+> complete; READ §11 FIRST for current status and the B4.2-entrypoint plan (resume there).** All code
+> is committed; the full suite is **66/66 green**. No code commit pending. (Leave this file in place —
 > the user asked NOT to delete the session-84 handoff; do the same here unless told.)
 
 ---
@@ -244,3 +245,81 @@ listed today — the pipeline won't propagate to other repos until this is done.
   real. The run is rollback-protected (clean-tree precondition + git checkout), so a bad payload reverts.
 - Keep the SKILL body SHORT: the skill is now mostly "gather context → author these N blocks → write
   payload → one Bash call → report." The heavy logic lives in the tested pipeline, not in prose.
+
+---
+
+## 11. CURRENT STATUS (session 85 continued — READ THIS FIRST) — B4.1 DONE, resume at B4.2 entrypoint
+
+The session ran past a limit reset. Since §1–§10 were written, **B4.1 is complete** and one design
+decision is **resolved**. Suite is **66/66 green**. No commit pending.
+
+### 11a. What's now done (commits, newest first)
+- `3dadc8c` feat: **B4.1** F7 payload schema — `payload.py` + `test_payload.py` (13 tests); `HandoffPayload`
+  MOVED from orchestrator.py to payload.py (orchestrator re-exports it, so `from orchestrator import
+  HandoffPayload` still works). Local model verdict 1 (rewrote inverted frontmatter-fence detection).
+- `13d4610` docs: §10 deep B4.2 guidance · `f855b84` memory (QUICK+KNOWLEDGE) · `aff552a` this handoff ·
+  `a6f43cf`/`ccc4484`/`84d7b0a` = F6/runlog/F5 (B3) · `013031e` = session-84 fold.
+
+**`payload.py` API:** `parse(text) -> HandoffPayload` (frontmatter fenced by the FIRST TWO `---` lines;
+sections split only on exact `## role: <name>`; body's own `---`/`##` preserved; `raw == text` verbatim
+== input.md). `validate(payload, register) -> list[str]` (unknown role / nomodel block role / empty
+scalar / malformed `^T-\d+$` checkoff). `PayloadError` on un-parseable input. Pure stdlib.
+
+### 11b. RESOLVED decision — registry load = **PyYAML, scoped to the entrypoint**
+Reverses the §10a "tiny stdlib loader" lean. Reason: the register's `description:` fields contain
+colons/quotes/em-dashes; hand-rolling a YAML-subset parser for a safety-critical tool is the wrong place
+to take a correctness risk to dodge a near-universal dep. PyYAML 6.0.3 is present here and
+`retrieval/model_client.py` already imports it. **Policy:** pure safety core (locator/applier/verifier/
+mechanics/payload) stays stdlib; the **entrypoint** (glue) may `import yaml`. The overlay manifest should
+document PyYAML as a requirement. (User agreed.)
+
+### 11c. B4.2 entrypoint — BUILD PLAN (resume here, TDD, in order)
+1. **`dry_run` refactor of `run_handoff`** (orchestrator.py — Claude-authored, safety-adjacent):
+   - Extract `_stage_and_apply(repo_root, register, payload, *, clock) -> (modified_by_file, region_edits)`
+     = the collect → apply → verify loop (raises `LocatorError`/`VerifyError`). Both the normal path and
+     dry-run call it. Keep `verify` referenced as the module global (so `monkeypatch.setattr(orchestrator,
+     "verify", …)` still works).
+   - Add `dry_run=False` param. When True: run precondition + `_stage_and_apply`, then return
+     `RunReport(session_number, committed=False, rolled_back=False, reason="dry-run: validated, not
+     written", verify_ok=True, edits=region_edits)` with **NO `create_run_dir`, NO disk writes**. On
+     locate/verify failure in dry-run, return a report with the reason and no artifacts.
+   - Normal path MUST stay behaviorally identical (the 6 orchestrator tests + 66 total stay green).
+     CAUTION: `test_verify_failure_rolls_back_without_writing` depends on a run_dir + `report.md` existing
+     after a verify failure on the REAL path — so keep `create_run_dir`+`write_input` BEFORE staging on the
+     normal path, and `_fail()` writing `report.md`. (Simplest: on the normal verify-failure branch pass
+     `edits=[]` to `_fail` — tests only assert on the reason text.)
+   - Add dry-run tests: validates-not-written (no run dir, no commit, files unchanged, report.edits
+     populated); dry-run on a locate/verify failure returns reason without artifacts.
+2. **`load_register(path) -> dict`** (new `registry_io.py`, or a fn in handoff.py — entrypoint, may use
+   yaml): `yaml.safe_load`, return the `roles:` mapping (role_name -> {file, locator{…}, write_mode, …}).
+   Small; test with a tiny yaml fixture.
+3. **`handoff.py` CLI** (arg-plumbing delegable to the local model): args `--payload <file> --repo-root
+   <dir> [--registry <path>] [--dry-run]`. Flow: read payload text → `parse` → `load_register` →
+   `validate` (print errors, **exit non-zero** if any) → `SubprocessGit(repo_root)` → `run_handoff(...,
+   dry_run=)` → print summary (committed / rolled-back+reason, regions touched role+mode, + uncommitted
+   NON-tracking warning via `git.status_short()`). Defaults: `--repo-root` = `git rev-parse --show-toplevel`
+   or cwd; `--registry` = `<repo_root>/.claude/handoff/registry.yaml` (settle exact install path with the
+   manifest, §10f).
+4. **`run-handoff.sh`** wrapper (project bash-wrapper convention; add to `.claude/index.md` bash-wrappers).
+5. **Tests:** `test_registry_io` (yaml fixture round-trip) · the dry-run tests above · `test_handoff_cli`
+   (subprocess on a tmp git repo: a real run commits; `--dry-run` writes nothing). Guard CLI/integration
+   tests with `shutil.which("git")` like `test_orchestrator.py`.
+
+### 11d. After the entrypoint
+- **B4.2b — rewrite `session-handoff/SKILL.md`** per §10b–§10e (incl. the replace-mode fetch resolution §10c).
+- **Manifest wiring** (§10f): add `registry.yaml` + all `files/handoff/*.py` + `handoff.py` + `run-handoff.sh`
+  to `overlays/session-tracking/manifest.yaml` `files:`; decide install layout; make `handoff.py` resolve
+  `repo_root` + registry path from its install location.
+- **Dog-food** (§10g): `--dry-run` on THIS repo first, inspect before→after, then a real run.
+
+### 11e. Tracking fold (§5) — STILL DEFERRED, now also covers B4.1
+Not yet applied (deliberate — more B-work will change it). At the real session end, the §5 updates PLUS:
+check off `(T-08) B4.1` in tasks.md; bump the Session-85 bullet to include B4.1 (`3dadc8c`) and the
+resolved loader decision. (QUICK/KNOWLEDGE were already updated — see §5 note.)
+
+### 11f. To-do list to recreate (Claude Code task tool doesn't persist)
+DONE: B1, B2, B3 (B3.1/2/3), **B4.1**. Live remaining:
+- **B4.2 entrypoint** (startable) — the §11c plan: dry_run refactor → load_register → handoff.py → run-handoff.sh.
+- **B4.2b SKILL.md rewrite** (after entrypoint).
+- **Manifest wiring** (B3/B4-adjacent chore).
+- **T-53** B5.1 preflight check (future).
