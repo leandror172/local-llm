@@ -24,18 +24,9 @@ from runlog import (
     RunReport,
     RegionEdit,
 )
+from payload import HandoffPayload  # F7 schema — defined in payload.py (B4.1)
 
 HEADER_ROLES = ("header-current-session", "header-current-layer")
-
-
-@dataclass
-class HandoffPayload:
-    """What the skill (F7) emits. Finalized as a schema in B4.1."""
-    session_title: str
-    current_layer: str
-    blocks: Dict[str, str]      # role_name -> authored content (ref_block / structural)
-    checkoffs: List[str]        # task ids to flip done
-    raw: str                    # verbatim text persisted to input.md
 
 
 def run_handoff(
