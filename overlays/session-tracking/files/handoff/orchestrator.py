@@ -37,6 +37,7 @@ def run_handoff(
     git,
     rotate: Callable = default_rotate,
     clock: Callable = datetime.datetime.now,
+    dry_run: bool = False,
 ) -> RunReport:
     repo_root = Path(repo_root)
     log_rel = register["header-current-session"]["file"]
@@ -51,33 +52,35 @@ def run_handoff(
             verify_ok=False, edits=[],
         )
 
-    # 2. Log intent immediately (recovery artifact, before touching anything).
     session_number = _peek_session_number(repo_root, log_rel)
+
+    # Dry-run: stage -> apply -> verify in memory only. No run dir, no writes, no commit.
+    # Same pure half the real path uses, so a clean dry-run guarantees a clean real run.
+    if dry_run:
+        try:
+            _, region_edits = _stage_and_apply(repo_root, register, payload, clock=clock)
+        except LocatorError as exc:
+            return RunReport(session_number, False, False,
+                             f"dry-run: locate failed: {exc}", verify_ok=False, edits=[])
+        except VerifyError as exc:
+            return RunReport(session_number, False, False,
+                             f"dry-run: verify failed: {exc}", verify_ok=False, edits=[])
+        return RunReport(session_number, False, False,
+                         "dry-run: validated, not written", verify_ok=True, edits=region_edits)
+
+    # 2. Log intent immediately (recovery artifact, before touching anything).
     run_dir = create_run_dir(repo_root, session_number, clock=clock)
     write_input(run_dir, payload.raw)
 
-    # 3. Stage: locate every edit against the (cached) original text.
+    # 3-5. Stage (locate) -> apply in memory -> verify each file's combined edit set (F4).
     try:
-        grouped = _collect_edits(repo_root, register, payload, clock=clock)
+        modified_by_file, region_edits = _stage_and_apply(
+            repo_root, register, payload, clock=clock
+        )
     except LocatorError as exc:
         return _fail(run_dir, session_number, f"locate failed: {exc}", verify_ok=False, edits=[])
-
-    # 4-5. Apply in memory, then verify each file's combined edit set (F4).
-    modified_by_file: Dict[str, str] = {}
-    region_edits: List[RegionEdit] = []
-    try:
-        for rel, items in grouped.items():
-            original = (repo_root / rel).read_text()
-            modified = _apply_all(original, items)
-            verify(original, modified, [(region, content) for _, region, content in items])
-            modified_by_file[rel] = modified
-            region_edits.extend(
-                RegionEdit(role, region.mode, region.interior, content)
-                for role, region, content in items
-            )
     except VerifyError as exc:
-        return _fail(run_dir, session_number, f"verify failed: {exc}",
-                     verify_ok=False, edits=region_edits)
+        return _fail(run_dir, session_number, f"verify failed: {exc}", verify_ok=False, edits=[])
 
     # 6-8. Write, rotate, commit — git checkout is the rollback net.
     try:
@@ -96,6 +99,30 @@ def run_handoff(
 
 
 # ---- staging ----------------------------------------------------------------
+
+def _stage_and_apply(
+    repo_root, register, payload, *, clock
+) -> Tuple[Dict[str, str], List[RegionEdit]]:
+    """Locate -> apply -> verify, purely in memory. Raises LocatorError / VerifyError.
+
+    The deterministic, side-effect-free half of the transaction. Shared by the
+    real path and dry-run so both validate identically. `verify` is referenced as
+    a module global (not threaded through) so test monkeypatching still intercepts.
+    """
+    grouped = _collect_edits(repo_root, register, payload, clock=clock)
+
+    modified_by_file: Dict[str, str] = {}
+    region_edits: List[RegionEdit] = []
+    for rel, items in grouped.items():
+        original = (repo_root / rel).read_text()
+        modified = _apply_all(original, items)
+        verify(original, modified, [(region, content) for _, region, content in items])
+        modified_by_file[rel] = modified
+        region_edits.extend(
+            RegionEdit(role, region.mode, region.interior, content)
+            for role, region, content in items
+        )
+    return modified_by_file, region_edits
 
 def _collect_edits(repo_root, register, payload, *, clock) -> Dict[str, List[Tuple[str, Region, str]]]:
     cache: Dict[str, str] = {}

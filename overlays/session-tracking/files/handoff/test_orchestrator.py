@@ -196,6 +196,42 @@ def test_verify_failure_rolls_back_without_writing(tmp_path, monkeypatch):
     assert "verify failed" in (runs[0] / "report.md").read_text().lower()
 
 
+# ---- unit: dry-run stages + verifies but writes nothing ---------------------
+
+def test_dry_run_validates_without_writing(tmp_path):
+    root = _setup(tmp_path)
+    git = FakeGit(clean=True)
+
+    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
+                         clock=CLOCK, dry_run=True)
+
+    assert not report.committed and not report.rolled_back and report.verify_ok
+    assert "dry-run" in report.reason.lower()
+    assert report.edits  # populated so the caller can print a before->after preview
+    assert git.committed is None and git.added is None  # no side effects at all
+    assert "old status" in (root / ".claude/session-context.md").read_text()  # untouched
+    assert "Session 84: Old topic" in (root / ".claude/session-log.md").read_text()
+    assert not (root / ".claude/local/handoff-runs").exists()  # no run dir on dry-run
+
+
+def test_dry_run_on_verify_failure_returns_reason_no_artifacts(tmp_path, monkeypatch):
+    root = _setup(tmp_path)
+    git = FakeGit(clean=True)
+
+    def boom_verify(*a, **k):
+        raise VerifyError("marker mismatch")
+
+    monkeypatch.setattr(orchestrator, "verify", boom_verify)
+
+    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
+                         clock=CLOCK, dry_run=True)
+
+    assert not report.committed and not report.verify_ok
+    assert "verify" in report.reason.lower()
+    assert not (root / ".claude/local/handoff-runs").exists()  # no artifacts on dry-run
+    assert "old status" in (root / ".claude/session-context.md").read_text()
+
+
 # ---- unit: commit failure triggers git rollback -----------------------------
 
 def test_commit_failure_invokes_checkout(tmp_path):
