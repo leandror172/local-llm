@@ -34,6 +34,9 @@ Home: `overlays/session-tracking/` (propagate via overlay install).
 - [ ] (T-08) **B4.1 F7 schema** — the payload Claude emits: per-role authored blocks (Scope A = authored mode only; `intent` mode = deferred enhancement).
 - [ ] (T-09) **B4.2 SKILL rewrite** — rewrite `.claude/skills/session-handoff/SKILL.md` to decide content, emit the F7 payload, invoke the pipeline as one Bash call — no file reads, no per-section Edits. Preserve pre-flight git/date context.
 
+**B5 — Preflight precondition check** (FUTURE; surfaced session 85)
+- [ ] (T-53) **B5.1 Preflight check** — a cheap pre-handoff check the skill (or a hook) runs BEFORE invoking the full pipeline, reporting unmet preconditions (e.g. dirty tracking files that would trip F6's clean-tree guard) so they're resolved up front instead of discovered via a failed F6 run → rework → re-call. Mechanism options: (a) skill instructions to run the check first; (b) a dedicated preflight tool/script returning the unmet conditions; (c) a hook fired when the skill is read that auto-injects the unmet-precondition context. Decide mechanism when building B4.2 (SKILL rewrite). Rationale: F6 aborts on dirty tracking files (decision session 85); failing inside the tool wastes a payload-assembly round-trip.
+
 **Open decisions to settle when relevant:** run-artifact placement (lean `.claude/local/handoff-runs/`); whether `report.md` also appends to committed `session-log.md`; whether `session-context.md` is in the first apply-cut or `tasks.md`+`session-log` only; whether `resume.sh` is refactored onto the shared register now or later (lean: later).
 
 ---
