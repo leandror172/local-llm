@@ -1,8 +1,38 @@
 # Task Progress
 
-**Last Updated:** 2026-02-27 (session 35)
+**Last Updated:** 2026-06-04 (session 83)
 **Active Layer:** Layer 5 — Expense Classifier
 **Full history:** `.claude/archive/phases-0-6.md`, `.claude/archive/layer-0-findings.md`
+
+---
+
+## Session-Handoff Pipeline (Scope A) — ACTIVE (session 83)
+
+Register-driven deterministic rewrite of the `session-handoff` skill. Design frozen session 83.
+Spec: `docs/plans/session-handoff-pipeline-design.md` (`ref:handoff-pipeline-design`).
+Deferred model layer: `docs/plans/session-handoff-placer-enhancement.md` (`ref:handoff-placer-enhancement`).
+Branch: `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase3-anchors`; rebase onto master before any PR).
+Home: `overlays/session-tracking/` (propagate via overlay install).
+
+**B1 — Register + task IDs** (milestone)
+- [x] **B1.1** — author `overlays/session-tracking/registry.yaml` (10 roles, locators verified). DONE session 83, commit `b18aba9`.
+- [ ] **B1.2** — add stable `(T-NNx)` task IDs to this file so checkoff is deterministic (flip `[ ]`→`[x]` by id). Normalize the bold-label tasks (`**3.5-B:**`, `**M-P0a:**`) with IDs. Lone new in-file element. **← next**
+
+**B2 — Deterministic safety core** (milestone; TDD; local-first per `ref:local-model-conventions`)
+- [ ] **B2.1 F1 Locator** — for each register entry find its region (ref_block / structural / field / checklist) + mode + current interior; self-check "exactly one match → else abort + fall back".
+- [ ] **B2.2 F3 Applier** — splice authored content per mode (replace / prepend / append / checkoff-by-id); must not touch bytes outside the region.
+- [ ] **B2.3 F4 Verifier** — hash everything outside register regions before/after; assert unchanged + locators still resolve + mode honored. Pass/fail gate (trust boundary).
+
+**B3 — Orchestrator + per-run logging** (milestone)
+- [ ] **B3.1 F5 mechanics** — deterministic header-field bumps (Current Session / Current Layer, nomodel); next session-N derivation (reuse the `## 20` grep in `rotate-session-log.sh`); date; call `rotate-session-log.sh`.
+- [ ] **B3.2 F6 Orchestrator** — stage files → apply → verify-all → commit-or-rollback (`git checkout` on fail) → summary + uncommitted-git warning + idempotency guard.
+- [ ] **B3.3 Per-run logging** — `.claude/local/handoff-runs/<session-N+ts>/` with `input.md` (Claude's exact payload) + `report.md` (what was applied).
+
+**B4 — SKILL.md rewrite** (milestone)
+- [ ] **B4.1 F7 schema** — the payload Claude emits: per-role authored blocks (Scope A = authored mode only; `intent` mode = deferred enhancement).
+- [ ] **B4.2 SKILL rewrite** — rewrite `.claude/skills/session-handoff/SKILL.md` to decide content, emit the F7 payload, invoke the pipeline as one Bash call — no file reads, no per-section Edits. Preserve pre-flight git/date context.
+
+**Open decisions to settle when relevant:** run-artifact placement (lean `.claude/local/handoff-runs/`); whether `report.md` also appends to committed `session-log.md`; whether `session-context.md` is in the first apply-cut or `tasks.md`+`session-log` only; whether `resume.sh` is refactored onto the shared register now or later (lean: later).
 
 ---
 

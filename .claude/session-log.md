@@ -1,8 +1,34 @@
 # Session Log
 
-**Current Layer:** LTG Phase 3 — Anchor Integration (decisions frozen ✓ — write `anchors.py` next)
-**Current Session:** 2026-06-02 — Session 82: LTG Phase 3 anchor decisions frozen
+**Current Layer:** Tooling side-track — Session-handoff pipeline (Scope A design frozen; B1.1 done, B1.2 next). LTG Phase 3 still pending (`anchors.py` TDD).
+**Current Session:** 2026-06-04 — Session 83: Session-handoff pipeline design + register (B1.1)
 **Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-30-to-2026-05-30.md`
+
+---
+
+## 2026-06-04 - Session 83: Session-handoff pipeline — design + register (B1.1)
+
+### Context
+Resumed from an **emergency one-file handoff** (`​.claude/handoff-session-83.md`) — the prior session hit its limit mid-work. Goal: design (and start building) a replacement for the token-heavy `session-handoff` skill. The current skill makes Claude *decide → read every tracking file → write each section via many Edits*; the new design keeps *decide* with Claude and collapses *read+write* into one deterministic, register-driven pipeline call.
+
+### What Was Done
+- Designed **Scope A** and wrote two committed design docs: `docs/plans/session-handoff-pipeline-design.md` (`ref:handoff-pipeline-design`, the active plan) + `docs/plans/session-handoff-placer-enhancement.md` (`ref:handoff-placer-enhancement`, the deferred local-model layer). Indexed both (2 rows in `.claude/index.md`).
+- Created branch `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase3-anchors`; rebase onto master before any PR).
+- **B1.1 done:** authored `overlays/session-tracking/registry.yaml` — 10 roles, all locators verified against the real files (4/4 ref keys, 3/3 header fields, `---` at line 7, `deferred-infra` block present). Tried the local model (`qwen2.5-coder:14b`) first → it produced valid YAML with **hallucinated ref-key names + wrong files/locators** → **verdict 0 (rejected)**, rewrote by hand. Lesson: load-bearing contracts = Claude authors; the hallucinated-locator failure is exactly what F1/F4 sandbox at runtime.
+- This session resume (session 83): committed the four design/register files (`b18aba9`) and folded the handoff back into the tracking files.
+
+### Decisions Made
+- **Scope A = deterministic spine, NO local model.** The register supplies edit locations; Claude authors each block → every op reduces to replace / prepend / append / checkoff / nomodel.
+- **The model became an enhancement, not a prerequisite** (expands *terse intent → prose*; saves authoring tokens). Fully deferred to the enhancement doc.
+- **Localization reuses EXISTING handoff `ref:` blocks** via a shared per-repo register — **no new in-file markers** (rejected: would pollute the LTG corpus that ingests `.claude/`+`.memories/`). Register shared by `resume.sh` (read) + the pipeline (write) so they can't drift.
+- **The register doubles as the handoff-owned-vs-content boundary** — every other ref key is content/LTG anchor the pipeline MUST NOT touch. Basis for a future portable-handoff overlay.
+- **Task IDs in-file** (the lone new in-file element) → deterministic checkoff by id.
+- **Home = the `session-tracking` overlay** (build here, propagate via overlay install).
+- **F4 Verifier = the trust boundary:** hashes everything outside register-defined regions → corruption can't be committed; rollback is free (`git checkout` on verify-fail). This is what lets an untrusted model run later.
+
+### Next
+- Two tracks. **(LTG)** write `retrieval/anchors.py` TDD (`ref:ltg-phase3-decisions` = full spec; rebase onto master first). **(pipeline)** continue at **B1.2** (add task IDs to tasks.md), then B2 deterministic core (F1 Locator / F3 Applier / F4 Verifier, TDD).
+- Full plan: B1 register+IDs → B2 safety core → B3 orchestrator+logging → B4 SKILL.md rewrite. See `ref:handoff-pipeline-design`.
 
 ---
 
