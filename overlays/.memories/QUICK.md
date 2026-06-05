@@ -7,6 +7,8 @@
 3 overlays operational, installed in expenses repo (all 3) and web-research repo (ref-indexing).
 Manifest-driven installer with manual and AI-assisted merge modes.
 
+Session 84: the `session-tracking` overlay is gaining a deterministic handoff pipeline under `session-tracking/files/handoff/` (F1 Locator / F3 Applier / F4 Verifier built; B3 orchestrator next).
+
 ## What Overlays Are
 
 Installable packages of tools, documentation sections, and AI agent rules for

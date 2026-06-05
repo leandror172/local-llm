@@ -18,12 +18,12 @@ Home: `overlays/session-tracking/` (propagate via overlay install).
 
 **B1 — Register + task IDs** (milestone)
 - [x] **B1.1** — author `overlays/session-tracking/registry.yaml` (10 roles, locators verified). DONE session 83, commit `b18aba9`.
-- [ ] (T-01) **B1.2** — add stable `(T-NNx)` task IDs to this file so checkoff is deterministic (flip `[ ]`→`[x]` by id). Normalize the bold-label tasks (`**3.5-B:**`, `**M-P0a:**`) with IDs. Lone new in-file element. **← next**
+- [x] (T-01) **B1.2** — add stable `(T-NNx)` task IDs to this file so checkoff is deterministic (flip `[ ]`→`[x]` by id). Normalize the bold-label tasks (`**3.5-B:**`, `**M-P0a:**`) with IDs. Lone new in-file element. DONE session 84 (commit `a1f985d`).
 
-**B2 — Deterministic safety core** (milestone; TDD; local-first per `ref:local-model-conventions`)
-- [ ] (T-02) **B2.1 F1 Locator** — for each register entry find its region (ref_block / structural / field / checklist) + mode + current interior; self-check "exactly one match → else abort + fall back".
-- [ ] (T-03) **B2.2 F3 Applier** — splice authored content per mode (replace / prepend / append / checkoff-by-id); must not touch bytes outside the region.
-- [ ] (T-04) **B2.3 F4 Verifier** — hash everything outside register regions before/after; assert unchanged + locators still resolve + mode honored. Pass/fail gate (trust boundary).
+**B2 — Deterministic safety core** (milestone; TDD; local-first per `ref:local-model-conventions`) — DONE session 84 (31 tests green)
+- [x] (T-02) **B2.1 F1 Locator** — for each register entry find its region (ref_block / structural / field / checklist) + mode + current interior; self-check "exactly one match → else abort + fall back". DONE session 84 (`e6d4615`, 15 tests).
+- [x] (T-03) **B2.2 F3 Applier** — splice authored content per mode (replace / prepend / append / checkoff-by-id); must not touch bytes outside the region. DONE session 84 (`71979e6`, 8 tests).
+- [x] (T-04) **B2.3 F4 Verifier** — hash everything outside register regions before/after; assert unchanged + locators still resolve + mode honored. Pass/fail gate (trust boundary). DONE session 84 (`f0c4822`, 8 tests).
 
 **B3 — Orchestrator + per-run logging** (milestone)
 - [ ] (T-05) **B3.1 F5 mechanics** — deterministic header-field bumps (Current Session / Current Layer, nomodel); next session-N derivation (reuse the `## 20` grep in `rotate-session-log.sh`); date; call `rotate-session-log.sh`.
