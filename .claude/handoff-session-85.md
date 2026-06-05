@@ -93,10 +93,9 @@ still pending."
 **`.claude/tasks.md`** → in the pipeline section: check off `(T-05) B3.1`, `(T-06) B3.2`,
 `(T-07) B3.3` → `[x]`; mark the **B3 milestone** done. (T-53 already added.)
 
-**QUICK files** → root `.memories/QUICK.md`: one line "Session 85: handoff pipeline **B3 milestone
-complete** (F5/F6/logging, 53 tests) on `feature/session-handoff-pipeline`; next = B4 (F7 schema +
-SKILL rewrite)." `overlays/.memories/QUICK.md`: optional — note the handoff pipeline package is now
-F1–F6 complete under `session-tracking/files/handoff/`.
+**QUICK / KNOWLEDGE files** → DONE at session-85 close (do NOT re-apply): root `.memories/QUICK.md`
+Session 85 line added; `overlays/.memories/QUICK.md` status bumped; `overlays/.memories/KNOWLEDGE.md`
+gained a "Session-Handoff Pipeline Architecture (2026-06)" entry (register + F1–F6 + F4 trust boundary).
 
 *(Reuse the session-start pattern: Claude authors exact `old→new` splices, a Haiku subagent applies
 them — keeps the churn out of main context.)*

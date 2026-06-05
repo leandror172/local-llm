@@ -22,7 +22,8 @@ Session 68 (2026-05-26): Model survey complete. Key findings:
 - Full survey + advisor review: `docs/findings/model-updates-2026-05.md`
 Sessions 75-82 (2026-05-29→06-02): infra (Ollama store→I:\, `q8_0` KV cache, tiny models pulled); **all 14B → 32K ctx**; **LTG extractor retrofit complete** (routing.py/schemas.py/ModelClient, 148 tests); **LTG Phase 3 anchor decisions FROZEN** (dual-path + alias-link; next = `anchors.py` TDD).
 Session 83 (2026-06-04): **Session-handoff pipeline** side-track — Scope A design frozen (register-driven deterministic, no local model); `registry.yaml` + `(T-NN)` task IDs done.
-Session 84 (2026-06-04): handoff pipeline **B2 safety core complete** — F1 Locator / F3 Applier / F4 Verifier in `overlays/session-tracking/files/handoff/`, 31 tests green. Next: B3 (F5/F6/logging).
+Session 84 (2026-06-04): handoff pipeline **B2 safety core** — F1/F3/F4, 31 tests.
+Session 85 (2026-06-05): handoff pipeline **B3 milestone complete** — F5 Mechanics / F6 Orchestrator+git adapter / per-run logging in `overlays/session-tracking/files/handoff/`, 53 tests green. Scope A spine functionally complete; next = B4 (F7 schema + SKILL rewrite).
 Active branch: `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase3-anchors`).
 
 ## Repo Structure

@@ -62,3 +62,33 @@ in the repo's `.claude/skills/` (repo-specific). Default is user-level.
 not just in one repo. User-level avoids duplicating them across projects.
 **Implication:** User-level skills are not version-controlled per repo. Changes
 require updating the user-level installation separately.
+
+## Session-Handoff Pipeline Architecture (2026-06)
+
+The `session-tracking` overlay's handoff pipeline (`files/handoff/`) replaces the token-heavy
+"Claude reads every tracking file and writes each section via many Edits" skill with a
+register-driven deterministic transaction. Scope A uses **NO local model**.
+
+- **Register** (`registry.yaml`): per-repo source of truth mapping each handoff-owned region to a
+  file + locator (4 kinds: ref_block / structural / field / checklist) + write mode (replace /
+  prepend / append / checkoff / nomodel). It also draws the safety boundary — every OTHER ref key is
+  content / LTG anchor the pipeline MUST NOT touch.
+- **F1 Locator → F3 Applier → F4 Verifier** (safety core): pure functions over `(role/Region, text)`.
+  `Region(start,end,interior)` is the single boundary source of truth. F4 = recompute-and-compare
+  (re-derive expected text byte-exact, independent of apply) + ref-marker multiset invariant — the
+  trust boundary that will let an untrusted model run in the deferred enhancement.
+- **F5 Mechanics** (`mechanics.py`): header-field bumps through the **nomodel fence** (the applier
+  *refuses* nomodel so the payload path can never write headers — only the script can; the verifier
+  *accepts* nomodel as replace), next-session-N (bootstraps to 1 on a fresh repo), date, rotation invoker.
+- **F6 Orchestrator** (`orchestrator.py` + injected `gitio` adapter): atomic stage → apply → verify →
+  write → rotate → commit, with **two safety layers** — in-memory verify-then-write + git checkout
+  rollback — guarded by a clean-tree precondition on the tracking files.
+- **Per-run logging** (`runlog.py`): `.claude/local/handoff-runs/session-<N>-<ts>/` holds `input.md`
+  (verbatim payload = recovery artifact) + `report.md` (audit).
+
+**Rationale:** keep *decide content* with Claude, collapse *read+write* into one deterministic
+register-driven call — no new in-file markers (they would pollute the LTG corpus that ingests
+`.claude/` + `.memories/`). **Implication:** the register is both the repo-customization seam and the
+handoff-owned-vs-content boundary; load-bearing contracts (register, F7 schema, F6 orchestration) stay
+Claude-authored, while leaf modules (F5, logging) are local-model-delegable. Status (session 85): B1–B3
+done (F1–F6 + logging, 53 tests); B4 (F7 schema + SKILL rewrite) remaining.
