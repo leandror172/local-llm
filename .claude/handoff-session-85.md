@@ -156,3 +156,91 @@ B1, B2, **B3 (B3.1/B3.2/B3.3) are DONE**. Live remaining:
 - **Stretch idea (optional, only if budget allows):** dog-food F6 to write a real handoff — the
   tracking files are clean, the register was verified session 83, so `run_handoff` could apply the §5
   updates itself (rollback-protected). Risky without B4 plumbing; author the payload by hand if attempted.
+
+---
+
+## 10. DEEP GUIDANCE — B4.2 rewrite of `session-handoff/SKILL.md` (+ B4.1 entrypoint)
+
+**Read FIRST:** `.claude/skills/session-handoff/SKILL.md` (the file you're rewriting). The OLD skill
+makes Claude *read every tracking file and write each section via many Edits*, and computes
+date/session-N + runs `rotate` inline. **DELETE all of that** — the pipeline (F5/F6) now owns mechanics,
+rotation, commit, rollback. **Goal of the new skill:** DECIDE content → write ONE payload file → make
+ONE Bash call → report the summary. No per-section Edits, no whole-file reads on the write path.
+
+### 10a. Build the entrypoint first (B4.1 tail → B4.2 head)
+Create `overlays/session-tracking/files/handoff/handoff.py` + a `run-handoff.sh` wrapper that:
+- parses the payload file → `HandoffPayload` (via `payload.py` from B4.1);
+- loads `registry.yaml` → register dict. **DECISION (settle here):** the handoff dir is stdlib-only —
+  either add PyYAML or write a ~30-line loader. **Lean: tiny stdlib loader** to keep the overlay
+  dependency-free/portable (the register shape is simple: roles → file/locator/write_mode);
+- `validate(payload, register)` → on any error, print and **exit non-zero without running**;
+- calls `run_handoff(repo_root, register, payload, git=SubprocessGit(repo_root))`, then prints the
+  `RunReport` (committed / rolled-back+reason, regions touched) **plus** a warning about uncommitted
+  NON-tracking files via `git.status_short()`;
+- **add a `--dry-run` flag**: stage + apply + verify in memory, print per-region before→after, but do
+  NOT write/rotate/commit. This is the safe rehearsal AND the foundation for the T-53 preflight check.
+
+### 10b. The payload file the skill writes (F7 format, see §7)
+YAML frontmatter + `## role: <name>` markdown sections. Skill writes it to e.g.
+`.claude/local/handoff-pending.md` and passes that path; the pipeline persists it **verbatim** as the
+run dir's `input.md` (raw == payload → no drift). Shape:
+```
+---
+session_title: <topic for the Current Session header>
+current_layer: <full Current Layer value>
+checkoffs: [T-05, T-06, T-07]
+---
+## role: log-entry
+
+## 2026-06-06 - Session 86: <title>
+### Context …
+### What Was Done …
+### Decisions Made …
+### Next …
+
+## role: current-status
+<full updated interior of the ref:current-status block>
+
+## role: reading-guide
+<full updated interior>
+```
+
+### 10c. The replace-mode tension (IMPORTANT — resolve in the SKILL design)
+`current-status`, `active-decisions`, `reading-guide`, `user-prefs` are **replace** mode → the skill
+must author the FULL new interior, which means it needs the CURRENT interior to edit. This *seems* to
+violate "no file reads." Resolution: fetch ONLY those handoff-owned interiors (small, bounded) — NOT
+whole files — via `ref-lookup.sh <KEY>` (already prints a ref block) or a pipeline `--dump <role>`
+mode. Eliminating *whole-file* reads is the goal; reading the ~5 owned blocks is cheap and fine. Since
+F6 applies only the roles PRESENT in the payload, **OMIT any replace-role whose content is unchanged**
+(e.g. `user-prefs` usually) — don't re-author it, don't include the section.
+
+### 10d. Role → content map the skill authors
+- `session_title` + `current_layer` (scalars) → the two nomodel header fields (via F5).
+- `log-entry` (prepend) → the new session-log entry (Context / What Was Done / Decisions / Next).
+- `current-status` / `active-decisions` / `reading-guide` (replace) → full updated interiors (fetch
+  current first per 10c; omit if unchanged).
+- `tasks-append` (append) → newly discovered tasks, each with a fresh `(T-NN)` id.
+- `checkoffs: [ids]` → tasks completed this session (flipped `[ ]`→`[x]` by id, anywhere in tasks.md).
+
+### 10e. Pre-flight to preserve / add (ties to T-53)
+- Check tracking files clean BEFORE authoring: `git status --porcelain -- <tracking files>`. If dirty,
+  STOP and ask the user to commit/stash — F6 aborts on a dirty tree, so catching it up front avoids
+  wasting the whole payload-authoring round-trip. Mechanism: a skill step now; a hook later (T-53).
+- Do NOT recompute date / session-N / rotation in the skill — the pipeline owns them.
+
+### 10f. Manifest wiring (do as part of B4.2 — currently MISSING)
+Add to `overlays/session-tracking/manifest.yaml` `files:`: `registry.yaml`, every `files/handoff/*.py`
+(locator/applier/verifier/mechanics/runlog/gitio/orchestrator/payload), `handoff.py`, `run-handoff.sh`.
+Decide the install layout (e.g. code → `.claude/tools/handoff/`, register → `.claude/handoff/registry.yaml`)
+and make the entrypoint resolve `repo_root` + registry path from its own install location. None are
+listed today — the pipeline won't propagate to other repos until this is done.
+
+### 10g. Authoring + testing discipline
+- The SKILL.md rewrite is a load-bearing instruction doc → **Claude-authored** (no local model). The
+  `payload.py` parser/validator (B4.1) IS delegable to the local model (leaf, test-first).
+- Add `test_payload.py` (parse/validate) and an entrypoint test using a tmp git repo like
+  `test_orchestrator.py` does.
+- **First real run = dog-food on THIS repo:** run `--dry-run`, inspect every before→after, THEN run for
+  real. The run is rollback-protected (clean-tree precondition + git checkout), so a bad payload reverts.
+- Keep the SKILL body SHORT: the skill is now mostly "gather context → author these N blocks → write
+  payload → one Bash call → report." The heavy logic lives in the tested pipeline, not in prose.
