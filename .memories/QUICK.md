@@ -20,7 +20,9 @@ Session 68 (2026-05-26): Model survey complete. Key findings:
 - **llama4:scout** — new long-context capability (~200K–1M effective for RAG, advertised 10M); multimodal, fits 12GB (~10GB Q4)
 - qwen3:14b still SOTA reasoning ≤14B; qwen3:4b-q8_0 still best classifier
 - Full survey + advisor review: `docs/findings/model-updates-2026-05.md`
-Active branch: `feature/model-survey-2026-05`.
+Sessions 75-82 (2026-05-29→06-02): infra (Ollama store→I:\, `q8_0` KV cache, tiny models pulled); **all 14B → 32K ctx**; **LTG extractor retrofit complete** (routing.py/schemas.py/ModelClient, 148 tests); **LTG Phase 3 anchor decisions FROZEN** (dual-path + alias-link; next = `anchors.py` TDD).
+Session 83 (2026-06-04): **Session-handoff pipeline** side-track — Scope A design frozen (register-driven deterministic, no local model); `registry.yaml` + `(T-NN)` task IDs done.
+Active branch: `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase3-anchors`).
 
 ## Repo Structure
 
