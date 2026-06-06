@@ -102,6 +102,11 @@ register-driven call — no new in-file markers (they would pollute the LTG corp
 handoff-owned-vs-content boundary; load-bearing contracts (register, F7 schema, F6 orchestration) stay
 Claude-authored, while leaf modules (F5, logging) are local-model-delegable. Status (session 87):
 **B1–B4 complete — Scope A fully done, 77 tests, dog-food-validated** (clone run on real content/register).
+**PR #50** open (stacked on `feature/ltg-phase3-anchors`; retarget to master after the LTG PR merges).
+**Home-repo activation:** the skill is installed *project-level* in the llm repo; the pipeline code is
+NOT copied into `.claude/tools/` there (would duplicate the overlay source) — the skill's home-repo note
+runs `overlays/session-tracking/files/handoff/run-handoff.sh` with an explicit `--registry`. Target repos
+get the canonical `.claude/tools/handoff/` layout via the installer instead.
 
 **Dog-food learning (session 86):** F4's invariants are *out-of-region bytes* + *ref-marker multiset* —
 neither sees a **missing newline before a present marker**. A payload's last `## role:` section has no
