@@ -124,6 +124,18 @@ def _stage_and_apply(
         )
     return modified_by_file, region_edits
 
+def _normalize_block(content: str) -> str:
+    """Guarantee a single trailing newline on a payload block.
+
+    Block roles (log-entry / replace blocks / tasks-append) are whole-line
+    inserts. The payload's LAST `## role:` section has no trailing blank line, so
+    payload.py yields content without a closing newline — which would glue the
+    splice onto the following line or ref marker. Header fields (nomodel) and
+    checkoffs don't pass through here, so their inline content is unaffected.
+    """
+    return content if content.endswith("\n") else content + "\n"
+
+
 def _collect_edits(repo_root, register, payload, *, clock) -> Dict[str, List[Tuple[str, Region, str]]]:
     cache: Dict[str, str] = {}
 
@@ -140,7 +152,7 @@ def _collect_edits(repo_root, register, payload, *, clock) -> Dict[str, List[Tup
     for role, content in payload.blocks.items():
         role_def = register[role]
         rel = role_def["file"]
-        add(rel, role, locate(role_def, text_of(rel)), content)
+        add(rel, role, locate(role_def, text_of(rel)), _normalize_block(content))
 
     if payload.checkoffs:
         role_def = register["tasks-checkoff"]

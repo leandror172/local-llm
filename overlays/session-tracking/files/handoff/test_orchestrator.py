@@ -196,6 +196,48 @@ def test_verify_failure_rolls_back_without_writing(tmp_path, monkeypatch):
     assert "verify failed" in (runs[0] / "report.md").read_text().lower()
 
 
+# ---- unit: block content is newline-normalized before splicing --------------
+
+def test_append_block_without_trailing_newline_keeps_marker_on_its_line(tmp_path):
+    """Regression (dog-food, session 86): a payload block whose content lacks a
+    trailing newline must NOT glue the closing ref marker onto the appended line.
+
+    The payload's LAST `## role:` section has no trailing blank line, so
+    payload.py yields non-newline-terminated content. The orchestrator must
+    normalize block content so the splice lands on whole lines. The fix lives at
+    the seam (block edits only) — applier/verifier stay byte-consistent, headers
+    and checkoffs (inline / no content) are unaffected.
+    """
+    root = _setup(tmp_path)
+    (root / ".claude/tasks.md").write_text(
+        "# Tasks\n\n"
+        "<!-- ref:deferred-infra -->\n"
+        "- [ ] (T-10) existing\n"
+        "<!-- /ref:deferred-infra -->\n"
+    )
+    register = dict(REGISTER)
+    register["tasks-append"] = {
+        "file": ".claude/tasks.md",
+        "locator": {"type": "ref_block", "key": "deferred-infra"},
+        "write_mode": "append",
+    }
+    payload = HandoffPayload(
+        session_title="append test",
+        current_layer="L",
+        blocks={"tasks-append": "- [ ] (T-11) new task"},  # NO trailing newline
+        checkoffs=[],
+        raw="x",
+    )
+
+    report = run_handoff(root, register, payload, git=FakeGit(clean=True),
+                         rotate=fake_rotate, clock=CLOCK)
+
+    assert report.committed and report.verify_ok
+    tasks = (root / ".claude/tasks.md").read_text()
+    assert "- [ ] (T-11) new task\n<!-- /ref:deferred-infra -->" in tasks
+    assert "new task<!-- /ref:deferred-infra -->" not in tasks  # the glue bug
+
+
 # ---- unit: dry-run stages + verifies but writes nothing ---------------------
 
 def test_dry_run_validates_without_writing(tmp_path):
