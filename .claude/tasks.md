@@ -26,13 +26,13 @@ Home: `overlays/session-tracking/` (propagate via overlay install).
 - [x] (T-04) **B2.3 F4 Verifier** — hash everything outside register regions before/after; assert unchanged + locators still resolve + mode honored. Pass/fail gate (trust boundary). DONE session 84 (`f0c4822`, 8 tests).
 
 **B3 — Orchestrator + per-run logging** (milestone)
-- [ ] (T-05) **B3.1 F5 mechanics** — deterministic header-field bumps (Current Session / Current Layer, nomodel); next session-N derivation (reuse the `## 20` grep in `rotate-session-log.sh`); date; call `rotate-session-log.sh`.
-- [ ] (T-06) **B3.2 F6 Orchestrator** — stage files → apply → verify-all → commit-or-rollback (`git checkout` on fail) → summary + uncommitted-git warning + idempotency guard.
-- [ ] (T-07) **B3.3 Per-run logging** — `.claude/local/handoff-runs/<session-N+ts>/` with `input.md` (Claude's exact payload) + `report.md` (what was applied).
+- [x] (T-05) **B3.1 F5 mechanics** — deterministic header-field bumps (Current Session / Current Layer, nomodel); next session-N derivation (reuse the `## 20` grep in `rotate-session-log.sh`); date; call `rotate-session-log.sh`.
+- [x] (T-06) **B3.2 F6 Orchestrator** — stage files → apply → verify-all → commit-or-rollback (`git checkout` on fail) → summary + uncommitted-git warning + idempotency guard.
+- [x] (T-07) **B3.3 Per-run logging** — `.claude/local/handoff-runs/<session-N+ts>/` with `input.md` (Claude's exact payload) + `report.md` (what was applied).
 
 **B4 — SKILL.md rewrite** (milestone)
-- [ ] (T-08) **B4.1 F7 schema** — the payload Claude emits: per-role authored blocks (Scope A = authored mode only; `intent` mode = deferred enhancement).
-- [ ] (T-09) **B4.2 SKILL rewrite** — rewrite `.claude/skills/session-handoff/SKILL.md` to decide content, emit the F7 payload, invoke the pipeline as one Bash call — no file reads, no per-section Edits. Preserve pre-flight git/date context.
+- [x] (T-08) **B4.1 F7 schema** — the payload Claude emits: per-role authored blocks (Scope A = authored mode only; `intent` mode = deferred enhancement).
+- [x] (T-09) **B4.2 SKILL rewrite** — rewrite `.claude/skills/session-handoff/SKILL.md` to decide content, emit the F7 payload, invoke the pipeline as one Bash call — no file reads, no per-section Edits. Preserve pre-flight git/date context.
 
 **B5 — Preflight precondition check** (FUTURE; surfaced session 85)
 - [ ] (T-53) **B5.1 Preflight check** — a cheap pre-handoff check the skill (or a hook) runs BEFORE invoking the full pipeline, reporting unmet preconditions (e.g. dirty tracking files that would trip F6's clean-tree guard) so they're resolved up front instead of discovered via a failed F6 run → rework → re-call. Mechanism options: (a) skill instructions to run the check first; (b) a dedicated preflight tool/script returning the unmet conditions; (c) a hook fired when the skill is read that auto-injects the unmet-precondition context. Decide mechanism when building B4.2 (SKILL rewrite). Rationale: F6 aborts on dirty tracking files (decision session 85); failing inside the tool wastes a payload-assembly round-trip. **Plan:** `docs/plans/handoff-b5.1-preflight.md`.
