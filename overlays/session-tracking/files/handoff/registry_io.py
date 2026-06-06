@@ -3,7 +3,13 @@
 Loads the session-handoff register's roles mapping from a YAML file.
 """
 
-import yaml
+try:
+    import yaml
+except ImportError as exc:  # pragma: no cover - environment guard
+    raise ImportError(
+        "PyYAML is required for the session-handoff pipeline. "
+        "Install it with: pip install pyyaml"
+    ) from exc
 from pathlib import Path
 from typing import Dict, Any
 

@@ -38,8 +38,9 @@ FIXTURE = textwrap.dedent("""\
         used_by: [read, write]
 """)
 
-# The real register lives two dirs up from this handoff dir.
-REAL_REGISTRY = Path(__file__).resolve().parents[2] / "registry.yaml"
+# The real register lives one dir up, in the overlay's files/ dir
+# (alongside this handoff/ package), so manual_if_exists can install it.
+REAL_REGISTRY = Path(__file__).resolve().parents[1] / "registry.yaml"
 
 
 def _write(tmp_path, text):
