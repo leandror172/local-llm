@@ -7,90 +7,179 @@ argument-hint: "[optional summary of session focus]"
 
 # Session Handoff Skill
 
-You are closing out a Claude Code session. Your job is to ensure the next session can resume seamlessly by updating all tracking files.
+You are closing out a Claude Code session. The tracking files (`session-log.md`,
+`tasks.md`, `session-context.md`) ARE the handoff. Your job is narrow:
 
-## Pre-flight context
+> **Decide what changed → author ONE payload file → make ONE call to the pipeline → report.**
 
-Current git state:
-!`git status -s 2>/dev/null || echo "not a git repo"`
+A deterministic pipeline (`run-handoff.sh`) owns every mechanic: the date, the
+session number, log rotation, locating each region, applying the edits, verifying
+nothing outside a registered region moved, committing, and rolling back on failure.
+**You do NOT read whole tracking files, compute dates or session numbers, run
+rotation, or make per-section Edits.** You decide content; the pipeline does the
+surgery. If the pipeline's verifier sees a byte change outside a registered region,
+it rolls the whole transaction back — so authoring a clean payload is the whole job.
 
-Recent commits this session:
-!`git log --oneline -5 2>/dev/null || echo "no commits"`
+## What you're feeding: roles, modes, scalars
 
-Current date:
-!`date +%Y-%m-%d 2>/dev/null || echo "unknown"`
+`run-handoff.sh --payload <file>` reads a payload you write and applies each section
+to a **registered region**. A per-repo register (`registry.yaml`) maps each *role* to
+a file + location + write mode. You author roles; you never name a file or a line.
 
-## Steps (execute in order)
+Payload-authorable roles:
 
-### 1. Gather session summary
+| Role | Mode | What you author |
+|------|------|-----------------|
+| `log-entry` | prepend | The new session-log entry, inserted newest-first |
+| `current-status` | replace | Full updated interior of `ref:current-status` |
+| `active-decisions` | replace | Full updated interior of `ref:active-decisions` |
+| `reading-guide` | replace | Full updated interior of `ref:session-reading-guide` |
+| `user-prefs` | replace | Full updated interior of `ref:user-prefs` (rarely changes) |
+| `tasks-append` | append | Newly-discovered tasks, each a fresh `(T-NN)` line |
 
-Review the conversation history from this session. Identify:
-- **What was done** (tasks completed, files created/modified, decisions made)
-- **What was decided** (design choices, deferred items, user preferences expressed)
-- **What's next** (pending work, next layer/phase/task to start)
-- **New gotchas discovered** (if any)
-- **Uncommitted changes** (warn the user if git status shows changes)
+Plus two frontmatter **scalars** and a **checkoff list**:
 
-If the user provided a summary via `$ARGUMENTS`, use it as the starting point but supplement with details from the conversation.
+- `session_title` → the "Current Session" header field (the pipeline applies it).
+- `current_layer` → the "Current Layer" header field (the pipeline applies it).
+- `checkoffs: [T-05, T-08]` → task ids completed this session; the pipeline flips
+  `[ ]`→`[x]` by id, wherever they live in `tasks.md`.
 
-### 2. Rotate and update session-log.md
+The header fields and log rotation are **`nomodel`** — script-owned. **Never put them
+in the payload as `## role:` sections.** The scalars above are how you influence them;
+the pipeline refuses a `nomodel` role appearing as a block.
 
-First, run `.claude/tools/rotate-session-log.sh` to archive old entries (keeps 3 most recent).
-Then read `.claude/session-log.md` and add a new entry at the top (below the header) with:
+## Step 1 — Pre-flight (before you author anything)
 
-```markdown
-## YYYY-MM-DD - Session N: [Brief Title]
+1. **The tracking tree must be clean.** Run:
+   ```
+   git status --porcelain -- .claude/session-log.md .claude/session-context.md .claude/tasks.md
+   ```
+   If it prints anything, **STOP** and ask the user to commit or stash those files
+   first. The pipeline aborts on a dirty tracking tree — catching it now avoids
+   wasting the whole payload-authoring round-trip.
 
-### Context
-[How this session started — what was the entry point]
+2. **Determine the session number** from context — you are closing a specific
+   session, so you know it; if unsure, read the N from the latest `session-log.md`
+   entry heading (one cheap line, not the whole file). Today's date comes from
+   `date +%Y-%m-%d`. You write these into the `log-entry` heading; the pipeline
+   independently maintains the header's counter, and the `--dry-run` in Step 4 lets
+   you confirm the two agree before committing.
 
-### What Was Done
-- [Bulleted list of accomplishments]
+## Step 2 — Gather the session summary
 
-### Decisions Made
-- [Key decisions, with rationale if non-obvious]
+From the conversation (seeded by `$ARGUMENTS` if the user supplied a focus), identify:
 
-### Next
-- [What the next session should start with]
+- **What was done** — tasks completed, files created/modified, decisions made.
+- **What was decided** — design choices and deferred items, with rationale if non-obvious.
+- **What's next** — the pending work / next task the following session should start with.
+- **New gotchas** — anything surprising worth recording.
+- **Uncommitted non-tracking changes** — to warn about at the end (never auto-commit).
 
----
+Keep everything proportional to the session: a short session gets a short handoff.
+
+## Step 3 — Fetch ONLY the replace-mode interiors you will edit
+
+Replace-mode roles need their CURRENT interior so you can produce the full new one.
+Fetch the small bounded block — **not the whole file** — via `ref-lookup.sh`:
+
+```
+.claude/tools/ref-lookup.sh current-status
+.claude/tools/ref-lookup.sh active-decisions
+.claude/tools/ref-lookup.sh session-reading-guide
+.claude/tools/ref-lookup.sh user-prefs        # only if it actually changed
 ```
 
-Update the header's "Current Session" date and "Phase" field.
+**Strip the marker lines.** `ref-lookup.sh` prints the block WITH its surrounding
+`<!-- ref:KEY -->` and `<!-- /ref:KEY -->` lines. The payload section must carry ONLY
+the **interior** between them — drop those two lines. Replace mode swaps the interior
+in place; if you include the markers you duplicate them and the verifier rolls the
+entire run back (it enforces a ref-marker-count invariant).
 
-### 3. Update session-context.md
+**Omit any replace-role whose content is unchanged this session.** The pipeline applies
+only the roles PRESENT in the payload, so an omitted role is left byte-for-byte untouched
+(`user-prefs` is usually omitted). Do not re-author a block just to restate it.
 
-Read `.claude/session-context.md`. Update:
-- The **Current Status** section with latest checkpoint
-- The **Decisions Made** section if new decisions were recorded
-- The **Technical Learnings** section if new gotchas were discovered
+## Step 4 — Author the payload, then make ONE call
 
-### 4. Verify tracking files ARE the handoff
+Write the payload to `.claude/local/handoff-pending.md` (gitignored; the pipeline
+persists it verbatim as the run's `input.md`, so it doubles as a recovery artifact).
 
-The tracking files (session-log.md, tasks.md, session-context.md) serve as the handoff. **Do NOT create separate handoff files** (`.claude/session-handoff-*.md`).
+Format: frontmatter fenced by the **first two** `---` lines, then `## role: <name>`
+sections. Section bodies may themselves contain `---` and `##` headings — only the
+first two `---` and lines matching exactly `## role: <name>` are structural.
 
-Verify that the updates from steps 2-3 contain everything a new session needs:
-- **session-log.md** has a "Next" pointer saying what to start with
-- **tasks.md** shows which tasks are done and which are pending
-- **session-context.md** has current status and active decisions
-- **index.md** links to any new archive files created this session
+```
+---
+session_title: <topic for the Current Session header>
+current_layer: <full Current Layer value>
+checkoffs: [T-08, T-12]
+---
+## role: log-entry
 
-If significant research or findings were produced, ensure they're archived in `.claude/archive/` and indexed in `.claude/index.md` (not left only in conversation context).
+## YYYY-MM-DD - Session N: <brief title>
 
-### 5. Warn about uncommitted changes
+### Context
+<how this session started / its entry point>
 
-If `git status` shows uncommitted changes, tell the user:
-- List the changed files
-- Ask if they want to commit before ending
-- Do NOT auto-commit — just inform
+### What Was Done
+- <accomplishments>
 
-### 6. Confirm completion
+### Decisions Made
+- <key decisions, rationale if non-obvious>
 
-Show a summary table of what was updated, then confirm the session is ready to close.
+### Next
+- <what the next session starts with>
+
+## role: current-status
+<full updated interior of ref:current-status>
+
+## role: reading-guide
+<full updated interior of ref:session-reading-guide>
+
+## role: tasks-append
+- [ ] (T-NN) **<short label>** — <newly discovered task>
+```
+
+Notes on authoring:
+- `log-entry` is **prepend** — write only the new entry; the pipeline puts it newest-first.
+- replace roles carry ONLY the **interior** (the lines between the ref markers, markers
+  stripped — see Step 3); the applier swaps the interior in place.
+- `tasks-append` adds only NEW tasks. The id must be **bare parens right after `[ ]`**:
+  `- [ ] (T-NN) **label** — …` — NOT `- [ ] **(T-NN)**`. The checkoff locator matches
+  `^- [ ] (T-NN)`, so a bolded or misplaced id silently fails to flip later. Use a fresh
+  `(T-NN)` (one past the highest id in tasks.md). Tasks discussed
+  but not stored anywhere belong here — but this is judgment-based, so **list the
+  candidates to the user and confirm before including them.**
+- `checkoffs` lists tasks COMPLETED this session by id; don't also restate them as prose.
+
+Then rehearse, inspect, and apply:
+
+```
+# 1) rehearse — validates locate/apply/verify, writes NOTHING:
+.claude/tools/handoff/run-handoff.sh --dry-run --payload .claude/local/handoff-pending.md
+# 2) inspect the reported regions + confirm the header session N matches your log entry
+# 3) apply for real (atomic; rolls back on any verify failure):
+.claude/tools/handoff/run-handoff.sh --payload .claude/local/handoff-pending.md
+```
+
+> In the overlay's **home** repo (where the pipeline lives in source, not installed),
+> use `overlays/session-tracking/files/handoff/run-handoff.sh` and pass
+> `--registry overlays/session-tracking/files/registry.yaml`.
+
+## Step 5 — Report
+
+Relay the pipeline's `RunReport`: committed (with the session number) or rolled-back
+(with the reason), and the regions touched. Then, if `git status` shows uncommitted
+changes to **non-tracking** files, list them and ask whether the user wants to commit —
+do NOT auto-commit. Finish with a short confirmation that the session is ready to close.
 
 ## Important rules
 
-- Do NOT create any new project files (code, docs, configs) — this skill only updates tracking files
-- Do NOT proceed to new work after the handoff — the session is ending
-- If the conversation was short or trivial, keep the handoff proportionally brief
-- Preserve the format and style of existing tracking files — read them first
+- **One payload, one call.** No per-section Edits, no whole-file reads on the write path.
+- **Don't recompute** date, session number, or rotation — the pipeline owns them.
+- **Never** put `nomodel` roles (the `header-*` fields, rotation) in the payload as sections.
+- **Omit** unchanged replace-roles entirely.
+- If the run rolls back, read the reason, fix the payload, and re-run — the tracking
+  files were restored, so it is safe to retry.
+- Do not create separate `session-handoff-*.md` files; the tracking files are the handoff.
+- Do not start new project work after the handoff — the session is ending.
