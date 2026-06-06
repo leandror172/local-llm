@@ -85,10 +85,27 @@ register-driven deterministic transaction. Scope A uses **NO local model**.
   rollback — guarded by a clean-tree precondition on the tracking files.
 - **Per-run logging** (`runlog.py`): `.claude/local/handoff-runs/session-<N>-<ts>/` holds `input.md`
   (verbatim payload = recovery artifact) + `report.md` (audit).
+- **F7 payload + entrypoint** (`payload.py` schema; `registry_io.py` PyYAML loader; `handoff.py` CLI +
+  `run-handoff.sh`): payload = first-two-`---` frontmatter (`session_title`/`current_layer`/`checkoffs`)
+  + `## role:` sections. `--dry-run` runs the pure half (`_stage_and_apply`) and writes nothing — the
+  rehearsal and the foundation for the T-53 preflight. PyYAML is allowed only in the entrypoint glue
+  (`registry_io`); the F1–F6 safety core stays stdlib-only.
+- **Install layout** (`manifest.yaml`): 10 runtime modules + `run-handoff.sh` ship via `files:` →
+  `.claude/tools/handoff/`; the **register** ships via `manual_if_exists` → `.claude/handoff/registry.yaml`
+  (**Option C**: copy-once, then *flag-on-update* — it's load-bearing yet per-repo, so neither silent
+  overwrite nor silent skip is right). `handoff.py` resolves `repo_root` via `git rev-parse`, so the
+  default registry path is correct without flags in installed repos.
 
 **Rationale:** keep *decide content* with Claude, collapse *read+write* into one deterministic
 register-driven call — no new in-file markers (they would pollute the LTG corpus that ingests
 `.claude/` + `.memories/`). **Implication:** the register is both the repo-customization seam and the
 handoff-owned-vs-content boundary; load-bearing contracts (register, F7 schema, F6 orchestration) stay
-Claude-authored, while leaf modules (F5, logging) are local-model-delegable. Status (session 85): B1–B3
-done (F1–F6 + logging, 53 tests); B4 (F7 schema + SKILL rewrite) remaining.
+Claude-authored, while leaf modules (F5, logging) are local-model-delegable. Status (session 87):
+**B1–B4 complete — Scope A fully done, 77 tests, dog-food-validated** (clone run on real content/register).
+
+**Dog-food learning (session 86):** F4's invariants are *out-of-region bytes* + *ref-marker multiset* —
+neither sees a **missing newline before a present marker**. A payload's last `## role:` section has no
+trailing blank, so `payload.py` returned non-newline-terminated content, and append/replace/prepend glued
+the line onto the closing marker. Fixed at the seam (`_normalize_block` in `_collect_edits`), NOT in the
+safety core: the applier/verifier share an implicit "content is newline-terminated" contract and must
+stay byte-identical, so normalize once upstream where both consume the same `items`.

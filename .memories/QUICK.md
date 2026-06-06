@@ -24,6 +24,7 @@ Sessions 75-82 (2026-05-29→06-02): infra (Ollama store→I:\, `q8_0` KV cache,
 Session 83 (2026-06-04): **Session-handoff pipeline** side-track — Scope A design frozen (register-driven deterministic, no local model); `registry.yaml` + `(T-NN)` task IDs done.
 Session 84 (2026-06-04): handoff pipeline **B2 safety core** — F1/F3/F4, 31 tests.
 Session 85 (2026-06-05): handoff pipeline **B3 milestone complete** — F5 Mechanics / F6 Orchestrator+git adapter / per-run logging in `overlays/session-tracking/files/handoff/`, 53 tests green. Scope A spine functionally complete; next = B4 (F7 schema + SKILL rewrite).
+Sessions 86–87 (2026-06-05/06): handoff pipeline **B4 complete — Scope A fully done, dog-food-validated.** F7 payload schema + `handoff.py`/`registry_io.py` entrypoint + `run-handoff.sh`; manifest install layout (register via `manual_if_exists` = Option C, propagate-with-flag); `SKILL.md` rewritten (decide content → one payload → one `run-handoff.sh` call). Clone dog-food found+fixed a real append/replace **newline-glue bug** F4 was blind to (`_normalize_block` at the `_collect_edits` seam); **77 tests green.**
 Active branch: `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase3-anchors`).
 
 ## Repo Structure
