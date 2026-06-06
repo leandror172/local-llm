@@ -8,6 +8,9 @@ Packages the session continuity system for any Claude Code project.
 |--------|--------|-----------|
 | COPY | `.claude/tools/resume.sh` | Always (backup if differs) |
 | COPY | `.claude/tools/rotate-session-log.sh` | Always (backup if differs) |
+| COPY | `.claude/tools/handoff/*.py` (10 runtime modules) | Always — the deterministic handoff pipeline (test_*.py not shipped) |
+| COPY | `.claude/tools/handoff/run-handoff.sh` | Always — pipeline entrypoint |
+| MANUAL | `.claude/handoff/registry.yaml` | Copied if missing; **flagged for manual merge if present** (per-repo register — `manual_if_exists`) |
 | COPY | `~/.claude/skills/session-handoff/SKILL.md` | User-level by default; `--skill-level project` installs per-repo |
 | CREATE | `.claude/session-log.md` | Only if missing |
 | CREATE | `.claude/session-context.md` | Only if missing |
@@ -16,7 +19,19 @@ Packages the session continuity system for any Claude Code project.
 
 ## Prerequisites
 
-- `ref-indexing` overlay recommended (provides `ref-lookup.sh` used by `resume.sh`)
+- `ref-indexing` overlay recommended (provides `ref-lookup.sh` used by `resume.sh` **and** by the handoff skill to fetch replace-mode interiors)
+- **PyYAML** required by the handoff pipeline (`pip install pyyaml`) — only `registry_io.py` imports it; the F1–F6 safety core is stdlib-only
+
+## Deterministic handoff pipeline
+
+The `session-handoff` skill no longer edits the tracking files directly. It authors one
+F7 payload (`.claude/local/handoff-pending.md`) and makes a single call to
+`.claude/tools/handoff/run-handoff.sh`, which locates each region via the **register**
+(`.claude/handoff/registry.yaml`), applies the edits, verifies nothing outside a registered
+region changed (F4), runs log rotation, and commits — rolling back on any failure.
+Rehearse first with `run-handoff.sh --dry-run`. The register is the per-repo customization
+seam **and** the handoff-owned-vs-content boundary — every ref key NOT listed in it is content
+the pipeline must never touch.
 
 ## Usage
 
