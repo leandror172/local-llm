@@ -54,8 +54,10 @@ def print_summary(report: Any, git: SubprocessGit, dry_run: bool) -> None:
     status_line = ""
     if report.committed:
         status_line = f"committed (session {report.session_number})"
-    elif dry_run:
+    elif dry_run and report.verify_ok:
         status_line = f"dry-run OK (session {report.session_number}): validated, not written"
+    elif dry_run:
+        status_line = f"dry-run FAILED (session {report.session_number}): {report.reason}"
     else:
         status_line = f"rolled back: {report.reason}"
     

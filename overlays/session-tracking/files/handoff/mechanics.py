@@ -84,6 +84,6 @@ def rotate(repo_root: Path, keep: int = 3) -> CompletedProcess:
 
 def _extract_heading_numbers(log_text: str) -> List[int]:
     """Extract all session numbers from heading lines in the log text."""
-    pattern = re.compile(r"## \d{4}-\d{2}-\d{2} - Session (\d+):")
+    pattern = re.compile(r"## \d{4}-\d{2}-\d{2} [—\-] Session (\d+):")
     matches = pattern.finditer(log_text)
     return [int(match.group(1)) for match in matches]
