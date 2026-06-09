@@ -182,3 +182,45 @@ def test_checklist_duplicate_open_id_raises():
     text = "- [ ] (T-05) a\n- [ ] (T-05) b\n"
     with pytest.raises(LocatorError):
         locate(CHECK_ROLE, text, task_id="T-05")
+
+
+def test_checklist_bold_id_format():
+    text = ("- [ ] **5.R1** TF-IDF retrieval layer\n"
+            "- [ ] **5.R2** Embedding retrieval layer\n")
+    r = locate(CHECK_ROLE, text, task_id="5.R1")
+    assert "5.R1" in r.interior
+    assert r.interior.startswith("- [ ] **5.R1**")
+
+
+def test_checklist_bare_numeric_id():
+    text = ("- [x] 1.0 — Protocol definitions\n"
+            "- [ ] 1.0a — variant task\n"
+            "- [ ] 3.1 — CLI wrapper\n")
+    r = locate(CHECK_ROLE, text, task_id="3.1")
+    assert "3.1" in r.interior
+    assert r.interior.startswith("- [ ] 3.1")
+
+
+def test_checklist_prefix_dash_id():
+    text = ("- [x] **RUI-1** review command\n"
+            "- [ ] **RUI-4** emit full 3-level path\n")
+    r = locate(CHECK_ROLE, text, task_id="RUI-4")
+    assert "RUI-4" in r.interior
+
+
+def test_checklist_word_boundary_no_substring_match():
+    # T-1 must not match the T-10 line
+    text = ("- [ ] (T-10) **task ten**\n"
+            "- [ ] (T-1) **task one**\n")
+    r = locate(CHECK_ROLE, text, task_id="T-1")
+    assert r.interior.startswith("- [ ] (T-1) ")
+    assert "T-10" not in r.interior
+
+
+def test_checklist_id_in_description_of_other_task_not_matched():
+    # T-01 appears in the description of T-02, but T-01 itself is checked off.
+    # Only unchecked lines enter the candidate set, so no false match.
+    text = ("- [x] (T-01) **first task**\n"
+            "- [ ] (T-02) **second task** — blocked on T-01\n")
+    with pytest.raises(LocatorError):
+        locate(CHECK_ROLE, text, task_id="T-01")

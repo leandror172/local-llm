@@ -117,11 +117,44 @@ def test_validate_flags_missing_scalar():
 
 def test_validate_flags_malformed_checkoff_id():
     text = (
-        "---\nsession_title: t\ncurrent_layer: l\ncheckoffs: [T-05, bogus]\n---\n"
+        "---\nsession_title: t\ncurrent_layer: l\ncheckoffs: [T-05, #bogus]\n---\n"
         "## role: current-status\nx\n"
     )
     errors = validate(parse(text), REGISTER)
-    assert any("bogus" in e for e in errors)
+    assert any("#bogus" in e for e in errors)
+
+
+def _checkoff_text(ids: str) -> str:
+    return (
+        f"---\nsession_title: t\ncurrent_layer: l\ncheckoffs: [{ids}]\n---\n"
+        "## role: current-status\nx\n"
+    )
+
+
+def test_validate_accepts_dot_numeric_id():
+    assert not any("malformed" in e for e in validate(parse(_checkoff_text("5.R1")), REGISTER))
+
+
+def test_validate_accepts_prefix_dash_id():
+    assert not any("malformed" in e for e in validate(parse(_checkoff_text("RUI-4")), REGISTER))
+
+
+def test_validate_accepts_bare_numeric_id():
+    assert not any("malformed" in e for e in validate(parse(_checkoff_text("1.0")), REGISTER))
+
+
+def test_validate_accepts_no_dash_id():
+    assert not any("malformed" in e for e in validate(parse(_checkoff_text("T1")), REGISTER))
+
+
+def test_validate_rejects_hash_id():
+    errors = validate(parse(_checkoff_text("#035")), REGISTER)
+    assert any("#035" in e for e in errors)
+
+
+def test_validate_rejects_id_with_space():
+    errors = validate(parse(_checkoff_text("LLM repo")), REGISTER)
+    assert any("malformed" in e for e in errors)
 
 
 def test_validate_rejects_nomodel_block_role():

@@ -144,13 +144,14 @@ Notes on authoring:
 - `log-entry` is **prepend** — write only the new entry; the pipeline puts it newest-first.
 - replace roles carry ONLY the **interior** (the lines between the ref markers, markers
   stripped — see Step 3); the applier swaps the interior in place.
-- `tasks-append` adds only NEW tasks. The id must be **bare parens right after `[ ]`**:
-  `- [ ] (T-NN) **label** — …` — NOT `- [ ] **(T-NN)**`. The checkoff locator matches
-  `^- [ ] (T-NN)`, so a bolded or misplaced id silently fails to flip later. Use a fresh
-  `(T-NN)` (one past the highest id in tasks.md). Tasks discussed
-  but not stored anywhere belong here — but this is judgment-based, so **list the
-  candidates to the user and confirm before including them.**
-- `checkoffs` lists tasks COMPLETED this session by id; don't also restate them as prose.
+- `tasks-append` adds only NEW tasks. Use the `(T-NN)` convention for new entries
+  (one past the highest `T-NN` id in tasks.md): `- [ ] (T-NN) **label** — …`
+  Tasks discussed but not stored anywhere belong here — but this is judgment-based,
+  so **list the candidates to the user and confirm before including them.**
+- `checkoffs` accepts any alphanumeric id (`T-01`, `5.R1`, `RUI-4`, `1.0`). The
+  locator finds the id anywhere within the first ~40 chars of an unchecked line, so
+  existing tasks with `**ID**` or bare-number formats are checkable without reformatting.
+  Do not restate completed tasks as prose — the id list is sufficient.
 
 Then rehearse, inspect, and apply:
 
