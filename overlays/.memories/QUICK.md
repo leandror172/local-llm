@@ -7,7 +7,8 @@
 3 overlays operational, installed in expenses repo (all 3) and web-research repo (ref-indexing).
 Manifest-driven installer with manual and AI-assisted merge modes.
 
-Sessions 84–87: the `session-tracking` overlay gained a deterministic handoff pipeline under `session-tracking/files/handoff/` — F1–F7 + per-run logging + entrypoint (`handoff.py`/`registry_io.py`/`run-handoff.sh`) + manifest install layout + rewritten `SKILL.md`. **B1–B4 complete — Scope A done, 77 tests, dog-food-validated** (clone run found+fixed a newline-glue bug). Register ships via `manual_if_exists` (Option C: propagate-with-flag). **PR #50** open (stacked on `feature/ltg-phase3-anchors`). Home repo (llm) activated via a **project-level** skill — runs from the `files/` source path with `--registry`, code not installed under `.claude/tools/` (avoids duplicating the source). Architecture → KNOWLEDGE.md.
+Sessions 84–87: the `session-tracking` overlay gained a deterministic handoff pipeline under `session-tracking/files/handoff/` — F1–F7 + per-run logging + entrypoint (`handoff.py`/`registry_io.py`/`run-handoff.sh`) + manifest install layout + rewritten `SKILL.md`. **B1–B4 complete — Scope A done, dog-food-validated** (clone run found+fixed a newline-glue bug). Register ships via `manual_if_exists` (Option C: propagate-with-flag). **PR #50** open (stacked on `feature/ltg-phase3-anchors`). Home repo (llm) activated via a **project-level** skill — runs from the `files/` source path with `--registry`, code not installed under `.claude/tools/` (avoids duplicating the source). Architecture → KNOWLEDGE.md.
+Session 86 (2026-06-09): **flexible task ID checkoff** — checkbox-first locator + broadened ID regex. **88 tests, overlay v3.** Distribution options analysis (9 options, A–I) at `ref:overlay-distribution-options` in `docs/findings/`.
 
 ## What Overlays Are
 
