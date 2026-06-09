@@ -8,7 +8,9 @@ Session 59 (2026-05-04): Phase 1 **fully closed**. ref:ltg-extractor frozen: qwe
 Session 61 (2026-05-20): VRAM probe complete → bge-m3 locked (sequential constraint). → `ref:ltg-vram-probe`
 Session 72 (2026-05-28): **Phase 2 complete.** Index at `retrieval/index/`, 69 topics from 8 files. 7/8 acceptance queries pass (R2 borderline). → `ref:ltg-phase2-findings`
 Session 73 (2026-05-28): **M-P0b complete.** Upgraded embedding model: bge-m3 (1024-dim) → **qwen3-embedding:8b (4096-dim)**. WARN verdict (same as bge-m3 — load-time eviction only, zero query-time). Acceptance equivalent (R1/R3/R4 ✅, R2 ⚠️ same gap, relate 0.663→0.697). → `ref:ltg-embedding`
-Session 81 (2026-06-01): **Phase 3 anchor-integration DISCOVERY started (NOT frozen).** Extractor retrofit closed + PR open. New framing: **dual-path RAG** — `ref:KEY` anchors as a *parallel* retrieval surface (span-topics path / ref-keys path / both), with configurable per-class weights; merge leans **alias-link (keep both rows)** not physical merge. Empirical: only 2 of 138 ref keys live in the 8 extracted files (orphans carry no merge-noise). Decisions D1/D3/D4 aligned; **D2/D5/D6/D7 OPEN.** **Resume: `docs/plans/ltg-phase3-anchor-discovery.md` (read §4 onward).**
+Sessions 78–80 (2026-05-29→06-01): **Extractor retrofit complete.** `routing.py`, `schemas.py`, `ModelClient` extracted; 148 tests green; parity verified end-to-end. PR open.
+Session 81 (2026-06-01): Phase 3 anchor-integration DISCOVERY started. Dual-path RAG framing: `ref:KEY` anchors as a parallel retrieval surface (span-topics / ref-keys / both), configurable per-class weights; merge → alias-link (keep both rows). Empirical: 2 of 138 ref keys live in the 8 extracted files.
+Session 82 (2026-06-02): **Phase 3 anchor decisions FROZEN.** All 7 decisions D1–D7 settled: dual-path RAG + alias-link confirmed. **Next: `anchors.py` TDD.**
 
 ## Deeper Memory → KNOWLEDGE.md
 
@@ -22,13 +24,26 @@ Session 81 (2026-06-01): **Phase 3 anchor-integration DISCOVERY started (NOT fro
 retrieval/
   DECISIONS.md              # Phase 0 decisions (frozen, session 52)
   .memories/                # This folder's working + semantic memory
-  extract_topics.py         # Topic extractor runner (4 models × 8 files)
-  run-vram-probe.sh         # VRAM co-residence probe script (Phase 2 gate)
+  config.yaml               # Two-level model/role config (Phase 2+)
+  model_client.py           # ModelClient — embed + extract routing (retrofit)
+  embed.py                  # Embedding pipeline (config-driven, Phase 2)
+  store.py                  # LanceDB write path (Phase 2)
+  ltg_inspect.py            # Acceptance/inspection CLI (Phase 2)
+  routing.py                # 2-arm extractor routing (retrofit, sessions 78–80)
+  schemas.py                # Pydantic schemas for extractor output (retrofit)
+  sweep_extractors.py       # Batch sweep runner (retrofit)
+  extract_topics.py         # Topic extractor runner (Phase 1 spike)
   viz_sweep.py              # HTML rater renderer — uses ltg-rater.template.html
   ltg-rater.template.html   # Scoring UI (Claude Design, 1600+ lines)
   spike-results.md          # Phase 1 scoring + insights (ref:ltg-phase1-results etc.)
+  preflight.sh / run-preflight.sh  # Pre-run model availability check
+  run-vram-probe.sh         # VRAM co-residence probe
+  run-embed.sh / run-store.sh / run-inspect.sh / run-extract-topics.sh / run-sweep-extractors.sh
   prompts/extract.txt       # Structured-output extraction prompt
-  runs/                     # Sweep outputs: JSONL + rendered HTML + design slice
+  tests/                    # 8 test files, 148 tests (pytest)
+  runs/                     # Sweep outputs: JSONL + rendered HTML
+  probes/                   # Acceptance probe output markdown
+  index/                    # LanceDB vector store (69 topics, 8 files)
 ```
 
 ## Frozen Phase 0 Decisions (see DECISIONS.md for full rationale)

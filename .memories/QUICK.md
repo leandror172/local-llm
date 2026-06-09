@@ -15,7 +15,7 @@ Session 74 (2026-05-29): **M-P0a closed — NO SWAP.** `qwen3.6-coder:14b` phant
 Sessions 63-65 (2026-05-22): MCP Plans 1+2+3 complete — `refs`/`refs_root`, `output_file`/`output_only`,
 `patch_file` tool. 29 green tests total. PRs #37 (Plans 1+2) and #38 (Plan 3) open, pending merge.
 Session 68 (2026-05-26): Model survey complete. Key findings:
-- **qwen3.6-coder:14b** candidate to supersede qwen2.5-coder:14b (claimed SOTA — secondary source; not locally benchmarked; swap gated on M-P0a)
+- **qwen3.6-coder:14b** — M-P0a closed NO SWAP (session 74); phantom tag on Ollama; `qwen2.5-coder:14b` confirmed primary coder
 - **qwen3-embedding:8b** — ✅ adopted (session 73, M-P0b complete). Replaced bge-m3; MTEB 63.0→70.58; 1024→4096 dim.
 - **llama4:scout** — new long-context capability (~200K–1M effective for RAG, advertised 10M); multimodal, fits 12GB (~10GB Q4)
 - qwen3:14b still SOTA reasoning ≤14B; qwen3:4b-q8_0 still best classifier
@@ -34,7 +34,7 @@ Active branch: `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase
 ```
 llm/
   mcp-server/    # MCP bridge server (Python/FastMCP) — Claude Code ↔ Ollama
-  personas/      # 35+ specialized model configs from 13 base models
+  personas/      # 50+ specialized model configs from 13 base models
   evaluator/     # Two-phase evaluation framework (automated + LLM-as-judge)
   benchmarks/    # Multi-language code validation suite
   overlays/      # Portable scaffolding packages for cross-repo consistency
@@ -58,4 +58,4 @@ llm/
 - **Cross-Repo Architecture** — 3 repos, one hardware platform, MCP integration layer
 - **DPO Data Collection** — passive training data from verdict-labeled inference logs
 - **Smart RAG Research** — content-linking retrieval cluster (7 sources, 5 philosophies); hub at `ref:smart-rag-research`. Converges chatbot Phase 3 + Layer 7 RAG into one substrate.
-- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph` (+ 18 narrow phase/section refs `ltg-plan-*`). Phase 0 frozen → `retrieval/DECISIONS.md`. **Phase 1 fully closed (session 59)**: extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). Findings at `ref:ltg-phase1-results`; MoE eval at `ref:ltg-phase1-moe-eval`; determinism at `ref:ltg-phase1-determinism-smart-rag-index`. Phase 2 next.
+- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph` (+ 18 narrow phase/section refs `ltg-plan-*`). Phase 0 frozen → `retrieval/DECISIONS.md`. **Phase 1 fully closed (session 59)**: extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). Findings at `ref:ltg-phase1-results`; MoE eval at `ref:ltg-phase1-moe-eval`; determinism at `ref:ltg-phase1-determinism-smart-rag-index`. **Phases 0–2 complete; Phase 3 FROZEN (session 82) — dual-path RAG + alias-link; next = `anchors.py` TDD.**

@@ -298,10 +298,11 @@ Comprehensive model survey covering Qwen, Microsoft, Llama 4, Mistral, frontier-
 - Community Claude-distilled models exist (`Jackrong/Qwen3.5-9B-Claude-4.6-Opus-Reasoning-Distilled`) but: no verified benchmarks, Anthropic ToS gray area, no Ollama tag — watch, don't pull yet
 - TeichAI org (102 models) distills from Claude/GPT-5.2/Gemini — same caveats
 
-**LTG Phase 2 implications:**
-- Start with `qwen3-embedding:8b` not `bge-m3` — already available, meaningfully better
-- VRAM: ~5GB for embedding model vs ~0.6GB for bge-m3; re-run co-residence probe with qwen3:14b
-- The extractor routing decision (qwen2.5-coder:14b for code) needs re-evaluation after benchmarking qwen3.6-coder:14b
+**LTG Phase 2 outcomes (all resolved):**
+- `qwen3-embedding:8b` adopted (session 73, M-P0b) — WARN verdict, sequential constraint unchanged → `ref:ltg-m-p0b-probe`
+- VRAM co-residence probe with qwen3:14b complete — load-time eviction only, zero query-time evictions
+- M-P0a closed NO SWAP (session 74) — `qwen3.6-coder:14b` is a phantom tag on Ollama; `qwen2.5-coder:14b` remains primary coder
+- LTG Phase 2 complete (session 72) — 69 topics, 8 files, 7/8 acceptance pass → `ref:ltg-phase2-findings`
 
 **Rationale:** Qwen3.6-Coder was released April 2026; qwen3-embedding:8b released alongside it. Both are now production-stable on Ollama. The survey was triggered by a user question about model updates.
-**Implication:** Before starting LTG Phase 2, pull and validate the two P0 swaps. Update models.yaml + affected personas after benchmarking confirms quality. Full benchmark plan in `docs/findings/model-updates-2026-05.md` § "What to Benchmark Next Session".
+**Implication:** All P0 swaps resolved. Phase 3 anchor decisions FROZEN (session 82 — dual-path RAG + alias-link). Full benchmark outcomes in `docs/findings/model-updates-2026-05.md`.
