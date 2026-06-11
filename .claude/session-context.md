@@ -44,6 +44,7 @@
 ---
 
 <!-- ref:current-status -->
+
 ## Current Status
 
 - **Phases 0-6:** Complete → `.claude/archive/phases-0-6.md`
@@ -85,7 +86,8 @@
 - **Session 84** (2026-06-04) — Handoff-pipeline build: **B1.2 + B2 safety core COMPLETE.** Added `(T-NN)` task IDs to `tasks.md` (B1.2, commit `a1f985d`); built the deterministic safety core in `overlays/session-tracking/files/handoff/` — F1 Locator (B2.1, `e6d4615`, 15 tests, verdict 1), F3 Applier (B2.2, `71979e6`, 8 tests, verdict 2), F4 Verifier (B2.3, `f0c4822`, 8 tests, verdict 2). 31 tests green. Impl delegated to `my-python-q25c14`; test-body gen timed out (authored by hand). B2 milestone done; next = B3 (F5 mechanics / F6 orchestrator / per-run logging). Emergency one-file handoff this session: `.claude/handoff-session-84.md`.
 - **Sessions 85-87** (2026-06-05 to 06) — **Session-handoff pipeline (Scope A) COMPLETE — PR #50.** B3 (F5 mechanics / F6 orchestrator+git rollback / per-run logging) + B4 (F7 payload schema, `handoff.py`/`registry_io.py` entrypoint + `run-handoff.sh`, manifest install layout — register via `manual_if_exists` = Option C, `SKILL.md` rewrite). A throwaway-clone dog-food found+fixed a real append/replace **newline-glue bug** F4 was blind to (`_normalize_block` at the `_collect_edits` seam). **77 tests.** Activated in this repo via a **project-level** skill (home repo runs the pipeline from `overlays/session-tracking/files/handoff/run-handoff.sh` with `--registry overlays/session-tracking/files/registry.yaml`; code not installed under `.claude/tools/`). README synced; deferred T-53 (preflight) + T-54 (`manual_if_exists` override) specced in `docs/plans/`. **PR #50** stacked on `feature/ltg-phase3-anchors`. This entry was written by the pipeline itself.
 - **Session 88** (2026-06-09) — **Flexible task ID checkoff + overlay distribution analysis.** Locator rewritten to checkbox-first (enumerate `- [ ]` lines, filter by word-boundary ID within first 40 chars); handles `(T-NN)`, `**ID**`, bare-numeric, and prefix-dash formats. Payload ID validation broadened: `^T-\d+$` → `^[A-Za-z\d][A-Za-z\d.\-]*$`. Hash IDs (`#035`) remain rejected. Fixed test drift (`bogus` → `#bogus`). **88 tests green** (was 77); overlay bumped to **v3**; synced to all 3 installed repos. Validated against tasks.md formats across expenses, career-search, web-research. Wrote overlay distribution options analysis (9 options A–I): `docs/findings/overlay-distribution-options.md` (`ref:overlay-distribution-options`). Commit `9bbdaee`.
-- **Next:** Two tracks — **(LTG)** rebase `feature/ltg-phase3-anchors` onto master, then write `retrieval/anchors.py` TDD (`ref:ltg-phase3-decisions`); **(handoff-pipeline)** update PR #50 (88 tests, flexible ID), then land after LTG PR merges. Optional T-53/T-54 + deferred Placer enhancement (`ref:handoff-placer-enhancement`).
+- **Session 89** (2026-06-11) — **Handoff stage/promote redesign — design + plan.** Diagnosed collision problem on well-known path. Designed stage/promote flow: `--payload` = rename-on-ingest + validate-locate-verify in memory (stages without committing); `--id` = find pending run dir + recompute from current files + idempotency git-log check + apply + commit. `--dry-run` flag dropped (stage always writes 3 files). Run dir status suffix (`-pending`/`-success`/`-failed`) is the artifact system; `shutil.move` for cross-device safety. Two advisor reviews resolved 7 issues (vestigial flag, cross-device rename, commit/dir-rename non-atomicity, stale session-N in handle, compat default, two failure states, residual collision note). New tasks: T-55 (MCP deferred), T-56 (add-task tool), T-57 (overlap bug Fix A). Bug report copied from career-search: `.claude/handoff/overlap-bug-report.md`. Implementation plan: `~/.claude/plans/handoff-redesign-rename-on-ingest.md`. Branch: `feature/handoff-redesign-stage-promote`.
+- **Next:** Execute stage/promote implementation plan (6 tasks: runlog → orchestrator → handoff.py → gitio → SKILL.md → overlay bump); fix T-57 overlap bug in same session. LTG track: rebase `feature/ltg-phase3-anchors` onto master, write `retrieval/anchors.py` TDD.
 - **Cross-repo:** MVP spike executing in web-research repo sessions; expense MCP work executing in expenses repo sessions; PR #21 merged (`feature/persona-mcp-tools`); .memories/ PRs merged in expenses + web-research
 - **Two-repo workflow:** Feature work in `~/workspaces/expenses/code/`; MCP wrapper in this repo
 - **Environment:** Claude Code runs from WSL2 natively (direct Linux commands)
@@ -137,7 +139,6 @@ Or manually:
 ---
 
 <!-- ref:active-decisions -->
-## Active Decisions
 
 ### Cross-cutting principles
 - **Routing patterns:** (A) local-first escalate, (B) frontier delegates via MCP, (C) chat routes both → `docs/vision-and-intent.md`
@@ -148,6 +149,7 @@ Or manually:
 - **num_ctx for personas:** 14B models → **32768** (probed 2026-05-30 with `OLLAMA_KV_CACHE_TYPE=q8_0` — all pass); 8B models → 32768; deepseek-coder-v2:16b → 24576 (32K tight at 574 MiB). See `retrieval/probes/ctx-probe-2026-05-30.md`.
 - **Multi-model comparison → DPO pairs:** `run-compare-models.sh` + `run-record-verdicts.sh` → Layer 7 pipeline
 - **Session-handoff pipeline (session 83):** register-driven deterministic rewrite of the session-handoff flow — reuse existing handoff `ref:` blocks (no new in-file markers), home = `session-tracking` overlay, local-model layer deferred to enhancement. Load-bearing contracts (the register, the F7 schema) are Claude-authored, not local-model. See `ref:handoff-pipeline-design`. **B2 safety core (session 84):** F1/F3/F4 are pure functions over `(role, text)`; the `Region(start,end,interior)` is the single boundary source of truth; F4 verifies by recompute-and-compare (re-derive expected text byte-exact), not hash-outside.
+- **Handoff stage/promote redesign (session 89):** `--payload` = stage (rename-on-ingest via `shutil.move` + locate+apply+verify in memory + emit JSON handle); `--id` = promote (recompute from current files + idempotency git-log check + apply + commit + rename dir suffix). `--dry-run` flag dropped. Run dir status suffix (`-pending`/`-success`/`-failed`) replaces "writes nothing" invariant. JSON stdout. MCP migration deferred (T-55). Plan: `~/.claude/plans/handoff-redesign-rename-on-ingest.md`.
 
 **Frozen layer decisions (Layers 1/2/3):** `.claude/archive/decisions-layers-1-3.md`
 **Historical decisions (Phases 0-6, Layer 0):** `.claude/archive/phases-0-6.md`
@@ -157,7 +159,6 @@ Or manually:
 ---
 
 <!-- ref:session-reading-guide -->
-## Pre-Session Reading Guide
 
 *What to read before starting each pending work item. Keeps context sharp without re-reading everything.*
 
@@ -169,5 +170,6 @@ Or manually:
 | **Classifier benchmark (M-P1b/P2)** | `docs/findings/model-updates-2026-05.md` § What to Benchmark, `personas/models.yaml`, `benchmarks/lib/run-compare-models.sh` | `ref:model-selection`; models pulled: `qwen3.5:0.8b`, `qwen3.5:2b`, `phi4-mini` vs `qwen3:4b-q8_0` |
 | **Backfill SOLID + error-handling directives** | `docs/tasks/backfill-persona-constraints.md`, `docs/ideas/persona-error-handling-conventions.md`, `personas/registry.yaml` | grep: `git grep -L "MUST NOT modify"` modelfiles/; pair error-handling session with backfill |
 | **M-P0a cleanup — retire DeepCoder personas** | `personas/registry.yaml` (filter `status: benchmark`), `ref:deepcoder-benchmark-decision` | 6 personas to rm + archive Modelfiles; `deepcoder:14b` base (9GB on I:\\) optional |
+| **Handoff stage/promote redesign — IMPLEMENT** | `~/.claude/plans/handoff-redesign-rename-on-ingest.md` (full plan with pre-session reading list), `overlays/.memories/KNOWLEDGE.md` § "Planned redesign (session 89)", `overlays/session-tracking/files/handoff/` (all source files) | 6 tasks (TDD order): runlog → orchestrator → handoff.py → gitio → SKILL.md → overlay bump. Fix T-57 (overlap bug, Fix A in `verifier.py`) in same session. Branch: `feature/handoff-redesign-stage-promote`. |
 | **Handoff-pipeline (Scope A) — COMPLETE (PR #50)** | `ref:handoff-pipeline-design` + `ref:handoff-placer-enhancement`, `overlays/session-tracking/files/registry.yaml`, `docs/plans/handoff-b5.1-preflight.md` | B1-B4 done; **88 tests**; dog-food-validated; project-level skill active in this repo. Register via `manual_if_exists` (Option C). Remaining: land PR #50, optional T-53/T-54, deferred Placer enhancement. Distribution options (A–I): `ref:overlay-distribution-options`. |
 <!-- /ref:session-reading-guide -->

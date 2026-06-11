@@ -1,8 +1,39 @@
 # Session Log
 
-**Current Layer:** Tooling side-track — session-handoff pipeline (Scope A) COMPLETE (PR #50, 88 tests). LTG Phase 3 pending (`anchors.py` TDD).
-**Current Session:** 2026-06-09 — Session 86: Session-handoff pipeline — flexible task ID checkoff + overlay distribution analysis
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-30-to-2026-05-30.md`, `.claude/archive/session-log-2026-05-30-to-2026-06-02.md`, `.claude/archive/session-log-2026-06-04-to-2026-06-04.md`
+**Current Layer:** Layer 5 — Expense Classifier
+**Current Session:** 2026-06-11 — Session 87: Handoff stage/promote redesign — design + plan
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-30-to-2026-05-30.md`, `.claude/archive/session-log-2026-05-30-to-2026-06-02.md`, `.claude/archive/session-log-2026-06-04-to-2026-06-04.md`, `.claude/archive/session-log-2026-06-04-to-2026-06-04.md`
+
+---
+
+## 2026-06-11 - Session 87: Handoff stage/promote redesign — design + plan
+
+### Context
+Continuing handoff-pipeline work. User surfaced a collision problem: `.claude/local/handoff-pending.md` is a well-known path — leftover from a failed session gets silently overwritten. Opened design discussion for a redesign.
+
+### What Was Done
+- Diagnosed the collision problem and three orthogonal design axes (input transport / input shape / execution mechanism)
+- Two advisor reviews: design discussion + final plan — 7 issues surfaced and resolved (vestigial `--dry-run` flag, `Path.rename()` cross-device failure, commit/dir-rename non-atomicity, session-N stale in handle, `create_run_dir` compat default, two failure-state distinction, residual collision note)
+- Designed stage/promote flow: **rename-on-ingest** (Option b) + **dry-run mints handle** (Option Y)
+- Created `docs/ideas/handoff-mcp-migration.md` — full design notes (MCP deferred as T-55)
+- Copied `.claude/handoff/overlap-bug-report.md` from career-search repo (overlap false-positive bug, T-57)
+- Added tasks T-55 (MCP migration, deferred), T-56 (add-task tool), T-57 (overlap bug Fix A)
+- Wrote implementation plan: `~/.claude/plans/handoff-redesign-rename-on-ingest.md` (6 tasks, TDD order, verification script, pre-session reading list)
+- Created branch `feature/handoff-redesign-stage-promote`; committed all session artifacts
+- Updated `overlays/.memories/QUICK.md` + `KNOWLEDGE.md`
+
+### Decisions Made
+- `--payload` = **stage**: ingest (shutil.move to run dir, freeing well-known path) + validate-locate-verify in memory + write report + emit JSON handle
+- `--id` = **promote**: find pending dir + recompute all values from current files + idempotency git-log check + apply + commit + rename dir suffix
+- `--dry-run` flag **dropped** — it was vestigial (stage always writes 3 files)
+- Run dir status suffix (`-pending`/`-success`/`-failed`) is the artifact system; `shutil.move` throughout for cross-device safety
+- Promote is **idempotent**: checks git log before re-applying (prevents double-application if process dies between commit and dir-rename)
+- JSON stdout is the output contract; model relays to user from parsed fields
+- MCP migration deferred (T-55); structured schema per role deferred with it
+
+### Next
+- Execute `~/.claude/plans/handoff-redesign-rename-on-ingest.md` — 6 tasks (runlog → orchestrator → handoff.py → gitio → SKILL.md → overlay bump); consider fixing T-57 (overlap bug) in same session
+- LTG track: rebase `feature/ltg-phase3-anchors` onto master, write `retrieval/anchors.py` TDD
 
 ---
 
@@ -68,30 +99,6 @@ Continuation of the session-handoff-pipeline side-track (sessions 84-87, consoli
 ### Next
 - Land PR #50 (retarget to master after the LTG PR merges).
 - LTG: write `retrieval/anchors.py` TDD (decisions frozen, `ref:ltg-phase3-decisions`).
-
----
-
-## 2026-06-04 - Session 84: Session-handoff pipeline — B2 safety core (F1/F3/F4)
-
-### Context
-Resumed from session 83 (design + register frozen, B1.1 done). Goal: build the deterministic safety core of the register-driven session-handoff pipeline (Scope A, NO local model). Session hit its limit at close → wrote an emergency one-file handoff (`.claude/handoff-session-84.md`) instead of the normal multi-file flow.
-
-### What Was Done
-- **B1.2:** added stable `(T-NN)` task IDs to `.claude/tasks.md` (52 open tasks, awk pass; convention noted in the build section). Commit `a1f985d`. Also refreshed the stale root `.memories/QUICK.md` (was stuck at session 74).
-- **B2.1 F1 Locator** (`e6d4615`): `locator.py` + 15 contract tests. Pure stdlib; `Region(kind, mode, start, end, interior)` with `text[start:end]==interior`; `locate(role, text, *, task_id=None)` dispatching four kinds (`ref_block`, `field`, `structural`, `checklist`); non-unique/missing → `LocatorError`. Local model verdict 1 (4 mechanical regex/offset off-by-ones fixed via `patch_file`).
-- **B2.2 F3 Applier** (`71979e6`): `applier.py` + 8 tests. `apply(text, region, content)` dispatching on `region.mode` (replace/prepend/append/checkoff); never touches bytes outside the region. Local model verdict 2 (as-is).
-- **B2.3 F4 Verifier** (`f0c4822`): `verifier.py` + 8 tests — the trust boundary. `verify(original, modified, edits)`: overlap guard + independent recompute-and-compare (re-derive expected text right-to-left, byte-exact) + ref-marker multiset invariant. Does NOT call apply — independent check. Local model verdict 2 (as-is).
-- All code in `overlays/session-tracking/files/handoff/` (installs to `.claude/tools/handoff/` via the overlay `files:` mechanism). **31 tests green** (15+8+8).
-
-### Decisions Made
-- **F1/F3/F4 are pure functions** over `(role dict / Region, text str)` — no file I/O, no YAML, stdlib only. The caller parses `registry.yaml`. Lets the contract tests construct inputs inline.
-- **The `Region` is the single source of boundary truth** — F3 and F4 both consume F1's `start/end/interior`, which is why F3/F4 were near-trivial (only F1 needed fixes).
-- **F4 = recompute-and-compare**, not literal "hash outside the regions" — strictly stronger, and handles undelimited structural insertions. Independence preserved by NOT calling apply().
-- **Local-model process (reaffirmed):** delegate impl to `my-python-q25c14`; you MAY delegate test bodies too (pass fn names + functional language) when the model isn't timing out; on timeout, wait-then-retry rather than escalate. Two feedback memories saved (`feedback_delegate_test_writing`, `feedback_ollama_timeout_cache_retry`).
-
-### Next
-- Two tracks. **(LTG)** write `retrieval/anchors.py` TDD (`ref:ltg-phase3-decisions`; rebase `feature/ltg-phase3-anchors` onto master first). **(pipeline)** resume at **B3.1 F5 mechanics** (header-field bumps + session-N derivation + `rotate-session-log.sh`), then B3.2 F6 Orchestrator (stage→apply→verify→commit-or-rollback), B3.3 per-run logging, then B4 SKILL.md rewrite.
-- F6 note: F4 must verify the COMBINED result of F3 payload edits + F5 header bumps — pass F5's field changes to F4 as `(field-region, new-value)` edits.
 
 ---
 
