@@ -133,6 +133,7 @@ class OllamaClient:
         temperature: float | None = None,
         think: bool = DEFAULT_THINK,
         format: dict | None = None,  # JSON schema for structured output
+        keep_alive: str = "15m",
         timeout: int = DEFAULT_TIMEOUT,
     ) -> ChatResponse:
         """Send a chat completion request to Ollama.
@@ -144,6 +145,9 @@ class OllamaClient:
             temperature: Sampling temperature (0.0-1.0). None = model default.
             think: Enable Qwen3 thinking mode. False disables hidden reasoning.
             format: JSON schema dict for structured output. None = free text.
+            keep_alive: How long Ollama keeps the model (and its KV state) in VRAM
+                after this call. Longer values enable prefix KV reuse for retries
+                and follow-up calls with the same context. Default "15m".
             timeout: Max seconds to wait for a response.
 
         Returns:
@@ -168,6 +172,7 @@ class OllamaClient:
             "messages": messages,
             "stream": False,
             "think": think,
+            "keep_alive": keep_alive,
             "options": {},
         }
         if temperature is not None:

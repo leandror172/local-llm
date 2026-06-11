@@ -23,11 +23,12 @@ Moving Ollama to `:11435` (one systemd env var) is strictly less disruptive.
 
 | Component | Location | How to start |
 |---|---|---|
-| ollama-metrics proxy | `~/workspaces/clones/ollama-metrics/` | `make proxy` |
+| ollama-metrics proxy | `~/workspaces/clones/ollama-metrics/` | `systemctl start ollama-metrics` (auto-starts with Ollama) |
 | Prometheus | Docker (`prometheus_monitoring` network) | `make stack` |
 | Grafana | Docker, port 3000 | included in `make stack` |
 
 Makefile lives at `~/workspaces/clones/ollama-metrics/Makefile`.
+Systemd unit: `/etc/systemd/system/ollama-metrics.service` — `After=ollama.service`, `Restart=on-failure`.
 
 ## Ollama Systemd Config
 
@@ -93,8 +94,8 @@ Request count: use `ollama_request_duration_seconds_count` (no separate `_reques
 
 ## Deferred
 
-- **Systemd unit for proxy + stack:** currently started manually via `make proxy` + `make stack`.
-  Tracked in `.claude/tasks.md` § "Deferred Infrastructure / Tooling".
+- **Systemd unit for proxy:** done (2026-05-30) — `/etc/systemd/system/ollama-metrics.service`.
+- **Systemd unit for Prometheus+Grafana stack:** `make stack` still manual. Deferred — tracked in `.claude/tasks.md`.
 - **Native `/metrics` endpoint PR #11159:** OTel-based, per-model labels, 41+ commits, actively
   rebased since June 2025, not yet merged. When merged, port-swap proxy becomes unnecessary.
   PR: `https://github.com/ollama/ollama/pull/11159`

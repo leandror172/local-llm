@@ -92,6 +92,8 @@ Each entry records the decision, the reasoning, alternatives considered, and the
 
 **Frozen parameters:** `temperature=0.1`, `think=False`, `num_ctx=16384`, `format=json_schema` (structured output, 100% reliable).
 
+> **num_ctx three-way note (session 81, 2026-06-01):** The frozen spec above pins `num_ctx=16384` — the operating point under which 2-arm routing was validated. The benchmark `sweep_extractors.py` faithfully uses 16384. **Production `config.yaml` drifted to 32768**, an unconsidered inheritance from the session 75/76 context-ceiling upgrades (q8_0 KV pushed every 14B persona to 32768). The divergence is harmless on the current 8-file corpus — every file fits in 16K, so behavior is identical — and only bites on files >16384 tokens. **Decision (c):** keep both deliberately for now (production gets headroom; benchmark stays at the validated point). **RECHECK trigger:** before Phase 2.5 full-corpus expansion adds long documents — at that point decide whether to (a) align both to 32768 and re-run sweeps, or (b) drop production back to the validated 16384. Tracked in `tasks.md`.
+
 **Prompt:** `retrieval/prompts/extract.txt` (single-stage, no iteration needed — qwen3:14b cleared threshold on first sweep).
 
 **Gate evidence:**

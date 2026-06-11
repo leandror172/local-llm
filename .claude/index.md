@@ -47,7 +47,10 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Expense classifier data inventory | `docs/vision/expense-classifier-data-inventory.md` | What exists: auto-category analysis artifacts, expense-reporter architecture, what to read |
 | resume.sh ref audit & improvement plan | `docs/plans/resume-sh-ref-audit.md` | Which ref tags to add/remove + 3 structural fixes (session 60) |
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
+| **Claude Code dynamic workflows guide** | `.claude/workflows-feature-guide.md` | What workflows are (script-orchestrated subagents at scale), when to use vs not, commands (`/deep-research`, `/workflows`, `ultracode`), limits, repo-specific candidates. Captured session 81. |
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
+| **Code design conventions** | `docs/patterns/code-design-conventions.md` | Structural patterns: named semantic methods over role strings. Self-indexed via `ref:patterns-code-design-index` |
+| **LTG extractor retrofit plan** | `docs/plans/ltg-extractor-retrofit.md` | Full implementation spec: routing.py, schemas.py, ModelClient extensions, config upgrade, file split. Ready to execute. |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
 | Verdict numeric migration plan | `docs/plans/verdict-numeric-migration.md` | Replace ACCEPTED/IMPROVED/REJECTED string verdicts with 0/1/2 integers across all repos, hooks, data, docs, and memory. 8 phases. |
 | **LTG Phase 2 implementation plan** | `docs/plans/ltg-phase2-implementation.md` | embed.py + store.py + inspect.py. Decisions locked, ready to execute. `ref:ltg-phase2-plan` |
@@ -59,7 +62,9 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Per-language error handling + logging conventions | `docs/ideas/persona-error-handling-conventions.md` | Analysis + proposed Modelfile directives for Python/Java/Go. Covers `basicConfig()` antipattern, catch-log-reraise noise, language-specific rules. Pair with backfill-persona-constraints session. |
 | LTG model registry design (deferred) | `docs/ideas/ltg-model-registry-design.md` | Deferred: two-level `models:` + `roles:` config for `retrieval/config.yaml`. Naming convention (property enumeration). Trigger: Phase 3 adds extraction roles. |
 | Ollama eviction/concurrency findings | `docs/findings/ollama-eviction-concurrency-findings.md` | Empirical test results: Ollama queues unloads (no correctness risk); PR #9392 may replace file layer |
-| **Model update survey (May 2026)** | `docs/findings/model-updates-2026-05.md` | New models vs current stack: Qwen3.5 tiny (0.8B/2B/4B), Phi-4-mini, Fara-7B, DeepSeek R2 32B, Qwen3-Embedding-8B. Pull priorities + benchmark plan. Advisor review + response in final sections. |
+| **Ollama KV prefix cache findings** | `docs/findings/ollama-kv-prefix-cache-findings.md` | How implicit prefix reuse works; keep_alive rationale; num_keep analysis; what Ollama exposes vs llama-server. `ref:ollama-kv-prefix-cache`, `ref:ollama-explicit-cache-api` |
+| **Model update survey (May 2026)** | `docs/findings/model-updates-2026-05.md` | New models vs current stack: Qwen3.5 tiny (0.8B/2B/4B), Phi-4-mini, Fara-7B, DeepSeek R2 32B, Qwen3-Embedding-8B. Nemotron, Mistral-Nemo, Qwen3.6, MiMo watch entries added session 78. |
+| **Leaderboard survey (Jun 2026)** | `docs/findings/leaderboard-survey-2026-06.md` | HF Open LLM Leaderboard v2 parquet (4,576 models) + Arena.ai rankings. Key finding: leaderboard stale for 2025-2026 models. Falcon3-7B notable (TII license); AceMath-7B blocked (CC-BY-NC-4.0); Kimi K2 cloud-only (1T params). |
 | Portfolio document | `docs/portfolio/portfolio.md` | Unified overview of all 3 repos (llm, expense, web-research), AI/ML techniques, cross-cutting patterns |
 | AI-readable engineer profile | `docs/portfolio/engineer-profile.md` | Structured doc designed for LLM context — skills, philosophy, conversation starters |
 | Portfolio chatbot roadmap | `docs/portfolio/hf-space/ROADMAP-smart-chatbot.md` | 4-phase plan: static expansion → retrieval → source awareness → cross-project |
@@ -135,6 +140,8 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 |--------|---------|-------------|
 | `retrieval/run-vram-probe.sh` | VRAM co-residence probe: qwen3:14b + bge-m3 simultaneous load + interleaved stress. PASS/WARN/FAIL verdict. | Phase 2 gate before writing embed pipeline; re-run if embedding model changes |
 | `retrieval/run-preflight.sh` | 5-check preflight: deps, Ollama, bge-m3, JSONL input, disk space. | Before any embed/store run |
+| `retrieval/run-extract-topics.sh` | 2-arm production runner: routes each CORPUS file by extension, calls qwen3:14b (prose) or qwen2.5-coder:14b (code), writes one JSONL row per file. | Phase 1 production extraction; feeds run-embed.sh |
+| `retrieval/run-sweep-extractors.sh` | Benchmark sweep runner: N models × CORPUS files × rubric scoring. Replaces old extract_topics.py sweep mode. | Evaluating new model candidates |
 | `retrieval/run-embed.sh` | Reads Phase 1 JSONL, routes by extension, batches embed via bge-m3, writes 16-field embedding JSONL. | Phase 2 step 1: produce embeddings.jsonl |
 | `retrieval/run-store.sh` | Reads embedding JSONL, creates/overwrites LanceDB `topics` table with backup. | Phase 2 step 2: build the index |
 | `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |

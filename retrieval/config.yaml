@@ -1,18 +1,38 @@
-# LTG retrieval — model client config (Phase 2).
+# LTG retrieval — model client config.
 #
-# Flat/inline shape: one role, embedded model config directly under it.
+# Two-level shape: named model configs under `models:`, role references under `roles:`.
+# load_config() resolves roles → full model config dicts at load time.
 #
-# Upgrade to the two-level `models:` + `roles:` design when EITHER:
-#   - ≥2 roles reference the same base model with different params, OR
-#   - ≥3 roles total
-# (Expected at Phase 3 when extraction roles join the embedding role.)
-#
-# Full upgrade design + naming convention: docs/ideas/ltg-model-registry-design.md
-# Phase 2 plan: docs/plans/ltg-phase2-implementation-v2.md (`ref:ltg-phase2-plan-v2`)
+# Naming convention: {provider}-{model-slug}-{differentiating-params}
+# Full design: docs/ideas/ltg-model-registry-design.md
 
-roles:
-  embedding:
+models:
+  ollama-qwen3-embedding-8b-dim-4096:
     provider: ollama
     model: qwen3-embedding:8b
     address: http://localhost:11434
     embed_dim: 4096
+
+  ollama-qwen3-14b-no-think:
+    provider: ollama
+    model: qwen3:14b
+    address: http://localhost:11434
+    think: false                   # top-level payload key (NOT inside options{})
+    timeout_s: 600
+    options:
+      num_ctx: 32768
+      temperature: 0.1
+
+  ollama-qwen25coder-14b:
+    provider: ollama
+    model: qwen2.5-coder:14b
+    address: http://localhost:11434
+    timeout_s: 600
+    options:
+      num_ctx: 32768
+      temperature: 0.1
+
+roles:
+  embedding: ollama-qwen3-embedding-8b-dim-4096
+  extraction_prose: ollama-qwen3-14b-no-think
+  extraction_code: ollama-qwen25coder-14b

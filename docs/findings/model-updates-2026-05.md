@@ -53,14 +53,14 @@ Next generation after Qwen3. All models: 256K native context, native tool callin
 
 ### Qwen3.6 (released Apr 2026)
 
-Vision-language fusion (early-fusion multimodal), 201 language support, hybrid Gated Delta Networks + sparse MoE.
+Vision-language fusion (multimodal), 201 language support. Two variants with different architectures:
 
-| Model | Disk | Fit |
-|---|---|---|
-| qwen3.6:27b | 17GB | Hybrid VRAM+RAM |
-| qwen3.6:35b-a3b | 24GB | Hybrid VRAM+RAM |
+| Model | Disk | Architecture | Fit |
+|---|---|---|---|
+| qwen3.6:27b | 17GB | **Dense** (Gated DeltaNet hybrid — linear attention, all 27B params active per token) | Hybrid VRAM+RAM |
+| qwen3.6:35b-a3b | 24GB | **MoE** (A3B = 3B active params per token) | Hybrid VRAM+RAM |
 
-Same hybrid offload pain as qwen3:30b-a3b. Only compelling if vision input is needed.
+⚠ **Do not conflate**: DeltaNet is a linear-attention mechanism (O(L) compute), not sparse MoE. The 27B activates all params every token; the 35B activates only 3B. Inference speed and VRAM pressure differ significantly. See `docs/findings/model-updates-2026-05.md` § "Long-Context + High-Quality" for 27B deep-dive.
 
 ### Qwen3-Coder-Next (80B MoE, Feb 2026)
 
@@ -136,6 +136,129 @@ Multimodal (text + image), 256K context ⚠, 140+ languages. *(⚠ 256K figure f
 - Ollama: `gemma4`, ~10GB — fits with little headroom
 - **Skip** unless vision input becomes a use case. Qwen3.6-Coder beats it on SWE-Bench.
 
+### Reasoning / Code — MiMo-7B-RL (Xiaomi, Watch, session 78)
+
+> ⚠ **Provenance:** specs and benchmarks below are WebFetch-summary-derived from HF model card. Treat as directional — verify before adopting.
+
+7B reasoning model from Xiaomi trained with rule-based RL (accuracy-only rewards, no hacking). Uses **Multiple-Token Prediction (MTP)** for speculative decoding at 90% acceptance rate — gives free throughput gain at inference.
+
+| Property | Value |
+|---|---|
+| Params | 7B |
+| License | **MIT** ✅ |
+| Ollama | ✅ (community GGUF quants available) |
+| VRAM (Q4_K_M) | ~5GB |
+| MATH-500 | 95.8% |
+| AIME 2024 | **68.2%** (vs deepseek-r1:7b 55.5% — significant gap) |
+| LiveCodeBench v5 | 57.8% |
+| GPQA-Diamond | 54.4% |
+
+**vs current 7B reasoning slot:**
+
+| | deepseek-r1:7b | MiMo-7B-RL |
+|---|---|---|
+| AIME 2024 | 55.5% | **68.2%** |
+| MATH-500 | — | **95.8%** |
+| Inference speed | standard | faster (MTP speculative decoding) |
+
+- Stronger than deepseek-r1:7b on reasoning while the same size and likely faster
+- Same VRAM footprint as qwen3:8b (~5GB) — can slot in without disrupting co-residence budget
+- MIT license — clean for Layer 7 DPO pipeline
+- **Watch trigger:** when a 7B reasoning task appears where deepseek-r1:14b is overkill (VRAM or speed). Benchmark against deepseek-r1:7b on your task suite before adopting.
+
+**Kimi K2 (Moonshot AI) — cloud only:**
+1T total / 32B active MoE. GPQA 87.6%, SWE-bench 76.8% — top of open leaderboards. Modified MIT license. But 1T weights mean even Q2 exceeds 125GB — no local path exists. API only at `platform.moonshot.ai`.
+
+### Long-Context + High-Quality — Qwen3.6-27B (Watch, session 78)
+
+> ⚠ **Provenance:** specs and benchmark numbers below are WebFetch-summary-derived from HF model card and `ollama.com/library`. Treat benchmark numbers as directional — verify at primary source before engineering commitments. Ollama tag confirmed via `ollama.com/library/qwen3.6` (1.9M downloads). Official Qwen blog post not found at research time; model confirmed real via Ollama download count.
+
+Dense hybrid (Gated DeltaNet + Attention, 48:16 ratio across 64 layers), Apache 2.0, released April 2026.
+
+| Property | Value |
+|---|---|
+| Params | 27B dense (all 27B active per token — DeltaNet is linear attention, not MoE) |
+| Context | **262K native** / 1M with YaRN |
+| VRAM (Q4_K_M) | 17GB → 12GB VRAM + ~5GB RAM offload *(estimated, not probed)* |
+| Ollama tag | `qwen3.6:27b` — tag-verified-via-ollama.com (session 78) |
+| License | **Apache 2.0** ✅ |
+| Multimodal | ✅ Vision encoder (image + video) — first in stack |
+| Thinking | ✅ on/off + "Preserve Thinking" across turns |
+
+**Benchmarks** *(WebFetch-derived — directional only):*
+
+| Benchmark | Score |
+|---|---|
+| AIME 2026 | **94.1%** |
+| GPQA Diamond | 87.8% |
+| MMLU-Pro | 86.2% |
+| SWE-bench Verified | **77.2%** |
+
+**Coding variant:** `qwen3.6:27b-coding-*` exists in NVFP4 (Ada Lovelace+) and MLX (Apple Silicon) formats — **not accessible on RTX 3060**. No `27b-coding-q4_K_M` visible in the 5 of 24 Ollama tags returned. A 14B coder variant was not found; `qwen3.6-coder:14b` searched in M-P0a was not on Ollama at that time — but full tag list was not verified.
+
+**35B variant:** `qwen3.6:35b` (24GB on Ollama) — architecture unverified (HF page auth-gated). Likely MoE A3B based on naming convention and size. If A3B: 3B active params → faster than dense 27B at similar VRAM footprint. Verify before pulling.
+
+**Speed reality** *(estimated — not measured):* Dense 27B with ~5 layers CPU-offloaded → ~5–10 tok/s vs 32 tok/s for qwen3:14b (fully VRAM-resident). Acceptable for offline batch extraction; too slow for interactive MCP codegen.
+
+**Cross-project relevance:**
+- **LTG Phase 3+:** Best quality extractor available if batch speed is acceptable. 262K ctx handles entire large files without chunking — directly addresses non-contiguous topic recognition goal.
+- **Web research:** 262K context enables multi-document synthesis without chunking. Worth benchmarking against current qwen3:14b pipeline.
+- **Vision (new capability):** First model in stack accepting image/video input — opens multimodal LTG anchors (diagrams, screenshots as corpus members) in Phase 4+.
+- **Interactive MCP codegen:** Too slow. Keep qwen2.5-coder:14b.
+
+**Watch trigger:** Phase 3 corpus expansion — benchmark 27B on 2-3 long extraction tasks vs qwen3:14b. If quality gap justifies the speed cost, use as quality arm for batch re-extraction runs.
+
+### Long-Context Extraction — Mistral-Nemo-12B + Nemotron-Nano-8B (Watch, session 78)
+
+> ⚠ **Provenance:** specs and benchmarks below are WebFetch-summary-derived from HF model cards. VRAM estimates are calculated, not measured. Treat as directional.
+
+Evaluated as candidates for LTG Phase 3+ **long-document extraction arm** — files >20K tokens that currently require chunking before topic extraction. Both have 128K context windows vs qwen3:14b's 32K.
+
+**Mistral-Nemo-Instruct-2407 (Mistral AI + NVIDIA, Apache 2.0)**
+
+| Property | Value |
+|---|---|
+| Params | 12B dense transformer |
+| Context | **128K tokens** |
+| VRAM (Q4_K_M) | ~7.7GB |
+| Ollama | `mistral-nemo` ✅ |
+| License | **Apache 2.0** ✅ |
+| MMLU | 68.0% |
+| Monthly downloads | 683K |
+
+- Best general quality of the two; jointly trained by Mistral + NVIDIA
+- Context advantage: can extract topics from whole large files without chunking — directly addresses LTG non-contiguous topic recognition goal
+- Quality gap vs qwen3:14b (MMLU 68 vs ~80+): must benchmark on actual topic extraction before any routing decision
+- **Watch:** when Phase 3 adds long-document corpus files, benchmark Mistral-Nemo on 2-3 long docs from Phase 1 sweep. If extraction quality holds, fits the deferred 3rd-arm routing hypothesis.
+
+**Llama-3.1-Nemotron-Nano-8B-v1 (NVIDIA + Meta Llama 3.1, NVIDIA Open Model License)**
+
+| Property | Value |
+|---|---|
+| Params | 8B dense transformer |
+| Context | **128K tokens** |
+| VRAM (Q4_K_M) | ~5GB |
+| Ollama | ✅ (21 quantized variants) |
+| License | NVIDIA Open Model License + Llama 3.1 Community ✅ (commercial OK) |
+| MT-Bench | 7.9 (thinking off) / 8.1 (thinking on) |
+| MATH500 | 36.6% (off) / **95.4% (on)** |
+
+- Supports dual reasoning mode: system prompt `"detailed thinking on"` / `"detailed thinking off"` — same interface as qwen3's `think: true/false`
+- MATH500 95.4% reasoning-on driven by REINFORCE+RPO training on Qwen-generated reasoning traces; not indicative of general semantic quality
+- Lower MT-Bench (7.9 vs ~8.5+ for qwen3:14b) is the relevant signal for topic extraction
+- VRAM advantage: ~5GB leaves ~7GB headroom — could co-reside with qwen3-embedding:8b (~5.2GB), but sequential constraint still applies per `ref:ltg-vram-probe`
+- **Watch:** same trigger as Mistral-Nemo. Useful if VRAM budget is the constraint; Mistral-Nemo wins on quality.
+
+**Rejected Nemotron variants:**
+
+| Model | Reason |
+|---|---|
+| Nemotron-H-8B | 8K context only; NVIDIA Internal Scientific Research license (non-commercial, no derivative redistribution — taint risk for Layer 7 DPO pipeline); not on Ollama |
+| Nemotron-H-56B | 112GB BF16; no quantizations; same restrictive license |
+| Nemotron-Super-49B | 49B NAS-pruned from 70B; ~28GB Q4, needs 2+ 80GB GPUs |
+| Nemotron-70B | 70B, needs 2x A100/H100 |
+| NV-Embed-v2 | MTEB 72.31 > qwen3-embedding:8b (70.58), but **CC-BY-NC-4.0 (non-commercial)** — license blocker; also not on Ollama |
+
 ---
 
 ## Benchmark Rankings — May 2026
@@ -176,12 +299,13 @@ Multimodal (text + image), 256K context ⚠, 140+ languages. *(⚠ 256K figure f
 
 ### Embeddings
 
-| Rank | Model | MTEB | VRAM | Ollama Tag |
-|---|---|---|---|---|
-| 1 | **qwen3-embedding:8b** ✅ **adopted (session 73)** | 70.58 | ~5GB | `qwen3-embedding:8b` — live in LTG |
-| 2 | qwen3-embedding:4b | ~68 | ~3GB | `qwen3-embedding:4b` |
-| 3 | jina-embeddings-v5-small | 71.7 (v2) | small | API-first |
-| 4 | ~~**bge-m3** (current)~~ **replaced** | 63.0 | 0.6GB | `bge-m3` — superseded; `index.bak` retained |
+| Rank | Model | MTEB | VRAM | Ollama Tag | Notes |
+|---|---|---|---|---|---|
+| — | NV-Embed-v2 (NVIDIA) | **72.31** | ~16GB (F16) | ❌ not on Ollama | **CC-BY-NC-4.0 — license blocker**; 4096-dim, 32K ctx; would outrank current leader but non-commercial + no Ollama |
+| 1 | **qwen3-embedding:8b** ✅ **adopted (session 73)** | 70.58 | ~5GB | `qwen3-embedding:8b` — live in LTG | Apache 2.0; live |
+| 2 | qwen3-embedding:4b | ~68 | ~3GB | `qwen3-embedding:4b` | Apache 2.0 |
+| 3 | jina-embeddings-v5-small | 71.7 (v2) | small | API-first | API-only |
+| 4 | ~~**bge-m3** (current)~~ **replaced** | 63.0 | 0.6GB | `bge-m3` — superseded; `index.bak` retained | Apache 2.0 |
 
 **+7.5 MTEB points** from bge-m3 → qwen3-embedding:8b. Adopted session 73.
 
