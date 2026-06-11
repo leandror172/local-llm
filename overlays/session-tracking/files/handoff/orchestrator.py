@@ -69,7 +69,7 @@ def run_handoff(
                          "dry-run: validated, not written", verify_ok=True, edits=region_edits)
 
     # 2. Log intent immediately (recovery artifact, before touching anything).
-    run_dir = create_run_dir(repo_root, session_number, clock=clock)
+    run_dir = create_run_dir(repo_root, session_number, status="pending", clock=clock)
     write_input(run_dir, payload.raw)
 
     # 3-5. Stage (locate) -> apply in memory -> verify each file's combined edit set (F4).
