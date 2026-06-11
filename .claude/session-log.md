@@ -1,8 +1,34 @@
 # Session Log
 
 **Current Layer:** Layer 5 — Expense Classifier
-**Current Session:** 2026-06-11 — Session 87: Handoff stage/promote redesign — design + plan
-**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-30-to-2026-05-30.md`, `.claude/archive/session-log-2026-05-30-to-2026-06-02.md`, `.claude/archive/session-log-2026-06-04-to-2026-06-04.md`, `.claude/archive/session-log-2026-06-04-to-2026-06-04.md`
+**Current Session:** 2026-06-11 — Session 88: Handoff stage/promote redesign — implementation (T1–T7) complete
+**Previous logs:** `.claude/archive/session-log-layer0.md`, `.claude/archive/session-log-2026-02-12-to-2026-02-20.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-23.md`, `.claude/archive/session-log-2026-02-23-to-2026-02-24.md`, `.claude/archive/session-log-2026-02-25-to-2026-02-25.md`, `.claude/archive/session-log-2026-02-26-to-2026-02-26.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-02-27-to-2026-02-28.md`, `.claude/archive/session-log-2026-03-07-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-09.md`, `.claude/archive/session-log-2026-03-09-to-2026-03-07.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-15-to-2026-03-15.md`, `.claude/archive/session-log-2026-03-17-to-2026-03-17.md`, `.claude/archive/session-log-2026-03-20-to-2026-03-20.md`, `.claude/archive/session-log-2026-03-25-to-2026-03-25.md`, `.claude/archive/session-log-2026-03-26-to-2026-03-26.md`, `.claude/archive/session-log-2026-04-02-to-2026-04-02.md`, `.claude/archive/session-log-2026-04-03-to-2026-04-09.md`, `.claude/archive/session-log-2026-04-13-to-2026-04-13.md`, `.claude/archive/session-log-2026-04-14-to-2026-04-14.md`, `.claude/archive/session-log-2026-04-15-to-2026-04-15.md`, `.claude/archive/session-log-2026-04-16-to-2026-04-16.md`, `.claude/archive/session-log-2026-04-17-to-2026-04-17.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-30-to-2026-04-30.md`, `.claude/archive/session-log-2026-05-04-to-2026-05-04.md`, `.claude/archive/session-log-2026-05-16-to-2026-05-16.md`, `.claude/archive/session-log-2026-05-20-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-22-to-2026-05-22.md`, `.claude/archive/session-log-2026-05-25-to-2026-05-25.md`, `.claude/archive/session-log-2026-05-26-to-2026-05-26.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-27-to-2026-05-27.md`, `.claude/archive/session-log-2026-05-28-to-2026-05-28.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-05-30-to-2026-05-30.md`, `.claude/archive/session-log-2026-05-30-to-2026-06-02.md`, `.claude/archive/session-log-2026-06-04-to-2026-06-04.md`, `.claude/archive/session-log-2026-06-04-to-2026-06-04.md`, `.claude/archive/session-log-2026-06-06-to-2026-06-06.md`
+
+---
+
+## 2026-06-11 - Session 88: Handoff stage/promote redesign — implementation (T1–T7) complete
+
+### Context
+Continuation of design+plan work from prior sessions. Picked up T3 (handoff.py) which had a broken local model output on disk from the prior session. T1 (runlog) and T2 (orchestrator) were already committed.
+
+### What Was Done
+- **T1 (runlog.py):** status suffix on run dirs (`-pending`/`-success`/`-failed`), `find_pending_run` / `promote_run_dir` / `mark_run_failed` / `count_runs_by_status` / `peek_session_number` — committed in prior session
+- **T2 (orchestrator.py):** dropped `dry_run`, added `run_dir` IoC param (caller owns lifecycle), exposed `stage_and_apply` as public API — committed in prior session
+- **T3 (handoff.py):** `--payload` (stage: validate → rename-on-ingest via `shutil.move` → in-memory apply → emit JSON, dir stays `-pending`) + `--id` (promote: idempotency by title suffix → `run_handoff` → rename dir). Local model 3× verdict 0 (truncation + semantic errors — stage path promoted when it shouldn't; reconstruction sort wrong); written directly. Key fix: idempotency check uses commit title suffix, not session number — after the first commit the header updates and `peek_session_number` returns N+1, causing a false miss on crash-recovery re-run
+- **T4 (gitio.py):** `log_messages(n)` + 4 tests. Switched to `my-python-q25c14` (evicted `my-python-q3`); verdict 2 on first attempt with 14B model
+- **T5 (SKILL.md):** Step 4 rewritten for two-call stage/promote flow with 3 recovery branches (validation_failed, stage_ok+promote_fail, crash-recovery idempotency)
+- **T6 (manifest v3→v4):** overlay propagated to expenses/code, web-research, career-search via `install-overlay.py`
+- **T7 (verifier.py):** `_effective_range` helper fixes tasks-append + tasks-checkoff false-positive; reconstruction sort fixed (`reversed(sorted_asc)` → `sorted(reverse=True)`) to match applier order for equal-start regions; regression test `test_append_and_checkoff_in_same_block_do_not_overlap` added
+- **44 tests green.** PR #52 opened on `feature/handoff-redesign-stage-promote`.
+
+### Decisions Made
+- Idempotency check matches `" — {session_title}"` suffix rather than exact commit message — prevents N+1 false-miss after header update (discovered via test `test_id_idempotent_commit_exists_but_dir_still_pending`)
+- `_effective_range` requires two coordinated fixes: the helper (overlap detection) AND `sorted(reverse=True)` in reconstruction (equal-start region ordering must match applier's stable-sort-descending behaviour)
+- Model switch for T4: `my-python-q3` consistently truncated files >120 lines; `my-python-q25c14` solved on first try
+
+### Next
+- Merge PR #52 (stacked on `feature/ltg-phase3-anchors`; rebase onto master first if that branch is landing separately)
+- LTG Phase 3: rebase `feature/ltg-phase3-anchors` onto master, write `retrieval/anchors.py` TDD per `ref:ltg-phase3-decisions`
 
 ---
 
@@ -77,28 +103,4 @@ role in specifying what to tick off. Evolved into a design session + implementat
 - Two tracks: **(LTG)** rebase `feature/ltg-phase3-anchors` onto master, then write
   `retrieval/anchors.py` TDD; **(handoff-pipeline)** update PR #50 description (88 tests,
   flexible ID), then land it after the LTG PR merges
-
-## 2026-06-06 - Session 85: Session-handoff pipeline (Scope A) complete — PR #50
-
-### Context
-Continuation of the session-handoff-pipeline side-track (sessions 84-87, consolidated). B1-B3 landed in prior sessions; this one completed B4, validated by dog-food, and shipped the PR.
-
-### What Was Done
-- B4 complete: F7 payload schema, `handoff.py`/`registry_io.py` entrypoint + `run-handoff.sh`, manifest install layout (register via `manual_if_exists` = Option C), `SKILL.md` rewrite.
-- Dog-food in a throwaway clone -> found+fixed a real append/replace **newline-glue bug** F4 was blind to (`_normalize_block` at the `_collect_edits` seam). 77 tests green.
-- Applied this handoff via the pipeline; activated the skill **project-level** in this repo.
-- Synced overlay README; wrote deferred specs `docs/plans/handoff-b5.1-preflight.md` (T-53) + `overlay-manual-if-exists-override.md` (T-54).
-- Opened **PR #50** (stacked on `feature/ltg-phase3-anchors`).
-
-### Decisions Made
-- Register delivery = **Option C** (`manual_if_exists`: copy-once, flag-on-update).
-- Dog-food via **clone, not worktree** (hermetic git isolation for a commit/rollback tool).
-- Newline normalization at the **seam**, not the safety core (applier/verifier stay byte-consistent).
-- Skill installed **project-level** in this repo, not user-level, so pipeline-less repos aren't broken.
-
-### Next
-- Land PR #50 (retarget to master after the LTG PR merges).
-- LTG: write `retrieval/anchors.py` TDD (decisions frozen, `ref:ltg-phase3-decisions`).
-
----
 
