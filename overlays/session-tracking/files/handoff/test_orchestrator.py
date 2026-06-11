@@ -131,6 +131,9 @@ class FakeGit:
     def status_short(self):
         return ""
 
+    def log_messages(self, n=5):
+        return []
+
 
 def fake_rotate(repo_root, keep=3):
     return types.SimpleNamespace(returncode=0, stdout="", stderr="")
