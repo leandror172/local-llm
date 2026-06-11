@@ -1,0 +1,325 @@
+# Session 85 Handoff — Session-Handoff Pipeline (B3 milestone complete)
+
+**Date:** 2026-06-05 · **Branch:** `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase3-anchors`; rebase onto master before any PR) · **Layer:** Tooling side-track (NOT LTG)
+
+> Emergency one-file handoff (session limit ~91%), same pattern as session 84.
+> Next session: read this top-to-bottom, apply the tracking updates (§5), re-create
+> the to-do list (§6). **UPDATE — the session continued past a limit reset and B4.1 is now ALSO
+> complete; READ §11 FIRST for current status and the B4.2-entrypoint plan (resume there).** All code
+> is committed; the full suite is **66/66 green**. No code commit pending. (Leave this file in place —
+> the user asked NOT to delete the session-84 handoff; do the same here unless told.)
+
+---
+
+## 1. What this session (84→85) did
+
+1. **Folded the session-84 handoff** into the tracking files via a Haiku subagent acting as a
+   pure mechanical applier (Claude authored every exact `old→new` splice; subagent applied).
+   Commit `013031e`. (This is a small live rehearsal of the F2-Placer vs F3-Applier split.)
+2. Built the rest of the **B3 milestone** of the session-handoff pipeline (Scope A = register-driven,
+   deterministic, NO local model). Design frozen session 83; spec in
+   `docs/plans/session-handoff-pipeline-design.md` (`ref:handoff-pipeline-design`).
+
+## 2. Commits on the branch (this session)
+
+- `013031e` chore: fold session-84 handoff into tracking files
+- `84d7b0a` feat: **B3.1** F5 Mechanics + 9 tests (`mechanics.py`, `test_mechanics.py`)
+- `ccc4484` feat: **B3.3** per-run logging + 7 tests (`runlog.py`, `test_runlog.py`)
+- `a6f43cf` feat: **B3.2** F6 Orchestrator + git adapter + 6 tests (`orchestrator.py`, `gitio.py`, `test_orchestrator.py`); also added deferred task **T-53**
+
+All code in `overlays/session-tracking/files/handoff/` (installs to `.claude/tools/handoff/` via the
+overlay `files:` mechanism). **Full suite 53/53 green** (locator 15 + applier 8 + verifier 8 +
+mechanics 9 + runlog 7 + orchestrator 6). Run: `cd` into the handoff dir, then
+`python3 -m pytest -q > /tmp/p.txt 2>&1; echo exit=$?; tail -6 /tmp/p.txt` (the inline `| tail` glitches).
+
+## 3. What each new module does
+
+- **`mechanics.py`** (F5, no model). `next_session_number` (max `## …Session N…`+1, **bootstraps to 1**
+  on a fresh repo — deliberate, not a raise); `today(clock=)`; `compute_header_values(...)` composes
+  `Current Session` = `"<date> — Session <N>: <title>"` + passes `current_layer` through;
+  `header_field_edits` locates the two **nomodel** header fields → `(Region, value)` edits for F4;
+  `apply_field` = the nomodel replace splice the payload applier deliberately refuses;
+  `rotate(repo_root, keep=3)` = thin invoker of `rotate-session-log.sh`. Local model verdict 1.
+- **`runlog.py`** (B3.3). `create_run_dir(repo_root, session_number, *, clock)` →
+  `.claude/local/handoff-runs/session-<N>-<ts>/` (gitignored); `write_input` (verbatim = recovery
+  artifact); `RunReport`/`RegionEdit` dataclasses (the F6→logging data contract); `format_report`
+  (presence-tested markdown: committed/rolled-back+reason/verify/per-region role+mode+before→after);
+  `write_report`. Local model verdict 1 (added missing reason line).
+- **`gitio.py`** (B3.2). `SubprocessGit(repo_root)` injectable adapter: `is_clean(paths)`, `add`,
+  `commit`, `checkout` (rollback primitive), `status_short`.
+- **`orchestrator.py`** (F6, **Claude-authored** — multi-module + git side-effects = local-model
+  carve-out). `HandoffPayload` (provisional F7 shape) + `run_handoff(repo_root, register, payload, *,
+  git, rotate=, clock=)`. Algorithm: (1) clean-tree precondition on tracking files → abort if dirty;
+  (2) write `input.md`; (3) stage — locate every edit against ONE cached original per file; (4) apply
+  right-to-left (nomodel→`apply_field`, else→`applier.apply`); (5) `verify` each file's COMBINED
+  payload+mechanics edit set (the "F4 verifies F3+F5" requirement); (6-8) write → rotate → git
+  add+commit, with `git checkout` as the rollback net on any failure; (9) write `report.md`.
+  **Two safety layers:** in-memory verify-then-write (bad bytes never hit disk) + git checkout for
+  post-write failures (rotate/commit). 6 tests incl. **2 real-git integration tests** (commit +
+  rollback-restore).
+
+## 4. Decisions locked this session (F6, all user-approved)
+
+- Git side-effects behind an **injected adapter** (testable with a fake; one real-git integration test).
+- Failure model = **in-memory verify → write only if all pass**, with **git checkout** as the second net.
+- **Abort** (not warn) if any tracking file is dirty at start — protects the rollback.
+- **Rotation inside** the committed transaction (commit includes trimmed log + new archive), but
+  **outside the verify window** (rotation legitimately moves bytes; it's a trusted separate script).
+- F6 is **payload-driven + register-driven**: it applies exactly the roles present in the payload, so
+  the old "which files in the first apply-cut" open question dissolves.
+- **NEW deferred task T-53 (B5.1 preflight check):** surface unmet preconditions (dirty tree) BEFORE
+  the heavy handoff call (skill instructions / preflight tool / hook-injected context) so a failure
+  doesn't cost a payload-assembly round-trip. Recorded in `tasks.md`.
+
+## 5. Tracking updates to apply next session (the normal handoff would do these)
+
+**`.claude/session-context.md`** → `ref:current-status`: add a **Session 85** bullet after the
+Session 84 bullet and rewrite `**Next:**`. Suggested bullet: "**Session 85** (2026-06-05) —
+Handoff-pipeline **B3 milestone COMPLETE**: F5 Mechanics (B3.1, `84d7b0a`, 9 tests, verdict 1),
+per-run logging (B3.3, `ccc4484`, 7 tests, verdict 1), F6 Orchestrator + git adapter (B3.2,
+`a6f43cf`, 6 tests incl. 2 real-git integration). 53 tests green. Deterministic Scope A spine
+functionally complete; remaining = B4 (F7 schema + SKILL rewrite). Added deferred T-53 (preflight
+check). Session-84 handoff folded via Haiku applier subagent." Set `**Next:**` → "Two tracks —
+(LTG) `retrieval/anchors.py` TDD; (handoff-pipeline) **B4.1 define F7 payload schema** next, then
+B4.2 SKILL rewrite. B1–B3 done." Also update the `session-reading-guide` Handoff-pipeline row note
+to "B1–B3 done (53 tests); **B4.1 F7 schema next**." Optionally append to the session-83
+active-decisions bullet: the F6 decisions in §4.
+
+**`.claude/session-log.md`** → add a `## 2026-06-05 - Session 85: Session-handoff pipeline — B3
+milestone (F5/F6/logging)` entry (Context / What Was Done / Decisions Made / Next from §1-4 here).
+Bump `**Current Session:**` → "2026-06-05 — Session 85: handoff pipeline B3 milestone" and
+`**Current Layer:**` → "Tooling side-track — Session-handoff pipeline (B3 done; B4 next). LTG Phase 3
+still pending."
+
+**`.claude/tasks.md`** → in the pipeline section: check off `(T-05) B3.1`, `(T-06) B3.2`,
+`(T-07) B3.3` → `[x]`; mark the **B3 milestone** done. (T-53 already added.)
+
+**QUICK / KNOWLEDGE files** → DONE at session-85 close (do NOT re-apply): root `.memories/QUICK.md`
+Session 85 line added; `overlays/.memories/QUICK.md` status bumped; `overlays/.memories/KNOWLEDGE.md`
+gained a "Session-Handoff Pipeline Architecture (2026-06)" entry (register + F1–F6 + F4 trust boundary).
+
+*(Reuse the session-start pattern: Claude authors exact `old→new` splices, a Haiku subagent applies
+them — keeps the churn out of main context.)*
+
+## 6. Re-create the to-do list (in-session task tool does NOT persist)
+
+B1, B2, **B3 (B3.1/B3.2/B3.3) are DONE**. Live remaining:
+- **B4 — SKILL.md rewrite (milestone)** — blockedBy [B4.1, B4.2]
+- **B4.1 — Define F7 payload schema** (startable): the payload Claude emits. See §7 design below.
+- **B4.2 — Rewrite `.claude/skills/session-handoff/SKILL.md`** (blockedBy B4.1): decide content,
+  emit the F7 payload, invoke the pipeline as ONE Bash call — no file reads, no per-section Edits.
+- **Manifest wiring** (B3/B4-adjacent chore): add `registry.yaml` + `files/handoff/*.py` to
+  `overlays/session-tracking/manifest.yaml` `files:` — they are NOT yet listed.
+- **T-53 B5.1 preflight check** (future).
+
+## 7. B4.1 design sketch (F7 schema) — captured, not built
+
+**Make the payload file Claude emits BE `input.md` — one artifact, two jobs.**
+- Format (lean): YAML frontmatter (`session_title`, `current_layer`, `checkoffs: [..]`) + `## role:
+  <name>` markdown sections for each authored block. Parses into the existing `HandoffPayload`, and
+  `raw` = the whole file verbatim → no drift between structured payload and recovery artifact (same
+  no-two-representations principle as F4's recompute-and-compare).
+- `payload.py`: `parse(text) -> HandoffPayload` + `validate(payload, register) -> errors`
+  (unknown role / missing scalar / malformed task id). Validation = the natural home for T-53 preflight.
+- **Open decision — runtime registry load:** the handoff dir is currently **stdlib-only**; loading
+  `registry.yaml` needs PyYAML or a tiny loader. Decide before/within B4.1.
+- Roles in scope (authored mode only; `intent` mode deferred to the enhancement): `log-entry`
+  (prepend), `current-status` / `active-decisions` / `user-prefs` / `reading-guide` (replace),
+  `tasks-append` (append), `tasks-checkoff` (via `checkoffs:` ids), header fields (via `session_title`
+  + `current_layer` scalars, nomodel).
+
+## 8. Files to READ to rebuild context (in order)
+
+1. `docs/plans/session-handoff-pipeline-design.md` (`ref:handoff-pipeline-design`) — Scope A spec, F1–F7.
+2. `overlays/session-tracking/registry.yaml` — the register (10 roles, 4 locator kinds, modes).
+3. `overlays/session-tracking/files/handoff/{locator,applier,verifier,mechanics,runlog,gitio,orchestrator}.py`
+   + their `test_*.py` — what's built (skim; §3 summarizes APIs).
+4. `overlays/session-tracking/manifest.yaml` — install mapping; NOTE the gap (§6 manifest wiring).
+5. `.claude/tools/rotate-session-log.sh` — what F5's `rotate()` invokes.
+6. `.claude/skills/session-handoff/SKILL.md` — the skill B4.2 rewrites.
+7. `.claude/overlays/local-model-conventions.md` (`ref:local-model-conventions`) — verdict/retry rules.
+
+## 9. How to behave / proceed
+
+- **WORKFLOW (hard):** Explanatory output style + `★ Insight` boxes. **Interactive pacing — pause after
+  each subtask; do NOT auto-advance.** Propose before side-effecting commands. Build incrementally.
+- **Local model:** local-first for leaf modules (verdict 0/1/2 each call); KEEP load-bearing contracts
+  (registry, F7 schema, F6 orchestration) Claude-authored. `warm_model qwen2.5-coder:14b` at start. On
+  timeout: wait-then-retry, don't escalate. Reread the local-model feedback memories before delegating.
+- **Pytest:** run from the handoff dir (flat imports); redirect to a file then tail (inline `| tail` glitches).
+- **Advisor:** ask permission before `advisor()` in main session. (Was UNAVAILABLE at session-85 close.)
+- **Git:** stay on `feature/session-handoff-pipeline`; rebase onto master before any PR (stacked on
+  LTG branch). Use `rtk` for all git/shell. `.claude/settings.json` (dirty) + `expense-reporter/`
+  (untracked) are NOT ours — leave them.
+- **First actions next session:** (a) apply §5 tracking updates (Haiku-applier pattern); (b) re-create
+  §6 to-do list; (c) THEN pause and ask: proceed to **B4.1** (handoff pipeline) or switch to **LTG
+  Phase 3 `anchors.py`**. Do not delete this handoff file.
+- **Stretch idea (optional, only if budget allows):** dog-food F6 to write a real handoff — the
+  tracking files are clean, the register was verified session 83, so `run_handoff` could apply the §5
+  updates itself (rollback-protected). Risky without B4 plumbing; author the payload by hand if attempted.
+
+---
+
+## 10. DEEP GUIDANCE — B4.2 rewrite of `session-handoff/SKILL.md` (+ B4.1 entrypoint)
+
+**Read FIRST:** `.claude/skills/session-handoff/SKILL.md` (the file you're rewriting). The OLD skill
+makes Claude *read every tracking file and write each section via many Edits*, and computes
+date/session-N + runs `rotate` inline. **DELETE all of that** — the pipeline (F5/F6) now owns mechanics,
+rotation, commit, rollback. **Goal of the new skill:** DECIDE content → write ONE payload file → make
+ONE Bash call → report the summary. No per-section Edits, no whole-file reads on the write path.
+
+### 10a. Build the entrypoint first (B4.1 tail → B4.2 head)
+Create `overlays/session-tracking/files/handoff/handoff.py` + a `run-handoff.sh` wrapper that:
+- parses the payload file → `HandoffPayload` (via `payload.py` from B4.1);
+- loads `registry.yaml` → register dict. **DECISION (settle here):** the handoff dir is stdlib-only —
+  either add PyYAML or write a ~30-line loader. **Lean: tiny stdlib loader** to keep the overlay
+  dependency-free/portable (the register shape is simple: roles → file/locator/write_mode);
+- `validate(payload, register)` → on any error, print and **exit non-zero without running**;
+- calls `run_handoff(repo_root, register, payload, git=SubprocessGit(repo_root))`, then prints the
+  `RunReport` (committed / rolled-back+reason, regions touched) **plus** a warning about uncommitted
+  NON-tracking files via `git.status_short()`;
+- **add a `--dry-run` flag**: stage + apply + verify in memory, print per-region before→after, but do
+  NOT write/rotate/commit. This is the safe rehearsal AND the foundation for the T-53 preflight check.
+
+### 10b. The payload file the skill writes (F7 format, see §7)
+YAML frontmatter + `## role: <name>` markdown sections. Skill writes it to e.g.
+`.claude/local/handoff-pending.md` and passes that path; the pipeline persists it **verbatim** as the
+run dir's `input.md` (raw == payload → no drift). Shape:
+```
+---
+session_title: <topic for the Current Session header>
+current_layer: <full Current Layer value>
+checkoffs: [T-05, T-06, T-07]
+---
+## role: log-entry
+
+## 2026-06-06 - Session 86: <title>
+### Context …
+### What Was Done …
+### Decisions Made …
+### Next …
+
+## role: current-status
+<full updated interior of the ref:current-status block>
+
+## role: reading-guide
+<full updated interior>
+```
+
+### 10c. The replace-mode tension (IMPORTANT — resolve in the SKILL design)
+`current-status`, `active-decisions`, `reading-guide`, `user-prefs` are **replace** mode → the skill
+must author the FULL new interior, which means it needs the CURRENT interior to edit. This *seems* to
+violate "no file reads." Resolution: fetch ONLY those handoff-owned interiors (small, bounded) — NOT
+whole files — via `ref-lookup.sh <KEY>` (already prints a ref block) or a pipeline `--dump <role>`
+mode. Eliminating *whole-file* reads is the goal; reading the ~5 owned blocks is cheap and fine. Since
+F6 applies only the roles PRESENT in the payload, **OMIT any replace-role whose content is unchanged**
+(e.g. `user-prefs` usually) — don't re-author it, don't include the section.
+
+### 10d. Role → content map the skill authors
+- `session_title` + `current_layer` (scalars) → the two nomodel header fields (via F5).
+- `log-entry` (prepend) → the new session-log entry (Context / What Was Done / Decisions / Next).
+- `current-status` / `active-decisions` / `reading-guide` (replace) → full updated interiors (fetch
+  current first per 10c; omit if unchanged).
+- `tasks-append` (append) → newly discovered tasks, each with a fresh `(T-NN)` id.
+- `checkoffs: [ids]` → tasks completed this session (flipped `[ ]`→`[x]` by id, anywhere in tasks.md).
+
+### 10e. Pre-flight to preserve / add (ties to T-53)
+- Check tracking files clean BEFORE authoring: `git status --porcelain -- <tracking files>`. If dirty,
+  STOP and ask the user to commit/stash — F6 aborts on a dirty tree, so catching it up front avoids
+  wasting the whole payload-authoring round-trip. Mechanism: a skill step now; a hook later (T-53).
+- Do NOT recompute date / session-N / rotation in the skill — the pipeline owns them.
+
+### 10f. Manifest wiring (do as part of B4.2 — currently MISSING)
+Add to `overlays/session-tracking/manifest.yaml` `files:`: `registry.yaml`, every `files/handoff/*.py`
+(locator/applier/verifier/mechanics/runlog/gitio/orchestrator/payload), `handoff.py`, `run-handoff.sh`.
+Decide the install layout (e.g. code → `.claude/tools/handoff/`, register → `.claude/handoff/registry.yaml`)
+and make the entrypoint resolve `repo_root` + registry path from its own install location. None are
+listed today — the pipeline won't propagate to other repos until this is done.
+
+### 10g. Authoring + testing discipline
+- The SKILL.md rewrite is a load-bearing instruction doc → **Claude-authored** (no local model). The
+  `payload.py` parser/validator (B4.1) IS delegable to the local model (leaf, test-first).
+- Add `test_payload.py` (parse/validate) and an entrypoint test using a tmp git repo like
+  `test_orchestrator.py` does.
+- **First real run = dog-food on THIS repo:** run `--dry-run`, inspect every before→after, THEN run for
+  real. The run is rollback-protected (clean-tree precondition + git checkout), so a bad payload reverts.
+- Keep the SKILL body SHORT: the skill is now mostly "gather context → author these N blocks → write
+  payload → one Bash call → report." The heavy logic lives in the tested pipeline, not in prose.
+
+---
+
+## 11. CURRENT STATUS (session 85 continued — READ THIS FIRST) — B4.1 DONE, resume at B4.2 entrypoint
+
+The session ran past a limit reset. Since §1–§10 were written, **B4.1 is complete** and one design
+decision is **resolved**. Suite is **66/66 green**. No commit pending.
+
+### 11a. What's now done (commits, newest first)
+- `3dadc8c` feat: **B4.1** F7 payload schema — `payload.py` + `test_payload.py` (13 tests); `HandoffPayload`
+  MOVED from orchestrator.py to payload.py (orchestrator re-exports it, so `from orchestrator import
+  HandoffPayload` still works). Local model verdict 1 (rewrote inverted frontmatter-fence detection).
+- `13d4610` docs: §10 deep B4.2 guidance · `f855b84` memory (QUICK+KNOWLEDGE) · `aff552a` this handoff ·
+  `a6f43cf`/`ccc4484`/`84d7b0a` = F6/runlog/F5 (B3) · `013031e` = session-84 fold.
+
+**`payload.py` API:** `parse(text) -> HandoffPayload` (frontmatter fenced by the FIRST TWO `---` lines;
+sections split only on exact `## role: <name>`; body's own `---`/`##` preserved; `raw == text` verbatim
+== input.md). `validate(payload, register) -> list[str]` (unknown role / nomodel block role / empty
+scalar / malformed `^T-\d+$` checkoff). `PayloadError` on un-parseable input. Pure stdlib.
+
+### 11b. RESOLVED decision — registry load = **PyYAML, scoped to the entrypoint**
+Reverses the §10a "tiny stdlib loader" lean. Reason: the register's `description:` fields contain
+colons/quotes/em-dashes; hand-rolling a YAML-subset parser for a safety-critical tool is the wrong place
+to take a correctness risk to dodge a near-universal dep. PyYAML 6.0.3 is present here and
+`retrieval/model_client.py` already imports it. **Policy:** pure safety core (locator/applier/verifier/
+mechanics/payload) stays stdlib; the **entrypoint** (glue) may `import yaml`. The overlay manifest should
+document PyYAML as a requirement. (User agreed.)
+
+### 11c. B4.2 entrypoint — BUILD PLAN (resume here, TDD, in order)
+1. **`dry_run` refactor of `run_handoff`** (orchestrator.py — Claude-authored, safety-adjacent):
+   - Extract `_stage_and_apply(repo_root, register, payload, *, clock) -> (modified_by_file, region_edits)`
+     = the collect → apply → verify loop (raises `LocatorError`/`VerifyError`). Both the normal path and
+     dry-run call it. Keep `verify` referenced as the module global (so `monkeypatch.setattr(orchestrator,
+     "verify", …)` still works).
+   - Add `dry_run=False` param. When True: run precondition + `_stage_and_apply`, then return
+     `RunReport(session_number, committed=False, rolled_back=False, reason="dry-run: validated, not
+     written", verify_ok=True, edits=region_edits)` with **NO `create_run_dir`, NO disk writes**. On
+     locate/verify failure in dry-run, return a report with the reason and no artifacts.
+   - Normal path MUST stay behaviorally identical (the 6 orchestrator tests + 66 total stay green).
+     CAUTION: `test_verify_failure_rolls_back_without_writing` depends on a run_dir + `report.md` existing
+     after a verify failure on the REAL path — so keep `create_run_dir`+`write_input` BEFORE staging on the
+     normal path, and `_fail()` writing `report.md`. (Simplest: on the normal verify-failure branch pass
+     `edits=[]` to `_fail` — tests only assert on the reason text.)
+   - Add dry-run tests: validates-not-written (no run dir, no commit, files unchanged, report.edits
+     populated); dry-run on a locate/verify failure returns reason without artifacts.
+2. **`load_register(path) -> dict`** (new `registry_io.py`, or a fn in handoff.py — entrypoint, may use
+   yaml): `yaml.safe_load`, return the `roles:` mapping (role_name -> {file, locator{…}, write_mode, …}).
+   Small; test with a tiny yaml fixture.
+3. **`handoff.py` CLI** (arg-plumbing delegable to the local model): args `--payload <file> --repo-root
+   <dir> [--registry <path>] [--dry-run]`. Flow: read payload text → `parse` → `load_register` →
+   `validate` (print errors, **exit non-zero** if any) → `SubprocessGit(repo_root)` → `run_handoff(...,
+   dry_run=)` → print summary (committed / rolled-back+reason, regions touched role+mode, + uncommitted
+   NON-tracking warning via `git.status_short()`). Defaults: `--repo-root` = `git rev-parse --show-toplevel`
+   or cwd; `--registry` = `<repo_root>/.claude/handoff/registry.yaml` (settle exact install path with the
+   manifest, §10f).
+4. **`run-handoff.sh`** wrapper (project bash-wrapper convention; add to `.claude/index.md` bash-wrappers).
+5. **Tests:** `test_registry_io` (yaml fixture round-trip) · the dry-run tests above · `test_handoff_cli`
+   (subprocess on a tmp git repo: a real run commits; `--dry-run` writes nothing). Guard CLI/integration
+   tests with `shutil.which("git")` like `test_orchestrator.py`.
+
+### 11d. After the entrypoint
+- **B4.2b — rewrite `session-handoff/SKILL.md`** per §10b–§10e (incl. the replace-mode fetch resolution §10c).
+- **Manifest wiring** (§10f): add `registry.yaml` + all `files/handoff/*.py` + `handoff.py` + `run-handoff.sh`
+  to `overlays/session-tracking/manifest.yaml` `files:`; decide install layout; make `handoff.py` resolve
+  `repo_root` + registry path from its install location.
+- **Dog-food** (§10g): `--dry-run` on THIS repo first, inspect before→after, then a real run.
+
+### 11e. Tracking fold (§5) — STILL DEFERRED, now also covers B4.1
+Not yet applied (deliberate — more B-work will change it). At the real session end, the §5 updates PLUS:
+check off `(T-08) B4.1` in tasks.md; bump the Session-85 bullet to include B4.1 (`3dadc8c`) and the
+resolved loader decision. (QUICK/KNOWLEDGE were already updated — see §5 note.)
+
+### 11f. To-do list to recreate (Claude Code task tool doesn't persist)
+DONE: B1, B2, B3 (B3.1/2/3), **B4.1**. Live remaining:
+- **B4.2 entrypoint** (startable) — the §11c plan: dry_run refactor → load_register → handoff.py → run-handoff.sh.
+- **B4.2b SKILL.md rewrite** (after entrypoint).
+- **Manifest wiring** (B3/B4-adjacent chore).
+- **T-53** B5.1 preflight check (future).

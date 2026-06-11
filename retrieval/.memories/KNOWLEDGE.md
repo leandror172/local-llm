@@ -148,7 +148,7 @@ Full rationale in `retrieval/DECISIONS.md`. Summary of what was decided and why:
 | Decision | Choice | Key reason |
 |----------|--------|------------|
 | Index scope | Per-repo; federation Phase 9 | Avoid distributed-system complexity at MVP |
-| Embedding | bge-m3 via Ollama (1024-dim dense) | Ollama-native; +3-4 MTEB vs nomic; no torch install |
+| Embedding | qwen3-embedding:8b via Ollama (4096-dim dense) | Phase 0 chose bge-m3; upgraded session 73 (M-P0b) — MTEB 63.0→70.58; see `ref:ltg-m-p0b-probe` |
 | Vector store | LanceDB (no SQL layer) | Embedded, Arrow-backed, filter+ANN in one query |
 | Graph lib | networkx + leidenalg | Sufficient for MVP corpus; no server overhead |
 | Extractor | Empirical A/B Phase 1 → frozen | See `ref:ltg-phase1-summary` above |

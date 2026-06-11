@@ -37,7 +37,7 @@ Consistently introduces quality practices: 89-96% test coverage at BNP Paribas (
 ### Local LLM Infrastructure
 **Depth: Deep, hands-on, empirical (self-directed, started 2026)**
 
-Operates a fleet of 13 base models (Qwen, DeepSeek families) configured into 35+ specialized personas on a 12GB VRAM budget. Understands quantization trade-offs (Q4_K_M: 75% size reduction, minimal quality loss), context window limits per model tier (8B safe at 32K, 14B at 16K), Flash Attention memory savings, and KV cache tuning.
+Operates a fleet of 13 base models (Qwen, DeepSeek families) configured into 50+ specialized personas on a 12GB VRAM budget. Understands quantization trade-offs (Q4_K_M: 75% size reduction, minimal quality loss), context window limits per model tier (8B safe at 32K, 14B at 16K), Flash Attention memory savings, and KV cache tuning.
 
 Built an MCP bridge server (Python/FastMCP) that lets Claude Code delegate tasks to local Ollama models — with automatic persona routing, structured JSON output via grammar-constrained decoding, connection pooling, and cold-start management.
 
@@ -127,7 +127,7 @@ The expense classifier (product) and LLM infrastructure (platform) are separate 
 
 - **50+ AI-assisted development sessions** spanning 6 weeks
 - **143 commits** across 3 repositories
-- **35+ model personas** from 13 base models
+- **50+ model personas** from 13 base models
 - **190+ unit tests** in the Go expense classifier
 - **10-layer architectural plan** — 5 layers complete, 5 planned
 - **Comprehensive benchmarks** covering Go, Python, Shell, HTML/JS, Java
