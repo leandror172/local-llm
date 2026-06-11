@@ -7,7 +7,8 @@
 Session 59 (2026-05-04): Phase 1 **fully closed**. ref:ltg-extractor frozen: qwen3:14b prose, qwen2.5-coder:14b code.
 Session 61 (2026-05-20): VRAM probe complete → bge-m3 locked (sequential constraint). → `ref:ltg-vram-probe`
 Session 72 (2026-05-28): **Phase 2 complete.** Index at `retrieval/index/`, 69 topics from 8 files. 7/8 acceptance queries pass (R2 borderline). → `ref:ltg-phase2-findings`
-Session 73 (2026-05-28): **M-P0b complete.** Upgraded embedding model: bge-m3 (1024-dim) → **qwen3-embedding:8b (4096-dim)**. WARN verdict (same as bge-m3 — load-time eviction only, zero query-time). Acceptance equivalent (R1/R3/R4 ✅, R2 ⚠️ same gap, relate 0.663→0.697). **Next: Phase 3 — anchor integration.** → `ref:ltg-embedding`
+Session 73 (2026-05-28): **M-P0b complete.** Upgraded embedding model: bge-m3 (1024-dim) → **qwen3-embedding:8b (4096-dim)**. WARN verdict (same as bge-m3 — load-time eviction only, zero query-time). Acceptance equivalent (R1/R3/R4 ✅, R2 ⚠️ same gap, relate 0.663→0.697). → `ref:ltg-embedding`
+Session 81 (2026-06-01): **Phase 3 anchor-integration DISCOVERY started (NOT frozen).** Extractor retrofit closed + PR open. New framing: **dual-path RAG** — `ref:KEY` anchors as a *parallel* retrieval surface (span-topics path / ref-keys path / both), with configurable per-class weights; merge leans **alias-link (keep both rows)** not physical merge. Empirical: only 2 of 138 ref keys live in the 8 extracted files (orphans carry no merge-noise). Decisions D1/D3/D4 aligned; **D2/D5/D6/D7 OPEN.** **Resume: `docs/plans/ltg-phase3-anchor-discovery.md` (read §4 onward).**
 
 ## Deeper Memory → KNOWLEDGE.md
 

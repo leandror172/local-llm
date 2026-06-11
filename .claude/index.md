@@ -51,6 +51,8 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | **Code design conventions** | `docs/patterns/code-design-conventions.md` | Structural patterns: named semantic methods over role strings. Self-indexed via `ref:patterns-code-design-index` |
 | **LTG extractor retrofit plan** | `docs/plans/ltg-extractor-retrofit.md` | Full implementation spec: routing.py, schemas.py, ModelClient extensions, config upgrade, file split. Ready to execute. |
+| **LTG Phase 3 anchor discovery** | `docs/plans/ltg-phase3-anchor-discovery.md` | Session 81 discovery state (historical); dual-path reframe, three-confidence concepts, empirical enumeration, decision register D1–D7. |
+| **LTG Phase 3 decisions discussion** | `docs/plans/ltg-phase3-decisions-discussion.md` | Full decision-making discussion session 82; all angles, probe results, advisor refs. `ref:ltg-phase3-discussion`. |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
 | Verdict numeric migration plan | `docs/plans/verdict-numeric-migration.md` | Replace ACCEPTED/IMPROVED/REJECTED string verdicts with 0/1/2 integers across all repos, hooks, data, docs, and memory. 8 phases. |
 | **LTG Phase 2 implementation plan** | `docs/plans/ltg-phase2-implementation.md` | embed.py + store.py + inspect.py. Decisions locked, ready to execute. `ref:ltg-phase2-plan` |

@@ -109,6 +109,8 @@ The executing session should confirm or revise each of these before Phase 1. Dec
 - Merged nodes preserve both the anchor confidence and the extracted context.
 
 **Deliverables:** `retrieval/anchors.py`, merged node index.
+
+**Session 81 discovery (2026-06-01) — IN PROGRESS, decisions NOT frozen:** A dual-path reframe emerged — treat `ref:KEY` anchors as a **parallel retrieval surface** (span-topics path / ref-keys path / both, selectable per query or at build time), not merely merge-targets. This pushes "merge" toward an **alias-link model** (keep both the anchor row and the topic row, connect by a high-confidence edge) rather than physical collapse, and motivates a `source_class`-keyed configurable weight layer (generalizing anchor stratification). Empirical finding: only 2 of 138 ref keys live in the 8 currently-extracted files, so most anchors are orphans until Phase 2.5 — acceptance retargeted to the 2 in-corpus refs. Full discovery + open decision register (D1–D7): `docs/plans/ltg-phase3-anchor-discovery.md`. Do NOT start `anchors.py` until D2/D5/D6/D7 are confirmed.
 <!-- /ref:ltg-plan-phase-3 -->
 
 <!-- ref:ltg-plan-phase-4 -->
