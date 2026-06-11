@@ -129,3 +129,31 @@ def test_verify_raises_on_overlapping_regions():
     r2 = Region(kind="ref_block", mode="replace", start=5, end=15, interior=original[5:15])
     with pytest.raises(VerifyError):
         verify(original, original, [(r1, "x"), (r2, "y")])
+
+
+# --- T-57 regression: tasks-append + tasks-checkoff in same ref block -------- #
+
+def test_append_and_checkoff_in_same_block_do_not_overlap():
+    """Regression for T-57: append (inserts at block end) and checkoff (flips 3 bytes)
+    must not raise a false VerifyError even when their raw region spans overlap."""
+    original = (
+        "<!-- ref:deferred-infra -->\n"
+        "- [ ] (T-10) existing task\n"
+        "<!-- /ref:deferred-infra -->"
+    )
+    open_marker = "<!-- ref:deferred-infra -->\n"
+    close_marker = "<!-- /ref:deferred-infra -->"
+    block_start = len(open_marker)
+    block_end = original.index(close_marker)
+    line_start = original.index("- [ ] (T-10) existing task\n", block_start)
+    line_end = line_start + len("- [ ] (T-10) existing task\n")
+
+    append_region = Region(kind="ref_block", mode="append",
+                           start=block_start, end=block_end,
+                           interior=original[block_start:block_end])
+    checkoff_region = Region(kind="checklist", mode="checkoff",
+                             start=line_start, end=line_end,
+                             interior=original[line_start:line_end])
+    edits = [(append_region, "- [ ] (T-11) new task\n"), (checkoff_region, "")]
+    modified = _apply_all(original, edits)
+    verify(original, modified, edits)  # must not raise

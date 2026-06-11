@@ -22,18 +22,38 @@ def _segment(region, content) -> str:
         raise VerifyError(f"Unsupported mode: {region.mode}")
 
 
+def _effective_range(region, mode: str, content: str) -> Tuple[int, int]:
+    """(lo, hi) byte range of original text actually mutated by this edit."""
+    if mode == "replace" or mode == "nomodel":
+        return (region.start, region.end)
+    elif mode == "prepend":
+        return (region.start, region.start)
+    elif mode == "append":
+        return (region.end, region.end)
+    elif mode == "checkoff":
+        offset = region.interior.find("[ ]")
+        if offset != -1:
+            return (region.start + offset, region.start + offset + 3)
+        else:
+            return (region.start, region.end)
+    else:
+        raise VerifyError(f"Unsupported mode: {mode}")
+
+
 def verify(original: str, modified: str, edits: List[Tuple[object, str]]) -> None:
     """Verify that the modified text matches the expected text derived from edits."""
-    
+
     # Overlap guard
-    sorted_edits = sorted(edits, key=lambda e: e[0].start)
+    effective_ranges = [(region, _effective_range(region, region.mode, content)) for region, content in edits]
+    sorted_edits = sorted(effective_ranges, key=lambda e: e[1][0])
     for i in range(1, len(sorted_edits)):
-        if sorted_edits[i][0].start < sorted_edits[i - 1][0].end:
+        if sorted_edits[i][1][0] < sorted_edits[i - 1][1][1]:
             raise VerifyError("Overlapping edit regions detected")
 
-    # Independently re-derive the expected text
+    # Independently re-derive the expected text — use descending sort (matching applier order)
+    # so equal-start regions apply in the same sequence the applier uses.
     expected = original
-    for region, content in reversed(sorted_edits):
+    for region, content in sorted(edits, key=lambda e: e[0].start, reverse=True):
         segment = _segment(region, content)
         expected = expected[:region.start] + segment + expected[region.end:]
 
