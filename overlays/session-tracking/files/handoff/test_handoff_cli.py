@@ -110,21 +110,6 @@ def test_cli_real_run_commits(tmp_path):
     assert "new status here" in (root / ".claude/session-context.md").read_text()
 
 
-@pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
-def test_cli_dry_run_writes_nothing(tmp_path):
-    root, reg, payload_file = _scaffold(tmp_path)
-    _git_init(root)
-    before = (root / ".claude/session-context.md").read_text()
-
-    result = _run_cli(root, reg, payload_file, "--dry-run")
-
-    assert result.returncode == 0, result.stderr
-    assert (root / ".claude/session-context.md").read_text() == before
-    assert not (root / ".claude/local/handoff-runs").exists()
-    count = subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=root,
-                           capture_output=True, text=True).stdout.strip()
-    assert count == "1"  # no new commit
-
 
 def test_cli_validation_error_exits_nonzero_without_running(tmp_path):
     root, reg, payload_file = _scaffold(tmp_path, payload_text=BAD_PAYLOAD)

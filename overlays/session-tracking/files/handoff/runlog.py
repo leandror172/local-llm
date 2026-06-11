@@ -89,6 +89,12 @@ def count_runs_by_status(repo_root: Path) -> dict:
     return counts
 
 
+def peek_session_number(repo_root: Path, log_rel: str) -> int:
+    """Return the next session number by reading the current session log."""
+    from mechanics import next_session_number
+    return next_session_number((repo_root / log_rel).read_text())
+
+
 def write_input(run_dir: Path, payload: str) -> Path:
     """Write payload verbatim to input.md in the run directory."""
     input_path = run_dir / "input.md"

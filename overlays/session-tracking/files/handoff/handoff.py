@@ -12,6 +12,7 @@ from typing import Optional, List, Any
 from payload import parse, validate, PayloadError
 from registry_io import load_register, RegistryError
 from orchestrator import run_handoff
+from runlog import create_run_dir, peek_session_number, write_input
 from gitio import SubprocessGit
 
 
@@ -110,24 +111,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     repo_root = Path(args.repo_root or _default_repo_root())
     git = SubprocessGit(repo_root)
     
+    log_rel = register["header-current-session"]["file"]
+    session_number = peek_session_number(repo_root, log_rel)
+    run_dir = create_run_dir(repo_root, session_number, status="pending")
+    write_input(run_dir, payload.raw)
+
     try:
         report = run_handoff(
             repo_root=repo_root,
             register=register,
             payload=payload,
             git=git,
-            dry_run=args.dry_run
+            run_dir=run_dir,
         )
     except Exception as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
-    
+
     print_summary(report, git, args.dry_run)
-    
-    if report.committed or (args.dry_run and report.verify_ok):
-        return 0
-    else:
-        return 1
+
+    return 0 if report.committed else 1
 
 
 if __name__ == "__main__":
