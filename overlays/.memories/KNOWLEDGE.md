@@ -108,6 +108,17 @@ NOT copied into `.claude/tools/` there (would duplicate the overlay source) — 
 runs `overlays/session-tracking/files/handoff/run-handoff.sh` with an explicit `--registry`. Target repos
 get the canonical `.claude/tools/handoff/` layout via the installer instead.
 
+**Planned redesign (session 89) — stage/promote:** Replaces the `--dry-run --payload` two-step with
+**rename-on-ingest + stage/promote**. `--payload` ingests (renames file into run dir via `shutil.move`,
+freeing the well-known path) + stages (locate+apply+verify in memory) + emits JSON handle.
+`--id <handle>` promotes: finds pending run dir, recomputes everything from current files (no cached
+edits), checks git for idempotency (prevents double-apply if process dies between commit and dir-rename),
+applies, commits, renames dir `-pending`→`-success`. Run dir status suffix (`-pending`/`-success`/
+`-failed`) replaces the old "writes nothing in dry-run" invariant. `--dry-run` flag dropped.
+Two failure branches: validation-fail = no handle (re-edit same file); stage-fail = handle exists
+in `-failed` dir (author fresh content). Full plan: `~/.claude/plans/handoff-redesign-rename-on-ingest.md`.
+Branch: `feature/handoff-redesign-stage-promote`.
+
 **Dog-food learning (session 86):** F4's invariants are *out-of-region bytes* + *ref-marker multiset* —
 neither sees a **missing newline before a present marker**. A payload's last `## role:` section has no
 trailing blank, so `payload.py` returned non-newline-terminated content, and append/replace/prepend glued
