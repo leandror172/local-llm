@@ -8,6 +8,23 @@ class VerifyError(Exception):
     pass
 
 
+def _region_label(original: str, region) -> str:
+    """Build a human-readable label for a region: role(target)@file:line[-line]."""
+    lo = original[:region.start].count("\n") + 1
+    hi = original[:region.end].count("\n") + 1
+    loc = str(lo) if lo == hi else f"{lo}-{hi}"
+    role = getattr(region, "role", "") or ""
+    target = getattr(region, "target", "") or ""
+    file_ = getattr(region, "file", "") or ""
+    if role or target or file_:
+        return f"{role}({target})@{file_}:{loc}"
+    return f"@byte{region.start}-{region.end}"
+
+
+def _overlap_message(original: str, a, b) -> str:
+    return f"{_region_label(original, a)} overlaps {_region_label(original, b)}"
+
+
 def _segment(region, content) -> str:
     """Generate the segment based on the region's mode and content."""
     if region.mode == "replace" or region.mode == "nomodel":
@@ -48,7 +65,9 @@ def verify(original: str, modified: str, edits: List[Tuple[object, str]]) -> Non
     sorted_edits = sorted(effective_ranges, key=lambda e: e[1][0])
     for i in range(1, len(sorted_edits)):
         if sorted_edits[i][1][0] < sorted_edits[i - 1][1][1]:
-            raise VerifyError("Overlapping edit regions detected")
+            a = sorted_edits[i - 1][0]
+            b = sorted_edits[i][0]
+            raise VerifyError(_overlap_message(original, a, b))
 
     # Independently re-derive the expected text — use descending sort (matching applier order)
     # so equal-start regions apply in the same sequence the applier uses.

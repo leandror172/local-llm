@@ -132,9 +132,13 @@ def _role_errors(payload: HandoffPayload, register: Dict[str, Dict[str, str]]) -
 def _scalar_errors(payload: HandoffPayload) -> List[str]:
     errors = []
     if not payload.session_title.strip():
-        errors.append("session_title is empty")
+        errors.append(
+            "session_title is required because this run bumps the Current Session header"
+        )
     if not payload.current_layer.strip():
-        errors.append("current_layer is empty")
+        errors.append(
+            "current_layer is required because this run bumps the Current Layer header"
+        )
     return errors
 
 
