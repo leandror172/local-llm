@@ -194,4 +194,4 @@ def test_count_runs_by_status_returns_correct_counts(tmp_path):
         (runs_folder / f"session-85-20260605-14300{i}-success").mkdir()
     (runs_folder / "session-85-20260605-143000-failed").mkdir()
     result = count_runs_by_status(tmp_path)
-    assert result == {"pending": 2, "success": 3, "failed": 1}
+    assert result == {"pending": 2, "success": 3, "failed": 1, "aborted": 0}
