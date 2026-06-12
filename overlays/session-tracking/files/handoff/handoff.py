@@ -22,6 +22,7 @@ from runlog import (
     mark_run_failed, mark_run_aborted, count_runs_by_status, peek_session_number,
     write_input, write_report, RunReport, RunNotFoundError,
 )
+from mechanics import current_session_number as _current_session_number
 from gitio import SubprocessGit
 
 
@@ -104,7 +105,11 @@ def _stage_path(args, repo_root: Path, register: dict, git) -> int:
     #    destructive op (unlink of the original) is the very last step, so any crash
     #    before that leaves the author's file intact. The run dir always gets input.md
     #    whether the stage succeeds or fails.
-    session_number = peek_session_number(repo_root, register["header-current-session"]["file"])
+    log_rel = register["header-current-session"]["file"]
+    if amend:
+        session_number = _current_session_number((repo_root / log_rel).read_text())
+    else:
+        session_number = peek_session_number(repo_root, log_rel)
     run_dir = create_run_dir(repo_root, session_number, status="pending")
     write_input(run_dir, payload.raw)  # copy — original untouched until success
 

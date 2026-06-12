@@ -35,12 +35,22 @@ AMEND_PAYLOAD_WITH_REPLACE = textwrap.dedent("""\
     new status here
 """)
 
-# Valid amend payload: only append-mode (log-entry) + checkoffs; empty session_title
+# Valid amend payload: checkoff-only (no block roles); empty session_title/current_layer.
+# log-entry (prepend) is NOT included — prepend is forbidden in amend mode.
 AMEND_PAYLOAD_OK = textwrap.dedent("""\
     ---
     session_title:
     current_layer:
     checkoffs: [T-99]
+    ---
+""")
+
+# Payload with only a log-entry (prepend) role — must be rejected in amend mode
+AMEND_PAYLOAD_PREPEND_ONLY = textwrap.dedent("""\
+    ---
+    session_title:
+    current_layer:
+    checkoffs: []
     ---
     ## role: log-entry
 
@@ -86,8 +96,24 @@ def test_amend_stage_rejects_replace_role(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
-def test_amend_stage_accepts_append_and_checkoff_roles(tmp_path):
-    """--amend accepts payloads with only append/checkoff roles."""
+def test_amend_stage_rejects_prepend_role(tmp_path):
+    """--amend rejects payloads with prepend-mode roles (log-entry); additive-only means append+checkoff."""
+    root, reg, well_known = _scaffold(tmp_path)
+    _git_init(root)
+    well_known.write_text(AMEND_PAYLOAD_PREPEND_ONLY)
+
+    result = _amend_run(root, reg, well_known)
+
+    assert result.returncode != 0, result.stderr
+    out = json.loads(result.stdout)
+    assert out["status"] == "validation_failed"
+    assert "amend mode is additive-only" in out["reason"]
+    assert well_known.exists()  # file stays — author can re-edit
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
+def test_amend_stage_accepts_checkoff_only(tmp_path):
+    """--amend accepts payloads with only checkoff roles (no block roles)."""
     root, reg, well_known = _scaffold(tmp_path)
     _git_init(root)
     well_known.write_text(AMEND_PAYLOAD_OK)
@@ -115,11 +141,30 @@ def test_amend_stage_ignores_missing_scalars(tmp_path):
     assert out["status"] == "stage_ok"
 
 
+@pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
+def test_amend_stage_session_number_is_current_not_next(tmp_path):
+    """Amend stage: reported session_number == current committed N (84), not N+1 (85)."""
+    root, reg, well_known = _scaffold(tmp_path)
+    _git_init(root)
+    well_known.write_text(AMEND_PAYLOAD_OK)
+
+    result = _amend_run(root, reg, well_known)
+
+    assert result.returncode == 0, result.stderr
+    out = json.loads(result.stdout)
+    assert out["status"] == "stage_ok"
+    # Session log has session 84 as last entry; amend must report 84, not 85
+    assert out["session_number"] == 84, f"expected 84, got {out['session_number']}"
+    run_dir = Path(out["run_dir"])
+    assert "session-84" in run_dir.name, f"run_dir should contain 'session-84': {run_dir.name}"
+    assert "session-85" not in run_dir.name
+
+
 # ---- --amend: promote -------------------------------------------------------
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
 def test_amend_promote_commit_has_amend_suffix(tmp_path):
-    """Amend promote: commit message has '(amend)' suffix."""
+    """Amend promote: commit message ends with '— amend' (no redundant parens)."""
     root, reg, well_known = _scaffold(tmp_path)
     _git_init(root)
     well_known.write_text(AMEND_PAYLOAD_OK)
@@ -136,7 +181,7 @@ def test_amend_promote_commit_has_amend_suffix(tmp_path):
     git_log = subprocess.run(
         ["git", "log", "--oneline"], cwd=root, capture_output=True, text=True
     ).stdout
-    assert "(amend)" in git_log
+    assert "— amend" in git_log
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not available")

@@ -123,9 +123,10 @@ def _role_header(line: str):
 
 # ---- validation -------------------------------------------------------------
 
-# Amend mode is additive-only: both append and prepend are allowed (they insert without
-# touching existing content). replace/nomodel/log-entry-replace are forbidden.
-_AMEND_ALLOWED_MODES = {"append", "prepend", "checkoff"}
+# Amend mode is additive-only: only append and checkoff are permitted.
+# prepend (log-entry) is excluded — it would add a second "## Session N" heading for an
+# already-committed session, creating duplicate-heading pollution.
+_AMEND_ALLOWED_MODES = {"append", "checkoff"}
 
 
 def _amend_role_errors(payload: HandoffPayload, register: Dict[str, Dict[str, str]]) -> List[str]:

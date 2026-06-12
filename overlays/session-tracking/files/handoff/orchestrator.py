@@ -210,7 +210,7 @@ def _commit_paths(repo_root, touched: List[str]) -> List[str]:
 
 def _commit_message(session_number: int, payload: HandoffPayload, *, amend: bool = False) -> str:
     if amend:
-        return f"chore(session-handoff): session {session_number} — amend (amend)"
+        return f"chore(session-handoff): session {session_number} — amend"
     return f"chore(session-handoff): session {session_number} — {payload.session_title}"
 
 
