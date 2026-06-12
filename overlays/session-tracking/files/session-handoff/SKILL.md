@@ -52,18 +52,17 @@ the pipeline refuses a `nomodel` role appearing as a block.
 
 1. **The tracking tree must be clean.** Run:
    ```
-   git status --porcelain -- .claude/session-log.md .claude/session-context.md .claude/tasks.md
+   test -z "$(git status --porcelain -- .claude/session-log.md .claude/tasks.md .claude/session-context.md)" && echo CLEAN || echo DIRTY
    ```
-   If it prints anything, **STOP** and ask the user to commit or stash those files
+   If it prints `DIRTY`, **STOP** and ask the user to commit or stash those files
    first. The pipeline aborts on a dirty tracking tree — catching it now avoids
    wasting the whole payload-authoring round-trip.
 
 2. **Determine the session number** from context — you are closing a specific
    session, so you know it; if unsure, read the N from the latest `session-log.md`
    entry heading (one cheap line, not the whole file). Today's date comes from
-   `date +%Y-%m-%d`. You write these into the `log-entry` heading; the pipeline
-   independently maintains the header's counter, and the `--dry-run` in Step 4 lets
-   you confirm the two agree before committing.
+   `date +%Y-%m-%d`. You write these into the `log-entry` heading; the stage JSON
+   in Step 4 reports `session_number` so you can confirm the two agree.
 
 ## Step 2 — Gather the session summary
 
@@ -99,14 +98,12 @@ entire run back (it enforces a ref-marker-count invariant).
 only the roles PRESENT in the payload, so an omitted role is left byte-for-byte untouched
 (`user-prefs` is usually omitted). Do not re-author a block just to restate it.
 
-## Step 4 — Author the payload, then make ONE call
+## Step 4 — Author the payload, then stage and promote
 
-Write the payload to `.claude/local/handoff-pending.md` (gitignored; the pipeline
-persists it verbatim as the run's `input.md`, so it doubles as a recovery artifact).
-
-Format: frontmatter fenced by the **first two** `---` lines, then `## role: <name>`
-sections. Section bodies may themselves contain `---` and `##` headings — only the
-first two `---` and lines matching exactly `## role: <name>` are structural.
+Write the payload to `.claude/local/handoff-pending.md` (gitignored). Format:
+frontmatter fenced by the **first two** `---` lines, then `## role: <name>` sections.
+Section bodies may themselves contain `---` and `##` headings — only the first two
+`---` and lines matching exactly `## role: <name>` are structural.
 
 ```
 ---
@@ -142,33 +139,81 @@ checkoffs: [T-08, T-12]
 
 Notes on authoring:
 - `log-entry` is **prepend** — write only the new entry; the pipeline puts it newest-first.
-- replace roles carry ONLY the **interior** (the lines between the ref markers, markers
+- Replace roles carry ONLY the **interior** (the lines between the ref markers, markers
   stripped — see Step 3); the applier swaps the interior in place.
-- `tasks-append` adds only NEW tasks. The id must be **bare parens right after `[ ]`**:
-  `- [ ] (T-NN) **label** — …` — NOT `- [ ] **(T-NN)**`. The checkoff locator matches
-  `^- [ ] (T-NN)`, so a bolded or misplaced id silently fails to flip later. Use a fresh
-  `(T-NN)` (one past the highest id in tasks.md). Tasks discussed
-  but not stored anywhere belong here — but this is judgment-based, so **list the
-  candidates to the user and confirm before including them.**
-- `checkoffs` lists tasks COMPLETED this session by id; don't also restate them as prose.
+- `tasks-append` adds only NEW tasks. Use the `(T-NN)` convention for new entries
+  (one past the highest `T-NN` id in tasks.md): `- [ ] (T-NN) **label** — …`
+  Tasks discussed but not stored anywhere belong here — but this is judgment-based,
+  so **list the candidates to the user and confirm before including them.**
+- `checkoffs` accepts any alphanumeric id (`T-01`, `5.R1`, `RUI-4`, `1.0`). The
+  locator finds the id anywhere within the first ~40 chars of an unchecked line, so
+  existing tasks with `**ID**` or bare-number formats are checkable without reformatting.
+  Do not restate completed tasks as prose — the id list is sufficient.
 
-Then rehearse, inspect, and apply:
+### Stage
 
 ```
-# 1) rehearse — validates locate/apply/verify, writes NOTHING:
-.claude/tools/handoff/run-handoff.sh --dry-run --payload .claude/local/handoff-pending.md
-# 2) inspect the reported regions + confirm the header session N matches your log entry
-# 3) apply for real (atomic; rolls back on any verify failure):
-.claude/tools/handoff/run-handoff.sh --payload .claude/local/handoff-pending.md
+run-handoff.sh --payload .claude/local/handoff-pending.md
 ```
+
+The pipeline validates, applies in-memory, and emits JSON to stdout. Parse it:
+
+- **`status: stage_ok`** — run staged. Check `session_number` matches your log entry.
+  The `regions` list names each role that was applied. The payload file is removed from
+  its well-known path (moved into the run dir as `input.md`).
+- **`status: validation_failed`** — payload has a schema error (e.g. missing scalar,
+  unknown role). The payload file is **untouched** — re-edit it and re-run.
+- **`status: stage_failed`** — locate/apply/verify raised an error. The payload file is
+  **untouched** (copy-don't-move). The failed run dir contains `input.md` for reference.
+  Author fresh content or fix the payload and re-stage.
 
 > In the overlay's **home** repo (where the pipeline lives in source, not installed),
 > use `overlays/session-tracking/files/handoff/run-handoff.sh` and pass
 > `--registry overlays/session-tracking/files/registry.yaml`.
 
+### Promote
+
+Once `stage_ok`:
+
+```
+run-handoff.sh --id <handle>
+```
+
+where `<handle>` comes from the `handle` field in the stage JSON. This commits all
+touched tracking files, then renames the run directory from `-pending` to `-success`.
+
+### Follow-up (amend mode)
+
+If something was missed **after promote** (e.g. a task to append, a checkoff to flip)
+use amend mode instead of out-of-band edits:
+
+```
+run-handoff.sh --payload <file> --amend
+```
+
+Amend mode:
+- **Only `append` and `checkoff` write-mode roles are allowed** — no replace-mode
+  blocks, no log-entry (those belong in the next session's normal run).
+- Scalars (`session_title`, `current_layer`) are **not required** — the header is not
+  rewritten.
+- Attaches to the **last committed session** (does not bump the session counter).
+- Commit message: `chore(session-handoff): session N — amend`.
+
+Then promote the amend run with `--id <handle>` as usual.
+
+### Abort a pending run
+
+To discard a staged run cleanly:
+
+```
+run-handoff.sh --abort <handle>
+```
+
+This renames the run dir from `-pending` to `-aborted`. **Never `rm` run dirs manually.**
+
 ## Step 5 — Report
 
-Relay the pipeline's `RunReport`: committed (with the session number) or rolled-back
+Relay the pipeline's JSON: committed (with the session number) or rolled-back
 (with the reason), and the regions touched. Then, if `git status` shows uncommitted
 changes to **non-tracking** files, list them and ask whether the user wants to commit —
 do NOT auto-commit. Finish with a short confirmation that the session is ready to close.
