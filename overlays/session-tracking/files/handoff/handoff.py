@@ -99,16 +99,20 @@ def _stage_path(args, repo_root: Path, register: dict, git) -> int:
         print(json.dumps({"status": "validation_failed", "reason": "; ".join(errors)}))
         return 2
 
-    # 2. Ingest: create run dir, move file off well-known path (rename-on-ingest)
+    # 2. Ingest: create run dir, COPY payload into run dir (not move yet).
+    #    Strategy: copy-then-delete-on-success. The copy is crash-safe: the only
+    #    destructive op (unlink of the original) is the very last step, so any crash
+    #    before that leaves the author's file intact. The run dir always gets input.md
+    #    whether the stage succeeds or fails.
     session_number = peek_session_number(repo_root, register["header-current-session"]["file"])
     run_dir = create_run_dir(repo_root, session_number, status="pending")
-    shutil.move(str(payload_path), str(run_dir / "input.md"))
+    write_input(run_dir, payload.raw)  # copy — original untouched until success
 
     # 3. Persist amend flag in sidecar so promote knows the mode without user re-input
     if amend:
         (run_dir / "mode").write_text("amend")
 
-    # 4. In-memory apply; on failure mark run dir as failed
+    # 4. In-memory apply; on failure mark run dir as failed (original file stays)
     try:
         _, region_edits = stage_and_apply(repo_root, register, payload, clock=datetime.datetime.now, amend=amend)
         report = RunReport(session_number, False, False, "", True, region_edits)
@@ -117,6 +121,9 @@ def _stage_path(args, repo_root: Path, register: dict, git) -> int:
         run_dir = mark_run_failed(run_dir)
         print(json.dumps({"status": "stage_failed", "reason": str(e)}))
         return 1
+
+    # 5. Success: free the well-known path (delete original — last destructive op)
+    payload_path.unlink()
 
     run_counts = count_runs_by_status(repo_root)
     print(json.dumps(_build_result(_handle_from_run_dir(run_dir), "stage_ok", report, run_dir, run_counts)))
