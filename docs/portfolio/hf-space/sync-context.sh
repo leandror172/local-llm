@@ -26,7 +26,7 @@ declare -A OVERRIDES=(
 )
 
 # Clean previous sync (only managed files, not manually added ones)
-rm -f "$CONTEXT_DIR"/llm-*.md "$CONTEXT_DIR"/expenses-*.md "$CONTEXT_DIR"/web-research-*.md
+rm -f "$CONTEXT_DIR"/llm-*.md "$CONTEXT_DIR"/expenses-*.md "$CONTEXT_DIR"/web-research-*.md "$CONTEXT_DIR"/career-search-*.md
 
 copied=0
 
@@ -94,5 +94,12 @@ copy_if_exists "$EXPENSES_ROOT/code/README.md"                   "expenses-readm
 copy_if_exists "$EXPENSES_ROOT/code/expense-reporter/README.md"  "expenses-reporter-readme.md"
 copy_if_exists "$WEB_RESEARCH_ROOT/README.md"                    "web-research-readme.md"
 copy_if_exists "$WEB_RESEARCH_ROOT/spike/README.md"              "web-research-spike-readme.md"
+
+# ── career-search portfolio docs (interview context → on-demand knowledge tier) ──
+CAREER_ROOT="$HOME/workspaces/career-search"
+copy_if_exists "$CAREER_ROOT/portfolio/engineer-personal-projects-profile.md" "career-search-engineer-profile-knowledge.md"
+copy_if_exists "$CAREER_ROOT/portfolio/llm-project-concept-context.md"        "career-search-llm-project-knowledge.md"
+copy_if_exists "$CAREER_ROOT/portfolio/web-research-project-context.md"       "career-search-web-research-knowledge.md"
+copy_if_exists "$CAREER_ROOT/portfolio/portfolio.md"                           "career-search-portfolio-knowledge.md"
 
 echo "Synced $copied files to $CONTEXT_DIR"

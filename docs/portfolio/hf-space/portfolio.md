@@ -51,7 +51,7 @@ Claude Code is powerful but has usage limits. Local models are unlimited but wea
 
 Every call is logged to JSONL with model, prompt, response, latency, and token counts. This log is the raw material for future fine-tuning (Layer 7).
 
-**Persona System** — 35+ specialized model configurations built from 13 base models. Each persona is a lightweight Modelfile (few KB) that shares base model weights but customizes system prompt, temperature, and context window. A registry (`registry.yaml`) makes them machine-queryable.
+**Persona System** — 50+ specialized model configurations built from 12 base models. Each persona is a lightweight Modelfile (few KB) that shares base model weights but customizes system prompt, temperature, and context window. A registry (`registry.yaml`) makes them machine-queryable.
 
 The system prompt format is intentionally minimal — a skeleton of ROLE, CONSTRAINTS, FORMAT. Verbose templates actually hurt 7-8B model performance.
 
@@ -272,7 +272,7 @@ This section captures the LLM and agent techniques being used, explored, or plan
 
 What QLoRA can fix: mechanical patterns (formatting, syntax, constraint compliance), persona behavior baked into weights (freeing ~500 tokens of constraint headers per call). What it cannot fix: output budget ceiling (~400 tokens for 8B), multi-file reasoning, novel complex logic. The correction log is the reusable asset — adapters are model-specific, but the training data transfers across model upgrades.
 
-**RAG with embeddings** — Planned for expense classification if accuracy needs improvement beyond few-shot. Would embed the 694 historical expenses and retrieve semantically similar ones, rather than relying on keyword matching. More relevant for the web research tool's knowledge layer (querying accumulated research).
+**RAG with dense embeddings** — Implemented in the LLM repo (Latent Topic Graph project): batched embedding pipeline using `qwen3-embedding:8b` (4096-dim), LanceDB vector store with Apache Arrow schema, and a 5-mode query CLI including ANN search and cosine-similarity relate. All on master, 69-topic index generated and verified. The embedding model was selected over bge-m3 after an empirical VRAM co-residence probe — decision rationale documented in `retrieval/DECISIONS.md`. For the expense classifier, RAG via embeddings remains planned (keyword-based few-shot is the current approach).
 
 ### Planned (Layers 7-9)
 
@@ -294,7 +294,7 @@ What QLoRA can fix: mechanical patterns (formatting, syntax, constraint complian
 | Expense CLI | Go / Cobra | Product application |
 | Web research | Python / Crawl4AI / SearXNG | Extraction + research pipeline |
 | Benchmarking | Python + Bash + Puppeteer | Multi-language validation |
-| Persona management | YAML + Modelfiles | 35+ specialized configurations |
+| Persona management | YAML + Modelfiles | 50+ specialized configurations |
 | Session continuity | Bash + Markdown + Overlays | Cross-session context preservation |
 | Models | Qwen2.5-Coder (7B/14B), Qwen3 (8B/14B/30B), DeepSeek (R1-14B, Coder-V2-16B) | Multi-tier local inference |
 
