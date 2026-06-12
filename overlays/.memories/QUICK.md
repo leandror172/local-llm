@@ -1,39 +1,17 @@
-# overlays/ — Quick Memory
+# Overlays — Quick Status
 
-*Working memory for the overlay system. Keep under 30 lines.*
+## session-tracking overlay
+- **Version:** v5 (2026-06-12)
+- **Status:** stage/promote + session-29 feedback fixes COMPLETE — `--payload` (stage) / `--id` (promote) / `--amend` / `--abort`
+- **Tests:** 126 green (full handoff suite)
+- **Installed in:** expenses/code, web-research, career-search (all v5, byte-verified per-file with cmp)
+- **PR:** #52 on `feature/handoff-redesign-stage-promote` (stacked on feature/ltg-phase3-anchors)
+- **Key files:** `overlays/session-tracking/files/handoff/` (source), `overlays/session-tracking/manifest.yaml`
+- **SKILL.md:** ACTUALLY rewritten 2026-06-12 (commit 979f66f) — the session-88 commit 75886bb claimed it but only touched manifest.yaml. All 3 copies (overlay/project/user) byte-identical, --dry-run gone
+- **Pipeline entry:** `run-handoff.sh` → `handoff.py` — `--payload` stage, `--id <handle>` promote, `--payload f.md --amend` follow-up to last committed session (append+checkoff only, no scalars/header), `--abort <handle>` discard pending run
+- **Idempotency:** `--id` checks commit by title suffix (not session number); skipped for amend (never writes header)
+- **Session-29 feedback (expenses) fixes:** error messages name regions `role(target)@file:line` + say WHY scalars required; failed stage leaves payload at original path (copy, unlink-last); T-57 `_effective_range` fix now propagated (expenses had stale verifier.py — root cause of their P2)
+- **Feedback report:** `~/workspaces/expenses/code/.claude/local/handoff-pipeline-feedback-session29.md` (P1–P5, all closed)
 
-## Status
-
-3 overlays operational, installed in expenses repo (all 3) and web-research repo (ref-indexing).
-Manifest-driven installer with manual and AI-assisted merge modes.
-
-Sessions 84–87: the `session-tracking` overlay gained a deterministic handoff pipeline under `session-tracking/files/handoff/` — F1–F7 + per-run logging + entrypoint (`handoff.py`/`registry_io.py`/`run-handoff.sh`) + manifest install layout + rewritten `SKILL.md`. **B1–B4 complete — Scope A done, dog-food-validated** (clone run found+fixed a newline-glue bug). Register ships via `manual_if_exists` (Option C: propagate-with-flag). **PR #50** open (stacked on `feature/ltg-phase3-anchors`). Home repo (llm) activated via a **project-level** skill — runs from the `files/` source path with `--registry`, code not installed under `.claude/tools/` (avoids duplicating the source). Architecture → KNOWLEDGE.md.
-Session 86 (2026-06-09): **flexible task ID checkoff** — checkbox-first locator + broadened ID regex. **88 tests, overlay v3.** Distribution options analysis (9 options, A–I) at `ref:overlay-distribution-options` in `docs/findings/`.
-Session 89 (2026-06-11): **stage/promote redesign designed + planned** — replaces `--dry-run --payload` two-call flow with rename-on-ingest + stage/promote. Design: `docs/ideas/handoff-mcp-migration.md`. Implementation plan: `~/.claude/plans/handoff-redesign-rename-on-ingest.md`. New tasks: T-55 (MCP/deferred), T-56 (add-task tool), T-57 (overlap bug fix — `.claude/handoff/overlap-bug-report.md`). Branch: `feature/handoff-redesign-stage-promote`.
-
-## What Overlays Are
-
-Installable packages of tools, documentation sections, and AI agent rules for
-Claude Code projects. Each overlay solves one cross-cutting concern:
-
-| Overlay | Purpose |
-|---------|---------|
-| **ref-indexing** | `<!-- ref:KEY -->` documentation blocks + lookup CLI + integrity checker |
-| **ollama-scaffolding** | Local model conventions: verdict protocol, retry policy, warm-up |
-| **session-tracking** | Session continuity: resume.sh, rotate-session-log.sh, handoff skill |
-
-## Installation
-
-```
-./overlays/install-overlay.py <name> --target /path/to/repo [--mode ai]
-```
-
-Modes: manual (prints TODO list) or AI (plans + applies CLAUDE.md merges automatically).
-Idempotent — re-running produces all [SKIP].
-
-## Deeper Memory -> KNOWLEDGE.md
-
-- **Merge Markers** — version tracking, idempotent updates
-- **AI Backend Abstraction** — Ollama, Claude CLI, Claude API
-- **Manifest Schema** — files, templates, sections, append_lines
-- **Cross-Repo Value** — why overlays exist (consistency across 3 repos)
+## ref-indexing overlay
+- No changes this session

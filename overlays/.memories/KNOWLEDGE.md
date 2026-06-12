@@ -125,3 +125,46 @@ trailing blank, so `payload.py` returned non-newline-terminated content, and app
 the line onto the closing marker. Fixed at the seam (`_normalize_block` in `_collect_edits`), NOT in the
 safety core: the applier/verifier share an implicit "content is newline-terminated" contract and must
 stay byte-identical, so normalize once upstream where both consume the same `items`.
+
+## Stage/promote redesign (sessions 89–90) — IMPLEMENTED
+
+- **Status:** COMPLETE — PR #52 open, 126 tests green, overlay v5 propagated to 3 repos (byte-verified)
+- **`--payload` (stage):** validate → ingest (copy payload into run dir) → locate+apply+verify in memory → emit JSON handle; dir stays `-pending`; original payload deleted only on success (unlink is the LAST op — crash-safe, failed stage leaves the author's file in place)
+- **`--id` (promote):** find `-pending` run → idempotency check by commit-title suffix → `run_handoff` → rename dir to `-success`/`-failed`
+- **Idempotency key insight:** check commit-title suffix, NOT session number — after first commit the header updates and `peek_session_number` returns N+1 (false-miss on crash-recovery)
+- **T-57 fix:** `_effective_range` in `verifier.py` collapses append→insertion-point and checkoff→3-byte range; reconstruction sort matches applier's stable-sort-descending for equal-start regions
+
+## Session-29 feedback round (2026-06-12) — five fixes from expenses field report
+
+The first real-world run in expenses (session 29) surfaced 5 problems (P1–P5, report at
+`~/workspaces/expenses/code/.claude/local/handoff-pipeline-feedback-session29.md`). Root-cause
+analysis found TWO meta-failures beyond the pipeline itself: (a) commit 75886bb *claimed* the
+SKILL.md rewrite (T5) but only touched manifest.yaml — the work never existed, so every SKILL.md
+still taught the removed `--dry-run`; (b) the v4 propagation was PARTIAL — expenses had a stale
+`verifier.py` without `_effective_range`, so they hit the already-fixed T-57 overlap on the most
+common payload shape (checkoffs + tasks-append).
+
+Fixes (commits f6d1116, 771ea5c, bba6cce, 0fdb42f, 979f66f):
+- **Error specificity (P-msg):** overlap errors name both regions `role(target)@file:line`;
+  validation errors state WHY ("required because this run bumps the Current Session header").
+  Rationale: converts every failure from "read pipeline source" (~5 calls) into "fix payload" (1 call).
+- **`--amend` (P4+P5):** follow-up run attached to LAST COMMITTED session N (derived, never typed);
+  append+checkoff modes only (prepend excluded — a log-entry prepend would duplicate the session
+  heading); scalars not required; no header write; idempotency check skipped; commit suffix `— amend`.
+  Design principle: the recovery path is strictly LESS powerful than the happy path — worst possible
+  amend mistake is a duplicate appended task. Mode persisted in `<run_dir>/mode` sidecar.
+- **`--abort <handle>`:** renames `-pending`→`-aborted`. Every missing CLI verb becomes an ad-hoc
+  `rm` invented under pressure; this closes that gap.
+- **Copy-don't-move (P3):** stage copies payload to `input.md` up front; unlink-original is the final
+  step on success only. Failed/crashed stage never consumes the author's file.
+- **SKILL.md (P1):** rewritten for the real CLI; exact pre-flight one-liner with correct empty-output
+  semantics; the 3 copies (overlay source / llm project / user-level) unified byte-identical — the
+  overlay+user copies also had a WRONG checkoff description (claimed bolded ids fail; locator.py is
+  flexible) that the project copy had right.
+
+**Process learnings:** (1) overlay propagation needs a verify step — per-file `cmp` against source
+caught nothing wrong this time only because we ran it; consider an installer `--verify` mode.
+(2) "Task done" claims in commit messages/memory are unverified — T5 was recorded done in QUICK.md
+and a commit message while no diff existed. (3) Subagent review must re-derive invariants, not trust
+green tests: review caught an amend stage/promote session-number mismatch (N+1 vs N — would have
+recreated the exact "session 30 surprise") and the prepend allowlist hole, both behind passing tests.
