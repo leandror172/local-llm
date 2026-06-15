@@ -24,12 +24,6 @@ AMEND_PAYLOAD_WITH_REPLACE = textwrap.dedent("""\
     current_layer: Layer X
     checkoffs: [T-99]
     ---
-    ## role: log-entry
-
-    ## 2026-06-05 - Session 84: amend test
-
-    appended entry body
-
     ## role: current-status
 
     new status here
@@ -45,7 +39,8 @@ AMEND_PAYLOAD_OK = textwrap.dedent("""\
     ---
 """)
 
-# Payload with only a log-entry (prepend) role — must be rejected in amend mode
+# Payload with only a log-entry (structured slots) — must be rejected in amend mode
+# (log-entry is prepend mode; amend is additive-only: append+checkoff only)
 AMEND_PAYLOAD_PREPEND_ONLY = textwrap.dedent("""\
     ---
     session_title:
@@ -54,9 +49,11 @@ AMEND_PAYLOAD_PREPEND_ONLY = textwrap.dedent("""\
     ---
     ## role: log-entry
 
-    ## 2026-06-05 - Session 84: amend test
+    ### what_was_done
+    - appended entry body
 
-    appended entry body
+    ### next
+    - next thing
 
 """)
 

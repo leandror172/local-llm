@@ -52,11 +52,15 @@ PAYLOAD = textwrap.dedent("""\
     ---
     ## role: log-entry
 
-    ## 2026-06-05 - Session 85: CLI test
+    ### context
+    resumed from prior session
 
-    new entry body
+    ### what_was_done
+    - tested the CLI stage/promote flow
 
-    ---
+    ### next
+    - run full suite
+
     ## role: current-status
 
     new status here

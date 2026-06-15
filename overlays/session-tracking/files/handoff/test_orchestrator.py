@@ -17,6 +17,7 @@ import orchestrator
 from orchestrator import run_handoff, stage_and_apply, HandoffPayload
 from gitio import SubprocessGit
 from verifier import VerifyError
+from mechanics import LogEntry
 
 
 CLOCK = lambda: datetime.datetime(2026, 6, 5, 14, 30, 0)
@@ -81,9 +82,13 @@ def _payload():
         session_title="F6 test",
         current_layer="New layer text",
         blocks={
-            "log-entry": "\n## 2026-06-05 - Session 85: F6 test\n\nnew entry body\n\n---\n",
             "current-status": "\nnew status here\n",
         },
+        log_entry=LogEntry(
+            context="resumed from B4 test",
+            what_was_done=["tested the F6 orchestrator"],
+            next=["do B4.2"],
+        ),
         checkoffs=["T-99"],
         raw="verbatim payload text",
     )
@@ -159,7 +164,7 @@ def test_happy_path_applies_commits_and_logs(tmp_path):
     log = (root / ".claude/session-log.md").read_text()
     assert "**Current Session:** 2026-06-05 — Session 85: F6 test" in log
     assert "**Current Layer:** New layer text" in log
-    assert "new entry body" in log
+    assert "tested the F6 orchestrator" in log  # rendered from LogEntry.what_was_done
 
     ctx = (root / ".claude/session-context.md").read_text()
     assert "new status here" in ctx and "old status" not in ctx
@@ -246,6 +251,7 @@ def test_append_block_without_trailing_newline_keeps_marker_on_its_line(tmp_path
         session_title="append test",
         current_layer="L",
         blocks={"tasks-append": "- [ ] (T-11) new task"},  # NO trailing newline
+        log_entry=None,
         checkoffs=[],
         raw="x",
     )
