@@ -79,7 +79,7 @@ def apply_field(text: str, region: Region, value: str) -> str:
     return text[:region.start] + value + text[region.end:]
 
 
-def rotate(repo_root: Path, keep: int = 3) -> CompletedProcess:
+def rotate(repo_root: Path, keep: int = 1) -> CompletedProcess:
     """Run the rotate-session-log.sh script with --keep argument."""
     script_path = repo_root / ".claude" / "tools" / "rotate-session-log.sh"
     result = run(
