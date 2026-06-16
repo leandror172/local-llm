@@ -64,9 +64,21 @@ the pipeline refuses a `nomodel` role appearing as a block.
 
 ## Step 2 — Gather the session summary
 
+**First, seed `what_was_done` from the git log** — run this before reviewing the conversation:
+
+```
+.claude/tools/handoff-harvest.sh
+```
+
+This emits the commit subjects since the last `chore(session-handoff):` commit (or the
+last 20 commits with a stderr note if no handoff commit exists). Use those subjects as the
+deterministic skeleton for `### what_was_done` in the `log-entry` block. The model only
+adds what the commits don't capture (e.g. a decision rationale, an abandoned approach, a
+discovery that left no commit). Do not re-derive the commit list from memory.
+
 From the conversation (seeded by `$ARGUMENTS` if the user supplied a focus), identify:
 
-- **What was done** — tasks completed, files created/modified, decisions made.
+- **What was done** — commits from `handoff-harvest.sh` (above) plus any non-commit context.
 - **What was decided** — design choices and deferred items, with rationale if non-obvious.
 - **What's next** — the pending work / next task the following session should start with.
 - **New gotchas** — anything surprising worth recording.
@@ -85,6 +97,13 @@ Fetch the small bounded block — **not the whole file** — via `ref-lookup.sh`
 .claude/tools/ref-lookup.sh session-reading-guide
 .claude/tools/ref-lookup.sh user-prefs        # only if it actually changed
 ```
+
+**Reuse resident interiors — do not re-fetch what you already have.** If a replace-mode
+block was already pulled into your context earlier this session (e.g. via a `ref-lookup.sh`
+call, a `Read`, or a `resume.sh` run that emitted its content), use that resident copy
+as the authoring base. Re-running `ref-lookup.sh` for an already-seen interior duplicates
+already-resident content in a second form and wastes context. Only fetch interiors you
+have not yet seen this session.
 
 **Strip the marker lines.** `ref-lookup.sh` prints the block WITH its surrounding
 `<!-- ref:KEY -->` and `<!-- /ref:KEY -->` lines. The payload section must carry ONLY
