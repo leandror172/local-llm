@@ -1,30 +1,36 @@
 # Session Log
 
 **Current Layer:** Layer 5 — Expense Classifier
-**Current Session:** 2026-06-12 — Session 89: Handoff pipeline — session-29 feedback fixes (P1–P5), --amend/--abort, overlay v5
+**Current Session:** 2026-06-16 — Session 90: Handoff topology/value-only/harvest redesign (P1–P5) + 4-repo migration + PR #52
 
 ---
-
-## 2026-06-12 - Session 89: Handoff pipeline — session-29 feedback fixes (P1–P5), --amend/--abort, overlay v5
+## 2026-06-16 - Session 90: Handoff topology/value-only/harvest redesign (P1–P5) + 4-repo migration + PR #52
 
 ### Context
-Expenses repo session 29 ran the new stage/promote pipeline in the field and hit 1 failed stage, 1 aborted stage, and 1 out-of-band manual edit; the executing agent left a feedback report (`~/workspaces/expenses/code/.claude/local/handoff-pipeline-feedback-session29.md`, P1–P5). This session analyzed it, then fixed everything via Sonnet subagents with main-session review.
+
+Continuation of the session-handoff redesign across /compact boundaries — P1–P2 (latest-only topology, value-only payload) landed earlier; this window drove P3–P5, the live data migration, and the end-to-end smoke test.
 
 ### What Was Done
-- **Root-cause analysis:** (a) commit 75886bb *claimed* the T5 SKILL.md rewrite but only touched manifest.yaml — every SKILL.md copy still taught the removed `--dry-run` (P1); (b) the v4 propagation to expenses was PARTIAL — stale `verifier.py` without `_effective_range` caused their P2 overlap failure on the already-fixed bug.
-- **P-msg** (`f6d1116`): overlap errors name both regions `role(target)@file:line`; validation errors state WHY a field is required.
-- **`--amend` + `--abort`** (`771ea5c`, `0fdb42f`): amend attaches additive-only runs (append+checkoff modes; prepend excluded to prevent duplicate session headings) to the last committed session — derived from git, scalars not required, no header write, idempotency skipped, commit suffix `— amend` (closes P4+P5). `--abort <handle>` renames pending→`-aborted` (no manual rm).
-- **Copy-don't-move** (`bba6cce`): stage copies payload to `input.md` up front; unlink-original is the last op on success only — failed/crashed stage never consumes the author's file (closes P3).
-- **SKILL.md recovery** (`979f66f`): genuine stage/promote rewrite + amend/abort + exact pre-flight one-liner; overlay/project/user copies byte-identical; fixed a wrong checkoff description in 2 of 3 copies (closes P1).
-- **Overlay v5 propagated** to expenses, web-research, career-search — all 10 runtime modules + run-handoff.sh byte-verified with per-file `cmp`; registries untouched (`manual_if_exists`).
-- **126 tests green** (was 44 claimed / 105 actual baseline). PR #52 body rewritten (REST API; gh GraphQL path broken by deprecated projectCards). README + index.md stale `--dry-run` refs fixed; overlays QUICK/KNOWLEDGE updated (also repaired corrupted lines in KNOWLEDGE.md stage/promote section).
+
+- **P3** (`8e55a66`): `handoff-harvest.sh` seeds `what_was_done` from `git log` since the last handoff; SKILL Step 2 calls it, Step 3 reuses resident interiors instead of re-`ref-lookup`. 5 hermetic tests.
+- **P4** (`82ef14f`): manifest v5→v6; overlay installed into expenses/code, web-research, career-search — every `files:` entry byte-verified with `cmp` (14/14 per repo); per-consumer SKILL update (global + project-level shadows); llm installed rotate/harvest refreshed; target registries left untouched (`manual_if_exists`).
+- **Data migration**: all 4 repos' `session-log.md` migrated to latest-only (`rotate --keep 1` + drop the `Previous logs:` line, incl. expenses/code's multi-line wrapped pointer); career-search's byte-identical duplicate Session 56 collapsed (healed). Commits `eefcdfa` (llm), `d2714c0`/`77ff98b`/`4e500fe` (targets).
+- **P5** (`823e292`): overlays QUICK/KNOWLEDGE + plan status → IMPLEMENTED; auto-memory updated; PR #52 retitled + body extended (166 tests).
+- **Advisor-gated end-to-end smoke test**: SKILL-authored value-only payload → parse → render → prepend locator (anchored in the migrated header) → F4 verify → `stage_ok` (Session 90); aborted cleanly, tracking tree untouched. First true integration run of the new path.
 
 ### Decisions Made
-- **Minimal `--amend` over `--session N`:** recovery path is strictly LESS powerful than the happy path — session number derived never typed (preserves the F5 nomodel-fence philosophy); worst amend mistake is a duplicate appended task.
-- **Subagent workflow:** Sonnet subagents did implementation (authorized to use advisor()); main-session review re-derived invariants and caught 2 real bugs behind green tests (amend stage reported N+1 while promote committed N; prepend allowlist hole letting log-entry duplicate session headings).
-- **Process learnings recorded in overlays KNOWLEDGE.md:** propagation needs a verify step; "done" claims in commits/memory are unverified; review must re-derive, not trust test counts.
+
+- **D1 = value-only 2-full**, **D2 = clean break (v6, lockstep migration, no dual-accept)** — finalized and shipped.
+- **Target registries left untouched**: the orphaned `header-previous-logs` role is inert because the pipeline only walks payload→register, never the reverse (verified in source).
+- **PR #52 merges with 3 unrelated commits** (app.py SSR fix, sync-context.sh pair) — confirmed acceptable scope.
 
 ### Next
-- Merge PR #52 (rebase `feature/ltg-phase3-anchors` onto master first if landing separately)
-- LTG Phase 3: rebase `feature/ltg-phase3-anchors` onto master, write `retrieval/anchors.py` TDD per `ref:ltg-phase3-decisions`
+
+- Merge PR #52 (approved; `feature/ltg-phase3-anchors` already in master, no rebase needed).
+- Resume LTG Phase 3 — write `anchors.py` (TDD); decisions frozen session 82 (`ref:ltg-phase3-decisions`).
+
+### Gotchas
+
+- `handoff-harvest.sh` keys off `^chore(session-handoff):`, which also matched the P4 commit (it reused that prefix), so harvest returned only 2 of this session's commits — a false boundary. Non-handoff commits should not reuse the prefix, or harvest should match `^chore(session-handoff): session ` (the promote format). See T-59.
+- The live handoff that recorded THIS entry is itself the production end-to-end test of the new value-only pipeline.
 
