@@ -1,4 +1,4 @@
-# Overlays — Quick Status
+# Overlays — Quick Memory
 
 ## session-tracking overlay
 - **Version:** v6 (2026-06-16)
