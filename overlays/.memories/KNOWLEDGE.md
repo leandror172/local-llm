@@ -168,3 +168,47 @@ caught nothing wrong this time only because we ran it; consider an installer `--
 and a commit message while no diff existed. (3) Subagent review must re-derive invariants, not trust
 green tests: review caught an amend stage/promote session-number mismatch (N+1 vs N — would have
 recreated the exact "session 30 surprise") and the prepend allowlist hole, both behind passing tests.
+
+## Session-90 redesign — latest-only topology + value-only + harvest (2026-06-16) — IMPLEMENTED
+
+This round cut the *token cost of AUTHORING a handoff* (the prior work cut the mechanical apply cost).
+Three increments + a one-time data migration; manifest v5→v6 (clean break, D2). 126→166 tests green.
+
+- **Latest-only topology (P1):** `session-log.md` holds exactly the newest entry. `rotate-session-log.sh`
+  archives EACH spilled entry into its own `session-log-<date>-s<N>-<slug>.md` (slug = lowercased,
+  alnum→hyphen, ≤40 chars; fallback `sNN`) and runs with `--keep 1`. The `header-previous-logs` role is
+  dropped from `registry.yaml` and the ~46-ref `Previous logs:` pointer line is gone — the archive dir +
+  slugged filenames ARE the index. Rationale: the single growing file + giant pointer line was the bloat;
+  self-identifying per-entry files mirror the user's `/export` naming and pair with exported transcripts.
+- **Value-only payload (P2, D1=2-full):** `log-entry` became structured snake_case sub-slots; the pipeline
+  renders ALL scaffold (the `## <date> - Session N: <title>` heading from date + derived N + session_title,
+  plus `### Context/What Was Done/Decisions Made/Next/Gotchas` + bullets). New: `LogEntry` dataclass +
+  `render_log_entry()` (mechanics.py), `HandoffPayload.log_entry` + slot parser (payload.py); orchestrator
+  computes `header_values` once and renders log-entry with the SAME `session_number`. CRITICAL: `parse()`
+  excludes log-entry from `payload.blocks` to prevent double-apply; the session-86 newline contract is
+  double-guarded (`render_log_entry` rstrips then re-adds one `\n`; `_normalize_block` still wraps). Field
+  names kept aligned with the deferred local-model Placer schema (forward-compatible). Clean break: the old
+  free-block `log-entry` form is rejected with a migration error.
+- **Git-log harvest (P3):** `handoff-harvest.sh` = `git log <newest chore(session-handoff):>..HEAD
+  --format=%s` (fallback: last 20 + stderr note). Seeds `what_was_done` deterministically — zero model,
+  zero re-read. SKILL Step 2 calls it as the skeleton; Step 3 adds "reuse replace-mode interiors already
+  resident in context rather than re-`ref-lookup`" (attacks the duplicate-resident-content failure mode iii).
+- **Propagation (P4):** manifest v5→v6; installed into expenses/code, web-research, career-search; every
+  `files:` entry byte-verified with `cmp` (14/14 per repo — the ONLY safety net, targets ship no tests).
+  SKILL is per-consumer: global `~/.claude/skills/` serves web-research+career-search; expenses/code and
+  llm have project-level copies that SHADOW the global (force-cp each — `user_files` is skip-if-present).
+  llm runs the engine from source but calls rotate by the INSTALLED path, so its installed rotate + harvest
+  were refreshed too. Target registries left untouched (`manual_if_exists`) — confirmed safe: the pipeline
+  only walks payload→register, never register→payload, so the orphaned `header-previous-logs` role is inert.
+- **Data migration (one-time, all 4 repos):** live `session-log.md` migrated to latest-only via
+  `rotate --keep 1` + an `awk` that drops the `Previous logs:` block (handles single-line AND multi-line
+  WRAPPED pointers — expenses/code's spanned ~40 lines). career-search had a byte-identical duplicate
+  `Session 56`; the migration collapsed it to one archive (heal, not loss). Discipline: inspect → dry-run →
+  byte-diff → verify, before writing any live tracking file — it turned two latent corruptions into
+  verified-safe ops.
+
+**Why this matters:** the handoff is expensive at the worst moment (context near-full, end of session,
+maybe Sonnet, maybe usage-limit cliff). Value-only + harvest move authoring cost OFF the main window;
+latest-only keeps the resident file small. The value schema is also the contract the deferred local-model
+Placer (E1–E2) will fill via structured output. Increment-4 (separate-window synthesis sourced from the
+persisted transcript JSONL, for the budget-cliff case) is documented only — build later.

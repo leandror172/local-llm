@@ -1,10 +1,10 @@
 # Session-Handoff — Topology + Value-Only Payload + Git-Harvest
 
-> Status: **planned, not built.** Captures the session-90+ discussion to cut the token
-> cost of the end-of-session handoff. Builds on the deterministic spine
-> (`ref:handoff-pipeline-design`) and the deferred Placer (`ref:handoff-placer-enhancement`).
-> Three increments land now (1–3); the separate-window synthesis escalation (4) is
-> documented only.
+> Status: **IMPLEMENTED (session 90, 2026-06-16).** Increments 1–3 built, propagated to all
+> 3 target repos, and the live `session-log.md` migrated to latest-only in all 4 repos.
+> Manifest v6, 166 tests green, PR #52. Increment 4 (separate-window synthesis) remains
+> documented-only. Builds on the deterministic spine (`ref:handoff-pipeline-design`) and the
+> deferred Placer (`ref:handoff-placer-enhancement`).
 
 ## Problem
 
