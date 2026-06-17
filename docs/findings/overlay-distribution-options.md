@@ -115,4 +115,38 @@ minimal change to the installer's manifest handling.
 **Long-term:** Option G (dedicated MCP server) — most architecturally clean for a Claude
 Code-native setup, eliminates per-repo files with no new external dependencies.
 Option H if the pipeline needs to be shared outside this machine.
+
+## Decision (2026-06-17)
+
+**Implemented: B+C** — Python pipeline modules always user-level (`~/.claude/tools/handoff/`);
+per-repo artifact is a thin `run-handoff.sh` shim that delegates there.
+
+### Design choices made
+
+- **`--install-level` flag** (renamed from `--skill-level`) controls shim + SKILL.md placement
+  (`user` default → `~/.claude/`; `project` → per-repo `.claude/`). Python files are
+  unconditionally user-level via a new `always_user_files:` manifest key — the flag does not
+  affect them.
+- **Registry always per-repo** — encodes repo-specific file paths, ref keys, and locator
+  types. Neither user-level nor flag-controlled. Remains `manual_if_exists`.
+- **Hooks always per-repo** — user-level hooks fire in ALL repos including those without the
+  overlay. The shim includes a registry guard (`exit 0` if `.claude/handoff/registry.yaml`
+  absent) so any hook invoking the shim is safe at user level if desired in future.
+- **D (pip editable install) deferred** — B+C already delivers the decoupling goal (shim
+  points to `~/.claude/`, not the llm repo). D would clean up the shim further and pre-stage
+  H, but adds pip/venv complexity with no immediate benefit. Adopt when H becomes concrete.
+
+### Migration performed
+
+All 3 target repos (expenses/code, web-research, career-search) committed:
+- `run-handoff.sh` rewritten as thin shim with registry guard
+- 10 per-repo `.py` files deleted (now shared at `~/.claude/tools/handoff/`)
+- llm home-repo unchanged (runs engine from overlay source; not installed)
+
+### Deferred: G and H
+
+**G (dedicated MCP server)** and **H (Claude Code plugin)** remain the long-term targets.
+Both require evaluating the MCP server lifecycle and plugin API contract respectively.
+Tracked as T-60. The shim is the stable per-repo seam: migrating to G or H only requires
+changing one line in the shim (or regenerating it via the installer).
 <!-- /ref:overlay-distribution-options -->
