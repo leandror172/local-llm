@@ -52,16 +52,19 @@ the manifest; the overlay author declares intent.
 **Implication:** Adding a new overlay requires only a manifest and content files,
 no changes to the installer itself.
 
-## User-Level vs Project-Level Skills (2026-03)
+## User-Level vs Project-Level Install (2026-03, updated 2026-06-17)
 
-Some overlays install Claude Code skills. `--skill-level user` puts them in
-`~/.claude/skills/` (available in all repos). `--skill-level project` puts them
-in the repo's `.claude/skills/` (repo-specific). Default is user-level.
+`--install-level` (renamed from `--skill-level`) controls where the run-handoff shim
+and SKILL.md land: `user` (default) → `~/.claude/`; `project` → `.claude/` per-repo.
+Pipeline `.py` modules always go to `~/.claude/tools/handoff/` regardless of this flag
+(`always_user_files:` manifest key). The shim includes a registry guard so user-level
+hooks no-op in repos without the overlay installed.
 
-**Rationale:** Skills like session-handoff and create-persona are useful everywhere,
-not just in one repo. User-level avoids duplicating them across projects.
-**Implication:** User-level skills are not version-controlled per repo. Changes
-require updating the user-level installation separately.
+**Rationale:** Skills and shims are useful everywhere; user-level avoids duplicating
+them. Pipeline modules must be shared (one copy, no drift). Self-contained repo install
+still possible with `--install-level project`.
+**Implication:** Per-repo installs only store the shim + SKILL.md + registry + templates;
+Python files are always a machine-level shared resource.
 
 ## Session-Handoff Pipeline Architecture (2026-06)
 
