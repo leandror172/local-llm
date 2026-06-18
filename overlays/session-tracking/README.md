@@ -37,6 +37,23 @@ original path. Follow-up verbs: `--payload <file> --amend` attaches an additive-
 seam **and** the handoff-owned-vs-content boundary — every ref key NOT listed in it is content
 the pipeline must never touch.
 
+### Failure diagnostics (every failure says where, whose fault, and what)
+
+The stage CLI emits a JSON `status` that classifies the failure so the author never has to read
+pipeline source to understand it:
+
+| `status` | Meaning | What to do |
+|----------|---------|------------|
+| `stage_ok` / `committed` | Success | Promote (`--id`) / done |
+| `validation_failed` | Payload schema error (missing scalar, unknown role) | Payload untouched — re-edit and re-stage |
+| `payload_error` | Your content is wrong (ref block not found, checkoff a non-existent task id) | Read `reason` (it names the file + role + specific target), fix, re-stage |
+| `internal_tool_bug` | A pipeline invariant broke (applier/verifier disagree) | NOT your fault — `reason` cites the run's `input.md`; file a report, don't re-author |
+
+Messages name **where** (file + role, e.g. `tasks-checkoff(T-02)@.claude/tasks.md`), **whose fault**
+(a `kind` attribute on each pipeline exception routes payload-fault vs internal-fault), and **what**
+(a first-diff byte context for verifier mismatches). A `tasks-append` and a `checkoffs:` entry targeting
+the same file in one run is fully supported.
+
 ## Usage
 
 ```bash
