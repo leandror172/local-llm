@@ -9,6 +9,7 @@
 # A clean-tree precondition on the tracking files makes the second layer sound.
 
 import datetime
+from dataclasses import replace as _replace
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
@@ -63,9 +64,13 @@ def run_handoff(
             repo_root, register, payload, clock=clock, amend=amend
         )
     except LocatorError as exc:
-        return _fail(run_dir, session_number, f"locate failed: {exc}", verify_ok=False, edits=[])
+        return _fail(run_dir, session_number,
+                     f"[{getattr(exc,'kind','payload')}] locate failed: {exc}",
+                     verify_ok=False, edits=[])
     except VerifyError as exc:
-        return _fail(run_dir, session_number, f"verify failed: {exc}", verify_ok=False, edits=[])
+        return _fail(run_dir, session_number,
+                     f"[{getattr(exc,'kind','internal')}] verify failed: {exc}",
+                     verify_ok=False, edits=[])
 
     # 3. Write, rotate, commit — git checkout is the rollback net.
     try:
@@ -123,6 +128,17 @@ def _normalize_block(content: str) -> str:
     return content if content.endswith("\n") else content + "\n"
 
 
+def _enrich(region: Region, role: str, role_def: dict, target: str = "") -> Region:
+    """Attach diagnostic metadata so downstream errors can name the source."""
+    return _replace(region, role=role, file=role_def.get("file", ""), target=target)
+
+
+def _target_of(role_def: dict) -> str:
+    """Return the locator's key/label for use as a diagnostic target string."""
+    loc = role_def.get("locator", {})
+    return loc.get("key") or loc.get("label") or ""
+
+
 def _collect_edits(repo_root, register, payload, *, clock, amend: bool = False) -> Dict[str, List[Tuple[str, Region, str]]]:
     cache: Dict[str, str] = {}
 
@@ -139,13 +155,15 @@ def _collect_edits(repo_root, register, payload, *, clock, amend: bool = False) 
     for role, content in payload.blocks.items():
         role_def = register[role]
         rel = role_def["file"]
-        add(rel, role, locate(role_def, text_of(rel)), _normalize_block(content))
+        region = _enrich(locate(role_def, text_of(rel)), role, role_def, _target_of(role_def))
+        add(rel, role, region, _normalize_block(content))
 
     if payload.checkoffs:
         role_def = register["tasks-checkoff"]
         rel = role_def["file"]
         for task_id in payload.checkoffs:
-            add(rel, "tasks-checkoff", locate(role_def, text_of(rel), task_id=task_id), "")
+            region = _enrich(locate(role_def, text_of(rel), task_id=task_id), "tasks-checkoff", role_def, task_id)
+            add(rel, "tasks-checkoff", region, "")
 
     if not amend:
         # Compute header values once — session_number is the single source of truth
@@ -170,7 +188,8 @@ def _collect_edits(repo_root, register, payload, *, clock, amend: bool = False) 
                 session_number=header_values["session_number"],
                 session_title=payload.session_title,
             )
-            add(rel, "log-entry", locate(role_def, text_of(rel)), _normalize_block(rendered))
+            region = _enrich(locate(role_def, text_of(rel)), "log-entry", role_def)
+            add(rel, "log-entry", region, _normalize_block(rendered))
 
     return grouped
 
@@ -180,7 +199,7 @@ def _add_header_edits_from_values(register, values, text_of, add) -> None:
     keyed = {"header-current-session": "current_session", "header-current-layer": "current_layer"}
     for role in HEADER_ROLES:
         role_def = register[role]
-        region = locate(role_def, text_of(role_def["file"]))
+        region = _enrich(locate(role_def, text_of(role_def["file"])), role, role_def, _target_of(role_def))
         add(role_def["file"], role, region, values[keyed[role]])
 
 

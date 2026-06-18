@@ -131,7 +131,7 @@ def test_failed_stage_original_file_stays(tmp_path):
 
     assert result.returncode != 0
     out = json.loads(result.stdout)
-    assert out["status"] == "stage_failed"
+    assert out["status"] in ("payload_error", "internal_tool_bug")
     # Original file must still exist at the original path
     assert well_known.exists(), "Original file must remain after failed stage"
     assert well_known.read_text() == original_content
@@ -149,7 +149,7 @@ def test_failed_stage_run_dir_has_input_md(tmp_path):
 
     assert result.returncode != 0
     out = json.loads(result.stdout)
-    assert out["status"] == "stage_failed"
+    assert out["status"] in ("payload_error", "internal_tool_bug")
     runs_folder = root / ".claude" / "local" / "handoff-runs"
     failed_dirs = [d for d in runs_folder.iterdir() if d.name.endswith("-failed")]
     assert len(failed_dirs) == 1, "Should have exactly one -failed dir"
