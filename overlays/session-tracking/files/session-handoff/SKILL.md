@@ -198,13 +198,18 @@ The pipeline validates, applies in-memory, and emits JSON to stdout. Parse it:
   its well-known path (moved into the run dir as `input.md`).
 - **`status: validation_failed`** — payload has a schema error (e.g. missing scalar,
   unknown role). The payload file is **untouched** — re-edit it and re-run.
-- **`status: stage_failed`** — locate/apply/verify raised an error. The payload file is
-  **untouched** (copy-don't-move). The failed run dir contains `input.md` for reference.
-  Author fresh content or fix the payload and re-stage.
+- **`status: payload_error`** — your payload/content is wrong (e.g. checkoff a task
+  that doesn't exist, ref block not found). Read the `reason` field, fix the payload,
+  and re-stage. The payload file is **untouched** (copy-don't-move).
+- **`status: internal_tool_bug`** — a tool invariant broke. This is a pipeline bug, not
+  your fault. The `reason` field will suggest reporting it with the run's `input.md`.
+  Do NOT keep re-authoring; file a bug report instead.
 
 > In the overlay's **home** repo (where the pipeline lives in source, not installed),
 > use `overlays/session-tracking/files/handoff/run-handoff.sh` and pass
-> `--registry overlays/session-tracking/files/registry.yaml`.
+> `--registry overlays/session-tracking/files/registry.yaml`. In target repos
+> (expenses, etc.) where the engine is installed at `~/.claude/tools/handoff/`, use
+> `.claude/tools/handoff/run-handoff.sh` and the default registry is automatic.
 
 ### Promote
 

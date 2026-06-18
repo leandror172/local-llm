@@ -215,3 +215,42 @@ maybe Sonnet, maybe usage-limit cliff). Value-only + harvest move authoring cost
 latest-only keeps the resident file small. The value schema is also the contract the deferred local-model
 Placer (E1–E2) will fill via structured output. Increment-4 (separate-window synthesis sourced from the
 persisted transcript JSONL, for the budget-cliff case) is documented only — build later.
+
+## Session-93 fix — append↔checkoff consistency + failure-clarity (2026-06-17) — IMPLEMENTED
+
+Expense-user report: a payload with BOTH `tasks-append` AND `checkoffs:` in one run failed with an
+opaque "Modified text does not match the expected text" message, requiring 5-file investigation to recover.
+Two defects fixed; **changes to applier.py, verifier.py, orchestrator.py, locator.py, handoff.py ONLY** —
+payload schema, register, mechanics, rotator unchanged.
+
+- **Defect 1 — correctness (append+checkoff in one file):** `applier.py` inserts at `region.end` for
+  append (correct); `verifier.py` was doing a `replace([start,end], region.interior + content)` (wrong).
+  The interior snapshot was stale — any nested edit (checkoff flip) applied earlier in the descending-sort
+  loop was lost when verifier reconstructed with the old interior. Fix: verifier's reconstruction loop
+  special-cases `append` and `prepend` as zero-width insertions (like applier), preserving any bytes already
+  mutated by nested edits. `_effective_range` already returned zero-width for insertion modes; reconstruction
+  now agrees. (Prepend has the identical hazard; fixed too.) Test: `test_append_region_enclosing_checkoff_verifies`.
+  
+- **Defect 2 — diagnostics (the failure was unreadable):** error named no file, no roles, gave no diff.
+  Requirement: every failure message must answer WHERE (file + role[s]), WHOSE FAULT (payload error the
+  author can fix vs internal tool bug to report), and WHAT (diff or specifics). Mechanism: `kind` attribute
+  on exceptions (`kind="payload"` or `kind="internal"`, default per exception type). Sweep through all
+  raises: locator.py now names file + id + found-vs-expected count (e.g., "task id T-02 matched 0 checklist
+  items in .claude/tasks.md"); verifier.py adds `_first_diff()` (first differing byte + context) to the
+  mismatch message + `_edits_label()` to summarize files/roles; applier.py unsupported-mode message names
+  the role; orchestrator.py exception handlers prefix reasons with `[payload]`/`[internal]` so handoff.py
+  can extract `kind` and emit status `payload_error` / `internal_tool_bug` (replacing flat `stage_failed`).
+  Guard: overlap message prefixed "two payload edits target overlapping bytes:" so reader knows it's
+  author-fixable. CLI now returns JSON `{"status": "payload_error" | "internal_tool_bug", "reason": "..."}`
+  and internal failures append "report with input.md" so the author never re-authors a tool bug.
+  
+- **Manifest v6→v7, SKILL.md updated:** path nit — documented user-level install path `.claude/tools/handoff/`
+  (vs source `.claude/tools/run-handoff`); new status docs distinguish payload_error (author fix) from
+  internal_tool_bug (file report); append+checkoff combo now explicitly supported (was de facto after fix).
+  
+- **Tests:** 166 green → 173 green (xfailed locator-message test now xpasses when locator.py messages
+  enriched; new `test_append_region_enclosing_checkoff_verifies` passes). Full suite green.
+  
+**Implication:** The append+checkoff pattern is now safe and useful (e.g., completing a complex task
+discovery in one handoff). Failure diagnosis for end users shifts from "read pipeline source" to "read
+error message" — messages now contain actionable specifics (the exact file/role/id that failed and why).

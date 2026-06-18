@@ -1,9 +1,9 @@
 # Overlays — Quick Memory
 
 ## session-tracking overlay
-- **Version:** v6 (2026-06-16)
-- **Status:** session-90 redesign COMPLETE + B+C distribution migration COMPLETE (2026-06-17)
-- **Tests:** 166 green (full handoff suite)
+- **Version:** v7 (2026-06-17)
+- **Status:** session-93 append↔checkoff fix + failure-clarity sweep COMPLETE (2026-06-17)
+- **Tests:** 173 green (full handoff suite; xfailed test now xpasses)
 - **Installed in:** expenses/code, web-research, career-search (all v6 + B+C migrated); llm runs the engine from source. `session-log.md` latest-only in ALL 4 repos.
 - **PR:** #52 on `feature/handoff-redesign-stage-promote`
 - **Key files:** `files/handoff/` (source), `manifest.yaml`, `files/rotate-session-log.sh`, `files/handoff-harvest.sh`, `files/session-handoff/SKILL.md`

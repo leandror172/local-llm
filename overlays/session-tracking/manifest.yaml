@@ -1,5 +1,5 @@
 name: session-tracking
-version: 6
+version: 7
 description: >
   Session continuity tools for Claude Code projects. Installs resume.sh
   (session-start summary) and rotate-session-log.sh (log archival). Installs
@@ -10,6 +10,7 @@ description: >
   session workflow rules into CLAUDE.md.
   The deterministic handoff pipeline requires PyYAML (pip install pyyaml) —
   only registry_io.py imports it; the safety core is stdlib-only.
+  v7: append↔checkoff consistency fix + failure-clarity sweep (where/whose/what + kind).
 
 # Copied verbatim to target repo. Backed up if dest differs.
 files:
