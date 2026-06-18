@@ -4,8 +4,9 @@
 - **Version:** v7 (2026-06-17)
 - **Status:** session-93 append↔checkoff fix + failure-clarity sweep COMPLETE (2026-06-17)
 - **Tests:** 173 green (full handoff suite; xfailed test now xpasses)
-- **Installed in:** expenses/code, web-research, career-search (all v6 + B+C migrated); llm runs the engine from source. `session-log.md` latest-only in ALL 4 repos.
-- **PR:** #52 on `feature/handoff-redesign-stage-promote`
+- **Installed in:** expenses/code, web-research, career-search (per-repo shim/SKILL still v6-era); llm runs the engine from source. Since B+C, the **shared user-level engine** `~/.claude/tools/handoff/` is the v7 code ALL repos execute — reinstalled this session. `session-log.md` latest-only in ALL 4 repos.
+- **PR:** #53 (failure-clarity) stacked on #52 (`feature/handoff-redesign-stage-promote`)
+- **Home-repo invocation drift:** the `run-handoff.sh` shim guards on `.claude/handoff/registry.yaml` + ignores `--registry`; in the llm repo call `python3 ~/.claude/tools/handoff/handoff.py --payload <p> --registry overlays/session-tracking/files/registry.yaml --repo-root .` directly (see KNOWLEDGE gotcha).
 - **Key files:** `files/handoff/` (source), `manifest.yaml`, `files/rotate-session-log.sh`, `files/handoff-harvest.sh`, `files/session-handoff/SKILL.md`
 
 ### B+C distribution (2026-06-17)

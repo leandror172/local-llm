@@ -254,3 +254,19 @@ payload schema, register, mechanics, rotator unchanged.
 **Implication:** The append+checkoff pattern is now safe and useful (e.g., completing a complex task
 discovery in one handoff). Failure diagnosis for end users shifts from "read pipeline source" to "read
 error message" — messages now contain actionable specifics (the exact file/role/id that failed and why).
+
+**Gotcha discovered while running this session's own handoff (shim/SKILL drift):** the home-repo
+`run-handoff.sh` shim, after the B+C rewrite, guards on `[ -f "$_root/.claude/handoff/registry.yaml" ]`
+and `exec`s `~/.claude/tools/handoff/handoff.py "$@"` — it does NOT honor a `--registry` pointing at the
+overlay-source register. The llm home repo has no `.claude/handoff/registry.yaml` (runs from source), so
+the shim silently `exit 0`s with no output. Workaround used: call `python3 ~/.claude/tools/handoff/handoff.py
+--payload <p> --registry overlays/session-tracking/files/registry.yaml --repo-root .` directly. The SKILL
+still documents the old "source run-handoff.sh --registry" home-repo invocation — a real doc/shim drift to
+fix (either teach the shim to pass through `--registry`, or update the SKILL's home-repo note).
+
+**Reinstall gotcha (shared engine, per-repo blast radius):** running the overlay installer with
+`--target <llm-repo> --install-level user` to refresh `~/.claude/tools/handoff/` ALSO reconciles
+project-level files against overlay source — it tried to overwrite llm's local `resume.sh` (overlay source
+was staler, would have dropped the pre-session reading-guide block) and drop a stray `.claude/handoff/
+registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side writes before a
+"just refresh the engine" install.
