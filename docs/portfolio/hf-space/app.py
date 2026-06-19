@@ -654,4 +654,4 @@ with gr.Blocks(title="Leandro R. — Engineer Profile") as demo:
 
 if __name__ == "__main__":
     print("Launching Gradio app...")
-    demo.launch()
+    demo.launch(ssr_mode=False)

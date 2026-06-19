@@ -25,11 +25,14 @@ Packages the session continuity system for any Claude Code project.
 ## Deterministic handoff pipeline
 
 The `session-handoff` skill no longer edits the tracking files directly. It authors one
-F7 payload (`.claude/local/handoff-pending.md`) and makes a single call to
-`.claude/tools/handoff/run-handoff.sh`, which locates each region via the **register**
-(`.claude/handoff/registry.yaml`), applies the edits, verifies nothing outside a registered
-region changed (F4), runs log rotation, and commits — rolling back on any failure.
-Rehearse first with `run-handoff.sh --dry-run`. The register is the per-repo customization
+F7 payload (`.claude/local/handoff-pending.md`) and drives a two-phase CLI,
+`.claude/tools/handoff/run-handoff.sh`: `--payload <file>` **stages** (locates each region via
+the **register** `.claude/handoff/registry.yaml`, applies+verifies in memory, emits a JSON
+handle; nothing written to tracking files) and `--id <handle>` **promotes** (applies, runs log
+rotation, commits — rolling back on any failure). A failed stage leaves the payload at its
+original path. Follow-up verbs: `--payload <file> --amend` attaches an additive-only run
+(tasks-append + checkoffs, no scalars/header bump) to the last committed session;
+`--abort <handle>` discards a pending run. The register is the per-repo customization
 seam **and** the handoff-owned-vs-content boundary — every ref key NOT listed in it is content
 the pipeline must never touch.
 

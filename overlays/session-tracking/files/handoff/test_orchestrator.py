@@ -14,9 +14,10 @@ import types
 import pytest
 
 import orchestrator
-from orchestrator import run_handoff, HandoffPayload
+from orchestrator import run_handoff, stage_and_apply, HandoffPayload
 from gitio import SubprocessGit
 from verifier import VerifyError
+from mechanics import LogEntry
 
 
 CLOCK = lambda: datetime.datetime(2026, 6, 5, 14, 30, 0)
@@ -81,9 +82,13 @@ def _payload():
         session_title="F6 test",
         current_layer="New layer text",
         blocks={
-            "log-entry": "\n## 2026-06-05 - Session 85: F6 test\n\nnew entry body\n\n---\n",
             "current-status": "\nnew status here\n",
         },
+        log_entry=LogEntry(
+            context="resumed from B4 test",
+            what_was_done=["tested the F6 orchestrator"],
+            next=["do B4.2"],
+        ),
         checkoffs=["T-99"],
         raw="verbatim payload text",
     )
@@ -96,6 +101,14 @@ def _setup(root):
     (claude / "session-context.md").write_text(SESSION_CONTEXT)
     (claude / "tasks.md").write_text(TASKS)
     return root
+
+
+def _make_run_dir(root, session_number=85):
+    """Create a pre-staged run dir with input.md (caller's responsibility in new design)."""
+    run_dir = root / ".claude" / "local" / "handoff-runs" / f"session-{session_number}-20260605-143000-pending"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "input.md").write_text("verbatim payload text")
+    return run_dir
 
 
 class FakeGit:
@@ -123,6 +136,9 @@ class FakeGit:
     def status_short(self):
         return ""
 
+    def log_messages(self, n=5):
+        return []
+
 
 def fake_rotate(repo_root, keep=3):
     return types.SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -137,8 +153,10 @@ def boom_rotate(repo_root, keep=3):
 def test_happy_path_applies_commits_and_logs(tmp_path):
     root = _setup(tmp_path)
     git = FakeGit(clean=True)
+    run_dir = _make_run_dir(root)
 
-    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate, clock=CLOCK)
+    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
+                         clock=CLOCK, run_dir=run_dir)
 
     assert report.committed and not report.rolled_back and report.verify_ok
     assert git.committed is not None and git.checked_out is None
@@ -146,7 +164,7 @@ def test_happy_path_applies_commits_and_logs(tmp_path):
     log = (root / ".claude/session-log.md").read_text()
     assert "**Current Session:** 2026-06-05 — Session 85: F6 test" in log
     assert "**Current Layer:** New layer text" in log
-    assert "new entry body" in log
+    assert "tested the F6 orchestrator" in log  # rendered from LogEntry.what_was_done
 
     ctx = (root / ".claude/session-context.md").read_text()
     assert "new status here" in ctx and "old status" not in ctx
@@ -154,10 +172,22 @@ def test_happy_path_applies_commits_and_logs(tmp_path):
     tasks = (root / ".claude/tasks.md").read_text()
     assert "- [x] (T-99)" in tasks
 
-    runs = list((root / ".claude/local/handoff-runs").iterdir())
-    assert len(runs) == 1
-    assert (runs[0] / "input.md").read_text() == "verbatim payload text"
-    assert "Session 85" in (runs[0] / "report.md").read_text()
+    assert (run_dir / "input.md").read_text() == "verbatim payload text"
+    assert "Session 85" in (run_dir / "report.md").read_text()
+
+
+# ---- unit: run_handoff writes report to provided run_dir --------------------
+
+def test_run_handoff_writes_report_to_provided_run_dir(tmp_path):
+    """report.md is written to the run_dir the caller passed in, not one created internally."""
+    root = _setup(tmp_path)
+    run_dir = _make_run_dir(root)
+
+    report = run_handoff(root, REGISTER, _payload(), git=FakeGit(clean=True),
+                         rotate=fake_rotate, clock=CLOCK, run_dir=run_dir)
+
+    assert (run_dir / "report.md").exists()
+    assert report.committed
 
 
 # ---- unit: dirty tree precondition ------------------------------------------
@@ -165,14 +195,15 @@ def test_happy_path_applies_commits_and_logs(tmp_path):
 def test_dirty_tree_aborts_before_any_change(tmp_path):
     root = _setup(tmp_path)
     git = FakeGit(clean=False)
+    run_dir = _make_run_dir(root)
 
-    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate, clock=CLOCK)
+    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
+                         clock=CLOCK, run_dir=run_dir)
 
     assert not report.committed and not report.rolled_back
     assert "precondition" in report.reason.lower()
     assert git.committed is None
     assert "old status" in (root / ".claude/session-context.md").read_text()
-    assert not (root / ".claude/local/handoff-runs").exists()
 
 
 # ---- unit: verify failure (in-memory, nothing written) ----------------------
@@ -180,20 +211,21 @@ def test_dirty_tree_aborts_before_any_change(tmp_path):
 def test_verify_failure_rolls_back_without_writing(tmp_path, monkeypatch):
     root = _setup(tmp_path)
     git = FakeGit(clean=True)
+    run_dir = _make_run_dir(root)
 
     def boom_verify(*a, **k):
         raise VerifyError("marker mismatch")
 
     monkeypatch.setattr(orchestrator, "verify", boom_verify)
 
-    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate, clock=CLOCK)
+    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
+                         clock=CLOCK, run_dir=run_dir)
 
     assert report.rolled_back and not report.committed and not report.verify_ok
     assert "verify failed" in report.reason.lower()
     assert git.committed is None
-    assert "old status" in (root / ".claude/session-context.md").read_text()  # untouched
-    runs = list((root / ".claude/local/handoff-runs").iterdir())
-    assert "verify failed" in (runs[0] / "report.md").read_text().lower()
+    assert "old status" in (root / ".claude/session-context.md").read_text()
+    assert "verify failed" in (run_dir / "report.md").read_text().lower()
 
 
 # ---- unit: block content is newline-normalized before splicing --------------
@@ -201,12 +233,6 @@ def test_verify_failure_rolls_back_without_writing(tmp_path, monkeypatch):
 def test_append_block_without_trailing_newline_keeps_marker_on_its_line(tmp_path):
     """Regression (dog-food, session 86): a payload block whose content lacks a
     trailing newline must NOT glue the closing ref marker onto the appended line.
-
-    The payload's LAST `## role:` section has no trailing blank line, so
-    payload.py yields non-newline-terminated content. The orchestrator must
-    normalize block content so the splice lands on whole lines. The fix lives at
-    the seam (block edits only) — applier/verifier stay byte-consistent, headers
-    and checkoffs (inline / no content) are unaffected.
     """
     root = _setup(tmp_path)
     (root / ".claude/tasks.md").write_text(
@@ -225,53 +251,29 @@ def test_append_block_without_trailing_newline_keeps_marker_on_its_line(tmp_path
         session_title="append test",
         current_layer="L",
         blocks={"tasks-append": "- [ ] (T-11) new task"},  # NO trailing newline
+        log_entry=None,
         checkoffs=[],
         raw="x",
     )
+    run_dir = _make_run_dir(root)
 
     report = run_handoff(root, register, payload, git=FakeGit(clean=True),
-                         rotate=fake_rotate, clock=CLOCK)
+                         rotate=fake_rotate, clock=CLOCK, run_dir=run_dir)
 
     assert report.committed and report.verify_ok
     tasks = (root / ".claude/tasks.md").read_text()
     assert "- [ ] (T-11) new task\n<!-- /ref:deferred-infra -->" in tasks
-    assert "new task<!-- /ref:deferred-infra -->" not in tasks  # the glue bug
+    assert "new task<!-- /ref:deferred-infra -->" not in tasks
 
 
-# ---- unit: dry-run stages + verifies but writes nothing ---------------------
+# ---- unit: stage_and_apply is public and callable ---------------------------
 
-def test_dry_run_validates_without_writing(tmp_path):
+def test_stage_and_apply_is_callable(tmp_path):
+    """stage_and_apply is importable and returns (modified_by_file, region_edits)."""
     root = _setup(tmp_path)
-    git = FakeGit(clean=True)
-
-    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
-                         clock=CLOCK, dry_run=True)
-
-    assert not report.committed and not report.rolled_back and report.verify_ok
-    assert "dry-run" in report.reason.lower()
-    assert report.edits  # populated so the caller can print a before->after preview
-    assert git.committed is None and git.added is None  # no side effects at all
-    assert "old status" in (root / ".claude/session-context.md").read_text()  # untouched
-    assert "Session 84: Old topic" in (root / ".claude/session-log.md").read_text()
-    assert not (root / ".claude/local/handoff-runs").exists()  # no run dir on dry-run
-
-
-def test_dry_run_on_verify_failure_returns_reason_no_artifacts(tmp_path, monkeypatch):
-    root = _setup(tmp_path)
-    git = FakeGit(clean=True)
-
-    def boom_verify(*a, **k):
-        raise VerifyError("marker mismatch")
-
-    monkeypatch.setattr(orchestrator, "verify", boom_verify)
-
-    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
-                         clock=CLOCK, dry_run=True)
-
-    assert not report.committed and not report.verify_ok
-    assert "verify" in report.reason.lower()
-    assert not (root / ".claude/local/handoff-runs").exists()  # no artifacts on dry-run
-    assert "old status" in (root / ".claude/session-context.md").read_text()
+    modified, edits = stage_and_apply(root, REGISTER, _payload(), clock=CLOCK)
+    assert ".claude/session-log.md" in modified
+    assert any(e.role == "current-status" for e in edits)
 
 
 # ---- unit: commit failure triggers git rollback -----------------------------
@@ -279,12 +281,14 @@ def test_dry_run_on_verify_failure_returns_reason_no_artifacts(tmp_path, monkeyp
 def test_commit_failure_invokes_checkout(tmp_path):
     root = _setup(tmp_path)
     git = FakeGit(clean=True, fail_commit=True)
+    run_dir = _make_run_dir(root)
 
-    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate, clock=CLOCK)
+    report = run_handoff(root, REGISTER, _payload(), git=git, rotate=fake_rotate,
+                         clock=CLOCK, run_dir=run_dir)
 
     assert report.rolled_back and report.verify_ok and not report.committed
     assert git.committed is None
-    assert git.checked_out is not None  # rollback path taken
+    assert git.checked_out is not None
 
 
 # ---- integration: real git happy path + real rollback -----------------------
@@ -312,28 +316,29 @@ TRACKING = [".claude/session-log.md", ".claude/session-context.md", ".claude/tas
 def test_integration_real_git_commits(tmp_path):
     root = _setup(tmp_path)
     _git_init(root)
+    run_dir = _make_run_dir(root)
 
     report = run_handoff(root, REGISTER, _payload(), git=SubprocessGit(root),
-                         rotate=fake_rotate, clock=CLOCK)
+                         rotate=fake_rotate, clock=CLOCK, run_dir=run_dir)
 
     assert report.committed
     log = subprocess.run(["git", "log", "--oneline"], cwd=root,
                          capture_output=True, text=True).stdout
     assert "session 85" in log.lower()
-    assert _porcelain(root, TRACKING) == ""  # tracking files committed, tree clean
+    assert _porcelain(root, TRACKING) == ""
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
 def test_integration_real_git_rollback_restores_files(tmp_path):
     root = _setup(tmp_path)
     _git_init(root)
+    run_dir = _make_run_dir(root)
 
-    # rotate raises AFTER files are written -> exercises real git checkout restore
     report = run_handoff(root, REGISTER, _payload(), git=SubprocessGit(root),
-                         rotate=boom_rotate, clock=CLOCK)
+                         rotate=boom_rotate, clock=CLOCK, run_dir=run_dir)
 
     assert report.rolled_back and not report.committed
-    assert _porcelain(root, TRACKING) == ""  # files restored to HEAD
+    assert _porcelain(root, TRACKING) == ""
     count = subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=root,
                            capture_output=True, text=True).stdout.strip()
-    assert count == "1"  # no new commit
+    assert count == "1"

@@ -10,6 +10,7 @@
 import pytest
 
 from payload import parse, validate, PayloadError, HandoffPayload
+from mechanics import LogEntry
 
 
 PAYLOAD = (
@@ -20,14 +21,15 @@ PAYLOAD = (
     "---\n"
     "## role: log-entry\n"
     "\n"
-    "## 2026-06-06 - Session 86: B4 test\n"
-    "### Context\n"
-    "resumed; body has --- separators\n"
+    "### context\n"
+    "resumed; started from the P2 branch\n"
     "\n"
-    "---\n"
+    "### what_was_done\n"
+    "- implemented slot parser\n"
+    "- added renderer tests\n"
     "\n"
-    "### Next\n"
-    "do B4.2\n"
+    "### next\n"
+    "- do B4.2\n"
     "\n"
     "## role: current-status\n"
     "\n"
@@ -62,18 +64,45 @@ def test_parse_checkoffs_default_empty_when_absent():
 # ---- parse: role sections ---------------------------------------------------
 
 def test_parse_splits_role_sections():
+    """log-entry is parsed into log_entry (structured), not into blocks."""
     p = parse(PAYLOAD)
-    assert set(p.blocks.keys()) == {"log-entry", "current-status"}
+    # log-entry is NOT in blocks — it's in log_entry
+    assert "log-entry" not in p.blocks
+    assert "current-status" in p.blocks
     assert "new status interior" in p.blocks["current-status"]
 
 
-def test_parse_log_entry_keeps_internal_separators():
-    """The body's own --- and ## headings must NOT be treated as fences/role headers."""
-    le = parse(PAYLOAD).blocks["log-entry"]
-    assert "## 2026-06-06 - Session 86: B4 test" in le
-    assert "---" in le
-    assert "do B4.2" in le
-    assert "new status interior" not in le  # did not bleed into the next section
+def test_parse_log_entry_structured_slots():
+    """log-entry body is parsed into a LogEntry with the correct slot values."""
+    p = parse(PAYLOAD)
+    le = p.log_entry
+    assert le is not None
+    assert isinstance(le, LogEntry)
+    assert le.context == "resumed; started from the P2 branch"
+    assert "implemented slot parser" in le.what_was_done
+    assert "do B4.2" in le.next
+
+
+def test_parse_log_entry_body_does_not_bleed_into_next_role():
+    """log-entry content must not bleed into the next role section."""
+    p = parse(PAYLOAD)
+    assert p.log_entry is not None
+    assert "new status interior" not in str(p.log_entry)
+
+
+def test_parse_replace_role_keeps_internal_separators():
+    """The body's own --- and ## headings in replace-mode roles must NOT be treated as fences/role headers."""
+    text = (
+        "---\nsession_title: t\ncurrent_layer: l\n---\n"
+        "## role: current-status\n"
+        "## Internal heading\n"
+        "---\n"
+        "content after sep\n"
+    )
+    p = parse(text)
+    assert "## Internal heading" in p.blocks["current-status"]
+    assert "---" in p.blocks["current-status"]
+    assert "content after sep" in p.blocks["current-status"]
 
 
 def test_parse_raw_is_verbatim():
@@ -162,3 +191,108 @@ def test_validate_rejects_nomodel_block_role():
     p = parse("---\nsession_title: t\ncurrent_layer: l\n---\n## role: header-current-session\nx\n")
     errors = validate(p, REGISTER)
     assert errors  # must complain (nomodel role cannot be written from the payload)
+
+
+# ---- P2 — log-entry structured slots ----------------------------------------
+
+def _log_entry_payload(slots_body: str) -> str:
+    return (
+        "---\nsession_title: t\ncurrent_layer: l\n---\n"
+        "## role: log-entry\n"
+        + slots_body
+    )
+
+
+def test_parse_log_entry_minimal_slots():
+    """Minimal log-entry with only required slots parses into a LogEntry."""
+    text = _log_entry_payload(
+        "\n### what_was_done\n- did A\n\n### next\n- do B\n"
+    )
+    p = parse(text)
+    assert p.log_entry is not None
+    assert p.log_entry.what_was_done == ["did A"]
+    assert p.log_entry.next == ["do B"]
+    assert not p.log_entry.context
+    assert not p.log_entry.decisions
+    assert not p.log_entry.gotchas
+
+
+def test_parse_log_entry_all_slots():
+    """All optional slots parsed correctly."""
+    text = _log_entry_payload(
+        "\n### context\nentered from B3\n\n"
+        "### what_was_done\n- thing 1\n- thing 2\n\n"
+        "### decisions\n- picked X over Y\n\n"
+        "### next\n- run benchmarks\n\n"
+        "### gotchas\n- F4 blind spot\n"
+    )
+    p = parse(text)
+    le = p.log_entry
+    assert le.context == "entered from B3"
+    assert le.what_was_done == ["thing 1", "thing 2"]
+    assert le.decisions == ["picked X over Y"]
+    assert le.next == ["run benchmarks"]
+    assert le.gotchas == ["F4 blind spot"]
+
+
+def test_parse_log_entry_missing_what_was_done_raises():
+    """Missing what_was_done slot raises PayloadError with specific message."""
+    text = _log_entry_payload("\n### next\n- do something\n")
+    with pytest.raises(PayloadError) as exc_info:
+        parse(text)
+    assert "what_was_done" in str(exc_info.value)
+
+
+def test_parse_log_entry_missing_next_raises():
+    """Missing next slot raises PayloadError with specific message."""
+    text = _log_entry_payload("\n### what_was_done\n- did something\n")
+    with pytest.raises(PayloadError) as exc_info:
+        parse(text)
+    assert "next" in str(exc_info.value)
+
+
+def test_parse_log_entry_empty_what_was_done_raises():
+    """Empty what_was_done slot (header present but no items) raises PayloadError."""
+    text = _log_entry_payload("\n### what_was_done\n\n### next\n- do B\n")
+    with pytest.raises(PayloadError) as exc_info:
+        parse(text)
+    assert "what_was_done" in str(exc_info.value)
+
+
+def test_parse_log_entry_rejects_old_form_heading():
+    """Old form with '## <date> - Session N:' heading inside log-entry is rejected."""
+    text = _log_entry_payload(
+        "\n## 2026-06-06 - Session 86: B4 test\n### Context\nbody\n"
+    )
+    with pytest.raises(PayloadError) as exc_info:
+        parse(text)
+    assert "pipeline now renders" in str(exc_info.value)
+
+
+def test_parse_log_entry_rejects_title_case_headers():
+    """Old form with Title-Case section headers inside log-entry is rejected."""
+    text = _log_entry_payload(
+        "\n### What Was Done\n- did something\n\n### Next\n- do B\n"
+    )
+    with pytest.raises(PayloadError) as exc_info:
+        parse(text)
+    assert "snake_case" in str(exc_info.value)
+
+
+def test_parse_log_entry_unknown_slot_raises():
+    """Unknown slot key in log-entry raises PayloadError."""
+    text = _log_entry_payload(
+        "\n### what_was_done\n- A\n\n### unknown_slot\n- B\n\n### next\n- C\n"
+    )
+    with pytest.raises(PayloadError) as exc_info:
+        parse(text)
+    assert "unknown_slot" in str(exc_info.value)
+
+
+def test_validate_rejects_log_entry_in_amend_mode():
+    """log-entry is not allowed in amend mode (would duplicate session heading)."""
+    text = _log_entry_payload("\n### what_was_done\n- A\n\n### next\n- B\n")
+    p = parse(text)
+    errors = validate(p, REGISTER, amend=True)
+    assert any("log-entry" in e for e in errors)
+    assert any("amend" in e for e in errors)

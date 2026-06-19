@@ -4,6 +4,7 @@
 # Pure stdlib, no async, no httpx.
 
 import re
+from dataclasses import dataclass, field
 from datetime import date as dt_date
 from pathlib import Path
 from subprocess import CompletedProcess, run
@@ -12,9 +13,85 @@ from typing import Any, Dict, List, Tuple
 from locator import locate, Region
 
 
+@dataclass
+class LogEntry:
+    """Structured slots for a session log entry. what_was_done and next are required."""
+    what_was_done: List[str]
+    next: List[str]
+    context: str = ""
+    decisions: List[str] = field(default_factory=list)
+    gotchas: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not self.what_was_done:
+            raise ValueError("log-entry requires a non-empty 'what_was_done' slot")
+        if not self.next:
+            raise ValueError("log-entry requires a non-empty 'next' slot")
+
+
+def _bullet_section(title: str, items: List[str]) -> List[str]:
+    """Return markdown lines for a bullet-list section, or [] when items is empty."""
+    if not items:
+        return []
+    lines: List[str] = [f"### {title}\n", "\n"]
+    for item in items:
+        lines.append(f"- {item}\n")
+    lines.append("\n")
+    return lines
+
+
+def _paragraph_section(title: str, text: str) -> List[str]:
+    """Return markdown lines for a paragraph section, or [] when text is falsy."""
+    if not text:
+        return []
+    return [f"### {title}\n", "\n", f"{text}\n", "\n"]
+
+
+def render_log_entry(
+    log_entry: LogEntry,
+    *,
+    date: str,
+    session_number: int,
+    session_title: str,
+) -> str:
+    """Render a LogEntry into the canonical log-entry markdown block.
+
+    Renders ALL scaffold: heading, section headers, bullet formatting, blank lines.
+    Optional empty slots are omitted entirely (no empty section headers).
+    The returned string ends with exactly one trailing newline (session-86 contract).
+
+    Heading uses a hyphen: '## <date> - Session <N>: <title>'
+    (The Current Session header field uses an em-dash — different string, same values.)
+    """
+    parts: List[str] = []
+
+    # Heading line + blank line
+    parts.append(f"## {date} - Session {session_number}: {session_title}\n")
+    parts.append("\n")
+
+    parts += _paragraph_section("Context", log_entry.context)
+    parts += _bullet_section("What Was Done", log_entry.what_was_done)
+    parts += _bullet_section("Decisions Made", log_entry.decisions)
+    parts += _bullet_section("Next", log_entry.next)
+    parts += _bullet_section("Gotchas", log_entry.gotchas)
+
+    result = "".join(parts)
+    # Guarantee exactly one trailing newline (session-86 contract: no double-newline glue)
+    result = result.rstrip("\n") + "\n"
+    return result
+
+
 class MechanicsError(Exception):
     """Exception raised for mechanics errors."""
     pass
+
+
+def current_session_number(log_text: str) -> int:
+    """Return the highest session number found in log headings (the *current* committed session)."""
+    heading_numbers = _extract_heading_numbers(log_text)
+    if not heading_numbers:
+        return 0
+    return max(heading_numbers)
 
 
 def next_session_number(log_text: str) -> int:
@@ -71,7 +148,7 @@ def apply_field(text: str, region: Region, value: str) -> str:
     return text[:region.start] + value + text[region.end:]
 
 
-def rotate(repo_root: Path, keep: int = 3) -> CompletedProcess:
+def rotate(repo_root: Path, keep: int = 1) -> CompletedProcess:
     """Run the rotate-session-log.sh script with --keep argument."""
     script_path = repo_root / ".claude" / "tools" / "rotate-session-log.sh"
     result = run(
