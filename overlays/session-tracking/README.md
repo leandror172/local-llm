@@ -8,10 +8,11 @@ Packages the session continuity system for any Claude Code project.
 |--------|--------|-----------|
 | COPY | `.claude/tools/resume.sh` | Always (backup if differs) |
 | COPY | `.claude/tools/rotate-session-log.sh` | Always (backup if differs) |
-| COPY | `.claude/tools/handoff/*.py` (10 runtime modules) | Always — the deterministic handoff pipeline (test_*.py not shipped) |
-| COPY | `.claude/tools/handoff/run-handoff.sh` | Always — pipeline entrypoint |
+| COPY | `.claude/tools/handoff-harvest.sh` | Always (backup if differs) |
+| COPY | `~/.claude/tools/handoff/*.py` (10 runtime modules) | **Always user-level** — shared across all repos regardless of `--install-level` |
+| COPY | `~/.claude/tools/handoff/run-handoff.sh` | User-level by default; `--install-level project` installs per-repo as `.claude/tools/handoff/run-handoff.sh` |
 | MANUAL | `.claude/handoff/registry.yaml` | Copied if missing; **flagged for manual merge if present** (per-repo register — `manual_if_exists`) |
-| COPY | `~/.claude/skills/session-handoff/SKILL.md` | User-level by default; `--skill-level project` installs per-repo |
+| COPY | `~/.claude/skills/session-handoff/SKILL.md` | User-level by default; `--install-level project` installs per-repo |
 | CREATE | `.claude/session-log.md` | Only if missing |
 | CREATE | `.claude/session-context.md` | Only if missing |
 | CREATE | `.claude/tasks.md` | Only if missing |
@@ -36,14 +37,31 @@ original path. Follow-up verbs: `--payload <file> --amend` attaches an additive-
 seam **and** the handoff-owned-vs-content boundary — every ref key NOT listed in it is content
 the pipeline must never touch.
 
+### Failure diagnostics (every failure says where, whose fault, and what)
+
+The stage CLI emits a JSON `status` that classifies the failure so the author never has to read
+pipeline source to understand it:
+
+| `status` | Meaning | What to do |
+|----------|---------|------------|
+| `stage_ok` / `committed` | Success | Promote (`--id`) / done |
+| `validation_failed` | Payload schema error (missing scalar, unknown role) | Payload untouched — re-edit and re-stage |
+| `payload_error` | Your content is wrong (ref block not found, checkoff a non-existent task id) | Read `reason` (it names the file + role + specific target), fix, re-stage |
+| `internal_tool_bug` | A pipeline invariant broke (applier/verifier disagree) | NOT your fault — `reason` cites the run's `input.md`; file a report, don't re-author |
+
+Messages name **where** (file + role, e.g. `tasks-checkoff(T-02)@.claude/tasks.md`), **whose fault**
+(a `kind` attribute on each pipeline exception routes payload-fault vs internal-fault), and **what**
+(a first-diff byte context for verifier mismatches). A `tasks-append` and a `checkoffs:` entry targeting
+the same file in one run is fully supported.
+
 ## Usage
 
 ```bash
-# Install with session-handoff skill at user level (default)
+# Install with shim + skill at user level (default)
 ./overlays/install-overlay.py session-tracking --target /path/to/repo
 
-# Install with session-handoff skill per-repo instead
-./overlays/install-overlay.py session-tracking --target /path/to/repo --skill-level project
+# Install shim + skill per-repo (self-contained repo; pipeline .py files still go to ~/.claude/)
+./overlays/install-overlay.py session-tracking --target /path/to/repo --install-level project
 
 # AI-assisted CLAUDE.md merge
 ./overlays/install-overlay.py session-tracking --target /path/to/repo --mode ai --yes

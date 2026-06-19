@@ -80,12 +80,33 @@ def handle_files(manifest: dict, overlay_dir: Path, target_root: Path,
                    do_backup=do_backup, dry_run=dry_run)
 
 
-def handle_user_files(manifest: dict, overlay_dir: Path, skill_level: str,
+def handle_always_user_files(manifest: dict, overlay_dir: Path,
+                             dry_run: bool, do_backup: bool):
+    """Install always_user_files to ~/.claude/ unconditionally — no level flag.
+
+    Use for shared runtime files (e.g. pipeline modules) that must live at user
+    level regardless of --install-level.  dest_root is always ~/.claude/.
+    """
+    always_user = manifest.get("always_user_files", {})
+    if not always_user:
+        return
+
+    files_dir = overlay_dir / "files"
+    dest_root = Path.home() / ".claude"
+
+    for src_name, dest_rel in always_user.items():
+        src = files_dir / src_name
+        dest = dest_root / dest_rel
+        _copy_file(src, dest, f"~/.claude/{dest_rel}", executable=_is_executable_payload(src),
+                   do_backup=do_backup, dry_run=dry_run)
+
+
+def handle_user_files(manifest: dict, overlay_dir: Path, install_level: str,
                       target_root: Path, dry_run: bool, do_backup: bool):
     """Install user_files to ~/.claude/ (user level) or .claude/ (project level).
 
-    user_files are things like skills that are generic enough to live at user level
-    but can be installed per-repo if needed (--skill-level project).
+    user_files are things like skills and the run-handoff shim — generic enough
+    to live at user level but installable per-repo with --install-level project.
     """
     user_files = manifest.get("user_files", {})
     if not user_files:
@@ -93,7 +114,7 @@ def handle_user_files(manifest: dict, overlay_dir: Path, skill_level: str,
 
     files_dir = overlay_dir / "files"
 
-    if skill_level == "user":
+    if install_level == "user":
         dest_root = Path.home() / ".claude"
         level_label = "~/.claude"
     else:

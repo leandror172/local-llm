@@ -5,7 +5,9 @@ from typing import Any
 
 class ApplierError(Exception):
     """Custom exception for errors in the applier module."""
-    pass
+    def __init__(self, message, *, kind="internal"):
+        super().__init__(message)
+        self.kind = kind
 
 
 def apply(text: str, region: Any, content: str = "") -> str:
@@ -27,9 +29,9 @@ def apply(text: str, region: Any, content: str = "") -> str:
     elif region.mode == "checkoff":
         return _apply_checkoff(text, region)
     elif region.mode == "nomodel":
-        raise ApplierError("Nomodel mode is not allowed.")
+        raise ApplierError("Nomodel mode is not allowed.", kind="internal")
     else:
-        raise ApplierError(f"Unknown write mode: {region.mode}")
+        raise ApplierError(f"unsupported mode '{region.mode}' for role '{getattr(region,'role','?')}' — TOOL BUG", kind="internal")
 
 
 def _apply_replace(text: str, region: Any, content: str) -> str:

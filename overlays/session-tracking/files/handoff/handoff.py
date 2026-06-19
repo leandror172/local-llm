@@ -124,7 +124,12 @@ def _stage_path(args, repo_root: Path, register: dict, git) -> int:
         write_report(run_dir, report)
     except Exception as e:
         run_dir = mark_run_failed(run_dir)
-        print(json.dumps({"status": "stage_failed", "reason": str(e)}))
+        kind = getattr(e, "kind", "internal")
+        status = "payload_error" if kind == "payload" else "internal_tool_bug"
+        reason = str(e)
+        if status == "internal_tool_bug" and "input.md" not in reason:
+            reason += f"  (report this with {run_dir}/input.md)"
+        print(json.dumps({"status": status, "reason": reason}))
         return 1
 
     # 5. Success: free the well-known path (delete original — last destructive op)
@@ -184,7 +189,14 @@ def _promote_path(args, repo_root: Path, register: dict, git) -> int:
         status = "committed"
     else:
         final_dir = mark_run_failed(run_dir)
-        status = "failed"
+        # Derive status from the [kind] prefix the orchestrator embeds in the reason.
+        reason = report.reason or ""
+        if reason.startswith("[payload]"):
+            status = "payload_error"
+        elif reason.startswith("[internal]"):
+            status = "internal_tool_bug"
+        else:
+            status = "failed"
 
     run_counts = count_runs_by_status(repo_root)
     print(json.dumps(_build_result(handle, status, report, final_dir, run_counts)))

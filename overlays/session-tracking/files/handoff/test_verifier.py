@@ -157,3 +157,43 @@ def test_append_and_checkoff_in_same_block_do_not_overlap():
     edits = [(append_region, "- [ ] (T-11) new task\n"), (checkoff_region, "")]
     modified = _apply_all(original, edits)
     verify(original, modified, edits)  # must not raise
+
+
+# --- T-57 strict regression: append.start < checkoff.start (non-vacuous) ----- #
+
+def test_append_region_enclosing_checkoff_verifies():
+    # Realistic ref_block tasks.md fragment. The append region's interior begins at
+    # "## Deferred" (right after the open marker); the T-02 line is a LATER line, so
+    # append.start < checkoff.start — which is what makes the bug reproduce.
+    original = (
+        "<!-- ref:deferred-infra -->\n"
+        "## Deferred\n"
+        "- [ ] (T-02) wire up retry\n"
+        "- [ ] (T-03) cache headers\n"
+        "<!-- /ref:deferred-infra -->\n"
+    )
+    interior_start = original.index("## Deferred")        # after the open-marker line
+    interior_end = original.index("<!-- /ref:deferred-infra -->")
+    append_region = Region(
+        kind="ref_block", mode="append",
+        start=interior_start, end=interior_end,
+        interior=original[interior_start:interior_end],
+        role="tasks-append", target="deferred-infra", file=".claude/tasks.md",
+    )
+    co_start = original.index("- [ ] (T-02)")             # strictly > interior_start
+    co_end = original.index("\n", co_start) + 1
+    checkoff_region = Region(
+        kind="checklist", mode="checkoff",
+        start=co_start, end=co_end,
+        interior=original[co_start:co_end],
+        role="tasks-checkoff", target="T-02", file=".claude/tasks.md",
+    )
+    assert append_region.start < checkoff_region.start    # guard: bug only reproduces here
+
+    append_content = "- [ ] (T-04) new task\n"
+    # What applier+checkoff actually produce: checkoff flips T-02, append inserts at region.end.
+    flipped = original.replace("- [ ] (T-02)", "- [x] (T-02)", 1)
+    modified = flipped[:append_region.end] + append_content + flipped[append_region.end:]
+
+    edits = [(append_region, append_content), (checkoff_region, "")]
+    verify(original, modified, edits)   # must NOT raise (after Step 1.2)

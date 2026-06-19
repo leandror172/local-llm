@@ -52,16 +52,19 @@ the manifest; the overlay author declares intent.
 **Implication:** Adding a new overlay requires only a manifest and content files,
 no changes to the installer itself.
 
-## User-Level vs Project-Level Skills (2026-03)
+## User-Level vs Project-Level Install (2026-03, updated 2026-06-17)
 
-Some overlays install Claude Code skills. `--skill-level user` puts them in
-`~/.claude/skills/` (available in all repos). `--skill-level project` puts them
-in the repo's `.claude/skills/` (repo-specific). Default is user-level.
+`--install-level` (renamed from `--skill-level`) controls where the run-handoff shim
+and SKILL.md land: `user` (default) → `~/.claude/`; `project` → `.claude/` per-repo.
+Pipeline `.py` modules always go to `~/.claude/tools/handoff/` regardless of this flag
+(`always_user_files:` manifest key). The shim includes a registry guard so user-level
+hooks no-op in repos without the overlay installed.
 
-**Rationale:** Skills like session-handoff and create-persona are useful everywhere,
-not just in one repo. User-level avoids duplicating them across projects.
-**Implication:** User-level skills are not version-controlled per repo. Changes
-require updating the user-level installation separately.
+**Rationale:** Skills and shims are useful everywhere; user-level avoids duplicating
+them. Pipeline modules must be shared (one copy, no drift). Self-contained repo install
+still possible with `--install-level project`.
+**Implication:** Per-repo installs only store the shim + SKILL.md + registry + templates;
+Python files are always a machine-level shared resource.
 
 ## Session-Handoff Pipeline Architecture (2026-06)
 
@@ -212,3 +215,58 @@ maybe Sonnet, maybe usage-limit cliff). Value-only + harvest move authoring cost
 latest-only keeps the resident file small. The value schema is also the contract the deferred local-model
 Placer (E1–E2) will fill via structured output. Increment-4 (separate-window synthesis sourced from the
 persisted transcript JSONL, for the budget-cliff case) is documented only — build later.
+
+## Session-93 fix — append↔checkoff consistency + failure-clarity (2026-06-17) — IMPLEMENTED
+
+Expense-user report: a payload with BOTH `tasks-append` AND `checkoffs:` in one run failed with an
+opaque "Modified text does not match the expected text" message, requiring 5-file investigation to recover.
+Two defects fixed; **changes to applier.py, verifier.py, orchestrator.py, locator.py, handoff.py ONLY** —
+payload schema, register, mechanics, rotator unchanged.
+
+- **Defect 1 — correctness (append+checkoff in one file):** `applier.py` inserts at `region.end` for
+  append (correct); `verifier.py` was doing a `replace([start,end], region.interior + content)` (wrong).
+  The interior snapshot was stale — any nested edit (checkoff flip) applied earlier in the descending-sort
+  loop was lost when verifier reconstructed with the old interior. Fix: verifier's reconstruction loop
+  special-cases `append` and `prepend` as zero-width insertions (like applier), preserving any bytes already
+  mutated by nested edits. `_effective_range` already returned zero-width for insertion modes; reconstruction
+  now agrees. (Prepend has the identical hazard; fixed too.) Test: `test_append_region_enclosing_checkoff_verifies`.
+  
+- **Defect 2 — diagnostics (the failure was unreadable):** error named no file, no roles, gave no diff.
+  Requirement: every failure message must answer WHERE (file + role[s]), WHOSE FAULT (payload error the
+  author can fix vs internal tool bug to report), and WHAT (diff or specifics). Mechanism: `kind` attribute
+  on exceptions (`kind="payload"` or `kind="internal"`, default per exception type). Sweep through all
+  raises: locator.py now names file + id + found-vs-expected count (e.g., "task id T-02 matched 0 checklist
+  items in .claude/tasks.md"); verifier.py adds `_first_diff()` (first differing byte + context) to the
+  mismatch message + `_edits_label()` to summarize files/roles; applier.py unsupported-mode message names
+  the role; orchestrator.py exception handlers prefix reasons with `[payload]`/`[internal]` so handoff.py
+  can extract `kind` and emit status `payload_error` / `internal_tool_bug` (replacing flat `stage_failed`).
+  Guard: overlap message prefixed "two payload edits target overlapping bytes:" so reader knows it's
+  author-fixable. CLI now returns JSON `{"status": "payload_error" | "internal_tool_bug", "reason": "..."}`
+  and internal failures append "report with input.md" so the author never re-authors a tool bug.
+  
+- **Manifest v6→v7, SKILL.md updated:** path nit — documented user-level install path `.claude/tools/handoff/`
+  (vs source `.claude/tools/run-handoff`); new status docs distinguish payload_error (author fix) from
+  internal_tool_bug (file report); append+checkoff combo now explicitly supported (was de facto after fix).
+  
+- **Tests:** 166 green → 173 green (xfailed locator-message test now xpasses when locator.py messages
+  enriched; new `test_append_region_enclosing_checkoff_verifies` passes). Full suite green.
+  
+**Implication:** The append+checkoff pattern is now safe and useful (e.g., completing a complex task
+discovery in one handoff). Failure diagnosis for end users shifts from "read pipeline source" to "read
+error message" — messages now contain actionable specifics (the exact file/role/id that failed and why).
+
+**Gotcha discovered while running this session's own handoff (shim/SKILL drift):** the home-repo
+`run-handoff.sh` shim, after the B+C rewrite, guards on `[ -f "$_root/.claude/handoff/registry.yaml" ]`
+and `exec`s `~/.claude/tools/handoff/handoff.py "$@"` — it does NOT honor a `--registry` pointing at the
+overlay-source register. The llm home repo has no `.claude/handoff/registry.yaml` (runs from source), so
+the shim silently `exit 0`s with no output. Workaround used: call `python3 ~/.claude/tools/handoff/handoff.py
+--payload <p> --registry overlays/session-tracking/files/registry.yaml --repo-root .` directly. The SKILL
+still documents the old "source run-handoff.sh --registry" home-repo invocation — a real doc/shim drift to
+fix (either teach the shim to pass through `--registry`, or update the SKILL's home-repo note).
+
+**Reinstall gotcha (shared engine, per-repo blast radius):** running the overlay installer with
+`--target <llm-repo> --install-level user` to refresh `~/.claude/tools/handoff/` ALSO reconciles
+project-level files against overlay source — it tried to overwrite llm's local `resume.sh` (overlay source
+was staler, would have dropped the pre-session reading-guide block) and drop a stray `.claude/handoff/
+registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side writes before a
+"just refresh the engine" install.

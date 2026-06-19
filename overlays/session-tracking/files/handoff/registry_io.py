@@ -15,7 +15,9 @@ from typing import Dict, Any
 
 class RegistryError(Exception):
     """Raised for errors loading or parsing the registry."""
-    pass
+    def __init__(self, message, *, kind="internal"):
+        super().__init__(message)
+        self.kind = kind
 
 def load_register(path: str | Path) -> Dict[str, Dict[str, Any]]:
     """

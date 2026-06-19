@@ -19,7 +19,9 @@ from mechanics import LogEntry
 
 class PayloadError(Exception):
     """Raised on structurally un-parseable input."""
-    pass
+    def __init__(self, message, *, kind="payload"):
+        super().__init__(message)
+        self.kind = kind
 
 
 @dataclass(frozen=True)

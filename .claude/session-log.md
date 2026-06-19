@@ -1,36 +1,35 @@
 # Session Log
 
 **Current Layer:** Layer 5 — Expense Classifier
-**Current Session:** 2026-06-16 — Session 90: Handoff topology/value-only/harvest redesign (P1–P5) + 4-repo migration + PR #52
+**Current Session:** 2026-06-17 — Session 91: session-handoff append↔checkoff fix + failure-clarity sweep
 
 ---
-## 2026-06-16 - Session 90: Handoff topology/value-only/harvest redesign (P1–P5) + 4-repo migration + PR #52
+## 2026-06-17 - Session 91: session-handoff append↔checkoff fix + failure-clarity sweep
 
 ### Context
 
-Continuation of the session-handoff redesign across /compact boundaries — P1–P2 (latest-only topology, value-only payload) landed earlier; this window drove P3–P5, the live data migration, and the end-to-end smoke test.
+Continued from a compacted session: an expenses-repo bug report against the session-handoff overlay (opaque "Modified text does not match the expected text" on an append+checkoff-in-one-file payload). A frozen, advisor-reviewed execution plan already existed (`docs/plans/session-handoff-failure-clarity.md`); this session executed it via the planned two-agent dispatch.
 
 ### What Was Done
 
-- **P3** (`8e55a66`): `handoff-harvest.sh` seeds `what_was_done` from `git log` since the last handoff; SKILL Step 2 calls it, Step 3 reuses resident interiors instead of re-`ref-lookup`. 5 hermetic tests.
-- **P4** (`82ef14f`): manifest v5→v6; overlay installed into expenses/code, web-research, career-search — every `files:` entry byte-verified with `cmp` (14/14 per repo); per-consumer SKILL update (global + project-level shadows); llm installed rotate/harvest refreshed; target registries left untouched (`manual_if_exists`).
-- **Data migration**: all 4 repos' `session-log.md` migrated to latest-only (`rotate --keep 1` + drop the `Previous logs:` line, incl. expenses/code's multi-line wrapped pointer); career-search's byte-identical duplicate Session 56 collapsed (healed). Commits `eefcdfa` (llm), `d2714c0`/`77ff98b`/`4e500fe` (targets).
-- **P5** (`823e292`): overlays QUICK/KNOWLEDGE + plan status → IMPLEMENTED; auto-memory updated; PR #52 retitled + body extended (166 tests).
-- **Advisor-gated end-to-end smoke test**: SKILL-authored value-only payload → parse → render → prepend locator (anchored in the migrated header) → F4 verify → `stage_ok` (Session 90); aborted cleanly, tracking tree untouched. First true integration run of the new path.
+- Track 1 (correctness): fixed `verifier.verify()` reconstruction loop to treat `append` AND `prepend` as true insertions (preserving a nested checkoff flip) instead of replacing the region with a stale `interior` snapshot — the other half of the T-57 bug. Proven by a non-vacuous TDD regression test (red before, green after; `append.start < checkoff.start` tripwire).
+- Track 2 (failure clarity): `kind` attribute on all five pipeline exceptions (payload vs internal fault); `Region.role/file/target` populated in `orchestrator._collect_edits`; verifier mismatch/marker messages name file+roles+first-diff with a TOOL BUG marker; locator messages name role+file+target; CLI routes `stage_failed` → `payload_error` / `internal_tool_bug` (internal case cites the run's `input.md`). New `test_failure_clarity.py` (6 tests).
+- Dispatched as two subagents: Agent A (Sonnet) did the spine + all test authoring, gated on green baseline; Agent B (Haiku) did mechanical string enrichment only after A's gate, using the local model for the locator.py codegen.
+- Rollout: manifest v6→v7, SKILL.md path nit + new statuses, overlay QUICK/KNOWLEDGE updated, index.md pointer. User-level engine reinstalled at `~/.claude/tools/handoff/` (verified); reverted two unintended installer side effects in the llm repo (a stale `resume.sh` overwrite + a stray `registry.yaml` copy).
+- Two commits: `6a34c19` (feat: fix + sweep), `20a781b` (chore: v7 rollout). Suite 166 → 173 green.
 
 ### Decisions Made
 
-- **D1 = value-only 2-full**, **D2 = clean break (v6, lockstep migration, no dual-accept)** — finalized and shipped.
-- **Target registries left untouched**: the orphaned `header-previous-logs` role is inert because the pipeline only walks payload→register, never the reverse (verified in source).
-- **PR #52 merges with 3 unrelated commits** (app.py SSR fix, sync-context.sh pair) — confirmed acceptable scope.
+- Fix made `append`/`prepend` consistent as insertions (NOT forbidding the combo); `kind` attribute over exception subclasses ("simpler for now"); `stage_failed` rename is a clean break (no external consumers).
+- Two-agent split follows the risk surface: reasoning + all self-authored tests to the stronger model, mechanical enrichment to the cheaper one with the test suite as guardrail.
+- Skipped the expenses bug-report reply and a T-61 follow-up task (user declined both).
 
 ### Next
 
-- Merge PR #52 (approved; `feature/ltg-phase3-anchors` already in master, no rebase needed).
-- Resume LTG Phase 3 — write `anchors.py` (TDD); decisions frozen session 82 (`ref:ltg-phase3-decisions`).
+- Optional: reply to the expenses bug report confirming root cause + both fixes + new statuses (user deferred).
+- LTG Phase 3 `anchors.py` TDD remains the standing next work item.
 
 ### Gotchas
 
-- `handoff-harvest.sh` keys off `^chore(session-handoff):`, which also matched the P4 commit (it reused that prefix), so harvest returned only 2 of this session's commits — a false boundary. Non-handoff commits should not reuse the prefix, or harvest should match `^chore(session-handoff): session ` (the promote format). See T-59.
-- The live handoff that recorded THIS entry is itself the production end-to-end test of the new value-only pipeline.
-
+- A shared user-level engine reinstall still has a per-repo blast radius: pointing the installer at the llm repo would have regressed an unrelated local `resume.sh` (overlay source was staler). Always `--dry-run` + diff-review the project-side writes before a "just refresh the engine" install.
+- This environment has no `python` binary — use `python3` to run the handoff suite.

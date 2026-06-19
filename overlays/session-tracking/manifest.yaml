@@ -1,38 +1,42 @@
 name: session-tracking
-version: 6
+version: 7
 description: >
   Session continuity tools for Claude Code projects. Installs resume.sh
   (session-start summary) and rotate-session-log.sh (log archival). Installs
-  the session-handoff skill at user level by default (--skill-level project for
-  per-repo). Creates starter templates for session-log.md, session-context.md,
-  and tasks.md. Injects session workflow rules into CLAUDE.md.
-  The deterministic handoff pipeline (.claude/tools/handoff/) requires PyYAML
-  (pip install pyyaml) — only registry_io.py imports it; the safety core is
-  stdlib-only.
+  the session-handoff skill and run-handoff shim at user level by default
+  (--install-level project for per-repo). Pipeline modules always go to
+  ~/.claude/tools/handoff/ regardless of --install-level. Creates starter
+  templates for session-log.md, session-context.md, and tasks.md. Injects
+  session workflow rules into CLAUDE.md.
+  The deterministic handoff pipeline requires PyYAML (pip install pyyaml) —
+  only registry_io.py imports it; the safety core is stdlib-only.
+  v7: append↔checkoff consistency fix + failure-clarity sweep (where/whose/what + kind).
 
 # Copied verbatim to target repo. Backed up if dest differs.
 files:
   resume.sh: .claude/tools/resume.sh
   rotate-session-log.sh: .claude/tools/rotate-session-log.sh
   handoff-harvest.sh: .claude/tools/handoff-harvest.sh
-  # Session-handoff pipeline — register-driven deterministic transaction.
-  # Runtime modules only; test_*.py are dev artifacts and are not shipped.
-  handoff/locator.py: .claude/tools/handoff/locator.py
-  handoff/applier.py: .claude/tools/handoff/applier.py
-  handoff/verifier.py: .claude/tools/handoff/verifier.py
-  handoff/mechanics.py: .claude/tools/handoff/mechanics.py
-  handoff/runlog.py: .claude/tools/handoff/runlog.py
-  handoff/gitio.py: .claude/tools/handoff/gitio.py
-  handoff/orchestrator.py: .claude/tools/handoff/orchestrator.py
-  handoff/payload.py: .claude/tools/handoff/payload.py
-  handoff/registry_io.py: .claude/tools/handoff/registry_io.py
-  handoff/handoff.py: .claude/tools/handoff/handoff.py
-  handoff/run-handoff.sh: .claude/tools/handoff/run-handoff.sh
 
-# Installed to ~/.claude/ by default (--skill-level user).
-# Use --skill-level project to install per-repo instead.
-# Skipped if already present at the target level (idempotent).
+# Always installed to ~/.claude/tools/handoff/ — shared across all repos.
+# Pipeline modules: never per-repo, never controlled by --install-level.
+# Runtime modules only; test_*.py are dev artifacts and are not shipped.
+always_user_files:
+  handoff/locator.py: tools/handoff/locator.py
+  handoff/applier.py: tools/handoff/applier.py
+  handoff/verifier.py: tools/handoff/verifier.py
+  handoff/mechanics.py: tools/handoff/mechanics.py
+  handoff/runlog.py: tools/handoff/runlog.py
+  handoff/gitio.py: tools/handoff/gitio.py
+  handoff/orchestrator.py: tools/handoff/orchestrator.py
+  handoff/payload.py: tools/handoff/payload.py
+  handoff/registry_io.py: tools/handoff/registry_io.py
+  handoff/handoff.py: tools/handoff/handoff.py
+
+# Installed to ~/.claude/ (user) or .claude/ (project) per --install-level.
+# Default: user. Use --install-level project for a self-contained repo install.
 user_files:
+  handoff/run-handoff.sh: tools/handoff/run-handoff.sh
   session-handoff/SKILL.md: skills/session-handoff/SKILL.md
 
 # Created from template only if dest does not exist. Never overwrites.

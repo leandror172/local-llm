@@ -10,13 +10,16 @@ creates templates, appends lines, and merges sections into shared files like CLA
 ./overlays/install-overlay.py <overlay-name> --target /path/to/repo [options]
 
 Options:
-  --mode manual|ai     How to handle merge_sections (default: manual = print TODO)
-  --yes                Auto-accept AI plan without confirmation
-  --backend ollama|claude|auto
-  --ollama-model MODEL (default: qwen2.5-coder:14b)
+  --mode manual|ai        How to handle merge_sections (default: manual = print TODO)
+  --yes                   Auto-accept AI plan without confirmation
+  --backend ID            Backend id from ai-backends.yaml, or 'auto' (default: auto)
+  --model MODEL           Override model for the selected backend (+think suffix supported)
+  --install-level user|project  Where the shim/skill/hooks land: user → ~/.claude/,
+                          project → .claude/ per-repo (default: user). Pipeline .py
+                          modules always go to ~/.claude/tools/handoff/ regardless.
   --backup / --no-backup  Backup files before overwriting (default: on)
-  --dry-run            Show actions without writing anything
-  --report FILE        Write summary to file
+  --dry-run               Show actions without writing anything
+  --report FILE           Write summary to file
   --report-format text|json
 ```
 
