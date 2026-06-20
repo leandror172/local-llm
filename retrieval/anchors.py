@@ -15,6 +15,8 @@ do not change a signature without updating its consumers.
 
 from __future__ import annotations
 
+import re
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -80,6 +82,49 @@ class RebuildReport:
 
 
 # ---------------------------------------------------------------------------
+# Ingestion helpers (SA-1)
+# ---------------------------------------------------------------------------
+
+def _parse_grep_line(line: str) -> tuple[str, int, str] | None:
+    """Parse one git grep output line into (file_path, start_line, bare_key).
+
+    git grep --line-number -oE produces lines like:
+      path/to/file.md:42:<!-- ref:my-key -->
+    Returns None if the line doesn't match the expected format.
+    """
+    m = re.match(r'^(.+?):(\d+):<!-- ref:([a-z0-9-]+) -->$', line)
+    if not m:
+        return None
+    return m.group(1), int(m.group(2)), m.group(3)
+
+
+def _read_block_lines(file_path: Path, start_line: int, bare_key: str) -> list[str]:
+    """Return lines of the ref block body (exclusive of opening and closing markers)."""
+    lines = file_path.read_text(encoding="utf-8").splitlines()
+    closing = f"<!-- /ref:{bare_key} -->"
+    # start_line is 1-based; the marker is at index start_line-1
+    body_lines = []
+    for line in lines[start_line:]:   # start_line-1+1 = start_line (0-based after marker)
+        if line.strip() == closing:
+            break
+        body_lines.append(line)
+    return body_lines
+
+
+def _find_heading_in_lines(lines: list[str]) -> str:
+    """Return the text of the first heading line (``# ...``) in the block, or ''."""
+    for line in lines:
+        if re.match(r'^#{1,6}\s', line):
+            return re.sub(r'^#{1,6}\s+', '', line).strip()
+    return ""
+
+
+def _prose_body_lines(block_lines: list[str]) -> str:
+    """Join block lines into a string for parse_first_prose_line."""
+    return "\n".join(block_lines)
+
+
+# ---------------------------------------------------------------------------
 # Ingestion + parsing (SA-1)
 # ---------------------------------------------------------------------------
 
@@ -87,14 +132,54 @@ def ingest_anchors(repo_root: Path) -> list[Anchor]:
     """Find every unique ``<!-- ref:KEY -->`` in tracked ``*.md`` and resolve each
     to an Anchor. Uses ``git grep`` (tracked-only => .claude/local/ + gitignored
     excluded for free, D2 safety filter). Dedup by key (first occurrence wins)."""
-    raise NotImplementedError
+    result = subprocess.run(
+        ["git", "grep", "--line-number", "-oE", "<!-- ref:[a-z0-9-]+ -->", "--", "*.md"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    seen: dict[str, Anchor] = {}
+    for line in result.stdout.splitlines():
+        parsed = _parse_grep_line(line)
+        if parsed is None:
+            continue
+        rel_path, start_line, bare_key = parsed
+        if bare_key in seen:
+            continue
+        block_lines = _read_block_lines(repo_root / rel_path, start_line, bare_key)
+        heading = _find_heading_in_lines(block_lines)
+        first_prose = parse_first_prose_line(_prose_body_lines(block_lines))
+        seen[bare_key] = Anchor(
+            key=f"ref:{bare_key}",
+            bare_key=bare_key,
+            file_path=rel_path,
+            start_line=start_line,
+            heading=heading,
+            first_prose=first_prose,
+        )
+    return list(seen.values())
 
 
 def parse_first_prose_line(body: str) -> str:
     """First meaningful prose line of a ref block body, or "" if none.
     Skips: blank lines, italic-only metadata (``*...*``), sub-headings (``#``+),
     horizontal rules (``---``), and HTML comment markers."""
-    raise NotImplementedError
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            continue
+        if line == "---":
+            continue
+        if line.startswith("<!--"):
+            continue
+        # italic-only: entire line is *...* (single asterisks wrapping the whole content)
+        if re.match(r'^\*[^*]+\*$', line):
+            continue
+        return line
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -104,23 +189,29 @@ def parse_first_prose_line(body: str) -> str:
 
 def describe_mechanical_key(anchor: Anchor) -> str:
     """Default: ``f"{bare_key}: {heading} — {first_prose}"`` (hyphenated key)."""
-    raise NotImplementedError
+    return f"{anchor.bare_key}: {anchor.heading} — {anchor.first_prose}"
 
 
 def describe_key_only(anchor: Anchor) -> str:
     """Fast fallback: the hyphenated bare key alone (no body)."""
-    raise NotImplementedError
+    return anchor.bare_key
 
 
 def describe_mechanical(anchor: Anchor) -> str:
     """Body-only: heading + first_prose, no key. Validates the D3 failure mode
     (plan-type anchors opening with operational metadata fail to merge)."""
-    raise NotImplementedError
+    return f"{anchor.heading} — {anchor.first_prose}"
 
 
 def describe(anchor: Anchor, method: str = DEFAULT_METHOD) -> str:
     """Generic dispatch over the named describe_* methods by method string."""
-    raise NotImplementedError
+    if method == METHOD_MECHANICAL_KEY:
+        return describe_mechanical_key(anchor)
+    if method == METHOD_KEY_ONLY:
+        return describe_key_only(anchor)
+    if method == METHOD_MECHANICAL:
+        return describe_mechanical(anchor)
+    raise ValueError(f"Unknown describe method: {method!r}")
 
 
 # ---------------------------------------------------------------------------

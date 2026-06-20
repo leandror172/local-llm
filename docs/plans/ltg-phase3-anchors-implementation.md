@@ -192,9 +192,15 @@ an empty report for "nothing to escalate."
 
 ## 8. Acceptance (D6 — same corpus, Phase 2.5 revalidates)
 
+> **KEY-NAME CORRECTION (session 94, verified against live repo):** the frozen decision
+> docs write `ref:concept-ltg` / `ref:plan-ltg` as **shorthand** — those literal keys do
+> **not** exist. The real keys are **`ref:concept-latent-topic-graph`** and
+> **`ref:plan-latent-topic-graph`**. SA-4 / live acceptance must use the full names.
+> (`ingest_anchors` finds 143 anchors total; confirmed both full keys present.)
+
 1. **Sanity:** the 2 corpus-resident keys merge with topics from their own files (tautological; exercises pipeline).
-2. **Real (probe-verified):** `ref:concept-ltg` ↔ `.memories/QUICK.md::ltg_implementation` (~0.972) +
-   `KNOWLEDGE.md::latent_topic_graph` (~0.970); `ref:plan-ltg` ↔ same two (~0.898/0.861). **M:N** —
+2. **Real (probe-verified):** `ref:concept-latent-topic-graph` ↔ `.memories/QUICK.md::ltg_implementation` (~0.972) +
+   `KNOWLEDGE.md::latent_topic_graph` (~0.970); `ref:plan-latent-topic-graph` ↔ same two (~0.898/0.861). **M:N** —
    both anchors alias the same two topics → `alias_of` JSON list correct.
 3. **Orphan:** `ref:ltg-corpus` no-merge (correct).
 
