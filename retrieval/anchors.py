@@ -15,9 +15,11 @@ do not change a signature without updating its consumers.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -253,16 +255,68 @@ def build_anchor_rows(
     vectors: dict[str, list[float]],
 ) -> list[dict]:
     """One full row dict per anchor (all 22 schema fields explicit; "" for
-    non-nullable provenance fields, "[]" scope_tags, null anchor_key->set/alias_of)."""
-    raise NotImplementedError
+    non-nullable provenance fields, "[]" scope_tags, null segment_id/segment_range/alias_of).
+
+    description is computed via describe_mechanical_key (DEFAULT_METHOD). This bakes in
+    the assumption that rebuild_index embedded using the same default method. If a
+    non-default method is used by the orchestrator, the stored description won't match
+    the embedded text. CONTRACT GAP: a future signature revision should add an optional
+    ``descriptions: dict[str, str]`` parameter so rebuild_index can pass pre-computed
+    descriptions regardless of method. See SA-3 slice report for details.
+    """
+    result = []
+    for anchor in anchors:
+        row = {
+            "id": anchor.key,
+            "file_path": anchor.file_path,
+            "topic_name": anchor.bare_key.replace("-", "_"),
+            "description": describe_mechanical_key(anchor),
+            "spans": json.dumps([[anchor.start_line, anchor.start_line]]),
+            "vector": vectors[anchor.key],
+            "embed_model": "qwen3-embedding:8b",
+            "embed_dim": 4096,
+            "embed_mode": "description",
+            "embedding_timestamp": datetime.now(timezone.utc).isoformat(),
+            "extractor_model": "",
+            "extraction_run_id": "",
+            "extraction_timestamp": "",
+            "file_role": "anchor",
+            "node_kind": "anchor",
+            "scope_tags": "[]",
+            "segment_id": None,
+            "segment_range": None,
+            "source_class": ANCHOR_SOURCE_CLASS,
+            "confidence": ANCHOR_CONFIDENCE,
+            "anchor_key": anchor.key,
+            "alias_of": None,
+        }
+        result.append(row)
+    return result
 
 
 def apply_aliases(topic_rows: list[dict], matches: dict[str, list[str]]) -> list[dict]:
     """Return topic rows with the Phase-3 fields backfilled on ALL rows
     (source_class=topic_extracted, confidence=0.7, anchor_key=null) and ``alias_of``
     set to the JSON list of anchor keys on matched rows. Aliasing does NOT change
-    confidence (D1)."""
-    raise NotImplementedError
+    confidence (D1).
+
+    Returns NEW dicts — originals are not mutated ({**row, ...} spread).
+    """
+    result = []
+    for row in topic_rows:
+        topic_id = row["id"]
+        alias_of = None
+        if topic_id in matches:
+            alias_of = json.dumps(matches[topic_id])
+        new_row = {
+            **row,
+            "source_class": TOPIC_SOURCE_CLASS,
+            "confidence": TOPIC_CONFIDENCE,
+            "anchor_key": None,
+            "alias_of": alias_of,
+        }
+        result.append(new_row)
+    return result
 
 
 # ---------------------------------------------------------------------------
