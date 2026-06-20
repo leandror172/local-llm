@@ -152,6 +152,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `retrieval/run-embed.sh` | Reads Phase 1 JSONL, routes by extension, batches embed via bge-m3, writes 16-field embedding JSONL. | Phase 2 step 1: produce embeddings.jsonl |
 | `retrieval/run-store.sh` | Reads embedding JSONL, creates/overwrites LanceDB `topics` table with backup. | Phase 2 step 2: build the index |
 | `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |
+| `retrieval/run-anchors.sh` | Phase 3 anchor rebuild: `--index`, `--method`, `--repo-root`. Ingests ref:KEY anchors, embeds, matches topics, writes combined LanceDB table. | After any ref:KEY changes; Phase 3 live acceptance |
 
 ### MCP Server
 | Script | Purpose | When to Use |

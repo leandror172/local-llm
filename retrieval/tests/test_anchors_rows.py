@@ -3,12 +3,11 @@
 Contract notes
 --------------
 build_anchor_rows:
-  - accepts (anchors: list[Anchor], vectors: dict[str, list[float]])
+  - accepts (anchors: list[Anchor], vectors: dict[str, list[float]], descriptions: dict[str,str] | None = None)
   - returns one dict per anchor with ALL 22 schema fields explicitly present
-  - description is computed via describe_mechanical_key(anchor) — DEFAULT_METHOD
-  - CONTRACT GAP (surfaced, not hacked): if rebuild_index uses a non-default method,
-    the stored description won't match the embedded text. See test_build_anchor_rows_description_gap_note.
-    Resolution proposed: add optional `descriptions: dict[str,str]` param in a later signature revision.
+  - when descriptions is None (default): description = describe_mechanical_key(anchor) — backward compat
+  - when descriptions provided: uses descriptions[anchor.key] — enables rebuild_index to pass pre-computed
+    descriptions that match the embedded text regardless of method (SA-4 contract change)
 
 apply_aliases:
   - accepts (topic_rows: list[dict], matches: dict[str, list[str]])

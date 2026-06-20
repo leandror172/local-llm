@@ -253,24 +253,29 @@ def match_anchors(
 def build_anchor_rows(
     anchors: list[Anchor],
     vectors: dict[str, list[float]],
+    descriptions: dict[str, str] | None = None,
 ) -> list[dict]:
     """One full row dict per anchor (all 22 schema fields explicit; "" for
     non-nullable provenance fields, "[]" scope_tags, null segment_id/segment_range/alias_of).
 
-    description is computed via describe_mechanical_key (DEFAULT_METHOD). This bakes in
-    the assumption that rebuild_index embedded using the same default method. If a
-    non-default method is used by the orchestrator, the stored description won't match
-    the embedded text. CONTRACT GAP: a future signature revision should add an optional
-    ``descriptions: dict[str, str]`` parameter so rebuild_index can pass pre-computed
-    descriptions regardless of method. See SA-3 slice report for details.
+    Args:
+        anchors: List of Anchor objects to build rows for.
+        vectors: Dict mapping anchor.key -> embedding vector.
+        descriptions: Optional dict mapping anchor.key -> description string.
+            When provided, descriptions[anchor.key] is used for the ``description``
+            field — enables rebuild_index to pass pre-computed descriptions that
+            match the embedded text regardless of method. When None (default),
+            falls back to describe_mechanical_key(anchor), preserving SA-3
+            backward compatibility.
     """
     result = []
     for anchor in anchors:
+        desc = descriptions[anchor.key] if descriptions is not None else describe_mechanical_key(anchor)
         row = {
             "id": anchor.key,
             "file_path": anchor.file_path,
             "topic_name": anchor.bare_key.replace("-", "_"),
-            "description": describe_mechanical_key(anchor),
+            "description": desc,
             "spans": json.dumps([[anchor.start_line, anchor.start_line]]),
             "vector": vectors[anchor.key],
             "embed_model": "qwen3-embedding:8b",
@@ -325,20 +330,98 @@ def apply_aliases(topic_rows: list[dict], matches: dict[str, list[str]]) -> list
 
 def staleness_warnings(topic_rows: list[dict], repo_root: Path) -> list[str]:
     """One warning per topic whose source file mtime is newer than its
-    extraction_timestamp (index may be stale vs current files; D6 #4)."""
-    raise NotImplementedError
+    extraction_timestamp (index may be stale vs current files; D6 #4).
+    Skips rows with empty extraction_timestamp (anchor rows) and missing files."""
+    warnings = []
+    for row in topic_rows:
+        if not row.get("extraction_timestamp"):
+            continue
+        try:
+            extraction_time = datetime.fromisoformat(row["extraction_timestamp"])
+        except ValueError:
+            continue
+        file_path = repo_root / row["file_path"]
+        if not file_path.exists():
+            continue
+        mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
+        if mtime > extraction_time:
+            warnings.append(
+                f"Stale topic {row['id']} - file {row['file_path']} is newer than extraction timestamp"
+            )
+    return warnings
+
+
+def _nearmiss_with_vectors(
+    anchors: list[Anchor],
+    topic_rows: list[dict],
+    anchor_vectors: dict[str, list[float]],
+) -> list[dict]:
+    """Find anchors with top cosine match in [NEARMISS_LOW, COSINE_THRESHOLD).
+    Vectors are unit-normalized so cosine == dot product. Called by rebuild_index
+    with vectors in hand to avoid re-embedding."""
+    result = []
+    for anchor in anchors:
+        if anchor.key not in anchor_vectors:
+            continue
+        av = anchor_vectors[anchor.key]
+        top_cosine = -1.0
+        top_topic = ""
+        for row in topic_rows:
+            tv = row["vector"]
+            cosine = sum(a * b for a, b in zip(av, tv))
+            if cosine > top_cosine:
+                top_cosine = cosine
+                top_topic = row["id"]
+        if NEARMISS_LOW <= top_cosine < COSINE_THRESHOLD:
+            result.append({
+                "anchor_key": anchor.key,
+                "top_topic": top_topic,
+                "top_cosine": top_cosine,
+            })
+    return result
 
 
 def nearmiss_report(anchors: list[Anchor], topic_rows: list[dict]) -> list[dict]:
     """Anchors whose top match sits in [NEARMISS_LOW, COSINE_THRESHOLD) — the
     just-below-threshold band. Inert until Phase 2.5 corpus expansion (most of the
-    143 keys are legitimate orphans). Each entry: {anchor_key, top_topic, top_cosine}."""
-    raise NotImplementedError
+    143 keys are legitimate orphans). Each entry: {anchor_key, top_topic, top_cosine}.
+
+    CONTRACT FLAG: this public pinned signature cannot compute cosines without anchor
+    vectors. rebuild_index calls _nearmiss_with_vectors directly with vectors in hand.
+    This stub raises NotImplementedError to make the design constraint explicit.
+    """
+    raise NotImplementedError(
+        "nearmiss_report requires anchor vectors — call _nearmiss_with_vectors(anchors, topic_rows, anchor_vectors) "
+        "or use rebuild_index which calls it with vectors after embedding."
+    )
 
 
 # ---------------------------------------------------------------------------
 # Orchestration (SA-4)
 # ---------------------------------------------------------------------------
+
+def _embed_anchor_descriptions(descriptions: dict[str, str]) -> dict[str, list[float]]:
+    """Embed anchor descriptions into vectors using the ModelClient (lazy import).
+    Sequential — VRAM constraint; never parallelize.
+    Returns dict mapping anchor_key -> embedding vector."""
+    from retrieval.model_client import ModelClient, load_config
+    config_path = Path(__file__).parent / "config.yaml"
+    config = load_config(config_path)
+    client = ModelClient(config)
+    texts = [descriptions[k] for k in descriptions]
+    vectors = client.embed_texts(texts, role="embedding")
+    return {k: vectors[i] for i, k in enumerate(descriptions)}
+
+
+def _write_index(all_rows: list[dict], index_path: Path, backup_path: Path) -> None:
+    """Backup existing index then write all rows (topics + anchors) overwrite-only."""
+    import lancedb
+    from retrieval.store import backup_index, open_or_create_table, rows_to_arrow_table
+    backup_index(index_path, backup_path)
+    db = lancedb.connect(str(index_path))
+    arrow_table = rows_to_arrow_table(all_rows)
+    open_or_create_table(db, "topics", arrow_table)
+
 
 def rebuild_index(
     repo_root: Path,
@@ -348,5 +431,73 @@ def rebuild_index(
     """Full rebuild: ingest anchors -> read topics (reuse stored vectors) -> embed
     anchor descriptions -> match -> apply aliases -> build anchor rows -> write
     topics+anchors via store.py overwrite path (auto-backup). Returns a RebuildReport
-    carrying counts + staleness + near-miss diagnostics."""
-    raise NotImplementedError
+    carrying counts + staleness + near-miss diagnostics.
+
+    Read-before-backup invariant: topic rows are materialized from LanceDB before
+    _write_index is called (which moves index_path → backup). Reversing this order
+    would make the read fail on any run after the first.
+    """
+    import lancedb
+    anchors = ingest_anchors(repo_root)
+    # Read topics BEFORE backup (backup moves index_path away)
+    db = lancedb.connect(str(index_path))
+    topic_rows = db.open_table("topics").to_arrow().to_pylist()
+    descriptions = {a.key: describe(a, method) for a in anchors}
+    anchor_vectors = _embed_anchor_descriptions(descriptions)
+    matches = match_anchors(anchor_vectors, topic_rows)
+    updated_topic_rows = apply_aliases(topic_rows, matches)
+    anchor_rows = build_anchor_rows(anchors, anchor_vectors, descriptions=descriptions)
+    all_rows = updated_topic_rows + anchor_rows
+    backup_path = index_path.parent / (index_path.name + ".bak")
+    _write_index(all_rows, index_path, backup_path)
+    staleness = staleness_warnings(updated_topic_rows, repo_root)
+    nearmiss = _nearmiss_with_vectors(anchors, updated_topic_rows, anchor_vectors)
+    aliases_created = sum(1 for r in updated_topic_rows if r.get("alias_of") is not None)
+    return RebuildReport(
+        index_path=str(index_path),
+        anchors_ingested=len(anchors),
+        topics_read=len(topic_rows),
+        aliases_created=aliases_created,
+        method=method,
+        staleness=staleness,
+        nearmiss=nearmiss,
+    )
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Rebuild LTG anchor index (Phase 3)")
+    parser.add_argument("--repo-root", type=Path, default=Path(__file__).parent.parent,
+                        help="Repo root directory")
+    parser.add_argument("--index", type=Path, default=Path(__file__).parent / "index",
+                        help="LanceDB index directory")
+    parser.add_argument("--method", default=DEFAULT_METHOD,
+                        choices=[METHOD_MECHANICAL_KEY, METHOD_KEY_ONLY, METHOD_MECHANICAL],
+                        help="Anchor description method")
+    args = parser.parse_args()
+
+    report = rebuild_index(args.repo_root, args.index, method=args.method)
+
+    print(f"Rebuilt index at {report.index_path}")
+    print(f"  Anchors ingested: {report.anchors_ingested}")
+    print(f"  Topics read:      {report.topics_read}")
+    print(f"  Aliases created:  {report.aliases_created}")
+    print(f"  Method:           {report.method}")
+
+    if report.staleness:
+        print("  Staleness warnings:")
+        for warning in report.staleness:
+            print(f"    - {warning}")
+
+    if report.nearmiss:
+        print("  Near-miss anchors:")
+        for entry in report.nearmiss:
+            print(f"    - {entry['anchor_key']} top={entry['top_topic']} cosine={entry['top_cosine']:.4f}")
+
+
+if __name__ == "__main__":
+    main()
