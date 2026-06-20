@@ -230,7 +230,18 @@ def match_anchors(
       an anchor, both directions of multiplicity preserved. Topics with no match
       are absent from the dict.
     """
-    raise NotImplementedError
+    result = {}
+    for topic_row in topic_rows:
+        topic_id = topic_row["id"]
+        vector = topic_row["vector"]
+        matches = []
+        for anchor_key, anchor_vector in anchor_vectors.items():
+            dot_product = sum(a * b for a, b in zip(vector, anchor_vector))
+            if dot_product >= threshold:
+                matches.append(anchor_key)
+        if matches:
+            result[topic_id] = sorted(matches)
+    return result
 
 
 # ---------------------------------------------------------------------------
