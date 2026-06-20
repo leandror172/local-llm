@@ -404,7 +404,7 @@ def _embed_anchor_descriptions(descriptions: dict[str, str]) -> dict[str, list[f
     """Embed anchor descriptions into vectors using the ModelClient (lazy import).
     Sequential — VRAM constraint; never parallelize.
     Returns dict mapping anchor_key -> embedding vector."""
-    from retrieval.model_client import ModelClient, load_config
+    from model_client import ModelClient, load_config
     config_path = Path(__file__).parent / "config.yaml"
     config = load_config(config_path)
     client = ModelClient(config)
@@ -416,7 +416,7 @@ def _embed_anchor_descriptions(descriptions: dict[str, str]) -> dict[str, list[f
 def _write_index(all_rows: list[dict], index_path: Path, backup_path: Path) -> None:
     """Backup existing index then write all rows (topics + anchors) overwrite-only."""
     import lancedb
-    from retrieval.store import backup_index, open_or_create_table, rows_to_arrow_table
+    from store import backup_index, open_or_create_table, rows_to_arrow_table
     backup_index(index_path, backup_path)
     db = lancedb.connect(str(index_path))
     arrow_table = rows_to_arrow_table(all_rows)
