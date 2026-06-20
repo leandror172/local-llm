@@ -206,6 +206,21 @@ an empty report for "nothing to escalate."
 
 ---
 
+## 8b. Live acceptance result (session 94 — first real-model rebuild)
+
+Ran `retrieval/run-anchors.sh` against the live index. **212 rows** (69 topics + 143 anchors),
+schema correct (anchors `node_kind=anchor`, `confidence=1.0`, `alias_of=null`). **3 topic rows aliased.**
+
+**Mechanism fully validated:**
+- `ref:concept-latent-topic-graph` → `.memories/QUICK.md::ltg_implementation` **and** `KNOWLEDGE.md::latent_topic_graph` ✓ (the strong probe-predicted ~0.97 merge).
+- **M:N proven:** `ltg_implementation` aliased by **two** anchors — `[concept-latent-topic-graph, ltg-phase2-plan]` → `alias_of` JSON list correct.
+- **Orphan** `ref:ltg-corpus` → no merge ✓.
+- Staleness warnings fired (`.memories/*`, `persona-template.md` newer than extraction — D6 #4 visibility working). Near-miss band populated (5 anchors in [0.80, 0.85)).
+
+**One deviation (expected, not a bug):** `ref:plan-latent-topic-graph` did **not** merge — top match 0.7742 (below threshold AND below `NEARMISS_LOW`). Its description opens with `**Status:** Ready for execution` — exactly the D3 operational-metadata failure mode. The probe predicted 0.898 on the session-82 snapshot; the corpus has since drifted (staleness warnings confirm), and key-name inclusion compensated only partially. A *different* plan anchor (`ltg-phase2-plan`) fired in its place. This is precisely the **provisional / recalibrate-at-Phase-2.5** disposition and the **Phase-3.5 escalation candidate** the frozen decisions named. Two tuning levers for Phase 2.5: lower `NEARMISS_LOW` to catch ~0.77 cases, and the deferred LLM-escalation for operational-metadata anchors.
+
+---
+
 ## 9. Honest limitations (carried to Phase 2.5)
 
 - All probe merges are **LTG-self-referential** (key tokens appear in targets — most favorable case).
