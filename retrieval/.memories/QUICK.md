@@ -11,6 +11,7 @@ Session 73 (2026-05-28): **M-P0b complete.** Upgraded embedding model: bge-m3 (1
 Sessions 78–80 (2026-05-29→06-01): **Extractor retrofit complete.** `routing.py`, `schemas.py`, `ModelClient` extracted; 148 tests green; parity verified end-to-end. PR open.
 Session 81 (2026-06-01): Phase 3 anchor-integration DISCOVERY started. Dual-path RAG framing: `ref:KEY` anchors as a parallel retrieval surface (span-topics / ref-keys / both), configurable per-class weights; merge → alias-link (keep both rows). Empirical: 2 of 138 ref keys live in the 8 extracted files.
 Session 82 (2026-06-02): **Phase 3 anchor decisions FROZEN.** All 7 decisions D1–D7 settled: dual-path RAG + alias-link confirmed. **Next: `anchors.py` TDD.**
+Session 94 (2026-06-20): **Phase 3 anchor integration COMPLETE.** `anchors.py` built TDD (contract-pin + 4 subagent slices), 254 tests. store.py schema 18→22 (+source_class/confidence/anchor_key/alias_of). Live rebuild: 212 rows (69 topics + 143 anchors); concept-latent-topic-graph merges both .memories topics, M:N proven, orphan no-merge, staleness+near-miss diagnostics firing. `plan-latent-topic-graph` non-merge (0.7742 — D3 operational-metadata failure on drifted corpus) → Phase 2.5/3.5. PR #55. Plan: `docs/plans/ltg-phase3-anchors-implementation.md`. **Next: Phase 4 (graph + communities) — `alias_of` are proto-edges.**
 
 ## Deeper Memory → KNOWLEDGE.md
 

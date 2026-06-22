@@ -1,35 +1,38 @@
 # Session Log
 
-**Current Layer:** Layer 5 — Expense Classifier
-**Current Session:** 2026-06-17 — Session 91: session-handoff append↔checkoff fix + failure-clarity sweep
+**Current Layer:** LTG Phase 3 COMPLETE → Phase 4 (graph + communities) next
+**Current Session:** 2026-06-20 — Session 92: LTG Phase 3 anchor integration — anchors.py shipped (PR #55)
 
 ---
-## 2026-06-17 - Session 91: session-handoff append↔checkoff fix + failure-clarity sweep
+## 2026-06-20 - Session 92: LTG Phase 3 anchor integration — anchors.py shipped (PR #55)
 
 ### Context
 
-Continued from a compacted session: an expenses-repo bug report against the session-handoff overlay (opaque "Modified text does not match the expected text" on an append+checkoff-in-one-file payload). A frozen, advisor-reviewed execution plan already existed (`docs/plans/session-handoff-failure-clarity.md`); this session executed it via the planned two-agent dispatch.
+Standing next work item was LTG Phase 3 `anchors.py` (decisions frozen session 82). Built it via the multi-subagent TDD pattern to conserve main-session context: a main-owned contract-pin + four sequential subagent slices (reused warm agent for SA-1→3, fresh for SA-4) + main-session integration review and live-model acceptance.
 
 ### What Was Done
 
-- Track 1 (correctness): fixed `verifier.verify()` reconstruction loop to treat `append` AND `prepend` as true insertions (preserving a nested checkoff flip) instead of replacing the region with a stale `interior` snapshot — the other half of the T-57 bug. Proven by a non-vacuous TDD regression test (red before, green after; `append.start < checkoff.start` tripwire).
-- Track 2 (failure clarity): `kind` attribute on all five pipeline exceptions (payload vs internal fault); `Region.role/file/target` populated in `orchestrator._collect_edits`; verifier mismatch/marker messages name file+roles+first-diff with a TOOL BUG marker; locator messages name role+file+target; CLI routes `stage_failed` → `payload_error` / `internal_tool_bug` (internal case cites the run's `input.md`). New `test_failure_clarity.py` (6 tests).
-- Dispatched as two subagents: Agent A (Sonnet) did the spine + all test authoring, gated on green baseline; Agent B (Haiku) did mechanical string enrichment only after A's gate, using the local model for the locator.py codegen.
-- Rollout: manifest v6→v7, SKILL.md path nit + new statuses, overlay QUICK/KNOWLEDGE updated, index.md pointer. User-level engine reinstalled at `~/.claude/tools/handoff/` (verified); reverted two unintended installer side effects in the llm repo (a stale `resume.sh` overwrite + a stray `registry.yaml` copy).
-- Two commits: `6a34c19` (feat: fix + sweep), `20a781b` (chore: v7 rollout). Suite 166 → 173 green.
+- Contract-pin (main/Opus): extended `store.py` `build_schema` in place 18→22 fields (`source_class`, `confidence`, `anchor_key`, `alias_of`); created `retrieval/anchors.py` skeleton — `Anchor`/`RebuildReport` dataclasses, `COSINE_THRESHOLD` + method constants, `NotImplementedError` stubs; pinned `match_anchors` M:N seam `dict[topic_id -> list[anchor_key]]`.
+- SA-1: `ingest_anchors` (git grep tracked `*.md`, dedup, 143 anchors), `parse_first_prose_line`, three `describe_*` + dispatch. 33 tests.
+- SA-2: `match_anchors` exact in-memory cosine over unit vectors. 15 tests. Ollama verdict 2.
+- SA-3: `build_anchor_rows` (field table §4) + `apply_aliases` (M:N JSON list, confidence unchanged by aliasing). 32 tests. Surfaced the description-source contract gap.
+- SA-4: `rebuild_index` + `staleness_warnings` + near-miss diagnostic + `run-anchors.sh` + approved `descriptions` param. 26 tests.
+- Live acceptance: rebuilt index = 212 rows (69 topics + 143 anchors); `concept-latent-topic-graph` merged both `.memories` topics, M:N proven (`ltg_implementation` aliased by 2 anchors), orphan `ltg-corpus` no-merge, staleness + near-miss firing. 254 tests green. PR #55 opened.
 
 ### Decisions Made
 
-- Fix made `append`/`prepend` consistent as insertions (NOT forbidding the combo); `kind` attribute over exception subclasses ("simpler for now"); `stage_failed` rename is a clean break (no external consumers).
-- Two-agent split follows the risk surface: reasoning + all self-authored tests to the stronger model, mechanical enrichment to the cheaper one with the test suite as guardrail.
-- Skipped the expenses bug-report reply and a T-61 follow-up task (user declined both).
+- Schema extended in `store.py` in place (one canonical schema) rather than a separate `build_schema_v3` wrapper — avoids drift.
+- Matching is exact in-memory cosine, not LanceDB ANN — M:N alias correctness needs exactness; 143×69 is free.
+- Escalation deferred (diagnostic-only): near-miss band report, no LLM/conditional logic in Phase 3.
+- `build_anchor_rows` gained an optional `descriptions` param so non-default methods store the embedded text (approved mid-session after SA-3 flagged the gap rather than hacking).
+- Staleness handled by warn-not-fix: reuse stored topic vectors, preserve provenance fields, emit mtime warnings (D6 #4). Re-extraction deferred to Phase 2.5.
 
 ### Next
 
-- Optional: reply to the expenses bug report confirming root cause + both fixes + new statuses (user deferred).
-- LTG Phase 3 `anchors.py` TDD remains the standing next work item.
+- LTG Phase 4 — graph + communities. `alias_of` lists are proto-edges to relocate into the edge table; anchor↔anchor edges (index.md cross-refs) also land here.
+- Merge PR #55 when ready.
 
 ### Gotchas
 
-- A shared user-level engine reinstall still has a per-repo blast radius: pointing the installer at the llm repo would have regressed an unrelated local `resume.sh` (overlay source was staler). Always `--dry-run` + diff-review the project-side writes before a "just refresh the engine" install.
-- This environment has no `python` binary — use `python3` to run the handoff suite.
+- Two bugs slipped past green tests because they are integration-only: (1) `from retrieval.X import` failed at runtime — the `run-*.sh` wrappers put the script dir on `sys.path`, so siblings must be `from model_client import ...` (mocked tests never executed the lazy import lines); (2) the frozen decision docs write `ref:concept-ltg` / `ref:plan-ltg` as shorthand — the real keys are `ref:concept-latent-topic-graph` / `ref:plan-latent-topic-graph`. This is why a live-model acceptance step (not just mocked TDD) was reserved for main session.
+- `plan-latent-topic-graph` did not merge (top 0.7742, below threshold AND below NEARMISS_LOW) — D3 operational-metadata failure (`**Status:**`-opening) on a drifted corpus. Probe predicted 0.898 on the session-82 snapshot. Expected provisional/Phase-2.5 outcome, not a bug.

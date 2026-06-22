@@ -60,6 +60,15 @@ def build_schema(embed_dim: int) -> pa.Schema:
         pa.field("scope_tags",           pa.string()),
         pa.field("segment_id",           pa.string(), nullable=True),
         pa.field("segment_range",        pa.string(), nullable=True),
+        # --- Phase 3 anchor fields (ref:ltg-phase3-decisions) ---
+        # source_class: config-projection of (file_path, node_kind); "topic_extracted" | "anchor_ref".
+        # confidence: node-provenance only (extracted 0.7, anchor 1.0); NOT edge/retrieval weight, NOT changed by aliasing.
+        # anchor_key: "ref:KEY" on anchor rows, null on topic rows.
+        # alias_of: JSON-encoded list of anchor keys on topic rows (M:N), null on anchor rows. Phase 4 relocates to edge table.
+        pa.field("source_class",         pa.string()),
+        pa.field("confidence",           pa.float32()),
+        pa.field("anchor_key",           pa.string(), nullable=True),
+        pa.field("alias_of",             pa.string(), nullable=True),
     ])
 
 RUNS_DIR = Path(__file__).parent / "runs"
