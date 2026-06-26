@@ -1,0 +1,54 @@
+# LTG corpus selection — Phase 2.5 (ref:ltg-corpus)
+#
+# Declares WHAT gets ingested and how each file is provenance-tagged.
+# This file is INTENT (globs/roots that survive file additions);
+# `corpus-manifest.yaml` is the frozen RESOLUTION of this intent for one run.
+#
+# Kept separate from config.yaml (models/roles) by concern: this changes when
+# the corpus boundary moves; config.yaml changes when inference setup moves.
+
+# Only these extensions are ingested. Prose-only MVP — code-file ingestion is
+# Phase 8 territory (ref:ltg-corpus "code branch point — DEFER").
+file_extensions:
+  - .md
+
+# Directory roots and individual files to include (repo-relative).
+# Individually-named .claude files are CURATED: this deliberately excludes the
+# .claude top-level noise (session-log.md, handoff-session-*.md, plan.md
+# [superseded], prompt-*-continuation.md) that is procedural/ephemeral.
+include_roots:
+  - docs/research/
+  - docs/ideas/
+  - .claude/archive/
+  - .claude/skills/
+  - .claude/tools/
+  - .claude/plan-v2.md
+  - .claude/tasks.md
+  - .claude/index.md
+  - .claude/session-context.md
+
+# Glob patterns added on top of include_roots. The per-folder .memories/ dirs
+# are scattered across 7 folders (root, retrieval/, benchmarks/, evaluator/,
+# mcp-server/, overlays/, personas/), so a single root won't catch them.
+include_globs:
+  - "**/.memories/*.md"
+
+# Anything matching is dropped even if it sits under an include root.
+exclude_globs:
+  - ".claude/local/**"      # gitignored, sensitive, procedural handoff-run noise
+  - "**/*.bak"
+  - "**/*.bak-*"            # e.g. SKILL.md.bak-p4
+  - "**/*.bak.*"
+
+# Provenance groups (T-65) — a new axis orthogonal to source_class.
+# First matching rule wins (order matters): the .memories glob must precede the
+# .claude catch-all so retrieval/.memories does not fall into claude-meta, and
+# .claude/archive must precede the .claude catch-all.
+# Recorded per row as `source_group` and per file in the manifest. Phase-5
+# query-type-dependent weighting consumes this; capture is cheap now.
+groups:
+  - { match: "**/.memories/*.md",   tag: memories }
+  - { match: ".claude/archive/**",  tag: archive }
+  - { match: "docs/research/**",    tag: docs-research }
+  - { match: "docs/ideas/**",       tag: docs-ideas }
+  - { match: ".claude/**",          tag: claude-meta }
