@@ -18,49 +18,17 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import re
 import subprocess
 import sys
 from pathlib import Path
 
 import yaml
 
+from corpus_groups import assign_group, glob_to_regex
+
 REPO_ROOT = Path(__file__).parent.parent
 DEFAULT_CONFIG = Path(__file__).parent / "corpus.yaml"
 DEFAULT_OUTPUT = Path(__file__).parent / "corpus-manifest.yaml"
-
-
-# --------------------------------------------------------------------------- #
-# Glob matching — explicit ** semantics (Python 3.10 PurePath.match lacks it)  #
-# --------------------------------------------------------------------------- #
-def glob_to_regex(pattern: str) -> re.Pattern:
-    """Compile a glob to an anchored regex.
-
-    `**` matches any chars including `/` (recursive); `*` matches any chars
-    except `/`; `?` matches one non-`/`. Everything else is literal.
-    """
-    out = []
-    i = 0
-    while i < len(pattern):
-        c = pattern[i]
-        if c == "*":
-            if pattern[i + 1 : i + 2] == "*":
-                # `**/` matches any number of leading dirs INCLUDING zero, so
-                # `**/foo` matches `foo` at the repo root too. Bare `**` -> `.*`.
-                if pattern[i + 2 : i + 3] == "/":
-                    out.append("(?:.*/)?")
-                    i += 3
-                else:
-                    out.append(".*")
-                    i += 2
-                continue
-            out.append("[^/]*")
-        elif c == "?":
-            out.append("[^/]")
-        else:
-            out.append(re.escape(c))
-        i += 1
-    return re.compile("^" + "".join(out) + "$")
 
 
 def matches_any(path: str, patterns: list[str]) -> bool:
@@ -109,14 +77,6 @@ def select_files(tracked: list[str], cfg: dict) -> list[str]:
             continue
         selected.append(path)
     return sorted(selected)
-
-
-def assign_group(path: str, groups: list[dict]) -> str:
-    """First matching rule wins (order in corpus.yaml is significant)."""
-    for rule in groups:
-        if glob_to_regex(rule["match"]).match(path):
-            return rule["tag"]
-    return "ungrouped"
 
 
 # --------------------------------------------------------------------------- #
