@@ -38,10 +38,21 @@ Acceptance queries (L2 `_distance`, lower=closer):
 | expense classification | in-corpus (Layer-5 logs) | 0.374 | 0.930 |
 | Kubernetes deployment YAML | **true noise** | 0.746 | 0.722 |
 
-Real queries land at **L2 ≤ 0.58 / cosine ≥ 0.83**; the one true-noise query at **L2 0.75 / cosine 0.72**. The old `>1.0` L2 noise threshold (bge-m3 1024-dim era) is badly stale.
+Real queries land at **L2 ≤ 0.58 / cosine ≥ 0.83**. The "Kubernetes" query (L2 0.746) is *tech-adjacent*, not pure noise — it brushes the repo's Ollama/Docker/infra content.
 
-**Recommended noise separator: L2 ≈ 0.65 (cosine ≈ 0.79)** — cleanly splits real from noise here.
-**CAVEAT:** only ONE true-noise sample (Q6). Hard-coding off n=1 would repeat the overfit T-34 set out to fix. `acceptance_mode` is currently record-only (no enforced threshold), so this value is **documented, not wired** — wire it (with more noise probes) if/when acceptance gains pass/fail enforcement.
+**Follow-up — 8 pure off-corpus noise probes** (risotto, NBA finals, flat tire, vitamin D, hiking trails, tides physics, tax deadline, song lyrics) to escape the n=1 trap:
+
+| Band | L2 distance | cosine |
+|------|-------------|--------|
+| Real queries | ≤ 0.58 | ≥ 0.83 |
+| Tech-adjacent (Kubernetes) | 0.746 | 0.722 |
+| **Pure off-corpus noise (n=8)** | **0.91 – 1.17** (mean 1.03) | 0.32 – 0.58 |
+
+The real and pure-noise bands are **cleanly separated by a ~0.33-wide empty gap** (0.58 → 0.91); 0/8 noise queries fell below 0.65, 0/8 below 0.58. The old `>1.0` L2 threshold (bge-m3 1024-dim era) is badly stale — it would classify *all* of this noise as real.
+
+**Recommended noise separator: L2 ≈ 0.70 (cosine ≈ 0.76)** — mid-gap, wide margin to both the real band (0.58) and the pure-noise band (0.91). A stricter 0.65 also works; 0.80 would treat tech-adjacent queries as borderline-real. This is now defensible from **n=9** (1 tech-adjacent + 8 pure), not the original n=1.
+
+**Status — documented, not yet wired.** `acceptance_mode` is currently record-only; wiring means adding a `NOISE_L2_THRESHOLD` constant + a pass/fail assertion (noise queries must exceed it; real queries must fall below). That is the *only* remaining T-34 work — the threshold value itself is now empirically grounded. Deferred to keep this (post-handoff) session in wrap-up scope, not because the number is untrustworthy.
 
 ## T-36 — Corpus expansion: DONE
 Index now holds 875 topics from 113 files (was 69 from 8). Staleness healed: `plan-latent-topic-graph` rose **0.7742 → 0.8379** after re-extraction (still a near-miss under 0.85 — see T-63).
