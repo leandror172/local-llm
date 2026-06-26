@@ -60,3 +60,4 @@ docs/plans/verdict-numeric-migration.md
 docs/plans/verdict-numeric-migration-report.md
 
 .idea/
+retrieval/.venv/

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-python3 "$SCRIPT_DIR/ltg_inspect.py" "$@"
+export PATH="$HOME/.local/bin:$PATH"
+exec uv run --project "$SCRIPT_DIR" python "$SCRIPT_DIR/ltg_inspect.py" "$@"
