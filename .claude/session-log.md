@@ -21,7 +21,7 @@ Unattended continuation of the LTG Phase 2.5 plan (`docs/plans/ltg-phase2.5-corp
 ### Decisions Made
 
 - `COSINE_THRESHOLD=0.85` validated-keep: full-corpus best-match distribution is continuous, and sub-0.85 near-misses are coincidental adjacency — lowering would add false merges, not recall.
-- Noise-query threshold measured (real L2≤0.58, true-noise 0.75 → recommend L2≈0.65) but **documented, not wired**: `acceptance_mode` is record-only and there is only one true-noise sample (n=1) — wiring it would repeat the overfit T-34 set out to fix. T-34 therefore left OPEN (measurement complete, wiring deferred).
+- Noise-query threshold measured across **n=9** probes (1 tech-adjacent "Kubernetes" @ L2 0.746 + 8 pure off-corpus @ 0.91–1.17): real band ≤0.58, pure-noise band ≥0.91, separated by a ~0.33-wide gap → **recommend L2≈0.70** (mid-gap, defensible). **Documented, not wired**: `acceptance_mode` is record-only; the only remaining T-34 work is adding `NOISE_L2_THRESHOLD` + pass/fail assertions. T-34 left OPEN — value grounded, wiring deferred (not blocked on data). [Initial probe was n=1 → L2≈0.65; widened to n=9 after advisor review — see `docs/plans/ltg-phase2.5-report.md`.]
 - 48M `*-embeddings.jsonl` gitignored (regenerable, like the LanceDB index); extraction source + per-run logs + findings committed.
 - Python upgrade scoped to retrieval only; benchmarks/scripts/.claude tools stay on 3.10 (repo-wide T-18 still open).
 
