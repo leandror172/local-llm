@@ -156,6 +156,11 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `retrieval/run-anchors.sh` | Phase 3 anchor rebuild: `--index`, `--method`, `--repo-root`. Ingests ref:KEY anchors, embeds, matches topics, writes combined LanceDB table. | After any ref:KEY changes; Phase 3 live acceptance |
 | `retrieval/run-build-corpus-manifest.sh` | Phase 2.5 corpus freeze: resolves `corpus.yaml` (intent) against `git ls-files`, hashes each file (sha256), records commit SHA, writes frozen `corpus-manifest.yaml`. `--dry-run` prints the resolution summary. | Step 0 before any full-corpus re-extraction; re-run when `corpus.yaml` changes |
 
+### Personas Test Harness
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `personas/run-tests.sh` | Run pytest test suite for personas module (`python3 -m pytest`) | After any change to models.py or create-persona.py |
+
 ### MCP Server
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
@@ -264,11 +269,15 @@ Full research → `.claude/archive/layer-1-research.md`
 |-------|------|-------------|
 | Persona template spec | `personas/persona-template.md` | Fields, defaults, skeleton, model selection, checklist |
 | Persona registry | `personas/registry.yaml` | 28 active, 0 planned; machine-readable source of truth |
-| Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags |
+| Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags; accepts raw float temps [0.0,2.0] (T-19) |
 | Creator bash wrapper | `personas/run-create-persona.sh` | Whitelist-safe entry point (auto-approved) |
 | All Modelfiles | `modelfiles/*.Modelfile` | 28 total across all categories |
 | Full persona catalog | `personas/personas-reference.md` | All personas by category with modelfile + base model |
 | Future persona ideas | `personas/ideas.md` | Candidates not yet built |
+| Personas test harness | `personas/run-tests.sh` | `python3 -m pytest` wrapper; 21 tests across unit + integration |
+| Personas pytest config | `personas/pyproject.toml` | `[tool.pytest.ini_options]` testpaths + pythonpath |
+| Temperature unit tests | `personas/tests/test_temperature.py` | Tests for `parse_temperature_input` (models.py) |
+| collect_from_flags tests | `personas/tests/test_collect_flags.py` | Integration tests: argparse + collect_from_flags end-to-end |
 
 ---
 

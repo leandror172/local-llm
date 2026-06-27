@@ -108,6 +108,10 @@ FORMAT: <output format description>."""
 
 **Rule of thumb:** If the persona's output gets evaluated for correctness → 0.1. If it gets evaluated for quality → 0.3. If it gets evaluated for creativity → 0.7.
 
+**Raw numeric values accepted:** `create-persona.py` also accepts any float in `[0.0, 2.0]`
+(e.g. `--temperature 0.5`).  Named presets above cover the common cases; use a raw value
+only when you have a specific reason to deviate.
+
 ---
 
 ## Model Selection Guide
