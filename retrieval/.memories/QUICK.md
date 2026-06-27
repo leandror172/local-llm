@@ -13,6 +13,7 @@ Session 81 (2026-06-01): Phase 3 anchor-integration DISCOVERY started. Dual-path
 Session 82 (2026-06-02): **Phase 3 anchor decisions FROZEN.** All 7 decisions D1–D7 settled: dual-path RAG + alias-link confirmed. **Next: `anchors.py` TDD.**
 Session 94 (2026-06-20): **Phase 3 anchor integration COMPLETE.** `anchors.py` built TDD (contract-pin + 4 subagent slices), 254 tests. store.py schema 18→22 (+source_class/confidence/anchor_key/alias_of). Live rebuild: 212 rows (69 topics + 143 anchors); concept-latent-topic-graph merges both .memories topics, M:N proven, orphan no-merge, staleness+near-miss diagnostics firing. `plan-latent-topic-graph` non-merge (0.7742 — D3 operational-metadata failure on drifted corpus) → Phase 2.5/3.5. PR #55. Plan: `docs/plans/ltg-phase3-anchors-implementation.md`.
 Session 96 (2026-06-26): **Phase 2.5 corpus expansion COMPLETE.** Config-driven corpus (`corpus.yaml` → frozen `corpus-manifest.yaml`, 113 files sha256-pinned @ commit). Full rebuild: **875 topics / 113 files + 143 anchors = 1018 rows**, all `ok`/0 failures. `source_group` provenance field live (T-65 cheap half, store-time derived). **T-34 recalibration:** `COSINE_THRESHOLD=0.85` validated-keep (continuous dist; sub-0.85 near-misses = coincidental, would be false merges); noise-query threshold measured (real L2≤0.58, true-noise 0.75; recommend L2≈0.65, **documented not wired** — n=1 caveat). Generic anchors no-false-merge (Step 5 PASS). `plan-latent-topic-graph` healed 0.7742→0.8379 (still <0.85 → T-63). **retrieval/ migrated to uv Python 3.12** (T-18 slice). Findings: `probes/phase2.5-calibration.md`. **Next: Phase 4 (graph + communities) — `alias_of` are proto-edges.**
+T-30 (2026-06-26): **`ModelClient.embed_query` added** (thin named-method, +2 lines). Delegates to `embed_texts(texts, role="embedding")`. 3 unit tests added. `embed_texts` stays public — T-31 will migrate callers.
 
 ## Deeper Memory → KNOWLEDGE.md
 
@@ -32,7 +33,7 @@ retrieval/
   corpus_groups.py          # Shared glob matcher (assign_group/glob_to_regex) — manifest + store
   build_corpus_manifest.py  # Freeze tool: corpus.yaml → manifest (run-build-corpus-manifest.sh)
   pyproject.toml / uv.lock  # uv-managed Python 3.12 env (session 96; mirrors mcp-server)
-  model_client.py           # ModelClient — embed + extract routing (retrofit)
+  model_client.py           # ModelClient — embed + extract routing (retrofit); embed_query(texts) added T-30
   embed.py                  # Embedding pipeline (config-driven, Phase 2)
   store.py                  # LanceDB write path (Phase 2)
   ltg_inspect.py            # Acceptance/inspection CLI (Phase 2)

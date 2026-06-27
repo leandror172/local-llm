@@ -62,6 +62,9 @@ class ModelClient:
         
         return embeddings
 
+    def embed_query(self, texts: list[str]) -> list[list[float]]:
+        return self.embed_texts(texts, role="embedding")
+
     def _chat(self, prompt: str, model_config: dict, schema: Optional[dict] = None, timeout: Optional[float] = None) -> ChatResult:
         payload = {
             "model": model_config["model"],
