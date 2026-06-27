@@ -137,7 +137,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/tools/resume.sh` | ~40-line session-start summary (status + next + commits) | Every session start |
 | `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; no args = list all keys | Any time a `[ref:KEY]` tag is needed |
 | `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
-| `.claude/tools/handoff-harvest.sh` | Emit commit subjects since the last `chore(session-handoff):` commit; fallback to last 20 if none found | Run at handoff Step 2 to seed `what_was_done` |
+| `.claude/tools/handoff-harvest.sh` | Emit commit subjects since the last `chore(session-handoff): session ` commit (tighter than bare prefix — avoids false boundaries from other `chore(session-handoff):` uses); fallback to last 20 if none found | Run at handoff Step 2 to seed `what_was_done` |
 | `.claude/tools/benchmark-status.sh` | Rubrics/prompts/personas/results overview | Before any benchmark session |
 | `.claude/tools/ollama-stats.py` | DPO evaluation stats: total calls, model usage, verdict distribution | After evaluating local model outputs; track progress |
 | `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
