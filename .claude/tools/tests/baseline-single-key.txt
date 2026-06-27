@@ -1,0 +1,14 @@
+<!-- ref:indexing-convention -->
+### Indexing Conventions (Two-Tier System)
+
+| Tier | Notation | When to Use | Lookup Method |
+|------|----------|-------------|---------------|
+| **Active reference** | `<!-- ref:KEY -->` + `[ref:KEY]` | Agent needs this during work; CLAUDE.md rules point here | `.claude/tools/ref-lookup.sh KEY` (machine-lookupable) |
+| **Navigation pointer** | `§ "Heading"` | Index/docs pointing to sections for background reading | Open file, find heading (human/agent reads) |
+
+**Active refs** are for high-frequency, runtime lookups (model selection rules, bash wrapper lists, MCP config).
+**§ pointers** are for low-frequency, "read when needed" navigation (research findings, decision rationale, historical context).
+
+**Single-responsibility rule:** One ref block per concept — don't wrap an entire file in one block.
+Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed for the task.
+<!-- /ref:indexing-convention -->
