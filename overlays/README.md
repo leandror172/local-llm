@@ -19,9 +19,50 @@ Options:
                           modules always go to ~/.claude/tools/handoff/ regardless.
   --backup / --no-backup  Backup files before overwriting (default: on)
   --dry-run               Show actions without writing anything
+  --verify                Read-only drift check (see below)
   --report FILE           Write summary to file
   --report-format text|json
 ```
+
+## Verify an installed overlay (--verify)
+
+`--verify` is a **read-only** flag that compares every overlay-managed file at its
+installed destination against the overlay source. It never writes, backs up, or
+creates anything — safe to run at any time.
+
+```bash
+# Check whether the installed session-tracking files are in sync with the overlay:
+./overlays/install-overlay.py session-tracking --target /path/to/repo --verify
+
+# With project-level shim/skill:
+./overlays/install-overlay.py session-tracking --target /path/to/repo \
+    --install-level project --verify
+```
+
+**Per-file labels:**
+
+| Label | Meaning |
+|-------|---------|
+| `SAME` | Installed file matches overlay source (EOL-normalized) |
+| `DIFF` | Installed file differs from overlay source |
+| `MISSING` | Dest file absent, or merge-section marker not in dest file |
+| `SRC-MISSING` | Overlay source file not found (overlay may be corrupt) |
+
+**Exit codes:** `0` = all files SAME; `1` = any DIFF / MISSING / SRC-MISSING.
+
+**All categories gate the exit (decision T-58):** `files`, `always_user_files`,
+`user_files`, `templates`, `manual_if_exists`, and `merge_sections` all contribute
+to the tally. `templates` and `manual_if_exists` carry a `USER-MANAGED` label in the
+report (for readability) but still gate the exit if they differ.
+
+**EOL caveat:** SAME uses EOL-normalized comparison (CRLF = LF, trailing-newline
+differences = SAME). This intentionally decouples verify from the installer's
+byte-exact `sha256` skip — a file can be verify-SAME yet the installer would still
+re-copy it (open task T-29 for proper EOL handling).
+
+**Typical use:** run after propagating an overlay update to confirm every target repo
+received the new files. Catches the class of bug where a commit claims a file was
+updated but the overlay installer was never run (or was run against a stale source).
 
 ## Authoring a new overlay
 

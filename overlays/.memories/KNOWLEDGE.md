@@ -166,7 +166,7 @@ Fixes (commits f6d1116, 771ea5c, bba6cce, 0fdb42f, 979f66f):
   flexible) that the project copy had right.
 
 **Process learnings:** (1) overlay propagation needs a verify step — per-file `cmp` against source
-caught nothing wrong this time only because we ran it; consider an installer `--verify` mode.
+caught nothing wrong this time only because we ran it; installer `--verify` mode DONE (T-58, 2026-06-26).
 (2) "Task done" claims in commit messages/memory are unverified — T5 was recorded done in QUICK.md
 and a commit message while no diff existed. (3) Subagent review must re-derive invariants, not trust
 green tests: review caught an amend stage/promote session-number mismatch (N+1 vs N — would have
@@ -270,3 +270,31 @@ project-level files against overlay source — it tried to overwrite llm's local
 was staler, would have dropped the pre-session reading-guide block) and drop a stray `.claude/handoff/
 registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side writes before a
 "just refresh the engine" install.
+
+## Installer --verify mode (T-58, 2026-06-26) — IMPLEMENTED
+
+`verify_overlay(manifest, overlay_dir, target_root, install_level) -> tuple[int,int,int]` in
+`lib/actions.py` — 13 tests in `overlays/test_verify.py` (all green).
+
+**Key design decisions:**
+- **EOL-normalized SAME:** `_norm(p) = p.read_bytes().replace(b'\r\n',b'\n').rstrip(b'\n')` —
+  CRLF↔LF and sole trailing-newline differences are SAME. Intentionally decouples from installer's
+  byte-exact `sha256` SKIP (T-29 remains open).
+- **Decision (a) — everything gates exit:** `templates` and `manual_if_exists` DIFF/MISSING both
+  increment the failing tally (n_diff/n_missing), same as overlay-owned categories. `USER-MANAGED`
+  label appears in the report for readability only — NOT a signal that failures are ignored.
+- **merge_sections uses version-marker mechanism:** `open_pattern` regex checks installed version
+  number (SAME = match; DIFF = mismatch; MISSING = no marker or dest absent). Does NOT compare
+  section content byte-by-byte.
+- **$HOME isolation mandatory in tests:** `always_user_files` and user-level `user_files` resolve
+  under `Path.home()`; tests monkeypatch `HOME` to a tmp dir.
+- **`verify_overlay` returns tally; `main()` derives exit from tally** — never parses `report._actions`.
+- **CLI branch:** `--verify` branch fires after header print, before any `handle_*` call; runs
+  `verify_overlay`, `print_report`, `sys.exit(1 if any(tally) else 0)` — never enters install path.
+
+**Source-dir mapping (mirrors the handle_* resolution exactly):**
+- `files:` → `overlay_dir/files/<src_name>`
+- `always_user_files:` → same `files_dir`; dest always `~/.claude/<dest_rel>`
+- `user_files:` → same `files_dir`; dest `~/.claude/` or `target/.claude/` per level
+- `templates:` → `overlay_dir/templates/<tmpl_name>`
+- `manual_if_exists:` → `overlay_dir/files/<basename(dest_rel)>` (NOT templates dir)
