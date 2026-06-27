@@ -15,6 +15,14 @@ Options:
     --report FILE              Write summary report to file (default: stdout)
     --report-format text|json  Report format (default: text)
     --dry-run                  Show what would be done without making changes
+    --verify                   Read-only check: compare installed files against overlay
+                               source. Prints SAME/DIFF/MISSING/SRC-MISSING per file.
+                               Exits 1 if any DIFF/MISSING/SRC-MISSING; 0 if all match.
+                               All categories gate the exit: files, always_user_files,
+                               user_files, templates, manual_if_exists, merge_sections.
+                               NOTE: SAME uses EOL-normalized comparison (CRLF=LF),
+                               which decouples verify from the installer's byte-exact
+                               skip check (open task T-29).
 """
 
 import argparse
@@ -32,6 +40,7 @@ from lib.actions import (
     handle_files, handle_always_user_files, handle_user_files,
     handle_templates, handle_append_lines,
     handle_merge_sections, handle_manual_if_exists,
+    verify_overlay,
 )
 from lib.report import print_report
 
@@ -66,6 +75,12 @@ def main():
     )
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be done without making changes")
+    parser.add_argument("--verify", action="store_true",
+                        help=(
+                            "Read-only check: compare installed files against overlay source. "
+                            "Exits 1 if any DIFF/MISSING/SRC-MISSING; 0 if all match. "
+                            "Mutually exclusive with install — no writes are ever performed."
+                        ))
     parser.add_argument("--debug", action="store_true",
                         help="Print raw backend responses for troubleshooting")
     args = parser.parse_args()
@@ -93,13 +108,22 @@ def main():
     prompts_dir = script_dir / "prompts"
 
     dry_label = " (DRY RUN)" if args.dry_run else ""
-    print(f"\nOverlay : {manifest['name']} v{manifest['version']}{dry_label}")
+    verify_label = " (VERIFY)" if args.verify else ""
+    print(f"\nOverlay : {manifest['name']} v{manifest['version']}{dry_label}{verify_label}")
     print(f"Target  : {target_root}")
-    print(f"Mode    : {args.mode}")
-    if backends:
+    if not args.verify:
+        print(f"Mode    : {args.mode}")
+    if backends and not args.verify:
         avail = [b.id for b in backends if b.is_available()]
         print(f"Backends: {', '.join(avail) or 'none available'}")
     print()
+
+    if args.verify:
+        n_diff, n_missing, n_src_missing = verify_overlay(
+            manifest, overlay_dir, target_root, args.install_level
+        )
+        print_report(args.report_format, args.report)
+        sys.exit(1 if (n_diff or n_missing or n_src_missing) else 0)
 
     handle_files(manifest, overlay_dir, target_root, args.dry_run, args.backup)
     handle_always_user_files(manifest, overlay_dir, args.dry_run, args.backup)
