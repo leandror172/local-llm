@@ -28,4 +28,9 @@ CONSTRAINTS:
 - MUST include proper exception handling: domain exceptions, not generic RuntimeException
 - MUST NOT generate javax.persistence imports — use jakarta.persistence
 - MUST NOT use deprecated APIs (e.g., WebMvcConfigurerAdapter, extends WebSecurityConfigurerAdapter)
+- MUST give each function exactly one responsibility — if its name would need "and", split it into two
+- MUST name functions after what they return or do (e.g., _build_refs_block, _validate_path — never process_data)
+- MUST write function bodies as delegated steps: call named helpers, combine results, return — avoid inline logic mixed with I/O in the same function
+- MUST keep function bodies under ~15 lines; extract inner concepts into named helpers when longer
+- MUST NOT modify any code outside the explicitly requested scope — leave all surrounding lines exactly as provided in context
 FORMAT: One fenced ```java code block per file. If multiple files, label each with its path."""
