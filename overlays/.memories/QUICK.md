@@ -1,13 +1,13 @@
 # Overlays — Quick Memory
 
 ## session-tracking overlay
-- **Version:** v7 (2026-06-17)
-- **Status:** session-93 append↔checkoff fix + failure-clarity sweep COMPLETE (2026-06-17)
-- **Tests:** 173 green (full handoff suite; xfailed test now xpasses)
+- **Version:** v8 (2026-06-26)
+- **Status:** T-59 harvest boundary tightened to `chore(session-handoff): session ` COMPLETE (2026-06-26)
+- **Tests:** 174 green (173 existing + 1 new `test_prefix_reuse_commit_is_not_a_boundary`)
 - **Installed in:** expenses/code, web-research, career-search (per-repo shim/SKILL still v6-era); llm runs the engine from source. Since B+C, the **shared user-level engine** `~/.claude/tools/handoff/` is the v7 code ALL repos execute — reinstalled this session. `session-log.md` latest-only in ALL 4 repos.
 - **PR:** #53 (failure-clarity) stacked on #52 (`feature/handoff-redesign-stage-promote`)
 - **Home-repo invocation drift:** the `run-handoff.sh` shim guards on `.claude/handoff/registry.yaml` + ignores `--registry`; in the llm repo call `python3 ~/.claude/tools/handoff/handoff.py --payload <p> --registry overlays/session-tracking/files/registry.yaml --repo-root .` directly (see KNOWLEDGE gotcha).
-- **Key files:** `files/handoff/` (source), `manifest.yaml`, `files/rotate-session-log.sh`, `files/handoff-harvest.sh`, `files/session-handoff/SKILL.md`
+- **Key files:** `files/handoff/` (source), `manifest.yaml`, `files/rotate-session-log.sh`, `files/handoff-harvest.sh` (boundary: `^chore(session-handoff): session `), `files/session-handoff/SKILL.md`
 
 ### B+C distribution (2026-06-17)
 - **Pipeline modules:** always user-level at `~/.claude/tools/handoff/` — new `always_user_files:` manifest key; never per-repo.
