@@ -23,7 +23,8 @@ Shared data:
 ## Key Concepts
 
 - **Tier system:** full (with SYSTEM prompt) vs bare (no SYSTEM, for external tools like Aider)
-- **Temperature as model-selection substitute:** 0.1=deterministic, 0.3=balanced, 0.7=creative
+- **Temperature:** 0.1=deterministic, 0.3=balanced, 0.7=creative; raw float [0.0,2.0] also accepted (T-19)
+- **Test harness:** `personas/run-tests.sh` → 21 tests (unit: test_temperature.py; integration: test_collect_flags.py)
 - **Naming:** `my-<role>[-model-suffix]` (e.g., my-go-q3, my-java-q25c14)
 - **Detection:** Three-signal scoring — extensions (50%), imports (30%), config files (20%)
 

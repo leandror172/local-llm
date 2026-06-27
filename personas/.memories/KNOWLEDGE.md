@@ -53,7 +53,7 @@ would conflict. Bare tier provides model tuning without prompt interference.
 **Implication:** Bare personas are invisible in direct Ollama chat — they behave like
 the base model. Their value is in the temperature/context/penalty tuning only.
 
-## Temperature as Model-Selection Substitute (2026-02)
+## Temperature as Model-Selection Substitute (2026-02, updated T-19)
 
 Three temperature presets serve as a lightweight alternative to maintaining separate
 models per task type: deterministic (0.1) for review/classification, balanced (0.3) for
@@ -63,6 +63,13 @@ coding, creative (0.7) for writing/brainstorming. Same base model, different beh
 Temperature tuning gives behavioral diversity without model switching.
 **Implication:** The "right persona" for a task often means the right temperature, not
 the right model. My-coder-q3 (0.3) and my-reviewer-q3 (0.1) share a base model.
+
+**Raw numeric temperatures (T-19, 2026-06):** `create-persona.py` now accepts any float
+in [0.0, 2.0] via `--temperature <value>` (non-interactive) or the "custom" menu option
+(interactive Step 4).  `parse_temperature_input()` in `models.py` is the shared resolver.
+Presets (0.1 / 0.3 / 0.7) remain recommended for standard use cases; raw values are for
+experimentation.  Test coverage: `personas/tests/test_temperature.py` (unit) +
+`personas/tests/test_collect_flags.py` (integration).
 
 ## Registry as Source of Truth (2026-02)
 
