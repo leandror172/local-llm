@@ -32,10 +32,22 @@ free) → ENOMEM → `panic: cannot allocate memory` → runner `exit status 2` 
 Ollama server log, not a CUDA OOM.
 - **Mitigation (2026-06-30):** raised WSL `.wslconfig` `memory=24GB` (host has
   31.7 GiB physical). Apply via `wsl --shutdown`.
-- **Proper fix (deferred, T-67):** move the 30B blobs to native ext4 so mmap
-  re-engages → host-RAM cost drops to ~0 (pages on demand).
 - **Why the 14B fallback always works:** `my-go-q25c14` (~9 GB) fits almost
   entirely in VRAM, so even with mmap off the host read is small.
+
+**CORRECTION (T-67 executed, session 98):** moving the store to a dedicated ext4
+vhdx (on I:, attached via `wsl --mount --vhd`) did **NOT** re-enable mmap. Ollama
+forces `UseMmap:false` whenever a model is **partially offloaded** (some layers
+GPU, some CPU) — it's a loader constraint, independent of filesystem. So 9p was
+*a* cause of no-mmap but not *the* cause; ext4 keeps mmap off too, and the
+~10–15 GiB host-RAM read remains. **The `.wslconfig memory=24GB` cap stays
+load-bearing.** What ext4 *did* buy: cold load **33 s → ~15 s** (and ~10 s
+cache-warm) from removing the 9p read tax + page-cache reuse, plus a clean store
+free of 9p quirks. Net: the move is a latency/robustness win, NOT a RAM fix.
+Store now at `/mnt/ollama-store/models` (ext4); old `/mnt/i/ollama-models` kept
+as rollback. NB: under WSL2+systemd the mount lives in PID 1's namespace —
+invisible to interactive shells (`findmnt` shows nothing); verify via
+`make -C ~/workspaces ollama-store-check` (systemd+API based).
 
 ## Model Tier Findings (2026-02 through 2026-04)
 

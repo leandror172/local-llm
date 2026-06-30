@@ -1,8 +1,24 @@
 # Plan: Move Ollama model store to ext4 (T-67)
 
-**Status:** Researched, NOT executed. Decision pending.
+**Status:** EXECUTED session 98 (2026-06-30). Store live at `/mnt/ollama-store/models` (ext4).
 **Author:** session 98 (2026-06-30).
 **Trigger:** `my-go-qcoder` HTTP 500 root-caused as host-RAM ENOMEM (see `.memories/KNOWLEDGE.md` "Host-RAM budget").
+
+## ⚠ OUTCOME — the central premise was partly wrong
+
+The plan assumed **ext4 re-enables mmap → host-RAM cost drops to ~0**. It does NOT.
+Measured after execution: Ollama keeps `UseMmap:false` on ext4 too, because it
+disables mmap whenever a model is **partially offloaded** (GPU+CPU layer split) —
+a loader rule independent of filesystem. The ~10–15 GiB host read remains; the
+`.wslconfig memory=24GB` cap **stays load-bearing**. `use_mmap:true` in the API
+request is ignored.
+
+**What the move actually delivered:** cold load **33 s → 15.6 s** (10.2 s
+cache-warm) from ext4 read speed + page-cache reuse, and a clean store with no 9p
+quirks. A latency/robustness win, not a RAM fix. Kept because it's net-positive and
+already done; old `/mnt/i/ollama-models` retained as rollback until a reboot test
+passes. Execution artifacts + runbook: `scripts/ollama-ext4/`. Health check:
+`make -C ~/workspaces ollama-store-check` (namespace-robust: systemd + API).
 
 ---
 
