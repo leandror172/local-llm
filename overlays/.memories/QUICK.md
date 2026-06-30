@@ -24,4 +24,9 @@
 - **Deferred:** Increment-4 separate-window synthesis (documented only); local-model Placer (E1–E2) fills the same value schema.
 
 ## ref-indexing overlay
-- No changes this session
+- **Version:** v4 (2026-06-30) — bumped for the overlay-shipped test suite
+- **Tests:** `files/tests/test-ref-lookup-paths.sh` — fully hermetic (9 tests), builds its own fixture corpus in a `mktemp` dir and runs `ref-lookup.sh --root <fixture>`; NO repo coupling (the old `baseline-*.txt` snapshots were deleted). Covers `--paths` mapping, `.claude/local/` safety filter, dedup invariant, `--paths`↔`--list` consistency, single-key + glob lookup, unknown-key exit.
+- **Test home:** overlay source ONLY (`files/tests/`); manifest `files:` installs it to consumer `.claude/tools/tests/`. The source repo does NOT commit an installed copy (it's a generated artifact) — PR #63 review (T-42).
+- **Runner:** `make -C overlays test` (or `make test-ref-indexing`) — new `overlays/Makefile`. `test:` is an aggregate; add `test-<overlay>` targets as suites land.
+- **Finding:** `--paths` "first occurrence" of a duplicated key follows `grep -r` traversal (filesystem readdir) order, NOT sorted path — so which file wins is unspecified. Test asserts the dedup invariant, not a specific winner.
+- **PR:** #63 (`feat/t42-ref-lookup-paths`, --paths flag + this test work); not yet merged into umbrella `batch/session-97-base` (#57).
