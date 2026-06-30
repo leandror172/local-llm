@@ -26,10 +26,16 @@
 ## installer capabilities
 - `--verify` mode available (T-58, 2026-06-26): read-only drift check per installed file; exit 1 on any DIFF/MISSING/SRC-MISSING; all categories gate exit (files, always_user_files, user_files, templates, manual_if_exists, merge_sections); EOL-normalized comparison (CRLF=LF).
 
+## overlay test runner (2026-06-30)
+- `overlays/Makefile` + `overlays/scripts/` — `make -C overlays test` runs **all 196**: `test-ref-indexing` (bash, 9) + `test-session-tracking` (pytest, 174) + `test-installer` (pytest, 13, `test_verify.py`). Default `make` prints help; `ARGS='-k x'` passes pytest filters to one suite.
+- Makefile targets delegate to `scripts/test-<suite>.sh` (each resolves cwd + interpreter) and `scripts/run-all-tests.sh` (aggregator: runs all even on failure, PASS/FAIL summary, nonzero exit on any fail). Suites runnable standalone from shell or CI.
+- **NOT a test:** `overlays/test-merge-plan.py` is a manual Ollama model-comparison diagnostic (network, prints JSON) — deliberately excluded from `make test`.
+- Add a suite: drop `scripts/test-<name>.sh`, add a `test-<name>` target, list it in `run-all-tests.sh`.
+
 ## ref-indexing overlay
 - **Version:** v4 (2026-06-30) — bumped for the overlay-shipped test suite
 - **Tests:** `files/tests/test-ref-lookup-paths.sh` — fully hermetic (9 tests), builds its own fixture corpus in a `mktemp` dir and runs `ref-lookup.sh --root <fixture>`; NO repo coupling (the old `baseline-*.txt` snapshots were deleted). Covers `--paths` mapping, `.claude/local/` safety filter, dedup invariant, `--paths`↔`--list` consistency, single-key + glob lookup, unknown-key exit.
 - **Test home:** overlay source ONLY (`files/tests/`); manifest `files:` installs it to consumer `.claude/tools/tests/`. The source repo does NOT commit an installed copy (it's a generated artifact) — PR #63 review (T-42).
-- **Runner:** `make -C overlays test` (or `make test-ref-indexing`) — new `overlays/Makefile`. `test:` is an aggregate; add `test-<overlay>` targets as suites land.
+- **Runner:** `make -C overlays test-ref-indexing` (see `## overlay test runner`).
 - **Finding:** `--paths` "first occurrence" of a duplicated key follows `grep -r` traversal (filesystem readdir) order, NOT sorted path — so which file wins is unspecified. Test asserts the dedup invariant, not a specific winner.
 - **PR:** #63 (`feat/t42-ref-lookup-paths`, --paths flag + this test work); not yet merged into umbrella `batch/session-97-base` (#57).

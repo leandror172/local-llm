@@ -64,6 +64,34 @@ re-copy it (open task T-29 for proper EOL handling).
 received the new files. Catches the class of bug where a commit claims a file was
 updated but the overlay installer was never run (or was run against a stale source).
 
+## Testing the overlays
+
+Overlay code ships with its own test suites. They are **hermetic** — each builds its
+own fixtures (or monkeypatches `$HOME`) and never reads the host repo's content, so a
+change anywhere in this repo can never change a test result. Run them via `make`:
+
+```bash
+make -C overlays test                    # all suites, with a PASS/FAIL summary (196 tests)
+make -C overlays test-ref-indexing       # ref-lookup.sh hermetic tests   (bash,   9)
+make -C overlays test-session-tracking   # handoff pipeline tests         (pytest, 174)
+make -C overlays test-installer          # installer --verify tests       (pytest, 13)
+
+# Pass pytest args to a single suite:
+make -C overlays test-session-tracking ARGS='-k harvest'
+```
+
+`make` with no target prints the list. Each target delegates to a runner in
+`overlays/scripts/` (which resolves the right working directory and interpreter per
+suite), so the suites are equally runnable from a shell or CI:
+
+```bash
+./overlays/scripts/run-all-tests.sh      # same as `make test`; nonzero exit on any failure
+./overlays/scripts/test-installer.sh -k eol
+```
+
+**Adding a suite for a new overlay:** drop a `scripts/test-<name>.sh` runner, add a
+`test-<name>` target to the `Makefile`, and list it in `scripts/run-all-tests.sh`.
+
 ## Authoring a new overlay
 
 ### 1. Create the directory structure

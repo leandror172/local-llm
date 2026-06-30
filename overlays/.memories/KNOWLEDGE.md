@@ -326,10 +326,17 @@ that generalizes to every future overlay suite:
     winner would just relocate the non-determinism from repo-content to filesystem-order, so the test
     asserts the **dedup invariant** (collapses to one real occurrence), which IS the tool's contract.
 
-- **A `make` runner is the aggregation seam.** `overlays/Makefile`: `make test` depends on per-overlay
-  `test-<overlay>` targets (currently just `test-ref-indexing`); bare `make` prints help; paths resolve
-  via the Makefile's own dir (`$(dir $(realpath ...))`) so it runs from any invocation point. *Rationale:*
-  a single entry point that grows by appending one target per overlay; `make test` works precisely
-  *because* suites are hermetic (a runner needs only exit 0, with no opinion about repo state) — the
-  Makefile and the hermetic rule reinforce each other. *Implication:* every new overlay suite wires in
-  as `test-<name>` + an append to `test:`.
+- **A `make` runner is the aggregation seam (extended 2026-06-30).** `overlays/Makefile` now wires **all
+  three existing suites** — `test-ref-indexing` (bash, 9), `test-session-tracking` (pytest, 174),
+  `test-installer` (pytest, 13) = **196 total** — behind one `make test`; bare `make` prints help; paths
+  resolve via the Makefile's own dir (`$(dir $(realpath ...))`) so it runs from any invocation point.
+  Targets **delegate to `overlays/scripts/` runners** (`test-<suite>.sh` each resolve the right cwd +
+  interpreter; `run-all-tests.sh` aggregates with a PASS/FAIL summary and nonzero-on-any-fail), so the
+  exact invocation works from make, a bare shell, or CI. `ARGS='-k x'` forwards pytest filters to one
+  suite. *Rationale:* the per-suite cwd/interpreter quirks (handoff tests need their own dir on the path;
+  `test_verify.py` needs `overlays/` as cwd) belong in scripts, not Makefile recipes — the Makefile stays
+  a thin index, the scripts are reusable outside make. `make test` works precisely *because* suites are
+  hermetic (a runner needs only exit 0, no opinion about repo state). *Excluded:* `overlays/test-merge-plan.py`
+  is a manual Ollama model-comparison diagnostic (network, prints JSON), NOT an automated suite — kept out
+  of `make test`. *Implication:* a new overlay suite wires in as a `scripts/test-<name>.sh` runner + a
+  `test-<name>` target + one line in `run-all-tests.sh`.
