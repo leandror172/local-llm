@@ -59,6 +59,11 @@ When creating or modifying files:
 For destructive git operations: explain → backup → dry-run → execute → verify. [ref:git-safety]
 Use `git worktree` for parallel branch work. [ref:git-worktrees]
 
+**Never bulk-stage.** Do not run `git add -A`, `git add .`, or `git add --all` — they sweep
+unrelated pre-existing untracked files into the commit. Stage explicit paths
+(`git add path/a path/b`), or `git add -u` for tracked-file modifications only. Enforced by the
+`PreToolUse` guard (`.claude/hooks/guard-git-add-all.py`) + the `block-bulk-git-add` hookify rule.
+
 ## Resuming Multi-Session Work
 
 **On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~80-100 lines.
