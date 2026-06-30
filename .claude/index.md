@@ -144,7 +144,9 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/tools/ollama-stats.py` | DPO evaluation stats: total calls, model usage, verdict distribution | After evaluating local model outputs; track progress |
 | `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
 | `overlays/session-tracking/files/handoff/run-handoff.sh` | Session-handoff pipeline entrypoint (wraps `handoff.py`): `--payload` (stage) / `--id` (promote) / `--payload --amend` (additive follow-up to last committed session) / `--abort` / `--repo-root` / `--registry`. Lives in the overlay source; installs to `.claude/tools/handoff/run-handoff.sh` in target repos | Running the deterministic handoff transaction; stage emits a JSON handle, promote commits |
-| `overlays/Makefile` | Overlay dev test runner: `make test` (all suites), `make test-ref-indexing` (ref-lookup hermetic tests). Default `make` prints help. Grows a `test-<overlay>` target per overlay | Before committing overlay changes |
+| `overlays/Makefile` | Overlay dev test runner — delegates to `scripts/`: `make test` (all 196), `make test-ref-indexing` (9), `make test-session-tracking` (174), `make test-installer` (13). `ARGS='-k x'` passes pytest filters. Default `make` prints help | Before committing overlay changes |
+| `overlays/scripts/run-all-tests.sh` | Aggregator — runs every overlay suite, prints a PASS/FAIL summary, exits nonzero on any failure (runs all suites even if one fails). Backs `make test` | CI / one-shot full overlay test run |
+| `overlays/scripts/test-{ref-indexing,session-tracking,installer}.sh` | Per-suite runners (resolve cwd + interpreter for each suite); args pass through to the underlying test/pytest. Backs the per-suite `make` targets | Running one overlay's suite standalone |
 
 ### Retrieval / LTG Tools
 | Script | Purpose | When to Use |
