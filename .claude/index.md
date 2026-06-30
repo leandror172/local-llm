@@ -154,6 +154,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `retrieval/run-store.sh` | Reads embedding JSONL, creates/overwrites LanceDB `topics` table with backup. | Phase 2 step 2: build the index |
 | `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |
 | `retrieval/run-anchors.sh` | Phase 3 anchor rebuild: `--index`, `--method`, `--repo-root`. Ingests ref:KEY anchors, embeds, matches topics, writes combined LanceDB table. | After any ref:KEY changes; Phase 3 live acceptance |
+| `retrieval/run-build-corpus-manifest.sh` | Phase 2.5 corpus freeze: resolves `corpus.yaml` (intent) against `git ls-files`, hashes each file (sha256), records commit SHA, writes frozen `corpus-manifest.yaml`. `--dry-run` prints the resolution summary. | Step 0 before any full-corpus re-extraction; re-run when `corpus.yaml` changes |
 
 ### MCP Server
 | Script | Purpose | When to Use |

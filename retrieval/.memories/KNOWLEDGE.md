@@ -5,6 +5,32 @@
 
 ---
 
+<!-- ref:ltg-phase2.5-corpus -->
+## Phase 2.5: Full-Corpus Expansion + Calibration (2026-06-26, session 96)
+
+**Outcome:** Index moved from an 8-file/69-topic snapshot to the full curated MVP corpus: **875 topics from 113 files + 143 anchors = 1018 rows**. Extraction 113/113 `ok`, 0 failures, 875 topics; embed 875 rows 4096-dim, 0 failed, 54.7s. Closes T-36; lands T-65 cheap half; measurement-closes T-34.
+
+### Corpus is now config-driven + frozen
+- `corpus.yaml` declares **intent**: `include_roots` (+ individually-named `.claude` files), `include_globs` (`**/.memories/*.md` — scattered across 7 folders), `exclude_globs` (`.claude/local/**`, `*.bak*`), `file_extensions` (`.md` only — code deferred to Phase 8), and ordered `groups` (first-match-wins; `.memories` and `.claude/archive` rules MUST precede the `.claude/**` catch-all).
+- `build_corpus_manifest.py` resolves it against `git ls-files` (tracked content only — gitignored `.claude/local/` never enters) and freezes the **resolution**: `corpus-manifest.yaml` records commit SHA + per-file sha256 + group. **No repo copy** — freeze = commit + hashes; re-hash to detect drift.
+- The matcher (`glob_to_regex`, `assign_group`) lives in shared `corpus_groups.py`. **`**/` must match zero leading dirs** (`(?:.*/)?`, not `.*/`) — else root-level `.memories/*.md` is silently dropped (caught by dry-run during build).
+- Corpus scope (decided session 95): `.claude/archive/` IN, tagged `archive` (~51% of corpus); `.claude/local/` OUT; no chunking (largest file < 16K ceiling).
+
+### source_group (T-65 cheap half)
+New schema field, orthogonal to `source_class`. Records WHERE a row came from (archive/docs-research/memories/docs-ideas/claude-meta/ungrouped). **Derived authoritatively at store-time** in `store.rows_to_arrow_table` from `file_path` via corpus.yaml groups — writers never supply it (so it can't drift; `test_anchors_rows` excludes it as the one store-derived field). Anchors group by their defining file (98 `ungrouped` = anchors defined outside corpus roots — correct). Phase-5 query-type weighting (T-65 full) consumes it; logic deferred.
+
+### T-34 calibration (full findings: `probes/phase2.5-calibration.md`)
+- **Anchor `COSINE_THRESHOLD=0.85` validated-keep.** Best-match cosine across 143 anchors is *continuous* (median 0.755, p90 0.863, max 0.954), not bimodal. Sub-0.85 near-misses are coincidental topical adjacency → lowering would add **false merges**, not recall. 21 genuine alias merges at ≥0.85.
+- **Noise-query threshold:** real queries land L2≤0.58 (cosine≥0.83). Validated with 9 noise probes (1 tech-adjacent "Kubernetes" @ 0.746 + 8 pure off-corpus @ **0.91–1.17**, mean 1.03): real and pure-noise bands separated by a **~0.33-wide empty gap** (0.58→0.91), 0/8 below 0.65. Old `>1.0` L2 (bge-m3 era) badly stale. **Recommend L2≈0.70 (cosine≈0.76)** — mid-gap, defensible from n=9. **Wiring deferred** (only remaining T-34 work): `acceptance_mode` is record-only; add `NOISE_L2_THRESHOLD` + pass/fail assertions. The value is grounded — not blocked on data.
+- **Step 5 generic-anchor precision PASS:** `ref:git-safety`/`ref:indexing-convention`/`ref:bash-wrappers` correctly no-merge; §9 false-merge risk did not materialize. Minor borderline M:N secondary links (`ref:smart-rag-research`→`user_preferences`, `ref:rag-dify`→`ollama_pipeline_configuration`) — T-63 candidates.
+- **Staleness healed:** `plan-latent-topic-graph` rose 0.7742 (stale, session 94) → 0.8379 (fresh) after re-extraction — still <0.85, a clean T-63 (Phase 3.5) escalation target.
+
+### Python 3.12 (T-18 retrieval slice)
+`retrieval/` now has a uv-managed 3.12 env (`pyproject.toml` + `uv.lock`, mirrors `mcp-server`). Wrappers `uv run --project`. 269 tests green under 3.12. Benchmarks/scripts/`.claude/tools` remain on system 3.10 (repo-wide T-18 still open).
+<!-- /ref:ltg-phase2.5-corpus -->
+
+---
+
 <!-- ref:ltg-vram-probe -->
 ## VRAM Co-Residence: qwen3:14b + bge-m3 (2026-05-20, session 61)
 

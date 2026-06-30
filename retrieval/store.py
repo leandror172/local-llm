@@ -39,6 +39,8 @@ from typing import Dict, List
 import pyarrow as pa
 import lancedb
 
+from corpus_groups import assign_group, load_group_rules
+
 REPO_ROOT = Path(__file__).parent.parent
 def build_schema(embed_dim: int) -> pa.Schema:
     return pa.schema([
@@ -69,6 +71,10 @@ def build_schema(embed_dim: int) -> pa.Schema:
         pa.field("confidence",           pa.float32()),
         pa.field("anchor_key",           pa.string(), nullable=True),
         pa.field("alias_of",             pa.string(), nullable=True),
+        # source_group: file-origin provenance group (T-65), derived from
+        # file_path via corpus.yaml group rules. Orthogonal to source_class.
+        # Always derived at store-time (authoritative, not writer-supplied).
+        pa.field("source_group",         pa.string()),
     ])
 
 RUNS_DIR = Path(__file__).parent / "runs"
@@ -83,8 +89,15 @@ def load_embedding_jsonl(path: Path) -> List[Dict]:
             rows.append(row)
     return rows
 
-def rows_to_arrow_table(rows: List[Dict]) -> pa.Table:
-    """Converts embedding dicts to a PyArrow Table. Infers embed_dim from first row."""
+def rows_to_arrow_table(rows: List[Dict], groups: List[Dict] | None = None) -> pa.Table:
+    """Converts embedding dicts to a PyArrow Table. Infers embed_dim from first row.
+
+    source_group is derived authoritatively from each row's file_path via the
+    corpus.yaml group rules (T-65) — any incoming source_group is ignored.
+    `groups` is injectable for tests; defaults to the rules in corpus.yaml.
+    """
+    if groups is None:
+        groups = load_group_rules()
     embed_dim = rows[0]["embed_dim"]
     schema = build_schema(embed_dim)
     vectors = pa.array(
@@ -93,6 +106,10 @@ def rows_to_arrow_table(rows: List[Dict]) -> pa.Table:
     )
     scalar_fields = [f.name for f in schema if f.name != "vector"]
     col_data = {name: [r.get(name) for r in rows] for name in scalar_fields}
+    # Derive source_group from file_path (authoritative; overrides any row value).
+    col_data["source_group"] = [
+        assign_group(r.get("file_path", ""), groups) for r in rows
+    ]
     col_data["vector"] = vectors
     return pa.table(col_data, schema=schema)
 

@@ -111,6 +111,49 @@ def test_rows_to_arrow_table_row_count(embed_jsonl):
 
 
 # ---------------------------------------------------------------------------
+# source_group derivation (T-65)
+# ---------------------------------------------------------------------------
+
+GROUPS = [
+    {"match": "**/.memories/*.md", "tag": "memories"},
+    {"match": ".claude/archive/**", "tag": "archive"},
+    {"match": "docs/research/**", "tag": "docs-research"},
+]
+
+
+def test_source_group_field_present():
+    table = store.rows_to_arrow_table([make_embed_row()], groups=GROUPS)
+    assert "source_group" in table.schema.names
+
+
+def test_source_group_derived_from_file_path():
+    row = make_embed_row(file_path="docs/research/foo.md")
+    table = store.rows_to_arrow_table([row], groups=GROUPS)
+    assert table.column("source_group").to_pylist() == ["docs-research"]
+
+
+def test_source_group_overrides_any_row_value():
+    # A stray source_group on the row must NOT win — derivation is authoritative.
+    row = make_embed_row(file_path="docs/research/foo.md")
+    row["source_group"] = "WRONG"
+    table = store.rows_to_arrow_table([row], groups=GROUPS)
+    assert table.column("source_group").to_pylist() == ["docs-research"]
+
+
+def test_source_group_anchor_row_grouped_by_its_file():
+    # Anchor rows carry a real file_path → grouped uniformly, no sentinel.
+    row = make_embed_row(file_path=".claude/archive/phases-0-6.md")
+    table = store.rows_to_arrow_table([row], groups=GROUPS)
+    assert table.column("source_group").to_pylist() == ["archive"]
+
+
+def test_source_group_unmatched_is_ungrouped():
+    row = make_embed_row(file_path="docs/test.md")
+    table = store.rows_to_arrow_table([row], groups=GROUPS)
+    assert table.column("source_group").to_pylist() == ["ungrouped"]
+
+
+# ---------------------------------------------------------------------------
 # backup_index
 # ---------------------------------------------------------------------------
 

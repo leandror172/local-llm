@@ -60,3 +60,7 @@ docs/plans/verdict-numeric-migration.md
 docs/plans/verdict-numeric-migration-report.md
 
 .idea/
+retrieval/.venv/
+
+# LTG large embedding output (48M+, regenerable from extraction via run-embed.sh)
+retrieval/runs/*-embeddings.jsonl

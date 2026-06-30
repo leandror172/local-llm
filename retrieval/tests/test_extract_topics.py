@@ -87,6 +87,28 @@ def test_run_file_record_has_contract_fields(mock_route, tmp_path, mock_client):
     assert all(field in record for field in ["run_id","timestamp","model","file","file_role","status","parsed_topics"])
 
 # GROUP 3 — parse_topics
+def test_load_corpus_from_manifest_returns_path_group_tuples(tmp_path):
+    manifest = tmp_path / "corpus-manifest.yaml"
+    manifest.write_text(
+        "meta: {file_count: 2}\n"
+        "files:\n"
+        "- {path: docs/research/a.md, group: docs-research, sha256: x, bytes: 1}\n"
+        "- {path: .claude/archive/b.md, group: archive, sha256: y, bytes: 2}\n",
+        encoding="utf-8",
+    )
+    corpus = extract_topics.load_corpus_from_manifest(manifest)
+    assert corpus == [
+        ("docs/research/a.md", "docs-research"),
+        (".claude/archive/b.md", "archive"),
+    ]
+
+
+def test_load_corpus_from_manifest_empty_files(tmp_path):
+    manifest = tmp_path / "corpus-manifest.yaml"
+    manifest.write_text("meta: {}\nfiles: []\n", encoding="utf-8")
+    assert extract_topics.load_corpus_from_manifest(manifest) == []
+
+
 def test_parse_topics_valid_json_returns_list():
     topics = extract_topics.parse_topics(VALID_TOPICS_JSON)
     assert isinstance(topics, list)

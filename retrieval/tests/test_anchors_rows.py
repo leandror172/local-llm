@@ -45,11 +45,13 @@ from retrieval.store import build_schema
 # Derived constants
 # ---------------------------------------------------------------------------
 
-# All 22 field names from the live schema (excluding 'vector' which is handled
-# separately in build_schema but IS present in row dicts).
+# Field names from the live schema. 'source_group' (T-65) is excluded: it is
+# DERIVED at store-time in rows_to_arrow_table from file_path, not supplied by
+# the anchor-row writer, so it is intentionally absent from writer row dicts.
+STORE_DERIVED_FIELDS: frozenset[str] = frozenset({"source_group"})
 SCHEMA_FIELD_NAMES: frozenset[str] = frozenset(
     f.name for f in build_schema(4096)
-)
+) - STORE_DERIVED_FIELDS
 
 # ---------------------------------------------------------------------------
 # Fixtures

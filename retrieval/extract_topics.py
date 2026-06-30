@@ -20,6 +20,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
+
 try:
     import httpx
 except ImportError:
@@ -37,18 +39,13 @@ REPO_ROOT = Path(__file__).parent.parent
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 RUNS_DIR = Path(__file__).parent / "runs"
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
+DEFAULT_MANIFEST = Path(__file__).parent / "corpus-manifest.yaml"
 
-# Corpus: (repo-relative path, role label)
-CORPUS: list[tuple[str, str]] = [
-    ("docs/research/smart-rag-repowise.md",  "long_research_doc"),
-    (".memories/QUICK.md",                   "short_memory_file"),
-    ("docs/research/smart-rag-index.md",     "cross_reference_index"),
-    (".claude/plan-v2.md",                   "multi_topic_plan"),
-    ("personas/persona-template.md",         "structured_template"),
-    (".memories/KNOWLEDGE.md",               "medium_mixed_content"),
-    ("docs/ideas/smart-rag3.md",             "architectural_design_doc"),
-    ("personas/build-persona.py",            "code_file"),
-]
+# Corpus is no longer hardcoded — Phase 2.5 reads the frozen corpus manifest
+# (corpus-manifest.yaml, built from corpus.yaml). Each entry yields
+# (repo-relative path, provenance group); the group becomes the record's
+# file_role. The benchmark sweep keeps its own curated list in
+# sweep_extractors.py. See ref:ltg-corpus.
 
 # ---------------------------------------------------------------------------
 # Core helpers
@@ -153,6 +150,17 @@ def _error_record(rel_path: str, role: str, status: str, msg: str) -> dict:
 # Pipeline
 # ---------------------------------------------------------------------------
 
+def load_corpus_from_manifest(manifest_path: Path) -> list[tuple[str, str]]:
+    """Read the frozen corpus manifest → list of (repo-relative path, group).
+
+    The manifest's `files:` list is the authoritative, sha256-frozen corpus.
+    The group tag is passed through as the record's file_role.
+    """
+    with Path(manifest_path).open("r", encoding="utf-8") as f:
+        manifest = yaml.safe_load(f)
+    return [(entry["path"], entry["group"]) for entry in manifest.get("files", [])]
+
+
 def run_corpus(files: list[tuple[str, str]], template: str, client: ModelClient) -> list[dict]:
     records = []
     for rel_path, role in files:
@@ -177,10 +185,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="LTG Phase 1 — topic extraction (2-arm)")
     parser.add_argument("--file", help="Run only this corpus file (repo-relative, repeatable)",
                         action="append")
+    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST,
+                        help="Frozen corpus manifest to extract (default: corpus-manifest.yaml)")
     parser.add_argument("--output", type=Path, help="Override output JSONL path")
     args = parser.parse_args()
 
-    files = [(p, r) for p, r in CORPUS if args.file is None or p in args.file]
+    if not args.manifest.exists():
+        print(f"Corpus manifest not found: {args.manifest}\n"
+              f"Build it first: retrieval/run-build-corpus-manifest.sh", file=sys.stderr)
+        sys.exit(1)
+
+    corpus = load_corpus_from_manifest(args.manifest)
+    files = [(p, g) for p, g in corpus if args.file is None or p in args.file]
     if not files:
         print("No corpus files matched. Check --file paths.", file=sys.stderr)
         sys.exit(1)
