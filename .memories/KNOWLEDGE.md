@@ -2,7 +2,7 @@
 
 *Repo-wide accumulated decisions. Read on demand by agents and chatbot.*
 
-## VRAM Budget Constraints (2026-02, updated 2026-05-30)
+## VRAM Budget Constraints (2026-02, updated 2026-06-30)
 
 All architecture decisions are shaped by 12GB VRAM on an RTX 3060.
 7-8B models fit fully in VRAM with generous context (32K tokens).
@@ -18,6 +18,24 @@ would be invisible with unlimited compute.
 **Implication:** Every feature must answer "does this fit in 12GB?" before
 architecture discussion begins. Hybrid VRAM+RAM is viable only for MoE
 architectures; dense models must fit fully in VRAM to be practical.
+
+**Host-RAM budget — the second constraint (2026-06-30, diagnosed in llm repo):**
+For models that partially offload, host RAM is a *separate* ceiling from VRAM.
+The Ollama model store lives on `/mnt/i` (a `9p`/drvfs Windows mount), where
+Ollama cannot mmap blobs → it sets `UseMmap:false` → it reads the **entire**
+model blob into host RAM rather than paging from disk. `my-go-qcoder`
+(qwen3-coder:30b, 19.3 GiB footprint, ~29/49 layers offloaded to CPU) therefore
+needs ~12 GiB of *host* RAM at load. WSL2 defaulted to 15.5 GiB total (~11 GiB
+free) → ENOMEM → `panic: cannot allocate memory` → runner `exit status 2` →
+**HTTP 500 on load**. This was repeatedly mis-logged as "VRAM contention" across
+~6 expense-repo sessions; the real signature is `cannot allocate memory` in the
+Ollama server log, not a CUDA OOM.
+- **Mitigation (2026-06-30):** raised WSL `.wslconfig` `memory=24GB` (host has
+  31.7 GiB physical). Apply via `wsl --shutdown`.
+- **Proper fix (deferred, T-67):** move the 30B blobs to native ext4 so mmap
+  re-engages → host-RAM cost drops to ~0 (pages on demand).
+- **Why the 14B fallback always works:** `my-go-q25c14` (~9 GB) fits almost
+  entirely in VRAM, so even with mmap off the host read is small.
 
 ## Model Tier Findings (2026-02 through 2026-04)
 
