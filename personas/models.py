@@ -112,6 +112,50 @@ def get_temperature_description(name: str) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Temperature input resolver (named preset OR raw numeric)
+# ──────────────────────────────────────────────────────────────────────────────
+
+TEMP_MIN, TEMP_MAX = 0.0, 2.0
+
+
+def parse_temperature_input(raw: str) -> float:
+    """
+    Resolve a temperature input string to a float value.
+
+    Accepts:
+      - Named preset: "deterministic" | "balanced" | "creative"
+      - Raw numeric: any float in [TEMP_MIN, TEMP_MAX] (e.g. "0.5", "1.25")
+      - Leading/trailing whitespace is stripped.
+
+    Returns:
+        float temperature value.
+
+    Raises:
+        ValueError: if the input is not a valid preset name or a number in
+            [TEMP_MIN, TEMP_MAX].  The error message lists named options and
+            the valid numeric range.
+    """
+    stripped = raw.strip()
+    if stripped in TEMPERATURE_MAP:
+        return TEMPERATURE_MAP[stripped]
+
+    named = ", ".join(TEMPERATURE_MAP.keys())
+    try:
+        value = float(stripped)
+    except (ValueError, TypeError):
+        raise ValueError(
+            f"--temperature '{stripped}' is not a valid preset ({named}) "
+            f"or a number in [{TEMP_MIN}, {TEMP_MAX}]."
+        )
+    if not (TEMP_MIN <= value <= TEMP_MAX):
+        raise ValueError(
+            f"--temperature {value} out of range [{TEMP_MIN}, {TEMP_MAX}]. "
+            f"Named presets: {named}."
+        )
+    return value
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Quick verification
 # ──────────────────────────────────────────────────────────────────────────────
 

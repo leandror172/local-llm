@@ -165,3 +165,45 @@ def test_no_handoff_commit_fallback_prints_recent_commits(tmp_path):
     # At least some commit subjects should be visible
     combined = result.stdout + result.stderr
     assert "feat: commit" in combined
+
+
+# ---- prefix specificity: bare chore(session-handoff): without 'session ' is NOT a boundary ---------
+
+def test_prefix_reuse_commit_is_not_a_boundary(tmp_path):
+    """A commit matching 'chore(session-handoff):' but NOT 'chore(session-handoff): session '
+    must not be treated as a session boundary — it should appear in the harvest output,
+    not silently truncate the range.
+
+    History:
+      chore(session-handoff): session 95 — real handoff  <-- true boundary
+      feat: work A
+      chore(session-handoff): tweak manifest              <-- prefix reuse, NOT a boundary
+      feat: work B
+
+    Expected: work A, tweak manifest, work B in stdout; session 95 line excluded.
+    With the loose grep '^chore(session-handoff):' the 'tweak manifest' commit is
+    mistakenly picked as the newest boundary, causing work A and tweak manifest itself
+    to be dropped from output (RED).  With the tighter grep
+    '^chore(session-handoff): session ' only the real handoff is the boundary (GREEN).
+    """
+    _setup(tmp_path)
+    _init_repo(tmp_path)
+    _commit(tmp_path, "chore(session-handoff): session 95 — real handoff")
+    _commit(tmp_path, "feat: work A")
+    _commit(tmp_path, "chore(session-handoff): tweak manifest")
+    _commit(tmp_path, "feat: work B")
+
+    result = _run(tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    stdout = result.stdout
+    # All three post-boundary commits must appear
+    assert "feat: work A" in stdout, f"work A missing from stdout:\n{stdout}"
+    assert "chore(session-handoff): tweak manifest" in stdout, (
+        f"tweak manifest missing from stdout (was wrongly treated as boundary):\n{stdout}"
+    )
+    assert "feat: work B" in stdout, f"work B missing from stdout:\n{stdout}"
+    # The real handoff commit IS the boundary and must NOT appear
+    assert "session 95 — real handoff" not in stdout, (
+        f"real handoff commit should be excluded (it is the boundary):\n{stdout}"
+    )

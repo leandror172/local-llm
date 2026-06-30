@@ -272,3 +272,164 @@ def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path
                 record("COPY", dest_rel, "file missing — copied from overlay")
             else:
                 record("TODO", dest_rel, "file missing and no overlay source — add manually")
+
+
+# ── verify mode (read-only) ───────────────────────────────────────────────────
+
+
+def _norm(p: Path) -> bytes:
+    """Read a file, normalize CRLF→LF and strip trailing newlines for comparison.
+
+    SAME = content equal after EOL normalization (T-58 decision 2026-06-26).
+    A file differing ONLY by CRLF↔LF, or by a sole trailing newline, is SAME.
+    Note: this intentionally decouples verify-SAME from the installer's byte-exact
+    sha256 SKIP — a file can be verify-SAME yet the installer would still re-copy it
+    (open task T-29 for EOL handling).
+    """
+    return p.read_bytes().replace(b"\r\n", b"\n").rstrip(b"\n")
+
+
+def verify_overlay(
+    manifest: dict,
+    overlay_dir: Path,
+    target_root: Path,
+    install_level: str,
+) -> tuple[int, int, int]:
+    """Read-only verification: compare each overlay-managed file against its installed dest.
+
+    Mirrors the dest-resolution logic of handle_files / handle_always_user_files /
+    handle_user_files / handle_templates / handle_manual_if_exists / handle_merge_sections
+    without performing any writes, mkdir, backup, or chmod.
+
+    Returns:
+        (n_diff, n_missing, n_src_missing) — aggregate tally across ALL categories.
+        Records SAME / DIFF / MISSING / SRC-MISSING per file via report.record().
+
+    Exit logic (caller's responsibility):
+        exit(1) if any(tally) else exit(0).
+    """
+    n_diff = 0
+    n_missing = 0
+    n_src_missing = 0
+
+    def _check(src: Path, dest: Path, display: str) -> None:
+        nonlocal n_diff, n_missing, n_src_missing
+        if not src.exists():
+            record("SRC-MISSING", display, "source missing in overlay")
+            n_src_missing += 1
+        elif not dest.exists():
+            record("MISSING", display, "not installed")
+            n_missing += 1
+        elif _norm(src) == _norm(dest):
+            record("SAME", display, "up to date")
+        else:
+            record("DIFF", display, "differs from overlay source")
+            n_diff += 1
+
+    files_dir = overlay_dir / "files"
+
+    # ── files: → target_root/dest_rel ────────────────────────────────────────
+    for src_name, dest_rel in manifest.get("files", {}).items():
+        _check(files_dir / src_name, target_root / dest_rel, dest_rel)
+
+    # ── always_user_files: → ~/.claude/dest_rel (never controlled by level) ──
+    always_user = manifest.get("always_user_files", {})
+    if always_user:
+        user_dest_root = Path.home() / ".claude"
+        for src_name, dest_rel in always_user.items():
+            _check(
+                files_dir / src_name,
+                user_dest_root / dest_rel,
+                f"~/.claude/{dest_rel}",
+            )
+
+    # ── user_files: → ~/.claude/ (user) or .claude/ (project) per level ──────
+    user_files = manifest.get("user_files", {})
+    if user_files:
+        if install_level == "user":
+            level_root = Path.home() / ".claude"
+            level_label = "~/.claude"
+        else:
+            level_root = target_root / ".claude"
+            level_label = ".claude"
+        for src_name, dest_rel in user_files.items():
+            _check(
+                files_dir / src_name,
+                level_root / dest_rel,
+                f"{level_label}/{dest_rel}",
+            )
+
+    # ── templates: → target_root/dest_rel (user-managed after creation) ──────
+    # Decision (a): DIFF and MISSING both gate exit, same as overlay-owned.
+    # USER-MANAGED label kept in report for readability only.
+    tmpl_dir = overlay_dir / "templates"
+    for tmpl_name, dest_rel in manifest.get("templates", {}).items():
+        src = tmpl_dir / tmpl_name
+        dest = target_root / dest_rel
+        if not src.exists():
+            record("SRC-MISSING", dest_rel, "template source missing in overlay")
+            n_src_missing += 1
+        elif not dest.exists():
+            record("MISSING", dest_rel, "not installed (USER-MANAGED)")
+            n_missing += 1
+        elif _norm(src) == _norm(dest):
+            record("SAME", dest_rel, "up to date (USER-MANAGED)")
+        else:
+            record("DIFF", dest_rel, "differs from template source (USER-MANAGED)")
+            n_diff += 1
+
+    # ── manual_if_exists: → target_root/dest_rel, src = files/<basename> ─────
+    # Decision (a): DIFF and MISSING both gate exit (same as overlay-owned).
+    # USER-MANAGED label kept for readability only.
+    for dest_rel in manifest.get("manual_if_exists", []):
+        src = files_dir / Path(dest_rel).name
+        dest = target_root / dest_rel
+        if not src.exists():
+            record("SRC-MISSING", dest_rel, "overlay source missing")
+            n_src_missing += 1
+        elif not dest.exists():
+            record("MISSING", dest_rel, "not installed (USER-MANAGED)")
+            n_missing += 1
+        elif _norm(src) == _norm(dest):
+            record("SAME", dest_rel, "up to date (USER-MANAGED)")
+        else:
+            record("DIFF", dest_rel, "differs from overlay source (USER-MANAGED)")
+            n_diff += 1
+
+    # ── merge_sections: version-marker based (separate mechanism) ────────────
+    # SAME = installed version matches manifest version.
+    # DIFF = installed version differs.
+    # MISSING = dest exists but has no overlay marker, OR dest is absent.
+    overlay_name = manifest.get("name", "")
+    overlay_version = manifest.get("version", 0)
+    open_pattern = re.compile(
+        rf"<!-- overlay:{re.escape(overlay_name)} v(\d+) -->", re.MULTILINE
+    )
+    for dest_rel, spec in manifest.get("merge_sections", {}).items():
+        section_file = overlay_dir / spec["file"]
+        dest = target_root / dest_rel
+        if not section_file.exists():
+            record("SRC-MISSING", dest_rel, "section source missing in overlay")
+            n_src_missing += 1
+            continue
+        if not dest.exists():
+            record("MISSING", dest_rel, "dest file absent — section not installed")
+            n_missing += 1
+            continue
+        existing = dest.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+        version_match = open_pattern.search(existing)
+        if version_match:
+            found_version = int(version_match.group(1))
+            if found_version == overlay_version:
+                record("SAME", dest_rel, f"v{overlay_version} marker present")
+            else:
+                record(
+                    "DIFF", dest_rel,
+                    f"v{found_version} installed, v{overlay_version} expected",
+                )
+                n_diff += 1
+        else:
+            record("MISSING", dest_rel, "overlay section marker not present")
+            n_missing += 1
+
+    return n_diff, n_missing, n_src_missing

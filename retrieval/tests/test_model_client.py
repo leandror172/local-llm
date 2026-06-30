@@ -8,6 +8,7 @@ Covers:
 - ModelClient.embed_texts: calls POST /api/embed, returns embeddings list
 - ModelClient.embed_texts: raises on connection refused
 - ModelClient.embed_texts: validates returned vector length matches embed_dim
+- ModelClient.embed_query: thin delegate to embed_texts(texts, role="embedding")
 """
 
 import json
@@ -430,3 +431,35 @@ def test_extract_prose_passes_topic_schema(client_with_extraction):
     with patch.object(client_with_extraction, "_chat", return_value=MagicMock()) as mock_chat:
         client_with_extraction.extract_prose("my prompt")
         assert mock_chat.call_args[1].get("schema") == TOPIC_FORMAT_SCHEMA
+
+
+# ---------------------------------------------------------------------------
+# Named method — embed_query delegates to embed_texts(texts, role="embedding")
+# ---------------------------------------------------------------------------
+
+def test_embed_query_delegates_to_embed_texts_with_embedding_role(client):
+    texts = ["test query"]
+    with patch.object(client, "embed_texts", return_value=[[0.01] * 1024]) as mock_embed:
+        client.embed_query(texts)
+    mock_embed.assert_called_once_with(texts, role="embedding")
+
+
+def test_embed_query_returns_embed_texts_result(client):
+    texts = ["sentinel query"]
+    sentinel = [[0.99] * 1024]
+    with patch.object(client, "embed_texts", return_value=sentinel):
+        result = client.embed_query(texts)
+    assert result is sentinel
+
+
+def test_embed_query_end_to_end_returns_vectors(client):
+    texts = ["end to end query"]
+    fake_resp = MagicMock()
+    fake_resp.raise_for_status = MagicMock()
+    fake_resp.json.return_value = {"embeddings": _fake_embeddings(texts)}
+
+    with patch("httpx.post", return_value=fake_resp):
+        result = client.embed_query(texts)
+
+    assert len(result) == 1
+    assert len(result[0]) == 1024

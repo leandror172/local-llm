@@ -16,6 +16,12 @@ Usage (non-interactive / scripting):
     --domain code --language react \\
     --name my-react-q3 [--dry-run]
 
+  # Named temperature preset:
+  python3 personas/create-persona.py --non-interactive --role x --temperature deterministic
+
+  # Raw numeric temperature (any value in [0.0, 2.0]):
+  python3 personas/create-persona.py --non-interactive --role x --temperature 0.5
+
 Safer to invoke via the bash wrapper (whitelist-safe):
   personas/run-create-persona.sh [args]
 """
@@ -34,6 +40,8 @@ from models import (
     TEMPERATURE_MAP,
     TEMP_CATEGORY_TO_CHOICE,
     TEMP_DESCRIPTIONS,
+    TEMP_MIN,
+    TEMP_MAX,
     MODEL_TAG_TO_SUFFIX,
     MODEL_TAG_TO_Q_SUFFIX,
     get_model,
@@ -42,6 +50,7 @@ from models import (
     get_temperature_description,
     get_modelfile_suffix,
     get_persona_name_suffix,
+    parse_temperature_input,
 )
 
 # Import reusable interactive helpers (Task 3.4 refactoring)
@@ -357,16 +366,27 @@ def collect_interactive() -> dict:
     # Q4: Temperature
     print("\nStep 4/8 — Temperature")
     suggested = TEMP_CATEGORY_TO_CHOICE[MODEL_MATRIX[domain][3]]
-    temp_choices = list(TEMPERATURE_MAP.keys())
+    named_choices = list(TEMPERATURE_MAP.keys())
+    temp_choices = named_choices + ["custom"]
     print("  Options:")
-    for tc in temp_choices:
+    for tc in named_choices:
         print(f"    {tc}: {TEMP_DESCRIPTIONS[tc]}")
+    print(f"    custom: enter a raw float in [{TEMP_MIN}–2.0]")
     temp_choice = ask_choice(
         f"Temperature preference?  (suggested for '{domain}': {suggested})",
         temp_choices,
         default=suggested,
     )
-    temperature = TEMPERATURE_MAP[temp_choice]
+    if temp_choice == "custom":
+        while True:
+            raw = ask(f"Temperature value [{TEMP_MIN}–2.0]:")
+            try:
+                temperature = parse_temperature_input(raw)
+                break
+            except ValueError as e:
+                print(f"  [!] {e}")
+    else:
+        temperature = TEMPERATURE_MAP[temp_choice]
 
     # Q5: Persona name
     print("\nStep 5/8 — Persona name")
@@ -441,9 +461,16 @@ def collect_from_flags(args) -> dict:
     if domain not in DOMAIN_CHOICES:
         errors.append(f"--domain must be one of: {', '.join(DOMAIN_CHOICES)}")
 
-    temp_choice = args.temperature
-    if temp_choice and temp_choice not in TEMPERATURE_MAP:
-        errors.append(f"--temperature must be one of: {', '.join(TEMPERATURE_MAP)}")
+    # Temperature: named preset or raw numeric [TEMP_MIN, TEMP_MAX]
+    temp_choice = None
+    temperature = None
+    if args.temperature:
+        try:
+            temperature = parse_temperature_input(args.temperature)
+            raw_stripped = args.temperature.strip()
+            temp_choice = raw_stripped if raw_stripped in TEMPERATURE_MAP else "custom"
+        except ValueError as e:
+            errors.append(str(e))
 
     if errors:
         for e in errors:
@@ -462,9 +489,10 @@ def collect_from_flags(args) -> dict:
         _, base_tag, num_ctx = select_model(domain)
     language = args.language or None
 
-    if not temp_choice:
+    # Apply domain default when no --temperature flag was given
+    if temperature is None:
         temp_choice = TEMP_CATEGORY_TO_CHOICE[MODEL_MATRIX[domain][3]]
-    temperature = TEMPERATURE_MAP[temp_choice]
+        temperature = TEMPERATURE_MAP[temp_choice]
 
     # Name
     if args.name:
@@ -538,8 +566,12 @@ def parse_args():
                    help=f"Domain: {', '.join(DOMAIN_CHOICES)}.")
     p.add_argument("--language", metavar="TEXT",
                    help="Language or framework (for code domain; drives naming).")
-    p.add_argument("--temperature", choices=list(TEMPERATURE_MAP), metavar="CHOICE",
-                   help="deterministic | balanced | creative.")
+    p.add_argument("--temperature", metavar="TEMP",
+                   help=(
+                       "Named preset (deterministic | balanced | creative) "
+                       f"or a raw float in [{TEMP_MIN}, {TEMP_MAX}] (e.g. 0.5). "
+                       "Defaults to the domain's recommended preset."
+                   ))
     p.add_argument("--name", metavar="TEXT",
                    help="Persona name (e.g., my-react-q3). Auto-suggested if omitted.")
     p.add_argument("--constraint", action="append", metavar="TEXT", dest="constraints",

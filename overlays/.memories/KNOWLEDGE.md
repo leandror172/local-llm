@@ -166,7 +166,7 @@ Fixes (commits f6d1116, 771ea5c, bba6cce, 0fdb42f, 979f66f):
   flexible) that the project copy had right.
 
 **Process learnings:** (1) overlay propagation needs a verify step — per-file `cmp` against source
-caught nothing wrong this time only because we ran it; consider an installer `--verify` mode.
+caught nothing wrong this time only because we ran it; installer `--verify` mode DONE (T-58, 2026-06-26).
 (2) "Task done" claims in commit messages/memory are unverified — T5 was recorded done in QUICK.md
 and a commit message while no diff existed. (3) Subagent review must re-derive invariants, not trust
 green tests: review caught an amend stage/promote session-number mismatch (N+1 vs N — would have
@@ -270,3 +270,66 @@ project-level files against overlay source — it tried to overwrite llm's local
 was staler, would have dropped the pre-session reading-guide block) and drop a stray `.claude/handoff/
 registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side writes before a
 "just refresh the engine" install.
+
+## Installer --verify mode (T-58, 2026-06-26) — IMPLEMENTED
+
+`verify_overlay(manifest, overlay_dir, target_root, install_level) -> tuple[int,int,int]` in
+`lib/actions.py` — 13 tests in `overlays/test_verify.py` (all green).
+
+**Key design decisions:**
+- **EOL-normalized SAME:** `_norm(p) = p.read_bytes().replace(b'\r\n',b'\n').rstrip(b'\n')` —
+  CRLF↔LF and sole trailing-newline differences are SAME. Intentionally decouples from installer's
+  byte-exact `sha256` SKIP (T-29 remains open).
+- **Decision (a) — everything gates exit:** `templates` and `manual_if_exists` DIFF/MISSING both
+  increment the failing tally (n_diff/n_missing), same as overlay-owned categories. `USER-MANAGED`
+  label appears in the report for readability only — NOT a signal that failures are ignored.
+- **merge_sections uses version-marker mechanism:** `open_pattern` regex checks installed version
+  number (SAME = match; DIFF = mismatch; MISSING = no marker or dest absent). Does NOT compare
+  section content byte-by-byte.
+- **$HOME isolation mandatory in tests:** `always_user_files` and user-level `user_files` resolve
+  under `Path.home()`; tests monkeypatch `HOME` to a tmp dir.
+- **`verify_overlay` returns tally; `main()` derives exit from tally** — never parses `report._actions`.
+- **CLI branch:** `--verify` branch fires after header print, before any `handle_*` call; runs
+  `verify_overlay`, `print_report`, `sys.exit(1 if any(tally) else 0)` — never enters install path.
+
+**Source-dir mapping (mirrors the handle_* resolution exactly):**
+- `files:` → `overlay_dir/files/<src_name>`
+- `always_user_files:` → same `files_dir`; dest always `~/.claude/<dest_rel>`
+- `user_files:` → same `files_dir`; dest `~/.claude/` or `target/.claude/` per level
+- `templates:` → `overlay_dir/templates/<tmpl_name>`
+- `manual_if_exists:` → `overlay_dir/files/<basename(dest_rel)>` (NOT templates dir)
+
+## Overlay Test Convention — hermetic + ships with the overlay (2026-06-30, ref-indexing v4)
+
+PR #63 review (T-42) established how overlay code is tested. Three rules, each with a reason
+that generalizes to every future overlay suite:
+
+- **Tests live with the overlay source, not the consumer tree.** Authored test → `files/tests/`
+  (co-located with the code it exercises, mirroring `session-tracking`'s `files/handoff/test_*.py`);
+  the manifest `files:` map installs it into consumer repos' `.claude/tools/tests/`. The source repo
+  does NOT commit an installed copy — that's a generated artifact. *Rationale:* the reviewer flagged
+  a test sitting in `.claude/tools/tests/` (the install surface) as "the wrong place"; the overlay is
+  the single source of truth, consumers receive a copy. *Caveat:* a pre-existing installed copy of a
+  *script* (e.g. `.claude/tools/ref-lookup.sh`) is left alone — the "source-only" rule applies to
+  *new* artifacts, not a retro-cleanup of every installed file (that's a separate broader task).
+
+- **Tests must be hermetic — zero repo coupling.** Each case builds its own fixture corpus in a
+  `mktemp` dir and points the tool at it via `--root <fixture>`. The tool only ever sees content the
+  test authored (the "clean container" model). *Rationale:* the original test diffed against
+  `baseline-*.txt` snapshots captured from THIS repo's ref blocks, so any unrelated edit to the repo's
+  documentation could flip the test result — exactly the dependency a test must not have. A repo
+  change must never risk a test outcome. The `--root` flag (already on `ref-lookup.sh`) is the
+  isolation boundary that makes this possible; design new overlay tools with such a flag so their
+  tests can be hermetic.
+  - *Sub-finding:* hermeticity also exposed that `--paths` "first occurrence" of a duplicated key
+    follows `grep -r` filesystem-traversal (readdir) order, NOT sorted path. Asserting a *specific*
+    winner would just relocate the non-determinism from repo-content to filesystem-order, so the test
+    asserts the **dedup invariant** (collapses to one real occurrence), which IS the tool's contract.
+
+- **A `make` runner is the aggregation seam.** `overlays/Makefile`: `make test` depends on per-overlay
+  `test-<overlay>` targets (currently just `test-ref-indexing`); bare `make` prints help; paths resolve
+  via the Makefile's own dir (`$(dir $(realpath ...))`) so it runs from any invocation point. *Rationale:*
+  a single entry point that grows by appending one target per overlay; `make test` works precisely
+  *because* suites are hermetic (a runner needs only exit 0, with no opinion about repo state) — the
+  Makefile and the hermetic rule reinforce each other. *Implication:* every new overlay suite wires in
+  as `test-<name>` + an append to `test:`.

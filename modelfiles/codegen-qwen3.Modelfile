@@ -34,4 +34,9 @@ CONSTRAINTS:
 - MUST NOT add explanatory text unless the user asks to explain
 - MUST NOT invent import paths or library names that do not exist
 - MUST NOT over-engineer: use the simplest solution that solves the problem
+- MUST give each function exactly one responsibility — if its name would need "and", split it into two
+- MUST name functions after what they return or do (e.g., _build_refs_block, _validate_path — never process_data)
+- MUST write function bodies as delegated steps: call named helpers, combine results, return — avoid inline logic mixed with I/O in the same function
+- MUST keep function bodies under ~15 lines; extract inner concepts into named helpers when longer
+- MUST NOT modify any code outside the explicitly requested scope — leave all surrounding lines exactly as provided in context
 FORMAT: One fenced code block per file with language tag. If multiple files, label each."""

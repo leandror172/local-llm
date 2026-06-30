@@ -48,6 +48,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | resume.sh ref audit & improvement plan | `docs/plans/resume-sh-ref-audit.md` | Which ref tags to add/remove + 3 structural fixes (session 60) |
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
 | **Claude Code dynamic workflows guide** | `.claude/workflows-feature-guide.md` | What workflows are (script-orchestrated subagents at scale), when to use vs not, commands (`/deep-research`, `/workflows`, `ultracode`), limits, repo-specific candidates. Captured session 81. |
+| **Cache-warmed subagent fan-out pattern** | `docs/patterns/cache-warmed-subagent-fanout.md` | Manual (Agent + SendMessage) fan-out that caches one large shared context per model tier via turn-boundary breakpoints; deferred task injection (copy-to-unique + `copied` ack); planner(Opus)→implementer(Sonnet/worktree) tiers; when this beats a workflow. Ready-to-use shared prompts. `ref:cache-warmed-fanout`. |
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | **Code design conventions** | `docs/patterns/code-design-conventions.md` | Structural patterns: named semantic methods over role strings. Self-indexed via `ref:patterns-code-design-index` |
 | **LTG extractor retrofit plan** | `docs/plans/ltg-extractor-retrofit.md` | Full implementation spec: routing.py, schemas.py, ModelClient extensions, config upgrade, file split. Ready to execute. |
@@ -135,13 +136,15 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `.claude/tools/resume.sh` | ~40-line session-start summary (status + next + commits) | Every session start |
-| `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; no args = list all keys | Any time a `[ref:KEY]` tag is needed |
+| `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; `--list` = all keys; `--paths` = KEY→repo-relative-path map (`.claude/local/` excluded) | Any time a `[ref:KEY]` tag is needed; `--paths` for programmatic key→file lookup |
+| `overlays/ref-indexing/files/tests/test-ref-lookup-paths.sh` | Fully hermetic tests for `ref-lookup.sh` (`--paths`/`--list`/single-key/glob): builds its own fixture corpus via `--root`, no repo coupling (9 tests, exit 0 = all pass). Run via `make -C overlays test-ref-indexing`; installs to consumer repos as `.claude/tools/tests/...` | After any change to `ref-lookup.sh` |
 | `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
-| `.claude/tools/handoff-harvest.sh` | Emit commit subjects since the last `chore(session-handoff):` commit; fallback to last 20 if none found | Run at handoff Step 2 to seed `what_was_done` |
+| `.claude/tools/handoff-harvest.sh` | Emit commit subjects since the last `chore(session-handoff): session ` commit (tighter than bare prefix — avoids false boundaries from other `chore(session-handoff):` uses); fallback to last 20 if none found | Run at handoff Step 2 to seed `what_was_done` |
 | `.claude/tools/benchmark-status.sh` | Rubrics/prompts/personas/results overview | Before any benchmark session |
 | `.claude/tools/ollama-stats.py` | DPO evaluation stats: total calls, model usage, verdict distribution | After evaluating local model outputs; track progress |
 | `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
 | `overlays/session-tracking/files/handoff/run-handoff.sh` | Session-handoff pipeline entrypoint (wraps `handoff.py`): `--payload` (stage) / `--id` (promote) / `--payload --amend` (additive follow-up to last committed session) / `--abort` / `--repo-root` / `--registry`. Lives in the overlay source; installs to `.claude/tools/handoff/run-handoff.sh` in target repos | Running the deterministic handoff transaction; stage emits a JSON handle, promote commits |
+| `overlays/Makefile` | Overlay dev test runner: `make test` (all suites), `make test-ref-indexing` (ref-lookup hermetic tests). Default `make` prints help. Grows a `test-<overlay>` target per overlay | Before committing overlay changes |
 
 ### Retrieval / LTG Tools
 | Script | Purpose | When to Use |
@@ -155,6 +158,11 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |
 | `retrieval/run-anchors.sh` | Phase 3 anchor rebuild: `--index`, `--method`, `--repo-root`. Ingests ref:KEY anchors, embeds, matches topics, writes combined LanceDB table. | After any ref:KEY changes; Phase 3 live acceptance |
 | `retrieval/run-build-corpus-manifest.sh` | Phase 2.5 corpus freeze: resolves `corpus.yaml` (intent) against `git ls-files`, hashes each file (sha256), records commit SHA, writes frozen `corpus-manifest.yaml`. `--dry-run` prints the resolution summary. | Step 0 before any full-corpus re-extraction; re-run when `corpus.yaml` changes |
+
+### Personas Test Harness
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `personas/run-tests.sh` | Run pytest test suite for personas module (`python3 -m pytest`) | After any change to models.py or create-persona.py |
 
 ### MCP Server
 | Script | Purpose | When to Use |
@@ -264,11 +272,15 @@ Full research → `.claude/archive/layer-1-research.md`
 |-------|------|-------------|
 | Persona template spec | `personas/persona-template.md` | Fields, defaults, skeleton, model selection, checklist |
 | Persona registry | `personas/registry.yaml` | 28 active, 0 planned; machine-readable source of truth |
-| Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags |
+| Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags; accepts raw float temps [0.0,2.0] (T-19) |
 | Creator bash wrapper | `personas/run-create-persona.sh` | Whitelist-safe entry point (auto-approved) |
 | All Modelfiles | `modelfiles/*.Modelfile` | 28 total across all categories |
 | Full persona catalog | `personas/personas-reference.md` | All personas by category with modelfile + base model |
 | Future persona ideas | `personas/ideas.md` | Candidates not yet built |
+| Personas test harness | `personas/run-tests.sh` | `python3 -m pytest` wrapper; 21 tests across unit + integration |
+| Personas pytest config | `personas/pyproject.toml` | `[tool.pytest.ini_options]` testpaths + pythonpath |
+| Temperature unit tests | `personas/tests/test_temperature.py` | Tests for `parse_temperature_input` (models.py) |
+| collect_from_flags tests | `personas/tests/test_collect_flags.py` | Integration tests: argparse + collect_from_flags end-to-end |
 
 ---
 
