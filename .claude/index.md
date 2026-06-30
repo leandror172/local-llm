@@ -136,6 +136,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `.claude/tools/resume.sh` | ~40-line session-start summary (status + next + commits) | Every session start |
+| `.claude/hooks/guard-git-add-all.py` | `PreToolUse(Bash)` guard — denies bulk `git add -A`/`.`/`--all` (stages unrelated untracked files); allows explicit paths + `git add -u`. Wired in `settings.json`; mirrored by the `block-bulk-git-add` hookify rule | Always-on; see Git Safety Protocol in CLAUDE.md |
 | `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; `--list` = all keys; `--paths` = KEY→repo-relative-path map (`.claude/local/` excluded) | Any time a `[ref:KEY]` tag is needed; `--paths` for programmatic key→file lookup |
 | `overlays/ref-indexing/files/tests/test-ref-lookup-paths.sh` | Fully hermetic tests for `ref-lookup.sh` (`--paths`/`--list`/single-key/glob): builds its own fixture corpus via `--root`, no repo coupling (9 tests, exit 0 = all pass). Run via `make -C overlays test-ref-indexing`; installs to consumer repos as `.claude/tools/tests/...` | After any change to `ref-lookup.sh` |
 | `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
