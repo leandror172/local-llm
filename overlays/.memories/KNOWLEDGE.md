@@ -298,3 +298,38 @@ registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side
 - `user_files:` → same `files_dir`; dest `~/.claude/` or `target/.claude/` per level
 - `templates:` → `overlay_dir/templates/<tmpl_name>`
 - `manual_if_exists:` → `overlay_dir/files/<basename(dest_rel)>` (NOT templates dir)
+
+## Overlay Test Convention — hermetic + ships with the overlay (2026-06-30, ref-indexing v4)
+
+PR #63 review (T-42) established how overlay code is tested. Three rules, each with a reason
+that generalizes to every future overlay suite:
+
+- **Tests live with the overlay source, not the consumer tree.** Authored test → `files/tests/`
+  (co-located with the code it exercises, mirroring `session-tracking`'s `files/handoff/test_*.py`);
+  the manifest `files:` map installs it into consumer repos' `.claude/tools/tests/`. The source repo
+  does NOT commit an installed copy — that's a generated artifact. *Rationale:* the reviewer flagged
+  a test sitting in `.claude/tools/tests/` (the install surface) as "the wrong place"; the overlay is
+  the single source of truth, consumers receive a copy. *Caveat:* a pre-existing installed copy of a
+  *script* (e.g. `.claude/tools/ref-lookup.sh`) is left alone — the "source-only" rule applies to
+  *new* artifacts, not a retro-cleanup of every installed file (that's a separate broader task).
+
+- **Tests must be hermetic — zero repo coupling.** Each case builds its own fixture corpus in a
+  `mktemp` dir and points the tool at it via `--root <fixture>`. The tool only ever sees content the
+  test authored (the "clean container" model). *Rationale:* the original test diffed against
+  `baseline-*.txt` snapshots captured from THIS repo's ref blocks, so any unrelated edit to the repo's
+  documentation could flip the test result — exactly the dependency a test must not have. A repo
+  change must never risk a test outcome. The `--root` flag (already on `ref-lookup.sh`) is the
+  isolation boundary that makes this possible; design new overlay tools with such a flag so their
+  tests can be hermetic.
+  - *Sub-finding:* hermeticity also exposed that `--paths` "first occurrence" of a duplicated key
+    follows `grep -r` filesystem-traversal (readdir) order, NOT sorted path. Asserting a *specific*
+    winner would just relocate the non-determinism from repo-content to filesystem-order, so the test
+    asserts the **dedup invariant** (collapses to one real occurrence), which IS the tool's contract.
+
+- **A `make` runner is the aggregation seam.** `overlays/Makefile`: `make test` depends on per-overlay
+  `test-<overlay>` targets (currently just `test-ref-indexing`); bare `make` prints help; paths resolve
+  via the Makefile's own dir (`$(dir $(realpath ...))`) so it runs from any invocation point. *Rationale:*
+  a single entry point that grows by appending one target per overlay; `make test` works precisely
+  *because* suites are hermetic (a runner needs only exit 0, with no opinion about repo state) — the
+  Makefile and the hermetic rule reinforce each other. *Implication:* every new overlay suite wires in
+  as `test-<name>` + an append to `test:`.
