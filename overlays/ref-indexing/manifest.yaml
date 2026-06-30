@@ -1,5 +1,5 @@
 name: ref-indexing
-version: 3
+version: 4
 description: >
   Ref block documentation system: [ref:KEY] tags in CLAUDE.md point to
   <!-- ref:KEY --> blocks in *.md files. Includes ref-lookup tool,
@@ -7,6 +7,8 @@ description: >
   v2: ref-lookup supports prefix/glob search (KEY*) and digits in key names.
   v3: ref-lookup --paths flag emits KEY<TAB>repo-relative-path for each key
   (first non-local occurrence, .claude/local/ excluded for safety).
+  v4: hermetic test suite (tests/test-ref-lookup-paths.sh) ships with the
+  overlay — builds its own fixture corpus via --root, no repo coupling.
 
 # Files to copy verbatim to target repo.
 # Source paths are relative to this overlay's files/ directory.
@@ -15,6 +17,7 @@ description: >
 files:
   ref-lookup.sh: .claude/tools/ref-lookup.sh
   check-ref-integrity.py: .claude/tools/check-ref-integrity.py
+  tests/test-ref-lookup-paths.sh: .claude/tools/tests/test-ref-lookup-paths.sh
 
 # Files to instantiate from templates — only if dest does not exist.
 # Never overwrites an existing file (user-managed after creation).

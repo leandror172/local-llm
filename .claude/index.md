@@ -136,7 +136,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 |--------|---------|-------------|
 | `.claude/tools/resume.sh` | ~40-line session-start summary (status + next + commits) | Every session start |
 | `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; `--list` = all keys; `--paths` = KEY→repo-relative-path map (`.claude/local/` excluded) | Any time a `[ref:KEY]` tag is needed; `--paths` for programmatic key→file lookup |
-| `.claude/tools/tests/test-ref-lookup-paths.sh` | Tests for `--paths` flag: hermetic fixture + real-repo spot-checks + regressions (10 tests, exit 0 = all pass) | After any change to `ref-lookup.sh` |
+| `.claude/tools/tests/test-ref-lookup-paths.sh` | Fully hermetic tests for `ref-lookup.sh` (`--paths`/`--list`/single-key/glob): builds its own fixture corpus via `--root`, no repo coupling (9 tests, exit 0 = all pass). Ships with the `ref-indexing` overlay | After any change to `ref-lookup.sh` |
 | `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
 | `.claude/tools/handoff-harvest.sh` | Emit commit subjects since the last `chore(session-handoff):` commit; fallback to last 20 if none found | Run at handoff Step 2 to seed `what_was_done` |
 | `.claude/tools/benchmark-status.sh` | Rubrics/prompts/personas/results overview | Before any benchmark session |
