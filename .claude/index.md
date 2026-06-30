@@ -143,6 +143,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/tools/ollama-stats.py` | DPO evaluation stats: total calls, model usage, verdict distribution | After evaluating local model outputs; track progress |
 | `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
 | `overlays/session-tracking/files/handoff/run-handoff.sh` | Session-handoff pipeline entrypoint (wraps `handoff.py`): `--payload` (stage) / `--id` (promote) / `--payload --amend` (additive follow-up to last committed session) / `--abort` / `--repo-root` / `--registry`. Lives in the overlay source; installs to `.claude/tools/handoff/run-handoff.sh` in target repos | Running the deterministic handoff transaction; stage emits a JSON handle, promote commits |
+| `overlays/Makefile` | Overlay dev test runner: `make test` (all suites), `make test-ref-indexing` (ref-lookup hermetic tests). Default `make` prints help. Grows a `test-<overlay>` target per overlay | Before committing overlay changes |
 
 ### Retrieval / LTG Tools
 | Script | Purpose | When to Use |
