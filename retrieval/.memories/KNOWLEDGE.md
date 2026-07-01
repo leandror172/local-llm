@@ -1,4 +1,4 @@
-# retrieval/ — Knowledge (Semantic Memory)
+# retrieval/ — Latent Topic Graph (RAG) — Knowledge (Semantic Memory)
 
 *Accumulated decisions and findings for the LTG substrate. Read on demand.*
 *Consolidated from session logs and probe outputs — not raw notes.*
@@ -6,7 +6,7 @@
 ---
 
 <!-- ref:ltg-phase2.5-corpus -->
-## Phase 2.5: Full-Corpus Expansion + Calibration (2026-06-26, session 96)
+## LTG RAG Phase 2.5: Full-Corpus Expansion + Retrieval Calibration (2026-06-26, session 96)
 
 **Outcome:** Index moved from an 8-file/69-topic snapshot to the full curated MVP corpus: **875 topics from 113 files + 143 anchors = 1018 rows**. Extraction 113/113 `ok`, 0 failures, 875 topics; embed 875 rows 4096-dim, 0 failed, 54.7s. Closes T-36; lands T-65 cheap half; measurement-closes T-34.
 
@@ -32,7 +32,7 @@ New schema field, orthogonal to `source_class`. Records WHERE a row came from (a
 ---
 
 <!-- ref:ltg-vram-probe -->
-## VRAM Co-Residence: qwen3:14b + bge-m3 (2026-05-20, session 61)
+## RAG Embedding VRAM Co-Residence: qwen3:14b + bge-m3 (2026-05-20, session 61)
 
 **Verdict:** WARN → proceed. bge-m3 locked as embedding model.
 
@@ -83,7 +83,7 @@ and re-run `retrieval/run-vram-probe.sh`.
 ---
 
 <!-- ref:ltg-m-p0b-probe -->
-## VRAM Co-Residence: qwen3:14b + qwen3-embedding:8b (2026-05-28, session 73)
+## RAG Embedding VRAM Co-Residence: qwen3:14b + qwen3-embedding:8b (2026-05-28, session 73)
 
 **Verdict:** WARN → proceed. qwen3-embedding:8b adopted. Sequential constraint unchanged.
 
@@ -119,7 +119,7 @@ Probe: `retrieval/probes/20260528_202835.md`
 ---
 
 <!-- ref:ltg-phase1-summary -->
-## Phase 1 Extractor — Final Findings (sessions 54–59)
+## LTG Topic-Extractor Model Evaluation (RAG ingestion) — Final Findings (sessions 54–59)
 
 **Frozen decision:** 2-arm routing — `qwen3:14b` for prose, `qwen2.5-coder:14b` for code.
 
@@ -167,7 +167,7 @@ absorption (B5). → containment/post-pass guard is the mitigation, not a routin
 ---
 
 <!-- ref:ltg-phase0-decisions-index -->
-## Phase 0 Frozen Decisions Index (session 52)
+## LTG RAG Architecture Decisions (embeddings, vector store, graph) — Phase 0 Index (session 52)
 
 Full rationale in `retrieval/DECISIONS.md`. Summary of what was decided and why:
 
@@ -189,7 +189,7 @@ Ref keys for individual decisions: `ltg-scope`, `ltg-embedding`, `ltg-vector-sto
 ---
 
 <!-- ref:ltg-phase2-findings -->
-## Phase 2 — Embedding + Storage Results (2026-05-28, session 72)
+## LTG RAG Phase 2 — Embedding + Vector Store (LanceDB) Results (2026-05-28, session 72)
 
 ### Pipeline runs
 

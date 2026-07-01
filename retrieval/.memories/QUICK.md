@@ -1,8 +1,8 @@
-# retrieval/ — Quick Memory
+# retrieval/ — Latent Topic Graph (RAG) — Quick Memory
 
 *Working memory for the LTG substrate. Keep under 30 lines.*
 
-## Status
+## Latent Topic Graph (RAG pipeline) — Status
 
 Session 59 (2026-05-04): Phase 1 **fully closed**. ref:ltg-extractor frozen: qwen3:14b prose, qwen2.5-coder:14b code.
 Session 61 (2026-05-20): VRAM probe complete → bge-m3 locked (sequential constraint). → `ref:ltg-vram-probe`
@@ -21,7 +21,7 @@ T-30 (2026-06-26): **`ModelClient.embed_query` added** (thin named-method, +2 li
 - **Phase 1 extractor summary** — final scores, failure modes, MoE eval, determinism finding → `ref:ltg-phase1-summary`
 - **Phase 0 decisions index** — all 8 frozen decisions with key reasons → `ref:ltg-phase0-decisions-index`
 
-## What Lives Here
+## What Lives Here (RAG pipeline scripts)
 
 ```
 retrieval/
