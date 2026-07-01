@@ -1,36 +1,35 @@
 # Session Log
 
 **Current Layer:** LTG retrieval substrate — Phase 4 (graph + communities) next
-**Current Session:** 2026-06-30 — Session 97: my-go-qcoder HTTP 500 root-cause (host-RAM ENOMEM) + ext4 store move (T-67)
+**Current Session:** 2026-07-01 — Session 98: T-68 — ext4 store reboot-persistence self-heal (udev) + 162 GB reclaim
 
 ---
-## 2026-06-30 - Session 97: my-go-qcoder HTTP 500 root-cause (host-RAM ENOMEM) + ext4 store move (T-67)
+## 2026-07-01 - Session 98: T-68 — ext4 store reboot-persistence self-heal (udev) + 162 GB reclaim
 
 ### Context
 
-Triggered by an expense-repo report that `my-go-qcoder` was returning HTTP 500 / unavailable. Investigated, root-caused, fixed, then executed the deferred ext4 store move (T-67) end-to-end. An infra side-track — no LTG/handoff-pipeline work.
+Opened from `resume.sh` and picked T-68 (validate ext4 store reboot-persistence, then reclaim the old 162 GB on I:). A real reboot had already happened since session 98, so the "waiting for a reboot" precondition was already met — and it exposed a failure.
 
 ### What Was Done
 
-- Root-caused the recurring `my-go-qcoder` HTTP 500 as **host-RAM ENOMEM, NOT "VRAM contention"** (the label ~6 expense sessions had inherited): the 30B partial-offload reads ~10–15 GiB of weights into host RAM, which exceeded WSL2's old 15.5 GiB. Reproduced the exact crash (`cannot allocate memory` → `exit status 2` → 500).
-- Applied the load-bearing fix: WSL `.wslconfig memory=24GB` (+16G swap); verified the 30B now loads (HTTP 200, 8.5 GiB RAM headroom).
-- Researched + wrote the ext4-move plan with a full physical/logical drive map (`docs/plans/ollama-store-ext4-move.md`); found I: is on the same NVMe as C: (no disk-speed gain) and the distro ext4 is C:-backed (81 GB free) so only a dedicated vhdx on I: was viable.
-- Executed T-67: created a 300 GB dynamic ext4 vhdx on I:, attached via `wsl --mount --vhd`, rsync'd the 162 GB store (byte-verified: 178 blobs / 81 manifests), repointed Ollama via systemd `.mount` (UUID) + `ExecStartPre` guard; cold load 33 s → 15.6 s.
-- Built `make -C ~/workspaces ollama-store-check` (namespace-robust: systemd + API) to detect the silent-empty-store failure mode; registered the Option-A logon task for reboot persistence.
-- Corrected the central premise everywhere it was committed (QUICK / KNOWLEDGE / plan / both repos' session-context): ext4 did NOT re-enable mmap, so the RAM win never materialized.
+- Root-caused a post-reboot store detach: the `WSL-Ollama-ext4-store` logon task fired at boot but returned `LastTaskResult=1` — its chained in-WSL `systemctl restart` raced the cold WSL/systemd boot, leaving the vhd unattached; ollama correctly refused to start (the loud-fail `Requires=`/guard chain held instead of serving an empty store).
+- Recovered the live store (manual `wsl --mount` + `systemctl restart` → `PASS`, 81 models).
+- Fixed persistence (Option A, commit `a64f211`): thinned the logon task to attach-only; added a udev rule `99-ollama-store.rules` (matched by `ID_FS_UUID` → `SYSTEMD_WANTS`) + a oneshot `ollama-store-recover.service` (`reset-failed` + `start ollama`, which pulls the mount, which pulls the now-present device).
+- Live-verified the self-heal non-destructively (`udevadm trigger --action=add /dev/sde`: `FAIL → PASS`, no manual mount).
+- Real reboot cold `PASS` with zero manual steps — and the device came back as `/dev/sdd` (not `sde`); UUID matching held.
+- Reclaimed the old store: `rm -rf /mnt/i/ollama-models` (162 GB; I: 233 → 394 GB free), verified the live store unaffected (running ollama `OLLAMA_MODELS=/mnt/ollama-store/models`, API serves 81). Close-out doc commit `717c9ae`.
 
 ### Decisions Made
 
-- **`.wslconfig memory=24GB` is the actual fix and stays load-bearing.** The ext4 move is a latency/robustness win only — Ollama forces `UseMmap:false` for any partially-offloaded model regardless of filesystem (`use_mmap:true` is ignored), so host-RAM cost is unchanged.
-- Kept the ext4 move despite the corrected premise (faster cold loads + page-cache reuse + clean store, already done). Old `/mnt/i/ollama-models` retained as rollback until the reboot test passes.
-- Chose Option A (logon task) for persistence over manual re-mount — the guard + checker already make any failure loud rather than silent.
+- Chose Option A (event-driven udev self-heal) over Option B (race-proof polling glue in the logon task): recovery belongs in systemd (which already owns the loud-fail guard), not in Windows-side timing. Decompose along the seam — Windows does the one thing only it can (hypervisor attach), WSL reacts to the *result* (device-add), not to a timing assumption.
+- Match the device by `ID_FS_UUID`, never `/dev/sdX` — the reboot proved the letter is volatile (sde→sdd).
+- No `tasks.md` checkoff for T-68: it lives in current-status "Open deferred tasks", marked done there (strikethrough), not as a `[ ]` line.
 
 ### Next
 
-- LTG Phase 4 — graph + communities (the standing next task; this was a side-track).
-- T-68: `wsl --shutdown` + re-login, confirm `make ollama-store-check` PASS (proves the logon task re-attached the vhd), then reclaim the old 162 GB on I:.
+- LTG Phase 4 — graph + communities (the standing next task): `alias_of` lists relocate to an edge table; anchor↔anchor edges from `index.md` cross-refs land here; `networkx + leidenalg`; build on the fresh 1018-row full-corpus index on master.
 
 ### Gotchas
 
-- Ollama disables mmap whenever a model is **partially** offloaded (some layers GPU, some CPU) — a loader rule independent of filesystem. My initial "9p disables mmap" diagnosis was only half right.
-- WSL2-with-systemd puts the ext4 mount in PID 1's namespace; interactive/agent shells are in a different namespace and see `/mnt/ollama-store` as empty (`findmnt` shows nothing) even though ollama serves it fine. Health checks must query systemd + the API, not local-shell filesystem calls.
+- The logon task trigger is `-AtLogOn` (Windows sign-in), NOT WSL start — a bare `wsl --shutdown` + reopening a terminal will NOT fire it; only a real Windows sign-out/in (or a restart) does.
+- `powershell.exe` interop is unavailable from the agent's WSL shell (`Exec format error`) — Windows Task Scheduler queries (`Get-ScheduledTask*`) must be run by the user, not via Bash.
