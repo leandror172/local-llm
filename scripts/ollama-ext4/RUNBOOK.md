@@ -80,13 +80,44 @@ curl …/api/generate -d '{"model":"my-go-qcoder",…}'   # expect 200, no ENOME
 journalctl -u ollama | grep -i UseMmap        # should NOT be false now
 ```
 
-### Step 7 — persistence + cleanup  **[WIN]** / **[ME]**
-```powershell
-…\llm\scripts\ollama-ext4\register-logon-task.ps1     # [WIN] survive reboot
-```
+### Step 7 — persistence (Option A: udev self-heal) + cleanup  **[SUDO]** / **[WIN]** / **[ME]**
+
+`wsl --mount` does not survive reboot, and chaining the in-WSL restart onto the
+Windows logon task races the cold WSL/systemd boot (observed T-68: task ran but
+`LastTaskResult=1`, store detached). Option A splits the two concerns: the logon
+task only *attaches* the vhd; a udev rule reacts to the device 'add' event inside
+WSL and pulls ollama (→ mount → device) up on its own.
+
+**[SUDO]** install the self-heal artifacts (verified T-68, 2026-07-01):
 ```bash
-# [ME] after a reboot test passes, reclaim I: space:
-rm -rf /mnt/i/ollama-models       # frees 162 GB on I:
+cd scripts/ollama-ext4
+sudo install -m644 99-ollama-store.rules       /etc/udev/rules.d/99-ollama-store.rules
+sudo install -m644 ollama-store-recover.service /etc/systemd/system/ollama-store-recover.service
+sudo systemctl daemon-reload
+sudo udevadm control --reload
+```
+
+**[WIN]** register the thinned (attach-only) logon task:
+```powershell
+I:\workspaces\llm\scripts\ollama-ext4\register-logon-task.ps1     # -Force overwrites the old task
+```
+
+**[ME/SUDO]** non-destructive self-heal test (no reboot needed):
+```bash
+sudo systemctl stop ollama.service 'mnt-ollama\x2dstore.mount'   # FAIL expected
+sudo udevadm trigger --action=add /dev/sde                       # re-emit the attach event
+make -C ~/workspaces ollama-store-check                          # PASS expected (auto-recovered)
+```
+
+**Reboot gate — the T-68 completion criterion:** `wsl --shutdown` + a real Windows
+sign-out/in (so `-AtLogOn` fires), then with **zero manual steps**:
+```bash
+make -C ~/workspaces ollama-store-check       # must PASS cold
+```
+
+**[ME]** ONLY after the cold reboot PASSes, reclaim I: space:
+```bash
+rm -rf /mnt/i/ollama-models       # frees 162 GB on I:  (this is the rollback copy — do not delete early)
 # optionally lower .wslconfig memory back toward default (mmap makes 24G non-load-bearing)
 ```
 
