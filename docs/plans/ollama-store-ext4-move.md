@@ -1,6 +1,11 @@
 # Plan: Move Ollama model store to ext4 (T-67)
 
 **Status:** EXECUTED session 98 (2026-06-30). Store live at `/mnt/ollama-store/models` (ext4).
+**T-68 CLOSED (2026-07-01):** reboot-persistence made self-healing (Option A: udev
+`SYSTEMD_WANTS` → `ollama-store-recover.service`; logon task thinned to attach-only) —
+survived a real reboot cold `PASS` (device letter shifted sde→sdd, UUID matching held);
+old `/mnt/i/ollama-models` reclaimed (162 GB → I: now 394 GB free). Artifacts +
+verified runbook: `scripts/ollama-ext4/`.
 **Author:** session 98 (2026-06-30).
 **Trigger:** `my-go-qcoder` HTTP 500 root-caused as host-RAM ENOMEM (see `.memories/KNOWLEDGE.md` "Host-RAM budget").
 
