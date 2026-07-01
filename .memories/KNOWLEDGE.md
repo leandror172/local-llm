@@ -336,3 +336,30 @@ Comprehensive model survey covering Qwen, Microsoft, Llama 4, Mistral, frontier-
 
 **Rationale:** Qwen3.6-Coder was released April 2026; qwen3-embedding:8b released alongside it. Both are now production-stable on Ollama. The survey was triggered by a user question about model updates.
 **Implication:** All P0 swaps resolved. Phase 3 anchor decisions FROZEN (session 82 — dual-path RAG + alias-link). Full benchmark outcomes in `docs/findings/model-updates-2026-05.md`.
+
+## Career Chatbot RAG Context Budget + Heading-Vocabulary Contract (2026-07-01, session 99)
+
+The HF Space free backend (Llama 3.3 70B via Groq router) has a **12K tokens-per-minute
+budget counting input + max_tokens across ALL calls in the minute** (routing + answer).
+Groq reports overruns as `413 Payload Too Large` — it is a rate limit, not a message-size
+limit; a single request over the budget is unretryable.
+
+**Three-cap budget design in `docs/portfolio/hf-space/app.py` (all env-tunable on the Space):**
+- Static baseline: only the 3 root quick files injected (3,000 chars each); all other
+  `*-quick.md` sections live in the routed index. `CONTEXT_CHAR_BUDGET` (default 20,000)
+  drops whole files largest-first with a startup warning.
+- Routing index: **headings-only** (per-section snippets would cost ~7.6K tokens).
+- History: `HISTORY_CHAR_BUDGET` (default 3,000 chars) — newest whole messages kept.
+Worst case ≈ 11.9K vs 12K; transient clips absorbed by retry (incl. Groq's `NNms` waits).
+
+**Heading-vocabulary contract (load-bearing for ALL `.memories/` authors):** because the
+router only sees section headings, `##` headings must carry the query vocabulary a
+visitor would use (RAG, embedding, vector store, project names) — insider headings like
+"Phase 2 — Results" are invisible to retrieval. Proven live: "work on RAG?" matched 0
+LTG sections before the `retrieval/.memories/` heading rename, 4/4 after.
+
+**Warning (T-67 scope):** this repo's own QUICK.md files are over the ~30-line Tier-0
+contract — root 7.8K chars (chatbot truncates root quick files at 3K: **bottom ~60%
+never reaches the model**), retrieval/ 7.5K. Consolidate in the T-67 session alongside
+the handoff-skill fix (same episodic-append root cause as the expenses audit,
+`~/workspaces/expenses/code/.claude/quick-memory-audit-2026-07-01.md`).
