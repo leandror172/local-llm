@@ -28,8 +28,9 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "context")
 class TestBuildSectionIndex:
     def test_section_count(self):
         sections = app._build_section_index(FIXTURES)
-        # 2 sections in alpha, 2 in beta = 4 total
-        assert len(sections) == 4
+        # 2 sections in alpha-knowledge, 2 in beta-knowledge, 2 in
+        # gamma-quick (a non-root quick file, merged in same as knowledge)
+        assert len(sections) == 6
 
     def test_file_header_skipped(self):
         sections = app._build_section_index(FIXTURES)
@@ -40,7 +41,7 @@ class TestBuildSectionIndex:
     def test_source_is_filename_without_extension(self):
         sections = app._build_section_index(FIXTURES)
         sources = {s.source for s in sections}
-        assert sources == {"alpha-knowledge", "beta-knowledge"}
+        assert sources == {"alpha-knowledge", "beta-knowledge", "gamma-quick"}
 
     def test_key_format(self):
         sections = app._build_section_index(FIXTURES)
@@ -81,6 +82,95 @@ class TestBuildSectionIndex:
         # alpha-knowledge sections come before beta-knowledge sections
         sources = [s.source for s in sections]
         assert sources.index("alpha-knowledge") < sources.index("beta-knowledge")
+
+
+# ── quick-file sections merged into the routing index ─────────────────────────
+
+class TestQuickFilesInSectionIndex:
+    """Non-root *-quick.md files must be demoted to routed retrieval: parsed
+    with the same section parser as knowledge files and merged into the
+    index _route_sections selects from."""
+
+    def test_non_root_quick_file_sections_present(self):
+        sections = app._build_section_index(FIXTURES)
+        headings = [s.heading for s in sections]
+        assert "Gamma Quick Section One" in headings
+        assert "Gamma Quick Section Two" in headings
+
+    def test_quick_file_source_and_key(self):
+        sections = app._build_section_index(FIXTURES)
+        gamma = next(s for s in sections if s.source == "gamma-quick")
+        assert gamma.key == "gamma-quick:Gamma Quick Section One"
+
+    def test_root_quick_files_excluded_from_index(self):
+        # Root quick files (llm-quick, expenses-reporter-quick, web-research-quick)
+        # stay statically baked into SYSTEM_PROMPT — they must NOT also show up
+        # in the routing index (that would double-count them).
+        sections = app._build_section_index()  # real CONTEXT_DIR
+        sources = {s.source for s in sections}
+        assert not sources & app._ROOT_QUICK_FILES
+        assert not any(s.replace(".md", "") in app._ROOT_QUICK_FILES for s in sources)
+
+    def test_quick_file_appears_in_routing_index_string(self):
+        sections = app._build_section_index(FIXTURES)
+        index_str = app._format_routing_index(sections)
+        assert "gamma-quick / Gamma Quick Section One" in index_str
+
+
+# ── _load_context_files budget guard ───────────────────────────────────────────
+
+class TestLoadContextFilesBudgetGuard:
+    def _write(self, tmp_path, name: str, n_chars: int) -> str:
+        path = tmp_path / name
+        path.write_text("x" * n_chars)
+        return str(path)
+
+    def test_under_budget_keeps_all_files(self, tmp_path, capsys):
+        self._write(tmp_path, "small-quick.md", 100)
+        self._write(tmp_path, "medium-quick.md", 200)
+        with patch.object(app, "CONTEXT_DIR", str(tmp_path)), \
+             patch.object(app, "CONTEXT_CHAR_BUDGET", 1000):
+            result = app._load_context_files("*-quick.md")
+        assert "small-quick" in result
+        assert "medium-quick" in result
+        assert "DROPPED" not in capsys.readouterr().out
+
+    def test_over_budget_drops_largest_first(self, tmp_path, capsys):
+        self._write(tmp_path, "big-quick.md", 15000)
+        self._write(tmp_path, "medium-quick.md", 8000)
+        self._write(tmp_path, "small-quick.md", 2000)
+        with patch.object(app, "CONTEXT_DIR", str(tmp_path)), \
+             patch.object(app, "CONTEXT_CHAR_BUDGET", 20000):
+            result = app._load_context_files("*-quick.md")
+        # total is 25000 > 20000 budget; dropping big-quick (15000) alone
+        # brings it to 10000 <= 20000, so only big-quick should be dropped
+        assert "big-quick" not in result
+        assert "medium-quick" in result
+        assert "small-quick" in result
+        out = capsys.readouterr().out
+        assert "DROPPED" in out
+        assert "big-quick.md" in out
+        assert "15000" in out
+
+    def test_never_truncates_mid_file(self, tmp_path):
+        self._write(tmp_path, "big-quick.md", 15000)
+        self._write(tmp_path, "medium-quick.md", 8000)
+        with patch.object(app, "CONTEXT_DIR", str(tmp_path)), \
+             patch.object(app, "CONTEXT_CHAR_BUDGET", 20000):
+            result = app._load_context_files("*-quick.md")
+        # medium-quick (kept) must appear in full, never partially cut
+        assert ("x" * 8000) in result
+
+    def test_env_var_overrides_default_budget(self):
+        assert app.CONTEXT_CHAR_BUDGET == int(os.environ.get("CONTEXT_CHAR_BUDGET", "20000"))
+
+    def test_max_file_chars_caps_each_file(self, tmp_path):
+        self._write(tmp_path, "small-quick.md", 5000)
+        with patch.object(app, "CONTEXT_DIR", str(tmp_path)), \
+             patch.object(app, "CONTEXT_CHAR_BUDGET", 20000):
+            result = app._load_context_files("*-quick.md", max_file_chars=3000)
+        assert ("x" * 3000) in result
+        assert ("x" * 3001) not in result
 
 
 # ── _format_routing_index ─────────────────────────────────────────────────────
@@ -191,14 +281,14 @@ class TestRouteSections:
                 result = app._route_sections("question")
         assert len(result) == 2
 
-    def test_capped_at_three(self):
+    def test_capped_at_five(self):
         sections = app._build_section_index(FIXTURES)
         with patch.object(app, "_SECTION_INDEX", sections * 5):  # 20 sections
             with patch.object(app, "hf_client") as mock_client:
                 indices = list(range(10))
                 mock_client.chat_completion.return_value = self._mock_response(json.dumps(indices))
                 result = app._route_sections("question")
-        assert len(result) == 3
+        assert len(result) == 5
 
     def test_exception_returns_empty(self):
         sections = app._build_section_index(FIXTURES)
@@ -437,3 +527,39 @@ class TestRespondHfIntegration:
             chunks = list(app.respond_hf("test", []))
         assert "usage limit" in chunks[-1].lower()
         assert "Haiku" in chunks[-1]
+
+
+class TestWindowHistory:
+    def _msg(self, role, chars):
+        return {"role": role, "content": "x" * chars}
+
+    def test_under_budget_keeps_all(self):
+        history = [self._msg("user", 100), self._msg("assistant", 200)]
+        assert app._window_history(history, budget=1000) == history
+
+    def test_over_budget_drops_oldest_first(self):
+        history = [
+            self._msg("user", 500),
+            self._msg("assistant", 500),
+            self._msg("user", 300),
+            self._msg("assistant", 300),
+        ]
+        kept = app._window_history(history, budget=700)
+        assert kept == history[2:]
+
+    def test_always_keeps_newest_even_if_oversized(self):
+        history = [self._msg("user", 50), self._msg("assistant", 9999)]
+        kept = app._window_history(history, budget=100)
+        assert kept == [history[1]]
+
+    def test_empty_history(self):
+        assert app._window_history([], budget=100) == []
+
+    def test_preserves_order(self):
+        history = [self._msg("user", 10), self._msg("assistant", 10), self._msg("user", 10)]
+        kept = app._window_history(history, budget=25)
+        assert [m["role"] for m in kept] == ["assistant", "user"]
+
+    def test_env_default_budget(self):
+        history = [self._msg("user", 10)]
+        assert app._window_history(history) == history

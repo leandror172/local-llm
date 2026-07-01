@@ -36,6 +36,31 @@ if ANTHROPIC_API_KEY:
     except Exception as e:
         print(f"Claude backend failed to initialize: {e}")
 
+# History replayed to the HF backend is capped by total chars (newest kept)
+# so long conversations can't push a request past Groq's 12K TPM ceiling.
+# Budget must stay under the ~970-token slack left after baseline prompt +
+# routing call + max_tokens (see startup size prints): 3000 chars ≈ 750 tokens.
+HISTORY_CHAR_BUDGET = int(os.environ.get("HISTORY_CHAR_BUDGET", "3000"))
+
+
+def _window_history(history: list[dict], budget: int = None) -> list[dict]:
+    """Keep the most recent whole messages that fit within the char budget."""
+    if budget is None:
+        budget = HISTORY_CHAR_BUDGET
+    kept: list[dict] = []
+    used = 0
+    for msg in reversed(history):
+        size = len(msg.get("content") or "")
+        if kept and used + size > budget:
+            break
+        kept.append(msg)
+        used += size
+    if len(kept) < len(history):
+        print(f"[history] windowed {len(history)} → {len(kept)} messages "
+              f"({used} chars ≤ {budget})", flush=True)
+    return list(reversed(kept))
+
+
 # ── Rate limiting (Claude only — HF is free) ───────────────
 CLAUDE_MAX_PER_HOUR = int(os.environ.get("CLAUDE_MAX_PER_HOUR", "30"))
 _claude_usage: dict[str, list[float]] = defaultdict(list)
@@ -237,18 +262,73 @@ engineering, QLoRA trade-offs, DPO data collection, prompt decomposition, benchm
 # ── Context loading from .memories/ files ─────────────────
 CONTEXT_DIR = os.path.join(os.path.dirname(__file__), "context")
 
+# The only *-quick.md files still statically baked into SYSTEM_PROMPT.
+# All other *-quick.md files are demoted to routed retrieval (see
+# _build_section_index) so the baseline prompt stays well under the
+# Groq 12K TPM budget.
+_ROOT_QUICK_FILES = {
+    "llm-quick.md",
+    "expenses-reporter-quick.md",
+    "web-research-quick.md",
+}
 
-def _load_context_files(pattern: str) -> str:
-    """Load markdown files matching a glob pattern from context/, sorted by name."""
-    files = sorted(glob.glob(os.path.join(CONTEXT_DIR, pattern)))
+CONTEXT_CHAR_BUDGET = int(os.environ.get("CONTEXT_CHAR_BUDGET", "20000"))
+
+
+def _load_context_files(patterns: str | list[str], max_file_chars: int | None = None) -> str:
+    """Load markdown files matching glob pattern(s) from context/, sorted by name.
+
+    Applies a total char budget (CONTEXT_CHAR_BUDGET, default 20000): if the
+    combined size of matched files exceeds it, whole files are dropped
+    largest-first until under budget (never truncated mid-file), with a
+    loud startup warning naming each dropped file and its size.
+
+    If max_file_chars is given, each individual file's content is capped
+    to that many characters (applied after the budget-guard file-dropping).
+    """
+    if isinstance(patterns, str):
+        patterns = [patterns]
+    files = sorted({f for pat in patterns for f in glob.glob(os.path.join(CONTEXT_DIR, pat))})
     if not files:
         return ""
+
+    file_sizes = []
+    for path in files:
+        try:
+            file_sizes.append((path, os.path.getsize(path)))
+        except OSError:
+            continue
+
+    total = sum(sz for _, sz in file_sizes)
+    if total > CONTEXT_CHAR_BUDGET:
+        by_size_desc = sorted(file_sizes, key=lambda x: -x[1])
+        running = total
+        dropped = []
+        kept_paths = set()
+        for path, sz in by_size_desc:
+            if running > CONTEXT_CHAR_BUDGET:
+                dropped.append((path, sz))
+                running -= sz
+            else:
+                kept_paths.add(path)
+        print(
+            f"[context budget] {os.path.basename(patterns[0]) if len(patterns) == 1 else patterns}: "
+            f"{total} chars exceeds budget of {CONTEXT_CHAR_BUDGET} — dropping "
+            f"{len(dropped)} file(s):",
+            flush=True,
+        )
+        for path, sz in sorted(dropped, key=lambda x: -x[1]):
+            print(f"  [context budget] DROPPED {os.path.basename(path)} ({sz} chars)", flush=True)
+        files = [p for p in files if p in kept_paths]
+
     sections = []
     for path in files:
         name = os.path.splitext(os.path.basename(path))[0]
         try:
             with open(path) as f:
                 content = f.read().strip()
+            if max_file_chars is not None and len(content) > max_file_chars:
+                content = content[:max_file_chars]
             if content:
                 sections.append(f"### {name}\n{content}")
         except OSError:
@@ -258,8 +338,10 @@ def _load_context_files(pattern: str) -> str:
     return "\n\n---\n\n## Project Context (auto-loaded)\n\n" + "\n\n".join(sections)
 
 
-# Always-inject tier: QUICK.md files from all repos (~5K tokens)
-_PROJECT_CONTEXT = _load_context_files("*-quick.md")
+# Always-inject tier: only the three root quick files, capped at 3,000
+# chars each. Every other *-quick.md is demoted to routed retrieval via
+# _SECTION_INDEX (see below).
+_PROJECT_CONTEXT = _load_context_files(sorted(_ROOT_QUICK_FILES), max_file_chars=3000)
 
 # ── Phase 2: LLM-as-router for KNOWLEDGE.md sections ──────
 
@@ -273,40 +355,67 @@ class _Section:
     content: str   # full section text — injected when selected
 
 
-def _build_section_index(directory: str | None = None) -> list[_Section]:
-    """Parse all *-knowledge.md files into a flat list of sections."""
-    directory = directory or CONTEXT_DIR
+def _parse_file_sections(path: str) -> list[_Section]:
+    """Parse a single markdown file into a flat list of ## sections."""
+    source = os.path.splitext(os.path.basename(path))[0]
+    try:
+        with open(path) as f:
+            content = f.read()
+    except OSError:
+        return []
+    # Split on ## headings using lookahead to preserve the delimiter
+    parts = re.split(r"\n(?=## )", content)
     sections = []
-    for path in sorted(glob.glob(os.path.join(directory, "*-knowledge.md"))):
-        source = os.path.splitext(os.path.basename(path))[0]
-        try:
-            with open(path) as f:
-                content = f.read()
-        except OSError:
-            continue
-        # Split on ## headings using lookahead to preserve the delimiter
-        parts = re.split(r"\n(?=## )", content)
-        for part in parts:
-            lines = part.strip().split("\n")
-            if not lines[0].startswith("## "):
-                continue  # file-level header — skip
-            heading = lines[0][3:].strip()
-            body_lines = [l for l in lines[1:] if l.strip()]
-            snippet = " ".join(body_lines[:2])[:200]
-            sections.append(_Section(
-                key=f"{source}:{heading}",
-                source=source,
-                heading=heading,
-                snippet=snippet,
-                content=part.strip(),
-            ))
+    for part in parts:
+        lines = part.strip().split("\n")
+        if not lines[0].startswith("## "):
+            continue  # file-level header — skip
+        heading = lines[0][3:].strip()
+        body_lines = [l for l in lines[1:] if l.strip()]
+        snippet = " ".join(body_lines[:2])[:200]
+        sections.append(_Section(
+            key=f"{source}:{heading}",
+            source=source,
+            heading=heading,
+            snippet=snippet,
+            content=part.strip(),
+        ))
+    return sections
+
+
+def _build_section_index(directory: str | None = None) -> list[_Section]:
+    """Parse all *-knowledge.md files, plus every *-quick.md file that is NOT
+    one of the always-inject root quick files, into a flat list of sections.
+
+    Demoting the non-root quick files here (instead of baking them into
+    SYSTEM_PROMPT) is what keeps the baseline prompt under the Groq TPM
+    budget — they become retrievable via the same routing call that already
+    selects knowledge sections.
+    """
+    directory = directory or CONTEXT_DIR
+    knowledge_paths = sorted(glob.glob(os.path.join(directory, "*-knowledge.md")))
+    quick_paths = sorted(
+        p for p in glob.glob(os.path.join(directory, "*-quick.md"))
+        if os.path.basename(p) not in _ROOT_QUICK_FILES
+    )
+    sections = []
+    for path in knowledge_paths + quick_paths:
+        sections.extend(_parse_file_sections(path))
     return sections
 
 
 def _format_routing_index(sections: list[_Section]) -> str:
-    """Format the section list into a numbered index for the routing prompt."""
+    """Format the section list into a numbered index for the routing prompt.
+
+    Headings only — no snippet text. Merging every non-root *-quick.md file's
+    sections into _SECTION_INDEX (199 sections total) made the snippet-bearing
+    index (~11.1K tokens at ~200 chars/snippet) alone approach the 12K TPM
+    budget before the main call is even counted. Headings-only cuts this to
+    ~3.5K tokens, which is what actually keeps routing + main call combined
+    under the limit. See startup log for the exact section count / index size.
+    """
     return "\n".join(
-        f"[{i}] {s.source} / {s.heading}: {s.snippet}"
+        f"[{i}] {s.source} / {s.heading}"
         for i, s in enumerate(sections)
     )
 
@@ -318,7 +427,9 @@ _ROUTING_SYSTEM = """\
 You are a document retrieval assistant. Given a user question and an index of \
 document sections, return the indices of the most relevant sections. \
 Return ONLY a JSON array of integers, no explanation. Example: [0, 3, 7] \
-Select at most 6 sections. If none are relevant, return []."""
+Select at most 5 sections. If none are relevant, return []."""
+
+_MAX_ROUTED_SECTIONS = 5
 
 
 def _parse_hf_error(exc: Exception) -> tuple[int, str, str]:
@@ -428,7 +539,7 @@ def _route_sections(question: str) -> list[_Section]:
             print(f"[routing] expected list, got {type(indices).__name__} — no sections selected", flush=True)
             return []
         selected = [
-            _SECTION_INDEX[i] for i in indices[:3]
+            _SECTION_INDEX[i] for i in indices[:_MAX_ROUTED_SECTIONS]
             if isinstance(i, int) and 0 <= i < len(_SECTION_INDEX)
         ]
         print(f"[routing] selected {len(selected)} section(s): {[s.key for s in selected]}", flush=True)
@@ -452,6 +563,17 @@ def _enrich_prompt(base_prompt: str, sections: list[_Section]) -> str:
 
 SYSTEM_PROMPT = _PREAMBLE + _HF_RULES + _PROFILE + _PROJECT_CONTEXT
 CLAUDE_SYSTEM_PROMPT = _PREAMBLE + _CLAUDE_RULES + _PROFILE + _PROJECT_CONTEXT
+
+print(
+    f"[startup] baseline SYSTEM_PROMPT: {len(SYSTEM_PROMPT)} chars "
+    f"(~{len(SYSTEM_PROMPT) // 4} tokens est.)",
+    flush=True,
+)
+print(
+    f"[startup] section index: {len(_SECTION_INDEX)} sections available for routed retrieval "
+    f"(routing prompt index: {len(_ROUTING_INDEX_STR)} chars, ~{len(_ROUTING_INDEX_STR) // 4} tokens est.)",
+    flush=True,
+)
 
 EXAMPLES = [
     ["Tell me about the LLM projects he's working on"],
@@ -486,7 +608,7 @@ def respond_hf(message: str, history: list[dict]) -> Generator[str, Any, None]:
     """Stream response from HF Inference API."""
     selected = _route_sections(message)
     messages = [{"role": "system", "content": _enrich_prompt(SYSTEM_PROMPT, selected)}]
-    for msg in history:
+    for msg in _window_history(history):
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": message})
 
