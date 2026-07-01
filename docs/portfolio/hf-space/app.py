@@ -460,6 +460,9 @@ def _retry_after(exc: Exception) -> float | None:
     status, code, msg = _parse_hf_error(exc)
     if status != 429 or code != "rate_limit_exceeded":
         return None
+    m = re.search(r"try again in (\d+\.?\d*)ms", msg)
+    if m:
+        return float(m.group(1)) / 1000 + 1.0
     m = re.search(r"try again in (?:(\d+)h)?(?:(\d+)m)?(\d+\.?\d*)s", msg)
     if not m:
         return None

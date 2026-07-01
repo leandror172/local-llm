@@ -563,3 +563,21 @@ class TestWindowHistory:
     def test_env_default_budget(self):
         history = [self._msg("user", 10)]
         assert app._window_history(history) == history
+
+
+class TestRetryAfterMilliseconds:
+    def _exc(self, msg):
+        from unittest.mock import MagicMock
+        exc = MagicMock()
+        exc.response = MagicMock(status_code=429)
+        exc.response.json.return_value = {
+            "error": {"message": msg, "code": "rate_limit_exceeded"}}
+        return exc
+
+    def test_ms_wait_is_retriable(self):
+        wait = app._retry_after(self._exc("please try again in 85ms."))
+        assert wait is not None and 1.0 < wait < 1.2
+
+    def test_seconds_still_work(self):
+        wait = app._retry_after(self._exc("please try again in 16.8s."))
+        assert wait == pytest.approx(17.8)
