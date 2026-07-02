@@ -1,6 +1,9 @@
 # LTG Phase 4 — Graph Assembly + Community Detection: Implementation Plan
 
-**Status:** Ready for execution (decisions locked session 101, 2026-07-02).
+**Status:** EXECUTED — complete, all acceptance criteria PASS (session 102, 2026-07-02, PR #66).
+**Reports:** Step-0 degree probe → `retrieval/probes/phase4-degree-probe.md` (`ref:ltg-phase4-degree-probe`,
+froze τ=0.70/K=10); acceptance findings + idempotency-fix addendum → `retrieval/probes/phase4-acceptance.md`
+(`ref:ltg-phase4-acceptance`); condensed gotchas → `retrieval/.memories/KNOWLEDGE.md` (`ref:ltg-phase4-findings`).
 **Context:** Master plan `ref:ltg-plan-phase-4`. Frozen upstream decisions: `retrieval/DECISIONS.md`
 (`ref:ltg-graph-lib`, `ref:ltg-storage-layout`, `ref:ltg-phase3-decisions`).
 Input index: 1018 rows (875 topics / 113 files + 143 anchors), qwen3-embedding:8b 4096-dim,
@@ -12,6 +15,10 @@ Everything here regenerates from `topics.lance` in seconds; all thresholds are c
 ---
 
 <!-- ref:ltg-phase4-plan -->
+> **EXECUTED session 102 (PR #66) — all acceptance PASS.** Results: `ref:ltg-phase4-degree-probe`
+> (τ/K freeze), `ref:ltg-phase4-acceptance` (criteria + idempotency-fix addendum),
+> `ref:ltg-phase4-findings` (condensed gotchas).
+
 ## Decisions locked (session 101)
 
 | # | Decision | Locked value |

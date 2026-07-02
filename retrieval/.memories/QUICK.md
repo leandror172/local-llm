@@ -1,44 +1,46 @@
 # retrieval/ — Latent Topic Graph (RAG) — Quick Memory
 
-*Working memory for the LTG substrate. Keep under 30 lines.*
+*Working memory for the LTG substrate. Current-state only, keep under ~30 lines —
+per-session history lives in KNOWLEDGE.md ("Phase history ledger") and session logs.*
 
-## Latent Topic Graph (RAG pipeline) — Status
+## Current State (as of 2026-07-02, session 102)
 
-Session 59 (2026-05-04): Phase 1 **fully closed**. ref:ltg-extractor frozen: qwen3:14b prose, qwen2.5-coder:14b code.
-Session 61 (2026-05-20): VRAM probe complete → bge-m3 locked (sequential constraint). → `ref:ltg-vram-probe`
-Session 72 (2026-05-28): **Phase 2 complete.** Index at `retrieval/index/`, 69 topics from 8 files. 7/8 acceptance queries pass (R2 borderline). → `ref:ltg-phase2-findings`
-Session 73 (2026-05-28): **M-P0b complete.** Upgraded embedding model: bge-m3 (1024-dim) → **qwen3-embedding:8b (4096-dim)**. WARN verdict (same as bge-m3 — load-time eviction only, zero query-time). Acceptance equivalent (R1/R3/R4 ✅, R2 ⚠️ same gap, relate 0.663→0.697). → `ref:ltg-embedding`
-Sessions 78–80 (2026-05-29→06-01): **Extractor retrofit complete.** `routing.py`, `schemas.py`, `ModelClient` extracted; 148 tests green; parity verified end-to-end. PR open.
-Session 81 (2026-06-01): Phase 3 anchor-integration DISCOVERY started. Dual-path RAG framing: `ref:KEY` anchors as a parallel retrieval surface (span-topics / ref-keys / both), configurable per-class weights; merge → alias-link (keep both rows). Empirical: 2 of 138 ref keys live in the 8 extracted files.
-Session 82 (2026-06-02): **Phase 3 anchor decisions FROZEN.** All 7 decisions D1–D7 settled: dual-path RAG + alias-link confirmed. **Next: `anchors.py` TDD.**
-Session 94 (2026-06-20): **Phase 3 anchor integration COMPLETE.** `anchors.py` built TDD (contract-pin + 4 subagent slices), 254 tests. store.py schema 18→22 (+source_class/confidence/anchor_key/alias_of). Live rebuild: 212 rows (69 topics + 143 anchors); concept-latent-topic-graph merges both .memories topics, M:N proven, orphan no-merge, staleness+near-miss diagnostics firing. `plan-latent-topic-graph` non-merge (0.7742 — D3 operational-metadata failure on drifted corpus) → Phase 2.5/3.5. PR #55. Plan: `docs/plans/ltg-phase3-anchors-implementation.md`.
-Session 96 (2026-06-26): **Phase 2.5 corpus expansion COMPLETE.** Config-driven corpus (`corpus.yaml` → frozen `corpus-manifest.yaml`, 113 files sha256-pinned @ commit). Full rebuild: **875 topics / 113 files + 143 anchors = 1018 rows**, all `ok`/0 failures. `source_group` provenance field live (T-65 cheap half, store-time derived). **T-34 recalibration:** `COSINE_THRESHOLD=0.85` validated-keep (continuous dist; sub-0.85 near-misses = coincidental, would be false merges); noise-query threshold measured (real L2≤0.58, true-noise 0.75; recommend L2≈0.65, **documented not wired** — n=1 caveat). Generic anchors no-false-merge (Step 5 PASS). `plan-latent-topic-graph` healed 0.7742→0.8379 (still <0.85 → T-63). **retrieval/ migrated to uv Python 3.12** (T-18 slice). Findings: `probes/phase2.5-calibration.md`. **Next: Phase 4 (graph + communities) — `alias_of` are proto-edges.**
-T-30 (2026-06-26): **`ModelClient.embed_query` added** (thin named-method, +2 lines). Delegates to `embed_texts(texts, role="embedding")`. 3 unit tests added. `embed_texts` stays public — T-31 will migrate callers.
-Session 101 (2026-07-02): **Phase 4 designed — plan ready.** P4-D1–D7 locked: exact matmul similarity (no ANN), `tau_floor` + union-top-K retention (new `graph:` config section; values frozen by Step-0 degree probe), mention-based `references` edges, `edges` LanceDB table, nullable community columns (anchors rebuild nulls → regenerate), `alias_of` *projected* to `same_as` edges (not migrated), Leiden ×2 seeded resolutions. Zero model calls — pure derivation. Plan: `docs/plans/ltg-phase4-graph-communities.md` (`ref:ltg-phase4-plan`).
-Session 102 (2026-07-02): **Phase 4 COMPLETE (T1–T7).** `graph.py` + `communities.py` + wrappers; `edges` table live: **3332 edges** (3189 similarity @ frozen τ=0.70/K=10 + 28 same_as + 115 references); schema 23→25 (nullable community columns); Leiden 203 coarse / 213 fine. Degree probe: no archive hairball (24% edge share vs 18% random). All acceptance PASS, rebuild ≈11 s, zero model calls. T-63 near-miss visible as 0.8379 edge. Findings: `probes/phase4-degree-probe.md` + `probes/phase4-acceptance.md`. **Next: Phase 5 `relate(a,b)` — read edges table, never `alias_of` (P4-D6).**
+**Phases 0–4 COMPLETE. Next: Phase 5 `relate(a,b)` tool** (`ref:ltg-plan-phase-5`).
+
+- **Index** (`retrieval/index/`, gitignored): 875 topics (113 files) + 147 anchors = **1022 nodes**; `edges` table **3367 edges** (3222 similarity @ frozen τ=0.70/K=10 + 28 same_as + 117 references); Leiden communities 207 coarse / 214 fine, 1022/1022 assigned.
+- **Rebuild order (MANDATORY):** extract → embed → store → anchors → graph → communities. Graph + communities are pure derivation (~11 s, **zero model calls**) — always regenerate after an anchors rebuild. Anchors rebuild is idempotent since the session-102 `_topic_rows_only` fix — but store-from-embeddings first remains the canonical full path.
+- **Models:** extractor qwen3:14b prose / qwen2.5-coder:14b code (frozen Phase 1); embedding qwen3-embedding:8b (4096-dim).
+- **P4-D6:** consumers read relationships from the `edges` table, never the `alias_of` row column. Null community columns mean "not regenerated since last anchors rebuild".
+- **Reports:** Phase 4 → `ref:ltg-phase4-degree-probe` + `ref:ltg-phase4-acceptance` + `ref:ltg-phase4-findings`; Phase 2.5 → `probes/phase2.5-calibration.md`; Phase 2 → `ref:ltg-phase2-findings`.
+- **Open threads:** T-63 (near-miss escalation — Phase 4 edge evidence now in hand), T-34 (noise-threshold wiring), T-31 (embed unification), T-35/T-38–T-41 (extraction experiments).
 
 ## Deeper Memory → KNOWLEDGE.md
 
-- **VRAM co-residence probe** — actual footprints, WARN verdict rationale, sequential constraint, script gotcha → `ref:ltg-vram-probe`
-- **Phase 1 extractor summary** — final scores, failure modes, MoE eval, determinism finding → `ref:ltg-phase1-summary`
+- **Phase history ledger** — per-session completion history (moved out of this file, session 102)
+- **Phase 4 findings** — hairball debunked, τ-only isolation, phantom-node staleness, rebuild-idempotency bug → `ref:ltg-phase4-findings`
+- **VRAM co-residence probe** — footprints, WARN rationale, sequential constraint → `ref:ltg-vram-probe`
+- **Phase 1 extractor summary** — final scores, failure modes, MoE eval, determinism → `ref:ltg-phase1-summary`
 - **Phase 0 decisions index** — all 8 frozen decisions with key reasons → `ref:ltg-phase0-decisions-index`
 
 ## What Lives Here (RAG pipeline scripts)
 
 ```
 retrieval/
-  DECISIONS.md              # Phase 0 decisions (frozen, session 52)
+  DECISIONS.md              # Phase 0 + 3 + 4 decisions (frozen)
   .memories/                # This folder's working + semantic memory
-  config.yaml               # Two-level model/role config (Phase 2+)
+  config.yaml               # Two-level model/role config + graph: section (Phase 4)
   corpus.yaml               # Corpus-selection intent: roots/globs/ordered groups (Phase 2.5)
   corpus-manifest.yaml      # FROZEN resolution: 113 files + group + sha256 + commit (Phase 2.5)
   corpus_groups.py          # Shared glob matcher (assign_group/glob_to_regex) — manifest + store
   build_corpus_manifest.py  # Freeze tool: corpus.yaml → manifest (run-build-corpus-manifest.sh)
   pyproject.toml / uv.lock  # uv-managed Python 3.12 env (session 96; mirrors mcp-server)
-  model_client.py           # ModelClient — embed + extract routing (retrofit); embed_query(texts) added T-30
+  model_client.py           # ModelClient — embed + extract routing; embed_query(texts) (T-30)
   embed.py                  # Embedding pipeline (config-driven, Phase 2)
-  store.py                  # LanceDB write path (Phase 2)
+  store.py                  # LanceDB write path (Phase 2; schema 25 fields)
   ltg_inspect.py            # Acceptance/inspection CLI (Phase 2)
+  anchors.py                # Phase 3: ref:KEY anchor ingest + alias matching (run-anchors.sh)
+  graph.py                  # Phase 4: edges build (similarity/same_as/references) + degree probe (run-graph.sh)
+  communities.py            # Phase 4: Leiden 2-resolution communities → nodes table (run-communities.sh)
   routing.py                # 2-arm extractor routing (retrofit, sessions 78–80)
   schemas.py                # Pydantic schemas for extractor output (retrofit)
   sweep_extractors.py       # Batch sweep runner (retrofit)
@@ -50,12 +52,10 @@ retrieval/
   run-vram-probe.sh         # VRAM co-residence probe
   run-embed.sh / run-store.sh / run-inspect.sh / run-extract-topics.sh / run-sweep-extractors.sh
   prompts/extract.txt       # Structured-output extraction prompt
-  graph.py                  # Phase 4: edges build (similarity/same_as/references) + degree probe (run-graph.sh)
-  communities.py            # Phase 4: Leiden 2-resolution communities → nodes table (run-communities.sh)
-  tests/                    # 17 test files, 303 tests (pytest via `uv run`)
-  runs/                     # Extraction/embed outputs (large *-embeddings.jsonl gitignored)
-  probes/                   # Acceptance + calibration findings markdown
-  index/                    # LanceDB vector store (875 topics + 143 anchors, 113 files; gitignored)
+  tests/                    # 18 test files, 304 tests (pytest via `uv run`)
+  runs/                     # Extraction/embed outputs + graph run reports (large *-embeddings.jsonl gitignored)
+  probes/                   # Acceptance + calibration findings markdown (ref-anchored)
+  index/                    # LanceDB store: topics (1022 rows) + edges (3367) tables (gitignored)
 ```
 
 ## Frozen Phase 0 Decisions (see DECISIONS.md for full rationale)
@@ -71,9 +71,9 @@ retrieval/
 
 ## Key Rules
 
-- **Phase 1 is load-bearing.** Extractor freeze gates Phase 2. If quality is poor, iterate prompt — not model.
-- **Sequential constraint:** embed.py and infer calls must not run in parallel. Applies to both bge-m3 (session 61) and qwen3-embedding:8b (session 73).
+- **Sequential constraint:** embed.py and infer calls must not run in parallel (bge-m3 session 61; qwen3-embedding:8b session 73).
 - **Raw extractions gitignored** — only scores + narrative results committed.
 - **Warm models before batch runs** via `warm_model` MCP tool to eliminate cold starts.
 - **retrieval/ runs on uv Python 3.12** (session 96). Always invoke via `run-*.sh` (they `uv run --project`); never bare `python3`. Tests: `cd retrieval && uv run pytest`.
-- **Corpus is config-driven** (`corpus.yaml`) and frozen per-run (`corpus-manifest.yaml`, sha256+commit). Re-extraction reads the manifest; rebuild it via `run-build-corpus-manifest.sh` after any corpus.yaml change. `source_group` is derived store-time from file_path — never writer-supplied.
+- **Corpus is config-driven** (`corpus.yaml`) and frozen per-run (`corpus-manifest.yaml`, sha256+commit). Rebuild the manifest via `run-build-corpus-manifest.sh` after any corpus.yaml change. `source_group` is derived store-time from file_path — never writer-supplied.
+- **Graph thresholds live in `config.yaml graph:`** — frozen by probe (`ref:ltg-phase4-degree-probe`); re-probe before changing.

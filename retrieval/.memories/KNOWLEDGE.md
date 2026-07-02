@@ -260,3 +260,17 @@ int32 `community_coarse`/`community_fine`, writers default null). Live: 3332 edg
    defs; imports (tests) never notice — only the live CLI run caught it. Guard belongs at EOF.
 6. **`same_as` count ≠ merge count by design:** 21 alias-merged topics → 28 edges (7 are M:N).
 <!-- /ref:ltg-phase4-findings -->
+
+## Phase history ledger (moved from QUICK.md, session 102 — append new entries HERE, not in QUICK)
+
+- Session 59 (2026-05-04): Phase 1 closed — extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). `ref:ltg-phase1-summary`
+- Session 61 (2026-05-20): VRAM probe → bge-m3 locked, sequential constraint. `ref:ltg-vram-probe`
+- Session 72 (2026-05-28): Phase 2 complete — 69 topics / 8 files, 7/8 acceptance. `ref:ltg-phase2-findings`
+- Session 73 (2026-05-28): M-P0b — embedding upgraded bge-m3 (1024) → qwen3-embedding:8b (4096). `ref:ltg-embedding`
+- Sessions 78–80: extractor retrofit (routing.py/schemas.py/ModelClient, 148 tests, parity verified).
+- Sessions 81–82: Phase 3 discovery + decisions FROZEN (dual-path, alias-link M:N). `ref:ltg-phase3-decisions`
+- Session 94 (2026-06-20): Phase 3 complete — anchors.py, schema 18→22, 212 rows, PR #55.
+- Session 96 (2026-06-26): Phase 2.5 complete — config-driven corpus, 1018 rows (875 topics/113 files + 143 anchors), T-34 measured, uv 3.12 migration. `probes/phase2.5-calibration.md`
+- T-30 (2026-06-26): `ModelClient.embed_query` named wrapper added.
+- Session 101 (2026-07-02): Phase 4 designed — P4-D1–D7 frozen. `ref:ltg-phase4-decisions`
+- Session 102 (2026-07-02): **Phase 4 complete** — graph.py + communities.py, edges table (3367), schema 23→25, Leiden 207/214, all acceptance PASS, anchors-rebuild idempotency bug found+fixed live. PR #66. `ref:ltg-phase4-findings`, `ref:ltg-phase4-degree-probe`, `ref:ltg-phase4-acceptance`

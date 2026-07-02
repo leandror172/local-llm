@@ -1,5 +1,6 @@
 # LTG Phase 4 — Acceptance Findings (T7)
 
+<!-- ref:ltg-phase4-acceptance -->
 **Date:** 2026-07-02 (session 102). **Branch:** `feature/ltg-phase4-graph`.
 **Input:** 1018-row index (session 96) + 3332-edge table (T5 build @ frozen τ=0.70/K=10).
 **Commands:** `retrieval/run-graph.sh` then `retrieval/run-communities.sh`.
@@ -61,3 +62,15 @@ Phase-4's own documentation.
   and re-run `run-communities.sh` (~6 s) — cheap to iterate.
 - Isolated-singleton tail: 184 nodes. If retrieval wants them attached, T-63 escalation
   or a lower τ with mutual-kNN are the levers; revisit with real relate() usage.
+
+## Post-acceptance addendum (same session)
+
+The user-requested fresh anchors rebuild exposed a **rebuild idempotency bug**
+(`rebuild_index` re-read prior anchor rows as topics → duplicated anchors +
+cosine≈1.0 self-alias matches, `same_as` 28→229). Fixed (`_topic_rows_only`,
++1 regression test) and the index rebuilt clean via the full documented order:
+875 topics + **147 anchors** (the 3 phantoms above plus `ref:ltg-phase4-findings`)
+= 1022 nodes, **3367 edges** (3222/28/117), zero dupes/phantoms/self-edges,
+communities 207 coarse / 214 fine at 1022/1022 coverage. Details:
+`ref:ltg-phase4-findings` (KNOWLEDGE.md) + PR #66.
+<!-- /ref:ltg-phase4-acceptance -->

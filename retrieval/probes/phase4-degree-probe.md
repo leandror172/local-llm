@@ -1,5 +1,6 @@
 # LTG Phase 4 — Step-0 Degree Probe (T3)
 
+<!-- ref:ltg-phase4-degree-probe -->
 **Date:** 2026-07-02 (session 102). **Branch:** `feature/ltg-phase4-graph`.
 **Purpose:** freeze `graph.tau_floor` / `graph.top_k` (P4-D2) from measured degree
 distributions instead of guesses. Gates T5 (live edge build).
@@ -71,3 +72,4 @@ the vectorized probe grid and the production pair-loop agree (independent code p
 **Retune triggers:** corpus growth past ~2k nodes; acceptance walk-through (T7) showing
 top-edge junk (raise τ) or fragmented communities (lower τ or raise K); mutual-kNN
 remains the documented tightening lever (P4-D2).
+<!-- /ref:ltg-phase4-degree-probe -->
