@@ -1,37 +1,37 @@
 # Session Log
 
 **Current Layer:** LTG retrieval substrate — Phase 4 (graph + communities) next
-**Current Session:** 2026-07-01 — Session 99: Career chatbot Groq TPM fix — routed quick files, budget guards, RAG heading vocabulary
+**Current Session:** 2026-07-02 — Session 100: Ollama outage fix — VM-restart store-attach gap + durable :11434 metrics proxy + machine-config consolidated out of the repo
 
 ---
-## 2026-07-01 - Session 99: Career chatbot Groq TPM fix — routed quick files, budget guards, RAG heading vocabulary
+## 2026-07-02 - Session 100: Ollama outage fix — VM-restart store-attach gap + durable :11434 metrics proxy + machine-config consolidated out of the repo
 
 ### Context
 
-Side-track session: the career chatbot HF Space free backend (Llama 3.3 70B via Groq) was 413-ing on every question.
+Side-track: the expenses repo reported the local Ollama down. A store/attach outage that cascaded into closing a second systemd-coupling gap and a machine-config cleanup out of the repo.
 
 ### What Was Done
 
-- fix(hf-space): keep Groq requests under the 12K TPM free-tier limit — 16 non-root quick files demoted from static SYSTEM_PROMPT (~20K→~4.2K tokens) into the routed section index (cap 3→5, headings-only), CONTEXT_CHAR_BUDGET guard, HISTORY_CHAR_BUDGET=3000 history window (Sonnet subagent + main-session follow-ups; 66→68 tests)
-- docs(retrieval): add RAG/LTG query vocabulary to .memories headings — post-deploy probe showed "work on RAG?" missed all LTG sections because headings-only routing carries no lexical signal from insider headings; after rename the router selected 4/4 LTG sections
-- fix(hf-space): retry on sub-second Groq rate-limit waits — _retry_after only parsed h/m/s, Groq's "try again in 85ms" was misclassified non-retriable; measured overshoot was 17 tokens (12,017 vs 12,000), now absorbed by retry
-- Expenses repo (parallel session) consolidated .memories/QUICK.md 46.3K→16.2K chars per the Tier-0 contract; audit at ~/workspaces/expenses/code/.claude/quick-memory-audit-2026-07-01.md; regrowth root cause (handoff episodic append) filed here as T-67
-- Deployed to leandror777/engineer-profile twice and live-verified both probe questions ("LLM projects", "work on RAG?")
+- Diagnosed the outage: `wsl --mount` binds the ext4 store vhd to a **single WSL2 VM lifetime**. The logon-only attach task succeeds (`LastTaskResult=0`) then the attach *evaporates* on any mid-session VM restart (idle timeout / `wsl --shutdown` / Docker), so the udev self-heal never receives its device-add trigger. No fallback store since the 162 GB reclaim → ollama loud-fails.
+- Recovered service live via `schtasks.exe /run` interop against the elevated task (device back in 1 s → udev → recover → mount → ollama; 81 models / 178 blobs on `:11435`).
+- Authored + user-installed `ollama-store-attach.service` — a oneshot that fires on **every** VM boot and triggers the elevated Windows attach task via interop (`schtasks /run` needs no UAC to trigger an already-elevated task), `Before=` the mount; udev→recover completes it. Closes the VM-restart gap the logon-only task missed.
+- Fixed `:11434`: the Session-76 transparent metrics proxy (native Go binary, **no Docker in the data path** — only Grafana/Prometheus `make stack` is Docker) was only ever hand-started. Authored + installed `ollama-metrics-proxy.service` coupled to ollama (`WantedBy=ollama.service` + `PartOf` + `BindsTo`); `:11434` now up whenever ollama is. Coupling gate passed (the install's `restart ollama` brought the proxy up automatically).
+- Consolidated ALL machine-specific ollama config out of the llm repo to un-versioned `~/workspaces/ollama-infra/` (6 tracked files `git rm`'d + 3 new artifacts + docs); live pointers repointed, historical session-log entries left as history. Committed on `chore/consolidate-ollama-machine-config`, pushed, **PR #65**.
 
 ### Decisions Made
 
-- Routing index is headings-only (snippets would cost ~7.6K tokens); consequence: corpus authors own the retrieval vocabulary — section headings must carry query terms (RAG, embedding, vector store), recorded in the docs(retrieval) commit message
-- HISTORY_CHAR_BUDGET default 3000 chars (~750 tok) — must fit inside the ~970-token slack left after baseline + routing + max_tokens; env-tunable on the Space without redeploy
-- Left worst-case at ~11.9K vs the 12K ceiling rather than trimming more context — transient clips are absorbed by retry (Groq waits are sub-second at that margin)
+- `wsl --mount` is per-VM-lifetime → the store attach must fire on **every VM boot**, not just at Windows logon (the original T-68 blind spot). The trigger event is WSL's own systemd boot, driven from inside WSL via `schtasks /run` of the already-elevated attach task.
+- `:11434` stays the canonical client port (Session-76 design) → clients (expenses) do NOT repoint to `:11435`; reliability comes from coupling the proxy to ollama's lifecycle instead.
+- Machine-specific config (ports, `/usr/local/bin`, WSL/UNC paths) lives in `~/workspaces/ollama-infra/`, NOT the versioned repo. Only live pointers repoint; historical session logs keep old `scripts/ollama-ext4/` paths as accurate history.
 
 ### Next
 
-- LTG Phase 4 — graph + communities (unchanged top priority)
-- T-67: make session-handoff consolidate QUICK.md into KNOWLEDGE.md instead of appending (prevents the chatbot regression from regrowing)
-- Optional: re-run the two probe questions after future sync-context.sh runs as a retrieval smoke test
+- Run the **T-70** gate: `wsl.exe --shutdown` + reopen the terminal, then `make -C ~/workspaces ollama-store-check` must PASS cold with zero manual attach (proves the attach service closes the mid-session VM-restart gap).
+- Merge/close PR #65.
+- Resume top priority: LTG Phase 4 — graph + communities.
 
 ### Gotchas
 
-- Groq 413 "Payload Too Large" on the free tier is actually the 12K TPM rate limit (input + max_tokens across all calls in the minute), not a message-size limit — unretryable if a single request exceeds the budget
-- Python 3.13 asyncio "Invalid file descriptor: -1" traceback at HF Space startup is benign GC noise (Exception ignored in BaseEventLoop.__del__), present before and after the fix
-- char/4 token estimates proved accurate to ~0.5% (predicted ~11.95K worst case; Groq measured 12,017)
+- `LastTaskResult=0` on the logon task is misleading — the attach genuinely succeeds, then evaporates on the next VM restart. Success ≠ persistence for `wsl --mount`.
+- A dead `:11434` with a healthy `:11435` means the **proxy** is down, not ollama (ollama serves `:11435`; `:11434` is the transparent metrics proxy).
+- `git rm` refuses a file with uncommitted modifications (RUNBOOK had the Step-8 edit) — needs `-f` once the working copy is safely duplicated at the destination.
