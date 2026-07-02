@@ -294,6 +294,8 @@ def build_anchor_rows(
             "confidence": ANCHOR_CONFIDENCE,
             "anchor_key": anchor.key,
             "alias_of": None,
+            "community_coarse": None,
+            "community_fine": None,
         }
         result.append(row)
     return result
@@ -319,6 +321,8 @@ def apply_aliases(topic_rows: list[dict], matches: dict[str, list[str]]) -> list
             "confidence": TOPIC_CONFIDENCE,
             "anchor_key": None,
             "alias_of": alias_of,
+            "community_coarse": None,
+            "community_fine": None,
         }
         result.append(new_row)
     return result

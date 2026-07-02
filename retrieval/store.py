@@ -75,6 +75,11 @@ def build_schema(embed_dim: int) -> pa.Schema:
         # file_path via corpus.yaml group rules. Orthogonal to source_class.
         # Always derived at store-time (authoritative, not writer-supplied).
         pa.field("source_group",         pa.string()),
+        # --- Phase 4 community columns (P4-D5, ref:ltg-phase4-decisions) ---
+        # Nullable; all writers default them to null. communities.py fills them.
+        # An anchors rebuild nulls them again — derived data, regenerate after.
+        pa.field("community_coarse",     pa.int32(), nullable=True),
+        pa.field("community_fine",       pa.int32(), nullable=True),
     ])
 
 RUNS_DIR = Path(__file__).parent / "runs"
