@@ -378,3 +378,19 @@ def test_ingest_multiple_anchors_in_one_file(tmp_git_repo):
     keys = {a.key for a in anchors}
     assert "ref:key-alpha" in keys
     assert "ref:key-beta" in keys
+
+
+def test_topic_rows_only_drops_anchor_rows():
+    """rebuild_index idempotency guard: anchor rows from a prior rebuild must not
+    be re-read as topics (session-102 live corruption: duplicated anchors +
+    cosine~1.0 self-alias matches)."""
+    from retrieval.anchors import _topic_rows_only, ANCHOR_SOURCE_CLASS, TOPIC_SOURCE_CLASS
+
+    rows = [
+        {"id": "t1", "source_class": TOPIC_SOURCE_CLASS},
+        {"id": "ref:a", "source_class": ANCHOR_SOURCE_CLASS},
+        {"id": "t2", "source_class": TOPIC_SOURCE_CLASS},
+        {"id": "legacy-no-class"},
+    ]
+    kept = _topic_rows_only(rows)
+    assert [r["id"] for r in kept] == ["t1", "t2", "legacy-no-class"]

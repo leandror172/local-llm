@@ -427,6 +427,17 @@ def _write_index(all_rows: list[dict], index_path: Path, backup_path: Path) -> N
     open_or_create_table(db, "topics", arrow_table)
 
 
+def _topic_rows_only(rows: list[dict]) -> list[dict]:
+    """Drop anchor rows from a combined table read.
+
+    Makes rebuild_index idempotent on an already-combined index: without this,
+    a second in-place rebuild re-reads the previous run's anchor rows as topics,
+    duplicating every anchor and self-alias-matching each one at cosine ~1.0
+    (observed live session 102: 1165 rows / 1022 unique ids, same_as 28->229).
+    """
+    return [r for r in rows if r.get("source_class") != ANCHOR_SOURCE_CLASS]
+
+
 def rebuild_index(
     repo_root: Path,
     index_path: Path,
@@ -445,7 +456,7 @@ def rebuild_index(
     anchors = ingest_anchors(repo_root)
     # Read topics BEFORE backup (backup moves index_path away)
     db = lancedb.connect(str(index_path))
-    topic_rows = db.open_table("topics").to_arrow().to_pylist()
+    topic_rows = _topic_rows_only(db.open_table("topics").to_arrow().to_pylist())
     descriptions = {a.key: describe(a, method) for a in anchors}
     anchor_vectors = _embed_anchor_descriptions(descriptions)
     matches = match_anchors(anchor_vectors, topic_rows)
