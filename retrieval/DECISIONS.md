@@ -271,7 +271,7 @@ Physical merge (row mutation) is incompatible with the dual-path architecture �
 
 **`node_kind` update:** drop `merged` from the enum. `node_kind ∈ {extracted, anchor}` (Phase 3; `community` added in Phase 4). Alias state = `alias_of != null`. Keeping `merged` would introduce a redundant second source of truth (with `alias_of`) that can diverge on partial writes and creates a Phase 4 migration burden.
 
-**Phase 4 flag:** `alias_of` on the topic row is a proto-edge — a `same_as`/`alias` edge at confidence ~1.0 produced early. Phase 4 will relocate it to the edge table. No downstream code should hard-depend on the topic-row location.
+**Phase 4 flag:** `alias_of` on the topic row is a proto-edge — a `same_as`/`alias` edge at confidence ~1.0 produced early. ~~Phase 4 will relocate it to the edge table.~~ **Updated session 101 (P4-D6):** Phase 4 *projects* it into `same_as` edges at graph build — the column stays as the anchors-rebuild artifact; consumers read the edge table only. See "Phase 4 decisions" below. No downstream code should hard-depend on the topic-row location.
 
 **Anchor row field population (all Phase 2 fields + Phase 3 additions):**
 
@@ -402,8 +402,29 @@ Phase 6 (`retrieve_context`) is the dual-path consumer and the correct home for 
 
 ### Phase integration notes
 
-- **Phase 4:** `alias_of` links are proto-edges (anchor-topic alias edge, confidence ~1.0). Phase 4 ingests them into the edge table when building the graph. Anchor↔anchor edges (from `index.md` cross-references) also land in Phase 4.
+- **Phase 4:** `alias_of` links are proto-edges (anchor-topic alias edge, confidence ~1.0). Phase 4 *projects* them into the edge table when building the graph (P4-D6: projection, not relocation — the column stays). Anchor↔anchor edges land as mention-based `references` edges (P4-D3, a superset of the original "index.md cross-references" phrasing). Decisions frozen session 101 → "Phase 4 decisions" below.
 - **Phase 5:** `source_class` weights get tuned against a retrieval loop. Phase 3 lands the field; Phase 5 sets non-default values.
 - **Phase 6:** dual-path `retrieve_context` consumer; D7 routing decision lives here.
 - **Phase 2.5:** threshold recalibration, key-name weighting recheck (false-merge precision on generic anchors), broad merge validation (non-LTG corpus), stale-corpus re-extraction.
 <!-- /ref:ltg-phase3-decisions -->
+
+---
+
+<!-- ref:ltg-phase4-decisions -->
+## Phase 4 decisions — graph + communities (session 101, 2026-07-02)
+
+Frozen before implementation. Full elaboration, task breakdown, and risks:
+`docs/plans/ltg-phase4-graph-communities.md` (`ref:ltg-phase4-plan`).
+
+| # | Decision | Locked value | Key reason |
+|---|----------|--------------|------------|
+| P4-D1 | Similarity computation | Exact (`M @ M.T`, unit-normalized) | 1018×4096 is one matmul (~100–300 ms, 8 MB); ANN's silent recall loss can disconnect nodes from communities. Mirrors Phase-3 exact-matching rationale. Revisit at ~10k nodes (with `ref:ltg-graph-lib`). |
+| P4-D2 | Similarity-edge retention | `tau_floor` + union top-K, configurable (`graph:` section, `retrieval/config.yaml`) | Floor kills manufactured edges in sparse regions; cap kills the archive hairball (51% of corpus is mutually-similar session logs). Values frozen from a Step-0 degree-distribution probe, not guessed. Mutual-kNN is the tightening lever. |
+| P4-D3 | Anchor↔anchor `references` edges | Mention-based, repo-wide: scan each ref block's body for other known `ref:KEY` mentions (self excluded); directed, weight 1.0 | Faithful superset of "index.md cross-refs"; table co-location alone is not a semantic relation. Bodies re-read via `_read_block_lines` (the frozen `Anchor` dataclass carries no body). |
+| P4-D4 | Edge storage | New LanceDB `edges` table in `retrieval/index/`; undirected kinds stored once, canonical `src_id < dst_id` | Pure-LanceDB storage decision (`ref:ltg-storage-layout`) extended to edges. Edge-confidence == `weight` (cosine for `similarity`, 1.0 for `same_as`/`references`) — resolves the Phase-3 "edge confidence" deferral. |
+| P4-D5 | Community storage | Nullable `community_coarse`/`community_fine` int32 columns on the nodes table; all writers default null | Anchors rebuild rewrites the nodes table → nullable + wipe-then-regenerate avoids writer coupling. Rebuild order: extract → embed → store → anchors → graph → communities. Separate membership table only if Phase 5 needs community metadata. `node_kind="community"` stays reserved, unused. |
+| P4-D6 | `alias_of` handling | **Projection, not relocation** — column stays as the anchors-rebuild artifact; `graph.py` projects it to `same_as` edges; consumers read edges only | Removing the column would couple graph-build into the anchors rebuild flow and force a schema migration; projection honors "nothing depends on the row location" at zero migration cost. Supersedes the Phase-3 "relocate" phrasing above. |
+| P4-D7 | Community detection | networkx → igraph conversion; `leidenalg` `RBConfigurationVertexPartition`, weighted, fixed seed; two configurable resolutions (provisional 0.5 / 1.5) | Graph lib frozen at Phase 0 (`ref:ltg-graph-lib`); seed makes partitions reproducible; resolutions are corpus-relative — the acceptance walk-through tunes them. |
+
+**Related session-101 verdict:** T-63 (near-miss tuning) is NOT a Phase-4 blocker — session-96 calibration shows sub-0.85 near-misses are coincidental topical adjacency; the one real miss (`plan-latent-topic-graph` @ 0.8379) still surfaces as a ~0.84 `similarity` edge. Phase 4's top-edge walk-through supplies T-63's tuning evidence.
+<!-- /ref:ltg-phase4-decisions -->
