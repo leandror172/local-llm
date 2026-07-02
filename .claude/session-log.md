@@ -1,34 +1,45 @@
 # Session Log
 
-**Current Layer:** LTG retrieval substrate — Phase 4 (graph + communities) — plan ready, execute T1–T7
-**Current Session:** 2026-07-02 — Session 101: LTG Phase 4 design locked (P4-D1–D7) + implementation plan authored
+**Current Layer:** LTG retrieval substrate — Phase 4 COMPLETE (PR #66); next Phase 5 relate(a,b)
+**Current Session:** 2026-07-02 — Session 102: LTG Phase 4 executed T1–T7 — graph + communities live (PR #66) + anchors-rebuild idempotency fix
 
 ---
-## 2026-07-02 - Session 101: LTG Phase 4 design locked (P4-D1–D7) + implementation plan authored
+## 2026-07-02 - Session 102: LTG Phase 4 executed T1–T7 — graph + communities live (PR #66) + anchors-rebuild idempotency fix
 
 ### Context
 
-Session resumed right after PR #65 (machine-config move) merged and local master updated; goal was choosing next steps, which became the LTG Phase 4 design session.
+Session started from the resume guide's "Phase 4 — plan ready, EXECUTE" entry; user approved starting at T1 after the reading list, with interactive pacing per task.
 
 ### What Was Done
 
-- PR #65 merge landed on master (`chore(ollama): move machine-specific config out of repo to ~/workspaces/ollama-infra`).
-- Assessed T-63 as a Phase-4 blocker: NO — session-96 calibration shows sub-0.85 near-misses are coincidental topical adjacency, not missed aliases; the one real miss (`plan-latent-topic-graph` @ 0.8379) will still surface in the Phase-4 graph as a ~0.84 similarity edge. T-63 stays deferred; Phase 4's top-edge walk-through will supply its tuning evidence.
-- LTG Phase 4 design discussion: decisions P4-D1–D7 locked (see decisions below).
-- Authored `docs/plans/ltg-phase4-graph-communities.md` (`ref:ltg-phase4-plan`) — edge/community specs, 7-task TDD breakdown, Step-0 degree probe gating the thresholds — plus its `.claude/index.md` entry.
-- Updated QUICK.md memories to Phase-4-plan-ready state (root repo-structure + LTG bullet were stale at "Phase 3 next"; retrieval QUICK got the session-101 status line). All committed together (`docs(ltg)` commit).
+- docs(ltg): freeze Phase 4 decisions in DECISIONS.md (ref:ltg-phase4-decisions) — landed pre-session, merged with PR #65
+- feat(ltg): Phase 4 T1 — graph deps (networkx 3.6.1 + leidenalg 0.12.0 under uv/3.12) + `graph:` config + load_graph_config (8 tests)
+- feat(ltg): Phase 4 T2 — similarity_edges exact-matmul + union top-K retention (6 synthetic-angle tests)
+- feat(ltg): Phase 4 T3 — degree probe run over live 1018-row index; tau_floor=0.70/top_k=10 FROZEN (`ref:ltg-phase4-degree-probe`); probe grid cross-validated == similarity_edges (3189 edges exact)
+- feat(ltg): Phase 4 T4 — same_as alias_of projection (P4-D6) + mention-based references edges via re-read block bodies (P4-D3)
+- feat(ltg): Phase 4 T5 — edges table live build: 3332 edges; spot-checks pass (21 alias merges → 28 M:N same_as exact; T-63 near-miss visible at 0.8379)
+- feat(ltg): Phase 4 T6 — communities.py (Leiden RBConfiguration, seeded, 2 resolutions) + nullable community columns, schema 23→25
+- docs(ltg): Phase 4 T7 — acceptance PASS on all criteria (`ref:ltg-phase4-acceptance`); rebuild ≈11 s, zero model calls
+- fix(ltg): anchors rebuild made idempotent — `_topic_rows_only` filters prior anchor rows from the topic read; index rebuilt clean (875 topics + 147 anchors = 1022 nodes, 3367 edges, zero dupes/phantoms/self-edges)
+- PR #66 opened (all 8 Phase-4 commits + fix); docs sweep: reports ref-anchored, plan docs + index.md point EXECUTED → report refs, QUICK memories de-episodized (T-67 pattern)
+- Local-model-first honored: 12 generate_code calls (4×verdict 2, 6×verdict 1, 1×verdict 0→stubs-retry→1), ~19K est. Claude tokens saved
 
 ### Decisions Made
 
-- **P4-D1 exact over ANN:** 1018×4096 pairwise cosine is one numpy matmul (~100–300 ms, 8 MB); ANN's silent recall loss can disconnect nodes from communities. Mirrors Phase-3 exact-matching rationale. Revisit at ~10k nodes with `ref:ltg-graph-lib`.
-- **P4-D2 similarity-edge retention = `tau_floor` + union top-K, configurable:** new `graph:` section in `retrieval/config.yaml` (`tau_floor`, `top_k`, `resolutions`, `seed`); values frozen from a degree-distribution probe (τ ∈ {0.65–0.80} × K ∈ {5,10,15} + archive×archive edge share), not guessed. Floor kills manufactured edges; cap kills the archive hairball (51% of corpus).
-- **P4-D6 `alias_of` projected, not migrated:** the column stays as the anchors-rebuild artifact; `graph.py` projects it into `same_as` edges; downstream consumers read the edge table only. Avoids schema migration and rebuild-order coupling while honoring "nothing depends on the row location".
-- **P4-D5 wrinkle:** `community_coarse`/`community_fine` are nullable columns, all writers default null; an anchors rebuild nulls them → regenerate. Rebuild order is now extract → embed → store → anchors → graph → communities.
+- tau_floor=0.70 / top_k=10 frozen from the Step-0 probe, not guesses — τ=0.65 admits sub-meaningful edges (+63% edges), τ≥0.75 isolates 37–62% of nodes, K=15 fattens hubs without connectivity (`ref:ltg-phase4-degree-probe`)
+- Archive-hairball risk closed empirically: 24.4% archive×archive edge share vs 18.3% random baseline — union top-K caps it structurally, no group-aware lever needed
+- communities.py backs up via copytree (not store.py's move) — the index dir now holds topics + edges tables; move-then-recreate would orphan edges
+- QUICK.md hygiene (T-67 pattern applied here): retrieval QUICK rewritten current-state-only; per-session ledger lives in KNOWLEDGE.md "Phase history ledger"; new entries go THERE
 
 ### Next
 
-- Execute Phase 4 per `ref:ltg-phase4-plan`: T1 (networkx+leidenalg deps + `graph:` config) → T2 (`similarity_edges` TDD, synthetic vectors) → T3 (degree probe — freezes `tau_floor`/`top_k`, gates T5) → T4–T7.
+- LTG Phase 5 — `relate(a,b)` tool (`ref:ltg-plan-phase-5`): consumers read the edges table, never `alias_of` (P4-D6); Phase 4 reports at `ref:ltg-phase4-degree-probe` / `ref:ltg-phase4-acceptance` / `ref:ltg-phase4-findings`
+- T-63 (near-miss escalation) now unblocked — Phase 4 edge evidence in hand (near-miss visible as 0.8379 similarity edge; ~26 anchors in the 0.80–0.85 band)
 
 ### Gotchas
 
-- `Anchor` dataclass retains only `heading`/`first_prose`, no block body — `reference_edges()` must re-read block bodies via `_read_block_lines` rather than extending the frozen dataclass (recorded in plan P4-D3 notes).
+- rebuild_index was NOT idempotent (fixed): it read the whole topics table as topic rows, so any anchors rebuild not preceded by a fresh store re-ingested prior anchor rows as topics — duplicated anchors + cosine≈1.0 self-alias matches (same_as 28→229). Green tests never caught it; only the operationally-realistic "just refresh anchors" run did.
+- Single-slot index.bak composes badly across pipeline stages: anchors backed up the good index, then communities' backup overwrote that same .bak with the corrupted state → T-71.
+- Timed-out MCP generate_code calls keep running server-side and serialize the Ollama queue — a trivial probe call waited 25 s of a 25.3 s round-trip. Split big generations instead of retrying blind; check /api/ps + a direct trivial chat to distinguish queue backlog from model failure.
+- Append-driven file growth left `if __name__ == "__main__"` mid-file in graph.py — imports (tests) never notice, only the live CLI run failed. Guard belongs at EOF.
+- Local-model snippet-append calls omit imports for names outside their visible context (3 occurrences: ingest_anchors, sys, load_graph_config) — prompt for "import every name you use that isn't in the visible context".
