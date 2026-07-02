@@ -1,37 +1,34 @@
 # Session Log
 
-**Current Layer:** LTG retrieval substrate — Phase 4 (graph + communities) next
-**Current Session:** 2026-07-02 — Session 100: Ollama outage fix — VM-restart store-attach gap + durable :11434 metrics proxy + machine-config consolidated out of the repo
+**Current Layer:** LTG retrieval substrate — Phase 4 (graph + communities) — plan ready, execute T1–T7
+**Current Session:** 2026-07-02 — Session 101: LTG Phase 4 design locked (P4-D1–D7) + implementation plan authored
 
 ---
-## 2026-07-02 - Session 100: Ollama outage fix — VM-restart store-attach gap + durable :11434 metrics proxy + machine-config consolidated out of the repo
+## 2026-07-02 - Session 101: LTG Phase 4 design locked (P4-D1–D7) + implementation plan authored
 
 ### Context
 
-Side-track: the expenses repo reported the local Ollama down. A store/attach outage that cascaded into closing a second systemd-coupling gap and a machine-config cleanup out of the repo.
+Session resumed right after PR #65 (machine-config move) merged and local master updated; goal was choosing next steps, which became the LTG Phase 4 design session.
 
 ### What Was Done
 
-- Diagnosed the outage: `wsl --mount` binds the ext4 store vhd to a **single WSL2 VM lifetime**. The logon-only attach task succeeds (`LastTaskResult=0`) then the attach *evaporates* on any mid-session VM restart (idle timeout / `wsl --shutdown` / Docker), so the udev self-heal never receives its device-add trigger. No fallback store since the 162 GB reclaim → ollama loud-fails.
-- Recovered service live via `schtasks.exe /run` interop against the elevated task (device back in 1 s → udev → recover → mount → ollama; 81 models / 178 blobs on `:11435`).
-- Authored + user-installed `ollama-store-attach.service` — a oneshot that fires on **every** VM boot and triggers the elevated Windows attach task via interop (`schtasks /run` needs no UAC to trigger an already-elevated task), `Before=` the mount; udev→recover completes it. Closes the VM-restart gap the logon-only task missed.
-- Fixed `:11434`: the Session-76 transparent metrics proxy (native Go binary, **no Docker in the data path** — only Grafana/Prometheus `make stack` is Docker) was only ever hand-started. Authored + installed `ollama-metrics-proxy.service` coupled to ollama (`WantedBy=ollama.service` + `PartOf` + `BindsTo`); `:11434` now up whenever ollama is. Coupling gate passed (the install's `restart ollama` brought the proxy up automatically).
-- Consolidated ALL machine-specific ollama config out of the llm repo to un-versioned `~/workspaces/ollama-infra/` (6 tracked files `git rm`'d + 3 new artifacts + docs); live pointers repointed, historical session-log entries left as history. Committed on `chore/consolidate-ollama-machine-config`, pushed, **PR #65**.
+- PR #65 merge landed on master (`chore(ollama): move machine-specific config out of repo to ~/workspaces/ollama-infra`).
+- Assessed T-63 as a Phase-4 blocker: NO — session-96 calibration shows sub-0.85 near-misses are coincidental topical adjacency, not missed aliases; the one real miss (`plan-latent-topic-graph` @ 0.8379) will still surface in the Phase-4 graph as a ~0.84 similarity edge. T-63 stays deferred; Phase 4's top-edge walk-through will supply its tuning evidence.
+- LTG Phase 4 design discussion: decisions P4-D1–D7 locked (see decisions below).
+- Authored `docs/plans/ltg-phase4-graph-communities.md` (`ref:ltg-phase4-plan`) — edge/community specs, 7-task TDD breakdown, Step-0 degree probe gating the thresholds — plus its `.claude/index.md` entry.
+- Updated QUICK.md memories to Phase-4-plan-ready state (root repo-structure + LTG bullet were stale at "Phase 3 next"; retrieval QUICK got the session-101 status line). All committed together (`docs(ltg)` commit).
 
 ### Decisions Made
 
-- `wsl --mount` is per-VM-lifetime → the store attach must fire on **every VM boot**, not just at Windows logon (the original T-68 blind spot). The trigger event is WSL's own systemd boot, driven from inside WSL via `schtasks /run` of the already-elevated attach task.
-- `:11434` stays the canonical client port (Session-76 design) → clients (expenses) do NOT repoint to `:11435`; reliability comes from coupling the proxy to ollama's lifecycle instead.
-- Machine-specific config (ports, `/usr/local/bin`, WSL/UNC paths) lives in `~/workspaces/ollama-infra/`, NOT the versioned repo. Only live pointers repoint; historical session logs keep old `scripts/ollama-ext4/` paths as accurate history.
+- **P4-D1 exact over ANN:** 1018×4096 pairwise cosine is one numpy matmul (~100–300 ms, 8 MB); ANN's silent recall loss can disconnect nodes from communities. Mirrors Phase-3 exact-matching rationale. Revisit at ~10k nodes with `ref:ltg-graph-lib`.
+- **P4-D2 similarity-edge retention = `tau_floor` + union top-K, configurable:** new `graph:` section in `retrieval/config.yaml` (`tau_floor`, `top_k`, `resolutions`, `seed`); values frozen from a degree-distribution probe (τ ∈ {0.65–0.80} × K ∈ {5,10,15} + archive×archive edge share), not guessed. Floor kills manufactured edges; cap kills the archive hairball (51% of corpus).
+- **P4-D6 `alias_of` projected, not migrated:** the column stays as the anchors-rebuild artifact; `graph.py` projects it into `same_as` edges; downstream consumers read the edge table only. Avoids schema migration and rebuild-order coupling while honoring "nothing depends on the row location".
+- **P4-D5 wrinkle:** `community_coarse`/`community_fine` are nullable columns, all writers default null; an anchors rebuild nulls them → regenerate. Rebuild order is now extract → embed → store → anchors → graph → communities.
 
 ### Next
 
-- Run the **T-70** gate: `wsl.exe --shutdown` + reopen the terminal, then `make -C ~/workspaces ollama-store-check` must PASS cold with zero manual attach (proves the attach service closes the mid-session VM-restart gap).
-- Merge/close PR #65.
-- Resume top priority: LTG Phase 4 — graph + communities.
+- Execute Phase 4 per `ref:ltg-phase4-plan`: T1 (networkx+leidenalg deps + `graph:` config) → T2 (`similarity_edges` TDD, synthetic vectors) → T3 (degree probe — freezes `tau_floor`/`top_k`, gates T5) → T4–T7.
 
 ### Gotchas
 
-- `LastTaskResult=0` on the logon task is misleading — the attach genuinely succeeds, then evaporates on the next VM restart. Success ≠ persistence for `wsl --mount`.
-- A dead `:11434` with a healthy `:11435` means the **proxy** is down, not ollama (ollama serves `:11435`; `:11434` is the transparent metrics proxy).
-- `git rm` refuses a file with uncommitted modifications (RUNBOOK had the Step-8 edit) — needs `-f` once the working copy is safely duplicated at the destination.
+- `Anchor` dataclass retains only `heading`/`first_prose`, no block body — `reference_edges()` must re-read block bodies via `_read_block_lines` rather than extending the frozen dataclass (recorded in plan P4-D3 notes).
