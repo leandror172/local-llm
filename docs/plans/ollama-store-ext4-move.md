@@ -5,7 +5,7 @@
 `SYSTEMD_WANTS` → `ollama-store-recover.service`; logon task thinned to attach-only) —
 survived a real reboot cold `PASS` (device letter shifted sde→sdd, UUID matching held);
 old `/mnt/i/ollama-models` reclaimed (162 GB → I: now 394 GB free). Artifacts +
-verified runbook: `scripts/ollama-ext4/`.
+verified runbook: `~/workspaces/ollama-infra/` (machine-local, moved out of the repo 2026-07-02).
 **Author:** session 98 (2026-06-30).
 **Trigger:** `my-go-qcoder` HTTP 500 root-caused as host-RAM ENOMEM (see `.memories/KNOWLEDGE.md` "Host-RAM budget").
 
@@ -22,7 +22,7 @@ request is ignored.
 cache-warm) from ext4 read speed + page-cache reuse, and a clean store with no 9p
 quirks. A latency/robustness win, not a RAM fix. Kept because it's net-positive and
 already done; old `/mnt/i/ollama-models` retained as rollback until a reboot test
-passes. Execution artifacts + runbook: `scripts/ollama-ext4/`. Health check:
+passes. Execution artifacts + runbook: `~/workspaces/ollama-infra/` (machine-local, moved out of the repo 2026-07-02). Health check:
 `make -C ~/workspaces ollama-store-check` (namespace-robust: systemd + API).
 
 ---
