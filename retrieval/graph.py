@@ -188,3 +188,42 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+import json
+import re
+from anchors import Anchor, _read_block_lines
+
+def same_as_edges(rows: list[dict]) -> list[Edge]:
+    edges = []
+    for row in rows:
+        alias_of = row.get("alias_of")
+        if not alias_of:
+            continue
+
+        keys = json.loads(alias_of)
+        for key in keys:
+            src_id, dst_id = sorted((row["id"], key))
+            edge = Edge(src_id=src_id, dst_id=dst_id, edge_kind="same_as", weight=1.0, directed=False)
+            edges.append(edge)
+
+    return sorted(edges)
+
+def reference_edges(anchors: list[Anchor], repo_root: Path) -> list[Edge]:
+    known_keys = {a.bare_key for a in anchors}
+    edges = set()
+
+    def _block_mentions(anchor: Anchor, repo_root: Path, known: set[str]) -> None:
+        body_lines = _read_block_lines(repo_root / anchor.file_path, anchor.start_line, anchor.bare_key)
+        body = "\n".join(body_lines)
+        mentions = re.findall(r"(?<!/)ref:([a-z0-9-]+)", body)
+
+        for mention in mentions:
+            if mention == anchor.bare_key or mention not in known:
+                continue
+            edge = Edge(src_id=anchor.key, dst_id=f"ref:{mention}", edge_kind="references", weight=1.0, directed=True)
+            edges.add(edge)
+
+    for anchor in anchors:
+        _block_mentions(anchor, repo_root, known_keys)
+
+    return sorted(edges)
