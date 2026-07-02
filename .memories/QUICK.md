@@ -40,7 +40,7 @@ llm/
   benchmarks/    # Multi-language code validation suite
   overlays/      # Portable scaffolding packages for cross-repo consistency
   modelfiles/    # Ollama Modelfile definitions
-  retrieval/     # LTG substrate — Phases 1+2 complete; Phase 3 next (anchors.py)
+  retrieval/     # LTG substrate — Phases 0–3 + 2.5 complete (1018-row index); Phase 4 (graph) plan ready
   docs/          # Research, patterns, portfolio, findings
 ```
 
@@ -59,4 +59,4 @@ llm/
 - **Cross-Repo Architecture** — 3 repos, one hardware platform, MCP integration layer
 - **DPO Data Collection** — passive training data from verdict-labeled inference logs
 - **Smart RAG Research** — content-linking retrieval cluster (7 sources, 5 philosophies); hub at `ref:smart-rag-research`. Converges chatbot Phase 3 + Layer 7 RAG into one substrate.
-- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph` (+ 18 narrow phase/section refs `ltg-plan-*`). Phase 0 frozen → `retrieval/DECISIONS.md`. **Phase 1 fully closed (session 59)**: extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). Findings at `ref:ltg-phase1-results`; MoE eval at `ref:ltg-phase1-moe-eval`; determinism at `ref:ltg-phase1-determinism-smart-rag-index`. **Phases 0–3 complete; Phase 3 anchor integration shipped (session 94, PR #55) — dual-path RAG + alias-link, 254 tests, live rebuild 212 rows; next = Phase 4 graph+communities (`alias_of` are proto-edges).**
+- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph` (+ 18 narrow phase/section refs `ltg-plan-*`). Phase 0 frozen → `retrieval/DECISIONS.md`. **Phase 1 fully closed (session 59)**: extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). Findings at `ref:ltg-phase1-results`; MoE eval at `ref:ltg-phase1-moe-eval`; determinism at `ref:ltg-phase1-determinism-smart-rag-index`. **Phases 0–3 + 2.5 complete — full-corpus index 1018 rows (875 topics/113 files + 143 anchors, PR #56); Phase 4 (graph + communities) designed session 101: P4-D1–D7 locked, plan at `docs/plans/ltg-phase4-graph-communities.md` (`ref:ltg-phase4-plan`); next = execute T1–T7.**
