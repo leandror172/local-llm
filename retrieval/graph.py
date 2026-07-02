@@ -166,19 +166,7 @@ def _print_probe_report(ids: list[str], groups: list[str], results: list[dict]) 
         )
         print(row)
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Graph assembly tool.")
-    parser.add_argument("--degree-probe", action="store_true", help="Run degree probe analysis")
-    parser.add_argument("--index", type=Path, default=Path(__file__).parent / "index", help="Path to the index database")
-    parser.add_argument("--table", default="topics", help="Table name in the index database")
-    parser.add_argument("--taus", default="0.65,0.70,0.75,0.80", help="Comma-separated list of tau values")
-    parser.add_argument("--ks", default="5,10,15", help="Comma-separated list of k values")
-
-    args = parser.parse_args()
-
-    if not args.degree_probe:
-        parser.error("only --degree-probe mode is implemented")
-
+def _run_degree_probe(args) -> None:
     taus = [float(tau) for tau in args.taus.split(",")]
     ks = [int(k) for k in args.ks.split(",")]
 
@@ -186,8 +174,42 @@ def main() -> None:
     results = degree_probe_grid(ids, vectors, groups, taus, ks)
     _print_probe_report(ids, groups, results)
 
-if __name__ == "__main__":
-    main()
+
+def _run_build(args) -> None:
+    from datetime import datetime, timezone
+
+    config = load_graph_config(args.config)
+    now = datetime.now(timezone.utc)
+    run_id = now.strftime("%Y%m%d-%H%M%S")
+    created_at = now.isoformat()
+
+    by_kind = build_all_edges(args.index, args.repo_root, config)
+    all_edges = [e for edges in by_kind.values() for e in edges]
+    write_edges_table(args.index, edges_to_arrow_table(all_edges, run_id, created_at))
+    report_path = _write_run_report(Path(__file__).parent / "runs", run_id, created_at, config, by_kind)
+
+    for kind, edges in by_kind.items():
+        print(f"{kind}: {len(edges)} edges")
+    print(f"total: {len(all_edges)} edges written to {args.index}/edges (run {run_id})")
+    print(f"report: {report_path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="LTG Phase 4 graph assembly: build the edges table (default) or run the degree probe.")
+    parser.add_argument("--degree-probe", action="store_true", help="Print tau×K degree grid stats without writing")
+    parser.add_argument("--index", type=Path, default=Path(__file__).parent / "index", help="Path to the index database")
+    parser.add_argument("--table", default="topics", help="Table name in the index database")
+    parser.add_argument("--taus", default="0.65,0.70,0.75,0.80", help="Comma-separated list of tau values (probe mode)")
+    parser.add_argument("--ks", default="5,10,15", help="Comma-separated list of k values (probe mode)")
+    parser.add_argument("--config", type=Path, default=Path(__file__).parent / "config.yaml", help="Config file with the graph: section (build mode)")
+    parser.add_argument("--repo-root", type=Path, default=Path(__file__).parent.parent, help="Repo root for the anchor references scan (build mode)")
+
+    args = parser.parse_args()
+
+    if args.degree_probe:
+        _run_degree_probe(args)
+    else:
+        _run_build(args)
 
 import json
 import re
@@ -227,3 +249,68 @@ def reference_edges(anchors: list[Anchor], repo_root: Path) -> list[Edge]:
         _block_mentions(anchor, repo_root, known_keys)
 
     return sorted(edges)
+
+import pyarrow as pa
+from anchors import ingest_anchors
+
+EDGES_SCHEMA = pa.schema([
+    pa.field("src_id", pa.string()),
+    pa.field("dst_id", pa.string()),
+    pa.field("edge_kind", pa.string()),
+    pa.field("weight", pa.float32()),
+    pa.field("directed", pa.bool_()),
+    pa.field("created_at", pa.string()),
+    pa.field("run_id", pa.string())
+])
+
+def edges_to_arrow_table(edges: list[Edge], run_id: str, created_at: str) -> pa.Table:
+    src_ids = [edge.src_id for edge in edges]
+    dst_ids = [edge.dst_id for edge in edges]
+    edge_kinds = [edge.edge_kind for edge in edges]
+    weights = [edge.weight for edge in edges]
+    directeds = [edge.directed for edge in edges]
+
+    return pa.table({
+        "src_id": src_ids,
+        "dst_id": dst_ids,
+        "edge_kind": edge_kinds,
+        "weight": weights,
+        "directed": directeds,
+        "created_at": [created_at] * len(edges),
+        "run_id": [run_id] * len(edges)
+    }, schema=EDGES_SCHEMA)
+
+def write_edges_table(index_path: Path | str, arrow_table: pa.Table, table_name: str = "edges"):
+    db = lancedb.connect(str(index_path))
+    return db.create_table(table_name, data=arrow_table, mode="overwrite")
+
+def load_alias_rows(index_path: Path | str, table_name: str = "topics") -> list[dict]:
+    db = lancedb.connect(str(index_path))
+    table = db.open_table(table_name).to_arrow()
+    ids = table.column("id").to_pylist()
+    alias_ofs = table.column("alias_of").to_pylist()
+    return [{"id": i, "alias_of": a} for i, a in zip(ids, alias_ofs)]
+
+def build_all_edges(index_path: Path, repo_root: Path, config: dict) -> dict[str, list[Edge]]:
+    ids, vectors, groups = load_nodes(index_path)
+    sim = similarity_edges(ids, vectors, float(config["tau_floor"]), int(config["top_k"]))
+    same = same_as_edges(load_alias_rows(index_path))
+    refs = reference_edges(ingest_anchors(repo_root), repo_root)
+    return {"similarity": sim, "same_as": same, "references": refs}
+
+def _write_run_report(runs_dir: Path, run_id: str, created_at: str, config: dict, by_kind: dict) -> Path:
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    report_path = runs_dir / f"graph-{run_id}.json"
+    report_data = {
+        "run_id": run_id,
+        "created_at": created_at,
+        "tau_floor": config["tau_floor"],
+        "top_k": config["top_k"],
+        **{kind: len(edges) for kind, edges in by_kind.items()},
+        "total": sum(len(edges) for edges in by_kind.values())
+    }
+    report_path.write_text(json.dumps(report_data))
+    return report_path
+
+if __name__ == "__main__":
+    main()
