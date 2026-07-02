@@ -162,6 +162,8 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |
 | `retrieval/run-anchors.sh` | Phase 3 anchor rebuild: `--index`, `--method`, `--repo-root`. Ingests ref:KEY anchors, embeds, matches topics, writes combined LanceDB table. | After any ref:KEY changes; Phase 3 live acceptance |
 | `retrieval/run-build-corpus-manifest.sh` | Phase 2.5 corpus freeze: resolves `corpus.yaml` (intent) against `git ls-files`, hashes each file (sha256), records commit SHA, writes frozen `corpus-manifest.yaml`. `--dry-run` prints the resolution summary. | Step 0 before any full-corpus re-extraction; re-run when `corpus.yaml` changes |
+| `retrieval/run-graph.sh` | Phase 4 edges build (default): similarity (frozen τ=0.70/K=10) + `same_as` projection + `references` mention scan → LanceDB `edges` table + run report. `--degree-probe` prints τ×K grid stats without writing. | After any anchors rebuild (edges are pure derivation); re-probe before changing `graph:` config |
+| `retrieval/run-communities.sh` | Phase 4 Leiden communities (2 seeded resolutions) → writes `community_coarse`/`community_fine` back to nodes table (copytree backup) + sizes/crosstab sanity report. | After `run-graph.sh` (rebuild order: … anchors → graph → communities) |
 
 ### Personas Test Harness
 | Script | Purpose | When to Use |

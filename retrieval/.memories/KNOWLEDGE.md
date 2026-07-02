@@ -228,3 +228,35 @@ Query "how do we handle memory across sessions" — `.memories/QUICK.md`'s extra
 3. **Relate preview:** No divergences between `smart-rag-repowise.md` and `smart-rag3.md` (both cover smart-RAG concepts). Mean cosine 0.663 — semantically very close. The acceptance relate file `smart-rag-claude-mem.md` was not in the Phase 1 corpus; substituted `smart-rag3.md`.
 4. **qwen2.5-coder:14b timeout issue:** 3 consecutive timeouts during test generation (warm model confirmed). Escalated to qwen3:14b which generated both test functions and implementation within the 300s timeout.
 <!-- /ref:ltg-phase2-findings -->
+
+<!-- ref:ltg-phase4-findings -->
+## Phase 4 — Graph + Communities (session 102, 2026-07-02)
+
+Full findings: `probes/phase4-degree-probe.md` (T3) + `probes/phase4-acceptance.md` (T7).
+Plan + decisions: `ref:ltg-phase4-plan`, `ref:ltg-phase4-decisions`.
+
+### What was built
+`graph.py` (edges build: exact matmul similarity @ frozen τ=0.70/K=10, `alias_of`→`same_as`
+projection, mention-based `references`; `--degree-probe` mode; `run-graph.sh`) and
+`communities.py` (networkx→igraph→Leiden RBConfiguration, seeded, coarse 0.5/fine 1.5;
+`run-communities.sh`). `edges` LanceDB table (7 fields); nodes schema 23→25 (nullable
+int32 `community_coarse`/`community_fine`, writers default null). Live: 3332 edges
+(3189/28/115), 203 coarse / 213 fine communities, rebuild ≈11 s, zero model calls.
+
+### Surprising findings / gotchas
+1. **Archive hairball never materialized** — 24.4% archive×archive edge share vs 18.3%
+   random baseline (archive = 42.8% of nodes). Union top-K caps it structurally.
+2. **Isolation is τ-only.** Isolated-node count (184 @ 0.70) is identical across all K —
+   union-kNN can only remove edges below the floor-graph, never add. The floor sets the
+   connectivity ceiling.
+3. **Phantom nodes from anchor staleness:** `references` edges scan the repo live, but
+   node rows are frozen at the last anchors rebuild — anchors created since (3 of them,
+   incl. Phase 4's own refs) appear as edge endpoints with no row; networkx auto-creates
+   them, `write_communities` silently skips them. Benign; disappears when the documented
+   rebuild order runs (anchors before graph).
+4. **Backup semantics changed:** the index dir now holds TWO tables — communities.py
+   backs up via `copytree` (store.py's move-then-recreate would orphan the edges table).
+5. **Mid-file `__main__` guard:** append-driven development left the guard above later
+   defs; imports (tests) never notice — only the live CLI run caught it. Guard belongs at EOF.
+6. **`same_as` count ≠ merge count by design:** 21 alias-merged topics → 28 edges (7 are M:N).
+<!-- /ref:ltg-phase4-findings -->
