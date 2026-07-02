@@ -80,3 +80,111 @@ def similarity_edges(ids: list[str], vectors: np.ndarray, tau_floor: float, top_
                 edges.append(Edge(src_id=src_id, dst_id=dst_id, edge_kind="similarity", weight=float(cosine_matrix[i, j]), directed=False))
     
     return sorted(edges, key=lambda e: (e.src_id, e.dst_id))
+
+def _topk_membership_mask(sim: np.ndarray, k: int) -> np.ndarray:
+    """Boolean n×n mask: mask[i, j] = True iff j is among i's top-k most-similar neighbors (self excluded)."""
+    masked = sim.copy()
+    np.fill_diagonal(masked, -np.inf)
+    kk = min(k, sim.shape[0] - 1)
+    if kk <= 0:
+        return np.zeros_like(sim, dtype=bool)
+
+    idx = np.argpartition(-masked, kth=kk - 1, axis=1)[:, :kk]
+    mask = np.zeros_like(sim, dtype=bool)
+    mask[np.arange(mask.shape[0])[:, None], idx] = True
+    return mask
+
+def degree_probe_grid(ids: list[str], vectors: np.ndarray, groups: list[str], taus: list[float], ks: list[int]) -> list[dict]:
+    """Stats for every (tau, k) combo about the graph similarity_edges() would build."""
+    normalized = _normalize_vectors(vectors)
+    sim = _compute_cosine_matrix(normalized)
+    archive = np.array([g == "archive" for g in groups])
+    archive_pair = np.outer(archive, archive)
+
+    results = []
+    for k in ks:                      # k outer
+        union_mask = _topk_membership_mask(sim, k)
+        union_mask |= union_mask.T
+        for tau in taus:              # tau inner
+            keep = (sim >= tau) & union_mask
+            np.fill_diagonal(keep, False)
+            degrees = keep.sum(axis=1)
+            n_edges = int(degrees.sum() // 2)
+            archive_edges = int((keep & archive_pair).sum() // 2)
+
+            result = {
+                "tau": tau,
+                "k": k,
+                "n_edges": n_edges,
+                "isolated": int(np.sum(degrees == 0)),
+                "deg_p50": float(np.percentile(degrees, 50)),
+                "deg_p90": float(np.percentile(degrees, 90)),
+                "deg_p99": float(np.percentile(degrees, 99)),
+                "deg_max": int(np.max(degrees)),
+                "archive_share": round(archive_edges / n_edges, 4) if n_edges > 0 else 0.0
+            }
+
+            results.append(result)
+
+    return results
+
+import argparse
+from collections import Counter
+import lancedb
+
+def load_nodes(index_path: Path, table_name: str = "topics") -> tuple[list[str], np.ndarray, list[str]]:
+    db = lancedb.connect(str(index_path))
+    arrow = db.open_table(table_name).to_arrow()
+
+    ids = arrow.column("id").to_pylist()
+    groups = arrow.column("source_group").to_pylist()
+    vectors = np.array(arrow.column("vector").to_pylist(), dtype=np.float32)
+
+    return ids, vectors, groups
+
+def _print_probe_report(ids: list[str], groups: list[str], results: list[dict]) -> None:
+    print(f"nodes: {len(ids)}")
+    group_counts = Counter(groups)
+    print("groups:", dict(sorted(group_counts.items(), key=lambda item: item[1], reverse=True)))
+
+    header = "| tau | k | edges | isolated | p50 | p90 | p99 | max | archive_share |"
+    separator = "-" * len(header)
+    print(header)
+    print(separator)
+
+    for result in results:
+        row = (
+            f"| {result['tau']:.2f} "
+            f"| {result['k']} "
+            f"| {result['n_edges']:d} "
+            f"| {result['isolated']:d} "
+            f"| {result['deg_p50']:.1f} "
+            f"| {result['deg_p90']:.1f} "
+            f"| {result['deg_p99']:.1f} "
+            f"| {result['deg_max']:d} "
+            f"| {result['archive_share']:.4f} |"
+        )
+        print(row)
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Graph assembly tool.")
+    parser.add_argument("--degree-probe", action="store_true", help="Run degree probe analysis")
+    parser.add_argument("--index", type=Path, default=Path(__file__).parent / "index", help="Path to the index database")
+    parser.add_argument("--table", default="topics", help="Table name in the index database")
+    parser.add_argument("--taus", default="0.65,0.70,0.75,0.80", help="Comma-separated list of tau values")
+    parser.add_argument("--ks", default="5,10,15", help="Comma-separated list of k values")
+
+    args = parser.parse_args()
+
+    if not args.degree_probe:
+        parser.error("only --degree-probe mode is implemented")
+
+    taus = [float(tau) for tau in args.taus.split(",")]
+    ks = [int(k) for k in args.ks.split(",")]
+
+    ids, vectors, groups = load_nodes(args.index, args.table)
+    results = degree_probe_grid(ids, vectors, groups, taus, ks)
+    _print_probe_report(ids, groups, results)
+
+if __name__ == "__main__":
+    main()
