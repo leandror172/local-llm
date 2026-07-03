@@ -40,7 +40,7 @@ llm/
   benchmarks/    # Multi-language code validation suite
   overlays/      # Portable scaffolding packages for cross-repo consistency
   modelfiles/    # Ollama Modelfile definitions
-  retrieval/     # LTG substrate — Phases 0–3 + 2.5 complete (1018-row index); Phase 4 (graph) plan ready
+  retrieval/     # LTG substrate — Phases 0–4 complete (1022-node index + 3367-edge graph + communities); next Phase 5
   docs/          # Research, patterns, portfolio, findings
 ```
 
@@ -59,4 +59,4 @@ llm/
 - **Cross-Repo Architecture** — 3 repos, one hardware platform, MCP integration layer
 - **DPO Data Collection** — passive training data from verdict-labeled inference logs
 - **Smart RAG Research** — content-linking retrieval cluster (7 sources, 5 philosophies); hub at `ref:smart-rag-research`. Converges chatbot Phase 3 + Layer 7 RAG into one substrate.
-- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph` (+ 18 narrow phase/section refs `ltg-plan-*`). Phase 0 frozen → `retrieval/DECISIONS.md`. **Phase 1 fully closed (session 59)**: extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). Findings at `ref:ltg-phase1-results`; MoE eval at `ref:ltg-phase1-moe-eval`; determinism at `ref:ltg-phase1-determinism-smart-rag-index`. **Phases 0–3 + 2.5 complete — full-corpus index 1018 rows (875 topics/113 files + 143 anchors, PR #56); Phase 4 (graph + communities) designed session 101: P4-D1–D7 locked, plan at `docs/plans/ltg-phase4-graph-communities.md` (`ref:ltg-phase4-plan`); next = execute T1–T7.**
+- **Latent Topic Graph (LTG)** — named concept + implementation plan for that substrate. Concept: `ref:concept-latent-topic-graph`. Plan: `ref:plan-latent-topic-graph` (+ 18 narrow phase/section refs `ltg-plan-*`). Phase 0 frozen → `retrieval/DECISIONS.md`. **Phase 1 fully closed (session 59)**: extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). Findings at `ref:ltg-phase1-results`; MoE eval at `ref:ltg-phase1-moe-eval`; determinism at `ref:ltg-phase1-determinism-smart-rag-index`. **Phases 0–4 complete (session 102, PR #66): 1022-node index (875 topics/113 files + 147 anchors) + `edges` table (3367: similarity τ=0.70/K=10, same_as, references) + Leiden communities (207 coarse/214 fine). Plan `ref:ltg-phase4-plan`; reports `ref:ltg-phase4-degree-probe` + `ref:ltg-phase4-acceptance` + `ref:ltg-phase4-findings`. Next = Phase 5 `relate(a,b)` — consumers read the edges table, never `alias_of` (P4-D6).**

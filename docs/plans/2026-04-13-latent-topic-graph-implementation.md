@@ -116,6 +116,10 @@ The executing session should confirm or revise each of these before Phase 1. Dec
 <!-- ref:ltg-plan-phase-4 -->
 ## Phase 4 — Graph Assembly + Community Detection (1 session)
 
+**Status: COMPLETE (session 102, 2026-07-02, PR #66).** Executed per
+`docs/plans/ltg-phase4-graph-communities.md` (`ref:ltg-phase4-plan`); reports:
+`ref:ltg-phase4-degree-probe`, `ref:ltg-phase4-acceptance`, `ref:ltg-phase4-findings`.
+
 **Goal:** Build the weighted graph and compute multi-resolution communities.
 
 **Steps:**

@@ -4,7 +4,7 @@ Module for storing embedding data in a LanceDB table.
 Functions:
 - load_embedding_jsonl: reads JSONL rows from a file.
 - rows_to_arrow_table: converts dicts to pa.Table matching SCHEMA.
-- backup_index: moves index_path → backup_dir (replacing prior backup).
+- backup_index: copies index_path → backup_dir (replacing prior backup).
 - open_or_create_table: creates or opens a LanceDB table.
 - validate_table: validates the table's row count and vector dimension.
 - main: CLI entry point for storing embeddings in LanceDB.
@@ -75,6 +75,11 @@ def build_schema(embed_dim: int) -> pa.Schema:
         # file_path via corpus.yaml group rules. Orthogonal to source_class.
         # Always derived at store-time (authoritative, not writer-supplied).
         pa.field("source_group",         pa.string()),
+        # --- Phase 4 community columns (P4-D5, ref:ltg-phase4-decisions) ---
+        # Nullable; all writers default them to null. communities.py fills them.
+        # An anchors rebuild nulls them again — derived data, regenerate after.
+        pa.field("community_coarse",     pa.int32(), nullable=True),
+        pa.field("community_fine",       pa.int32(), nullable=True),
     ])
 
 RUNS_DIR = Path(__file__).parent / "runs"
@@ -114,11 +119,16 @@ def rows_to_arrow_table(rows: List[Dict], groups: List[Dict] | None = None) -> p
     return pa.table(col_data, schema=schema)
 
 def backup_index(index_path: Path, backup_path: Path) -> None:
-    """Backups the index directory."""
+    """Copies the index directory to backup_path, replacing any prior backup.
+
+    Copy (not move) semantics: the live index dir must survive the backup so a
+    subsequent single-table overwrite writes in place, leaving sibling tables
+    (e.g. 'edges') intact. Moving the dir away would destroy them.
+    """
     if index_path.exists():
         if backup_path.exists():
             shutil.rmtree(backup_path)
-        shutil.move(str(index_path), str(backup_path))
+        shutil.copytree(index_path, backup_path)
 
 def open_or_create_table(db, table_name: str, arrow_table: pa.Table):
     """Opens or creates a LanceDB table."""
@@ -166,7 +176,8 @@ def main():
         return
     
     if not args.no_backup:
-        backup_dir = args.backup_dir or args.index.with_suffix(".bak")
+        # single-slot .bak shared across stages — hardening tracked as T-71
+        backup_dir = args.backup_dir or (args.index.parent / (args.index.name + ".bak"))
         backup_index(args.index, backup_dir)
     
     db = lancedb.connect(str(args.index))

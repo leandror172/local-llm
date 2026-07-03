@@ -228,3 +228,62 @@ Query "how do we handle memory across sessions" — `.memories/QUICK.md`'s extra
 3. **Relate preview:** No divergences between `smart-rag-repowise.md` and `smart-rag3.md` (both cover smart-RAG concepts). Mean cosine 0.663 — semantically very close. The acceptance relate file `smart-rag-claude-mem.md` was not in the Phase 1 corpus; substituted `smart-rag3.md`.
 4. **qwen2.5-coder:14b timeout issue:** 3 consecutive timeouts during test generation (warm model confirmed). Escalated to qwen3:14b which generated both test functions and implementation within the 300s timeout.
 <!-- /ref:ltg-phase2-findings -->
+
+<!-- ref:ltg-phase4-findings -->
+## Phase 4 — Graph + Communities (session 102, 2026-07-02)
+
+Full findings: `probes/phase4-degree-probe.md` (T3) + `probes/phase4-acceptance.md` (T7).
+Plan + decisions: `ref:ltg-phase4-plan`, `ref:ltg-phase4-decisions`.
+
+### What was built
+`graph.py` (edges build: exact matmul similarity @ frozen τ=0.70/K=10, `alias_of`→`same_as`
+projection, mention-based `references`; `--degree-probe` mode; `run-graph.sh`) and
+`communities.py` (networkx→igraph→Leiden RBConfiguration, seeded, coarse 0.5/fine 1.5;
+`run-communities.sh`). `edges` LanceDB table (7 fields); nodes schema 23→25 (nullable
+int32 `community_coarse`/`community_fine`, writers default null). Live: 3332 edges
+(3189/28/115), 203 coarse / 213 fine communities, rebuild ≈11 s, zero model calls.
+
+### Surprising findings / gotchas
+1. **Archive hairball never materialized** — 24.4% archive×archive edge share vs 18.3%
+   random baseline (archive = 42.8% of nodes). Union top-K caps it structurally.
+2. **Isolation is τ-only.** Isolated-node count (184 @ 0.70) is identical across all K —
+   union-kNN can only remove edges below the floor-graph, never add. The floor sets the
+   connectivity ceiling.
+3. **Phantom nodes from anchor staleness:** `references` edges scan the repo live, but
+   node rows are frozen at the last anchors rebuild — anchors created since (3 of them,
+   incl. Phase 4's own refs) appear as edge endpoints with no row; networkx auto-creates
+   them, `write_communities` silently skips them. Benign; disappears when the documented
+   rebuild order runs (anchors before graph).
+4. **Backup semantics unified (PR #66 review round, 2026-07-03):** the index dir holds TWO
+   tables, so `store.backup_index` is now **copy-based** (`copytree`) and single-sourced —
+   the original move-then-recreate destroyed the live `edges` table on every anchors rebuild,
+   and communities' private copytree backup (buggy `with_suffix('.bak')`) then clobbered the
+   only surviving copy in `index.bak`. `_write_index` overwrites only `topics`; edges survives
+   (still stale until regenerated). Single-slot `.bak` hardening remains T-71.
+5. **Mid-file `__main__` guard:** append-driven development left the guard above later
+   defs; imports (tests) never notice — only the live CLI run caught it. Guard belongs at EOF.
+6. **`same_as` count ≠ merge count by design:** 21 alias-merged topics → 28 edges (7 are M:N).
+7. **PR #66 review round (2026-07-03):** 9-angle review → 8 findings fixed via Opus/Sonnet
+   subagents + inline: copy-based backup (item 4), `--table` silently ignored in build mode,
+   zero-norm NaN guard in `_normalize_vectors`, empty-YAML `KeyError` in `load_graph_config`,
+   top-k selection unified probe↔build (one vectorized mask — probe stats can't drift from the
+   built graph), all LanceDB writes routed through `store.open_or_create_table`, leidenalg
+   **GPL-3** recorded in new `docs/ATTRIBUTIONS.md`, dataflow model (mermaid + stage×state
+   matrix) at `docs/diagrams/ltg-phase4-dataflow.md` (`ref:ltg-phase4-dataflow`). 310 tests.
+   Known-not-fixed: `(?<!/)ref:` regex matches `href:`/`xref:` substrings; double full-table
+   reads in build paths; networkx carried only for nx→igraph conversion.
+<!-- /ref:ltg-phase4-findings -->
+
+## Phase history ledger (moved from QUICK.md, session 102 — append new entries HERE, not in QUICK)
+
+- Session 59 (2026-05-04): Phase 1 closed — extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). `ref:ltg-phase1-summary`
+- Session 61 (2026-05-20): VRAM probe → bge-m3 locked, sequential constraint. `ref:ltg-vram-probe`
+- Session 72 (2026-05-28): Phase 2 complete — 69 topics / 8 files, 7/8 acceptance. `ref:ltg-phase2-findings`
+- Session 73 (2026-05-28): M-P0b — embedding upgraded bge-m3 (1024) → qwen3-embedding:8b (4096). `ref:ltg-embedding`
+- Sessions 78–80: extractor retrofit (routing.py/schemas.py/ModelClient, 148 tests, parity verified).
+- Sessions 81–82: Phase 3 discovery + decisions FROZEN (dual-path, alias-link M:N). `ref:ltg-phase3-decisions`
+- Session 94 (2026-06-20): Phase 3 complete — anchors.py, schema 18→22, 212 rows, PR #55.
+- Session 96 (2026-06-26): Phase 2.5 complete — config-driven corpus, 1018 rows (875 topics/113 files + 143 anchors), T-34 measured, uv 3.12 migration. `probes/phase2.5-calibration.md`
+- T-30 (2026-06-26): `ModelClient.embed_query` named wrapper added.
+- Session 101 (2026-07-02): Phase 4 designed — P4-D1–D7 frozen. `ref:ltg-phase4-decisions`
+- Session 102 (2026-07-02): **Phase 4 complete** — graph.py + communities.py, edges table (3367), schema 23→25, Leiden 207/214, all acceptance PASS, anchors-rebuild idempotency bug found+fixed live. PR #66. `ref:ltg-phase4-findings`, `ref:ltg-phase4-degree-probe`, `ref:ltg-phase4-acceptance`

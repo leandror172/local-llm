@@ -4,7 +4,7 @@ Tests for retrieval/store.py
 Covers:
 - load_embedding_jsonl: reads JSONL rows
 - rows_to_arrow_table: converts dicts to pa.Table matching SCHEMA
-- backup_index: moves index_path → backup_dir (replacing prior backup)
+- backup_index: copies index_path → backup_dir (live dir survives, prior backup replaced)
 - backup_index: skipped when index_path does not exist
 - open_or_create_table: creates LanceDB table mode=overwrite
 - validate_table: passes when row count + vector dim correct
@@ -157,7 +157,9 @@ def test_source_group_unmatched_is_ungrouped():
 # backup_index
 # ---------------------------------------------------------------------------
 
-def test_backup_index_moves_directory(tmp_path):
+def test_backup_index_copies_and_keeps_live_dir(tmp_path):
+    # Copy semantics: the live index dir must survive the backup so a later
+    # single-table overwrite writes in place, preserving sibling tables.
     index_path = tmp_path / "index"
     index_path.mkdir()
     (index_path / "data.bin").write_bytes(b"test")
@@ -165,7 +167,8 @@ def test_backup_index_moves_directory(tmp_path):
 
     store.backup_index(index_path, backup_path)
 
-    assert not index_path.exists()
+    assert index_path.exists()
+    assert (index_path / "data.bin").read_bytes() == b"test"
     assert backup_path.exists()
     assert (backup_path / "data.bin").exists()
 
@@ -222,3 +225,41 @@ def test_validate_table_raises_on_wrong_count(tmp_path, embed_jsonl):
     tbl = store.open_or_create_table(db, "topics", arrow_table)
     with pytest.raises((AssertionError, ValueError)):
         store.validate_table(tbl, expected_count=99, embed_dim=VECTOR_DIM)
+
+
+# ---------------------------------------------------------------------------
+# Sibling-table survival + .bak path derivation (LTG Phase 4 data-loss fix)
+# ---------------------------------------------------------------------------
+
+def test_topics_overwrite_preserves_sibling_edges_table(tmp_path, embed_jsonl):
+    # An anchors-style overwrite of 'topics' in a two-table index must leave the
+    # 'edges' table (written by the graph stage) intact — the Phase 4 data-loss bug.
+    _, raw_rows = embed_jsonl
+    import lancedb
+    db = lancedb.connect(str(tmp_path / "index"))
+    store.open_or_create_table(db, "topics", store.rows_to_arrow_table(raw_rows))
+    edges = pa.table({
+        "src_id": ["a", "b"],
+        "dst_id": ["b", "c"],
+        "weight": pa.array([1.0, 0.5], type=pa.float32()),
+    })
+    db.create_table("edges", data=edges)
+
+    # Reproduce the anchors rebuild path: backup the live index, then reconnect
+    # and overwrite topics only. Copy-based backup leaves the live dir (and its
+    # 'edges' table) in place; move-based backup would delete it here.
+    store.backup_index(tmp_path / "index", tmp_path / "index.bak")
+    db = lancedb.connect(str(tmp_path / "index"))
+    store.open_or_create_table(db, "topics", store.rows_to_arrow_table(raw_rows))
+
+    reopened = lancedb.connect(str(tmp_path / "index"))
+    assert "edges" in reopened.table_names()
+    assert reopened.open_table("edges").count_rows() == 2
+
+
+def test_bak_path_appends_on_dotted_dir_name():
+    # Backup path must APPEND '.bak' — with_suffix strips the dotted segment.
+    p = Path("/x/index.v2")
+    derived = p.parent / (p.name + ".bak")
+    assert derived.name == "index.v2.bak"
+    assert p.with_suffix(".bak").name == "index.bak"  # the bug we avoid

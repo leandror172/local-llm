@@ -294,6 +294,8 @@ def build_anchor_rows(
             "confidence": ANCHOR_CONFIDENCE,
             "anchor_key": anchor.key,
             "alias_of": None,
+            "community_coarse": None,
+            "community_fine": None,
         }
         result.append(row)
     return result
@@ -319,6 +321,8 @@ def apply_aliases(topic_rows: list[dict], matches: dict[str, list[str]]) -> list
             "confidence": TOPIC_CONFIDENCE,
             "anchor_key": None,
             "alias_of": alias_of,
+            "community_coarse": None,
+            "community_fine": None,
         }
         result.append(new_row)
     return result
@@ -414,13 +418,29 @@ def _embed_anchor_descriptions(descriptions: dict[str, str]) -> dict[str, list[f
 
 
 def _write_index(all_rows: list[dict], index_path: Path, backup_path: Path) -> None:
-    """Backup existing index then write all rows (topics + anchors) overwrite-only."""
+    """Copy-backup the index, then overwrite ONLY the 'topics' table in place.
+
+    backup_index copies (not moves) the live index, so a sibling 'edges' table
+    written by the graph stage survives an anchors rebuild untouched — only
+    'topics' is regenerated here.
+    """
     import lancedb
     from store import backup_index, open_or_create_table, rows_to_arrow_table
     backup_index(index_path, backup_path)
     db = lancedb.connect(str(index_path))
     arrow_table = rows_to_arrow_table(all_rows)
     open_or_create_table(db, "topics", arrow_table)
+
+
+def _topic_rows_only(rows: list[dict]) -> list[dict]:
+    """Drop anchor rows from a combined table read.
+
+    Makes rebuild_index idempotent on an already-combined index: without this,
+    a second in-place rebuild re-reads the previous run's anchor rows as topics,
+    duplicating every anchor and self-alias-matching each one at cosine ~1.0
+    (observed live session 102: 1165 rows / 1022 unique ids, same_as 28->229).
+    """
+    return [r for r in rows if r.get("source_class") != ANCHOR_SOURCE_CLASS]
 
 
 def rebuild_index(
@@ -433,21 +453,22 @@ def rebuild_index(
     topics+anchors via store.py overwrite path (auto-backup). Returns a RebuildReport
     carrying counts + staleness + near-miss diagnostics.
 
-    Read-before-backup invariant: topic rows are materialized from LanceDB before
-    _write_index is called (which moves index_path → backup). Reversing this order
-    would make the read fail on any run after the first.
+    Backup is copy-based (store.backup_index), so the live index — including the
+    'edges' table — persists; _write_index overwrites only 'topics' in place.
     """
     import lancedb
     anchors = ingest_anchors(repo_root)
     # Read topics BEFORE backup (backup moves index_path away)
     db = lancedb.connect(str(index_path))
-    topic_rows = db.open_table("topics").to_arrow().to_pylist()
+    topic_rows = _topic_rows_only(db.open_table("topics").to_arrow().to_pylist())
     descriptions = {a.key: describe(a, method) for a in anchors}
     anchor_vectors = _embed_anchor_descriptions(descriptions)
     matches = match_anchors(anchor_vectors, topic_rows)
     updated_topic_rows = apply_aliases(topic_rows, matches)
     anchor_rows = build_anchor_rows(anchors, anchor_vectors, descriptions=descriptions)
     all_rows = updated_topic_rows + anchor_rows
+    # append '.bak' (never with_suffix — that strips dotted dir names);
+    # single-slot .bak shared across stages — hardening tracked as T-71
     backup_path = index_path.parent / (index_path.name + ".bak")
     _write_index(all_rows, index_path, backup_path)
     staleness = staleness_warnings(updated_topic_rows, repo_root)

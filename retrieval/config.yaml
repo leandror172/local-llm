@@ -36,3 +36,13 @@ roles:
   embedding: ollama-qwen3-embedding-8b-dim-4096
   extraction_prose: ollama-qwen3-14b-no-think
   extraction_code: ollama-qwen25coder-14b
+
+# Phase 4 graph build (ref:ltg-phase4-plan). tau_floor/top_k FROZEN by the
+# Step-0 degree probe 2026-07-02 (probes/phase4-degree-probe.md).
+graph:
+  tau_floor: 0.70      # similarity-edge floor (probe: 3189 edges, 18% isolated, no archive hairball)
+  top_k: 10            # per-node kNN cap (union semantics; K=15 = fatter hubs, no new connectivity)
+  resolutions:
+    coarse: 0.5        # leiden RBConfiguration resolution_parameter
+    fine: 1.5
+  seed: 42             # leiden RNG seed — reproducible partitions
