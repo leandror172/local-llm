@@ -263,3 +263,58 @@ def test_bak_path_appends_on_dotted_dir_name():
     derived = p.parent / (p.name + ".bak")
     assert derived.name == "index.v2.bak"
     assert p.with_suffix(".bak").name == "index.bak"  # the bug we avoid
+
+
+# ---------------------------------------------------------------------------
+# T-71 — backup-chain hardening: stage-suffixed default slot + --backup-only
+# ---------------------------------------------------------------------------
+
+def test_main_default_backup_uses_stage_suffixed_slot(tmp_path, embed_jsonl, monkeypatch):
+    """An ad-hoc `store.py` run (no --backup-dir) must back up into
+    {index}.bak-store, not the shared {index}.bak slot (T-71)."""
+    input_path, _ = embed_jsonl
+    index_path = tmp_path / "index"
+    index_path.mkdir()
+    (index_path / "placeholder.bin").write_bytes(b"x")
+
+    monkeypatch.setattr(sys, "argv", [
+        "store.py", "--input", str(input_path), "--index", str(index_path),
+        "--log-dir", str(tmp_path / "runs"),
+    ])
+    store.main()
+
+    assert (tmp_path / "index.bak-store").exists()
+    assert not (tmp_path / "index.bak").exists()
+
+
+def test_main_no_backup_skips_backup(tmp_path, embed_jsonl, monkeypatch):
+    input_path, _ = embed_jsonl
+    index_path = tmp_path / "index"
+    index_path.mkdir()
+    (index_path / "placeholder.bin").write_bytes(b"x")
+
+    monkeypatch.setattr(sys, "argv", [
+        "store.py", "--input", str(input_path), "--index", str(index_path),
+        "--no-backup", "--log-dir", str(tmp_path / "runs"),
+    ])
+    store.main()
+
+    assert not (tmp_path / "index.bak-store").exists()
+    assert not (tmp_path / "index.bak").exists()
+
+
+def test_main_backup_only_takes_authoritative_bak_without_input(tmp_path, monkeypatch):
+    """--backup-only is the mode run-rebuild-all.sh uses for its single
+    pre-rebuild backup: writes plain {index}.bak, needs no --input, and exits
+    before touching the table."""
+    index_path = tmp_path / "index"
+    index_path.mkdir()
+    (index_path / "placeholder.bin").write_bytes(b"x")
+
+    monkeypatch.setattr(sys, "argv", [
+        "store.py", "--index", str(index_path), "--backup-only",
+    ])
+    store.main()
+
+    assert (tmp_path / "index.bak").exists()
+    assert (tmp_path / "index.bak" / "placeholder.bin").exists()

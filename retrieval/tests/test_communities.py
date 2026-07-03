@@ -117,4 +117,5 @@ def test_write_communities_backup_creates_bak(tmp_path: Path):
     assignments = {"a": (0, 1), "b": (0, 2)}
     write_communities(index_path, assignments, backup=True)
 
-    assert (index_path.with_suffix(".bak")).exists()
+    # T-71: ad-hoc communities runs use a stage-suffixed slot, not the shared .bak
+    assert (index_path.parent / (index_path.name + ".bak-communities")).exists()

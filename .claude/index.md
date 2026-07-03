@@ -166,6 +166,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `retrieval/run-build-corpus-manifest.sh` | Phase 2.5 corpus freeze: resolves `corpus.yaml` (intent) against `git ls-files`, hashes each file (sha256), records commit SHA, writes frozen `corpus-manifest.yaml`. `--dry-run` prints the resolution summary. | Step 0 before any full-corpus re-extraction; re-run when `corpus.yaml` changes |
 | `retrieval/run-graph.sh` | Phase 4 edges build (default): similarity (frozen τ=0.70/K=10) + `same_as` projection + `references` mention scan → LanceDB `edges` table + run report. `--degree-probe` prints τ×K grid stats without writing. | After any anchors rebuild (edges are pure derivation); re-probe before changing `graph:` config |
 | `retrieval/run-communities.sh` | Phase 4 Leiden communities (2 seeded resolutions) → writes `community_coarse`/`community_fine` back to nodes table (copytree backup) + sizes/crosstab sanity report. | After `run-graph.sh` (rebuild order: … anchors → graph → communities) |
+| `retrieval/run-rebuild-all.sh` | T-71 derivation-stage sequencer: store → anchors → graph → communities, in order, aborting on first failure. Takes ONE authoritative pre-rebuild backup into `{index}.bak` before any stage, then passes `--no-backup` to each. `--embeddings` (required), `--index`/`--repo-root` (optional, default to stage defaults). | Full derivation rebuild after extract+embed have produced a fresh embeddings JSONL |
 
 ### Personas Test Harness
 | Script | Purpose | When to Use |

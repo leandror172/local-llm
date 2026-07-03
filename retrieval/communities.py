@@ -56,9 +56,11 @@ def write_communities(
 ) -> None:
     index_path = Path(index_path)
     if backup:
-        # append '.bak' (never with_suffix — that strips dotted dir names);
-        # single-slot .bak shared across stages — hardening tracked as T-71
-        backup_index(index_path, index_path.parent / (index_path.name + ".bak"))
+        # append '.bak-communities' (never with_suffix — that strips dotted dir
+        # names). T-71: ad-hoc runs use this stage-suffixed slot;
+        # run-rebuild-all.sh takes the one authoritative {index}.bak itself
+        # and passes backup=False (--no-backup) here.
+        backup_index(index_path, index_path.parent / (index_path.name + ".bak-communities"))
 
     db = lancedb.connect(str(index_path))
     arrow = db.open_table(table_name).to_arrow()

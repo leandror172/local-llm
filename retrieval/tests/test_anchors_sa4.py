@@ -543,3 +543,59 @@ class TestRebuildIndex:
             report = rebuild_index(tmp_path, index_path)
 
         assert report.nearmiss == fake_nearmiss
+
+
+# ---------------------------------------------------------------------------
+# T-71 — backup-chain hardening: stage-suffixed default slot + backup=False routing
+# ---------------------------------------------------------------------------
+
+class TestRebuildIndexBackupRouting:
+    def test_default_backup_uses_stage_suffixed_slot(self, tmp_path):
+        """backup=True (default) must write to {index}.bak-anchors, not the
+        shared {index}.bak slot (T-71)."""
+        topic_row = _make_topic_row("t1", "docs/x.md", [1.0] + [0.0] * 3)
+        index_path = _build_tmp_index(tmp_path, [topic_row])
+
+        with patch("retrieval.anchors.ingest_anchors") as mock_ingest, \
+             patch("retrieval.anchors._embed_anchor_descriptions") as mock_embed, \
+             patch("retrieval.anchors._write_index") as mock_write:
+            mock_ingest.return_value = [ANCHOR_A]
+            mock_embed.return_value = {ANCHOR_A.key: [1.0] + [0.0] * 4095}
+
+            rebuild_index(tmp_path, index_path)
+
+        _, _, backup_path = mock_write.call_args[0]
+        assert backup_path.name == "index.bak-anchors"
+
+    def test_backup_false_skips_backup_entirely(self, tmp_path):
+        """backup=False (run-rebuild-all.sh's --no-backup) must route to
+        _write_index_no_backup, never touching any .bak* slot."""
+        topic_row = _make_topic_row("t1", "docs/x.md", [1.0] + [0.0] * 3)
+        index_path = _build_tmp_index(tmp_path, [topic_row])
+
+        with patch("retrieval.anchors.ingest_anchors") as mock_ingest, \
+             patch("retrieval.anchors._embed_anchor_descriptions") as mock_embed, \
+             patch("retrieval.anchors._write_index") as mock_write, \
+             patch("retrieval.anchors._write_index_no_backup") as mock_write_nb:
+            mock_ingest.return_value = [ANCHOR_A]
+            mock_embed.return_value = {ANCHOR_A.key: [1.0] + [0.0] * 4095}
+
+            rebuild_index(tmp_path, index_path, backup=False)
+
+        mock_write.assert_not_called()
+        mock_write_nb.assert_called_once()
+
+    def test_write_index_no_backup_does_not_create_bak(self, tmp_path):
+        """_write_index_no_backup must overwrite topics without creating any
+        backup directory."""
+        topic_row = _make_topic_row("t1", "docs/x.md", [1.0] + [0.0] * 3)
+        index_path = _build_tmp_index(tmp_path, [topic_row])
+
+        from retrieval.anchors import _write_index_no_backup
+        row = dict(topic_row, source_class="topic_extracted", confidence=0.7,
+                   anchor_key=None, alias_of=None)
+        row["vector"] = (row["vector"] + [0.0] * 4096)[:4096]
+        _write_index_no_backup([row], index_path)
+
+        assert not (index_path.parent / "index.bak").exists()
+        assert not (index_path.parent / "index.bak-anchors").exists()

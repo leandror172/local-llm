@@ -162,22 +162,39 @@ def write_run_log(log_dir: Path, input_path: Path, table_path: Path):
 def main():
     """CLI entry point for storing embeddings in LanceDB."""
     parser = argparse.ArgumentParser(description="Store embeddings in LanceDB.")
-    parser.add_argument("--input", type=Path, required=True, help="Path to embedding JSONL")
+    parser.add_argument("--input", type=Path, required=False, help="Path to embedding JSONL")
     parser.add_argument("--index", type=Path, required=True, help="Path for LanceDB directory")
     parser.add_argument("--table", default="topics", help="Table name (default: topics)")
-    parser.add_argument("--backup-dir", type=Path, default=None, help="Backup directory (default: {index}.bak)")
+    parser.add_argument("--backup-dir", type=Path, default=None, help="Backup directory (default: {index}.bak-store)")
     parser.add_argument("--no-backup", action="store_true", help="Do not perform backup")
+    parser.add_argument("--backup-only", action="store_true",
+                         help="Only take the authoritative {index}.bak backup, then exit "
+                              "(no --input needed). Used by run-rebuild-all.sh.")
     parser.add_argument("--log-dir", type=Path, default=RUNS_DIR)
-    
+
     args = parser.parse_args()
-    
-    if not args.input.exists():
-        logger.error(f"Input file {args.input} does not exist.")
-        return
-    
-    if not args.no_backup:
-        # single-slot .bak shared across stages — hardening tracked as T-71
+
+    if args.backup_only:
         backup_dir = args.backup_dir or (args.index.parent / (args.index.name + ".bak"))
+        if args.index.exists():
+            backup_index(args.index, backup_dir)
+            print(f"Backed up {args.index} to {backup_dir}")
+        else:
+            print(f"No index at {args.index} — nothing to back up")
+        return
+
+    if not args.input:
+        parser.error("--input is required unless --backup-only is set.")
+
+    if not args.input.exists():
+        parser.error(f"Input file {args.input} does not exist.")
+
+    if not args.no_backup:
+        # T-71: ad-hoc runs use a stage-suffixed slot (default {index}.bak-store)
+        # so concurrent/sequential stages never clobber each other's backup.
+        # run-rebuild-all.sh takes the one authoritative {index}.bak itself,
+        # before invoking any stage, and passes --no-backup here.
+        backup_dir = args.backup_dir or (args.index.parent / (args.index.name + ".bak-store"))
         backup_index(args.index, backup_dir)
     
     db = lancedb.connect(str(args.index))

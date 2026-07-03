@@ -102,5 +102,17 @@ untouched (roles resolution stays model-only).
 
 Full pipeline is now: extract → embed → store → anchors → **graph → communities**.
 Graph and communities are pure projections — always regenerate after any anchors rebuild
-(`run-anchors.sh` rewrites the nodes table and nulls community columns). No wrapper chaining
-built in Phase 4; revisit a `run-rebuild-all.sh` when the sequence stabilizes.
+(`run-anchors.sh` rewrites the nodes table and nulls community columns).
+
+**`retrieval/run-rebuild-all.sh` (T-71)** now sequences the four index-touching stages
+(store → anchors → graph → communities) in one call — extract/embed stay out of scope
+(GPU-expensive, run separately). Backup scheme: the wrapper takes ONE authoritative
+backup of the live index into plain `{index}.bak` *before* any stage runs, then passes
+`--no-backup` to every stage so nothing overwrites that slot mid-rebuild — `{index}.bak`
+is always the last known-good full-pipeline state. This fixes the session-102 failure
+mode where `store.py`/`anchors.py`/`communities.py` each backed up into the same shared
+`{index}.bak` slot, so a sequential rebuild's last stage silently clobbered an earlier
+stage's good backup with a corrupted intermediate state. Ad-hoc single-stage runs
+(each script invoked directly, not through the wrapper) now default to their own
+stage-suffixed slot instead (`{index}.bak-store` / `.bak-anchors` / `.bak-communities`),
+so they never collide with each other or with the wrapper's `.bak`.

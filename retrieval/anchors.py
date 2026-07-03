@@ -432,6 +432,16 @@ def _write_index(all_rows: list[dict], index_path: Path, backup_path: Path) -> N
     open_or_create_table(db, "topics", arrow_table)
 
 
+def _write_index_no_backup(all_rows: list[dict], index_path: Path) -> None:
+    """Same as _write_index but skips the backup step entirely (T-71: used when
+    the caller — e.g. run-rebuild-all.sh — has already taken its own backup)."""
+    import lancedb
+    from store import open_or_create_table, rows_to_arrow_table
+    db = lancedb.connect(str(index_path))
+    arrow_table = rows_to_arrow_table(all_rows)
+    open_or_create_table(db, "topics", arrow_table)
+
+
 def _topic_rows_only(rows: list[dict]) -> list[dict]:
     """Drop anchor rows from a combined table read.
 
@@ -447,6 +457,7 @@ def rebuild_index(
     repo_root: Path,
     index_path: Path,
     method: str = DEFAULT_METHOD,
+    backup: bool = True,
 ) -> RebuildReport:
     """Full rebuild: ingest anchors -> read topics (reuse stored vectors) -> embed
     anchor descriptions -> match -> apply aliases -> build anchor rows -> write
@@ -467,10 +478,14 @@ def rebuild_index(
     updated_topic_rows = apply_aliases(topic_rows, matches)
     anchor_rows = build_anchor_rows(anchors, anchor_vectors, descriptions=descriptions)
     all_rows = updated_topic_rows + anchor_rows
-    # append '.bak' (never with_suffix — that strips dotted dir names);
-    # single-slot .bak shared across stages — hardening tracked as T-71
-    backup_path = index_path.parent / (index_path.name + ".bak")
-    _write_index(all_rows, index_path, backup_path)
+    # append '.bak-anchors' (never with_suffix — that strips dotted dir names).
+    # T-71: ad-hoc runs use this stage-suffixed slot; run-rebuild-all.sh takes
+    # the one authoritative {index}.bak itself and passes backup=False here.
+    if backup:
+        backup_path = index_path.parent / (index_path.name + ".bak-anchors")
+        _write_index(all_rows, index_path, backup_path)
+    else:
+        _write_index_no_backup(all_rows, index_path)
     staleness = staleness_warnings(updated_topic_rows, repo_root)
     nearmiss = _nearmiss_with_vectors(anchors, updated_topic_rows, anchor_vectors)
     aliases_created = sum(1 for r in updated_topic_rows if r.get("alias_of") is not None)
@@ -499,9 +514,11 @@ def main() -> None:
     parser.add_argument("--method", default=DEFAULT_METHOD,
                         choices=[METHOD_MECHANICAL_KEY, METHOD_KEY_ONLY, METHOD_MECHANICAL],
                         help="Anchor description method")
+    parser.add_argument("--no-backup", action="store_true",
+                        help="Do not backup the index directory (T-71)")
     args = parser.parse_args()
 
-    report = rebuild_index(args.repo_root, args.index, method=args.method)
+    report = rebuild_index(args.repo_root, args.index, method=args.method, backup=not args.no_backup)
 
     print(f"Rebuilt index at {report.index_path}")
     print(f"  Anchors ingested: {report.anchors_ingested}")
