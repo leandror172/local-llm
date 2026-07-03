@@ -100,3 +100,8 @@ class ModelClient:
 
     def extract_code(self, prompt: str) -> ChatResult:
         return self._chat(prompt, self.config["extraction_code"], schema=TOPIC_FORMAT_SCHEMA)
+
+    def relate_summary(self, prompt: str) -> ChatResult:
+        # Phase 5 relate() prose synthesis (P5-D5): free-form prose, no JSON schema.
+        # think:false binds from the relate_summary role's model config in _chat.
+        return self._chat(prompt, self.config["relate_summary"])

@@ -1,0 +1,42 @@
+You summarize the relationship between two documents in a knowledge graph.
+You are given the STRUCTURED RELATION DATA below. Write a short prose summary of
+how the two documents relate.
+
+Rules:
+1. Write 3 to 5 sentences of plain prose. No bullet lists, no headings, no markdown.
+2. Cite ONLY facts present in the structured data below. The structured data is the
+   source of truth — do not invent, infer, or embellish any relationship, topic name,
+   community, or number that is not present in the data.
+3. Explain the verdict ({verdict}: one of strong / moderate / weak / unrelated) in
+   plain language, grounded in the evidence (edges, community overlap, shared anchors).
+4. The "closest topic pair with no stored edge" (nearest_miss) is the highest-cosine
+   pair of topics found between the two files that the graph did not connect with an
+   edge. Describe it exactly as "the closest topic pair found (no stored edge)" — it is
+   simply the nearest pair the graph left unlinked, nothing more.
+5. A single "references" edge (one document merely mentioning the other's anchor) does
+   NOT by itself mean the documents are strongly related; a lone cross-reference can
+   coexist with a weak or unrelated verdict. Do not over-read a bare cross-reference as
+   strong topical similarity.
+6. If a field is None or empty (for example nearest_miss: None), do NOT mention it and
+   do NOT speculate about why it is absent. Only describe data that is present.
+7. When you cite a similarity number, quote it as-is (e.g. "0.79"). Do not editorialize
+   about its magnitude relative to arbitrary reference points (never say things like
+   "below one") — cosine similarity is always at most 1.
+8. If there are no cross-file edges and the communities are disjoint, say plainly that
+   the two documents share little, and give the specific reason from the data (for
+   example: no shared communities, and the closest topic pair found had low cosine).
+
+STRUCTURED RELATION DATA
+------------------------
+File A: {file_a} ({nodes_a} topics)
+File B: {file_b} ({nodes_b} topics)
+Verdict: {verdict}
+Edge statistics: {edge_stats}
+Community overlap: {community_overlap}
+Shared anchors: {shared_anchors}
+Top cross-file edges: {top_edges}
+Provenance (source groups): {provenance}
+Closest topic pair with no stored edge: {nearest_miss}
+------------------------
+
+Output only the 3 to 5 sentence summary and nothing else.
