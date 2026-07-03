@@ -6,7 +6,7 @@ import pyarrow as pa
 import lancedb
 from typing import List
 
-from graph import Edge, EDGES_SCHEMA, edges_to_arrow_table, write_edges_table
+from graph import Edge, EDGES_SCHEMA, build_all_edges, edges_to_arrow_table, write_edges_table
 
 
 def sample_edges() -> List[Edge]:
@@ -60,6 +60,36 @@ def test_write_edges_table_roundtrip(tmp_path):
     assert reopened_table.num_rows == 3
     src_ids = reopened_table.column("src_id").to_pylist()
     assert src_ids == [edge.src_id for edge in edges]
+
+
+def test_build_all_edges_reads_from_named_table(tmp_path):
+    """build_all_edges must honor a non-default table name end-to-end
+    (load_nodes + load_alias_rows), not hard-code 'topics'."""
+    index_path = tmp_path / "index"
+    db = lancedb.connect(str(index_path))
+
+    schema = pa.schema([
+        pa.field("id", pa.string()),
+        pa.field("source_group", pa.string()),
+        pa.field("vector", pa.list_(pa.float32())),
+        pa.field("alias_of", pa.string()),
+    ])
+    table = pa.table({
+        "id": ["node1", "node2"],
+        "source_group": ["archive", "archive"],
+        "vector": [[1.0, 0.0], [0.9, 0.1]],
+        "alias_of": [None, None],
+    }, schema=schema)
+    db.create_table("custom_nodes", data=table, mode="overwrite")
+
+    config = {"tau_floor": 0.0, "top_k": 5}
+    repo_root = tmp_path  # not a git repo => ingest_anchors returns [] harmlessly
+
+    by_kind = build_all_edges(index_path, repo_root, config, table_name="custom_nodes")
+
+    assert len(by_kind["similarity"]) == 1
+    edge = by_kind["similarity"][0]
+    assert {edge.src_id, edge.dst_id} == {"node1", "node2"}
 
 
 def test_write_edges_table_overwrites(tmp_path):

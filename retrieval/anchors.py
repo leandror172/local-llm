@@ -418,7 +418,12 @@ def _embed_anchor_descriptions(descriptions: dict[str, str]) -> dict[str, list[f
 
 
 def _write_index(all_rows: list[dict], index_path: Path, backup_path: Path) -> None:
-    """Backup existing index then write all rows (topics + anchors) overwrite-only."""
+    """Copy-backup the index, then overwrite ONLY the 'topics' table in place.
+
+    backup_index copies (not moves) the live index, so a sibling 'edges' table
+    written by the graph stage survives an anchors rebuild untouched — only
+    'topics' is regenerated here.
+    """
     import lancedb
     from store import backup_index, open_or_create_table, rows_to_arrow_table
     backup_index(index_path, backup_path)
@@ -448,9 +453,8 @@ def rebuild_index(
     topics+anchors via store.py overwrite path (auto-backup). Returns a RebuildReport
     carrying counts + staleness + near-miss diagnostics.
 
-    Read-before-backup invariant: topic rows are materialized from LanceDB before
-    _write_index is called (which moves index_path → backup). Reversing this order
-    would make the read fail on any run after the first.
+    Backup is copy-based (store.backup_index), so the live index — including the
+    'edges' table — persists; _write_index overwrites only 'topics' in place.
     """
     import lancedb
     anchors = ingest_anchors(repo_root)
@@ -463,6 +467,8 @@ def rebuild_index(
     updated_topic_rows = apply_aliases(topic_rows, matches)
     anchor_rows = build_anchor_rows(anchors, anchor_vectors, descriptions=descriptions)
     all_rows = updated_topic_rows + anchor_rows
+    # append '.bak' (never with_suffix — that strips dotted dir names);
+    # single-slot .bak shared across stages — hardening tracked as T-71
     backup_path = index_path.parent / (index_path.name + ".bak")
     _write_index(all_rows, index_path, backup_path)
     staleness = staleness_warnings(updated_topic_rows, repo_root)

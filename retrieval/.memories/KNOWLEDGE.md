@@ -254,11 +254,24 @@ int32 `community_coarse`/`community_fine`, writers default null). Live: 3332 edg
    incl. Phase 4's own refs) appear as edge endpoints with no row; networkx auto-creates
    them, `write_communities` silently skips them. Benign; disappears when the documented
    rebuild order runs (anchors before graph).
-4. **Backup semantics changed:** the index dir now holds TWO tables — communities.py
-   backs up via `copytree` (store.py's move-then-recreate would orphan the edges table).
+4. **Backup semantics unified (PR #66 review round, 2026-07-03):** the index dir holds TWO
+   tables, so `store.backup_index` is now **copy-based** (`copytree`) and single-sourced —
+   the original move-then-recreate destroyed the live `edges` table on every anchors rebuild,
+   and communities' private copytree backup (buggy `with_suffix('.bak')`) then clobbered the
+   only surviving copy in `index.bak`. `_write_index` overwrites only `topics`; edges survives
+   (still stale until regenerated). Single-slot `.bak` hardening remains T-71.
 5. **Mid-file `__main__` guard:** append-driven development left the guard above later
    defs; imports (tests) never notice — only the live CLI run caught it. Guard belongs at EOF.
 6. **`same_as` count ≠ merge count by design:** 21 alias-merged topics → 28 edges (7 are M:N).
+7. **PR #66 review round (2026-07-03):** 9-angle review → 8 findings fixed via Opus/Sonnet
+   subagents + inline: copy-based backup (item 4), `--table` silently ignored in build mode,
+   zero-norm NaN guard in `_normalize_vectors`, empty-YAML `KeyError` in `load_graph_config`,
+   top-k selection unified probe↔build (one vectorized mask — probe stats can't drift from the
+   built graph), all LanceDB writes routed through `store.open_or_create_table`, leidenalg
+   **GPL-3** recorded in new `docs/ATTRIBUTIONS.md`, dataflow model (mermaid + stage×state
+   matrix) at `docs/diagrams/ltg-phase4-dataflow.md` (`ref:ltg-phase4-dataflow`). 310 tests.
+   Known-not-fixed: `(?<!/)ref:` regex matches `href:`/`xref:` substrings; double full-table
+   reads in build paths; networkx carried only for nx→igraph conversion.
 <!-- /ref:ltg-phase4-findings -->
 
 ## Phase history ledger (moved from QUICK.md, session 102 — append new entries HERE, not in QUICK)

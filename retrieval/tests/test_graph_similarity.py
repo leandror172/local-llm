@@ -6,6 +6,8 @@ Covers:
 - similarity_edges(ids: list[str], vectors, tau_floor: float, top_k: int) -> list[Edge]
 """
 
+import warnings
+
 import pytest
 import numpy as np
 import math
@@ -63,6 +65,25 @@ def test_edge_fields_and_weight_value():
     edges = similarity_edges(ids, vectors, tau_floor, top_k)
     expected_edge = Edge(src_id="x", dst_id="y", edge_kind="similarity", weight=pytest.approx(0.5), directed=False)
     assert edges == [expected_edge]
+
+def test_zero_vector_row_is_isolated_without_nan_or_warning():
+    ids = ["a", "b", "zero"]
+    vectors = np.array([
+        [math.cos(math.radians(0)), math.sin(math.radians(0))],
+        [math.cos(math.radians(10)), math.sin(math.radians(10))],
+        [0.0, 0.0],
+    ])
+    tau_floor = 0.5  # zero vector's cosine similarity to anything is 0.0, below floor
+    top_k = 10
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        edges = similarity_edges(ids, vectors, tau_floor, top_k)
+
+    for edge in edges:
+        assert not math.isnan(edge.weight)
+        assert edge.src_id != "zero"
+        assert edge.dst_id != "zero"
 
 def test_non_normalized_input_is_normalized():
     ids = ["x", "y"]

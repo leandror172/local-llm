@@ -8,10 +8,10 @@ per-session history lives in KNOWLEDGE.md ("Phase history ledger") and session l
 **Phases 0–4 COMPLETE. Next: Phase 5 `relate(a,b)` tool** (`ref:ltg-plan-phase-5`).
 
 - **Index** (`retrieval/index/`, gitignored): 875 topics (113 files) + 147 anchors = **1022 nodes**; `edges` table **3367 edges** (3222 similarity @ frozen τ=0.70/K=10 + 28 same_as + 117 references); Leiden communities 207 coarse / 214 fine, 1022/1022 assigned.
-- **Rebuild order (MANDATORY):** extract → embed → store → anchors → graph → communities. Graph + communities are pure derivation (~11 s, **zero model calls**) — always regenerate after an anchors rebuild. Anchors rebuild is idempotent since the session-102 `_topic_rows_only` fix — but store-from-embeddings first remains the canonical full path.
+- **Rebuild order (MANDATORY):** extract → embed → store → anchors → graph → communities. Graph + communities are pure derivation (~11 s, **zero model calls**) — always regenerate after an anchors rebuild. Anchors rebuild is idempotent since the session-102 `_topic_rows_only` fix — but store-from-embeddings first remains the canonical full path. Backups are **copy-based** since the PR #66 review round: `edges` survives an anchors rebuild (stale until regenerated); single-slot `.bak` hardening = T-71.
 - **Models:** extractor qwen3:14b prose / qwen2.5-coder:14b code (frozen Phase 1); embedding qwen3-embedding:8b (4096-dim).
 - **P4-D6:** consumers read relationships from the `edges` table, never the `alias_of` row column. Null community columns mean "not regenerated since last anchors rebuild".
-- **Reports:** Phase 4 → `ref:ltg-phase4-degree-probe` + `ref:ltg-phase4-acceptance` + `ref:ltg-phase4-findings`; Phase 2.5 → `probes/phase2.5-calibration.md`; Phase 2 → `ref:ltg-phase2-findings`.
+- **Reports:** Phase 4 → `ref:ltg-phase4-degree-probe` + `ref:ltg-phase4-acceptance` + `ref:ltg-phase4-findings`; dataflow model → `ref:ltg-phase4-dataflow` (stage×state matrix — update in the same PR that changes stage behavior); Phase 2.5 → `probes/phase2.5-calibration.md`; Phase 2 → `ref:ltg-phase2-findings`.
 - **Open threads:** T-63 (near-miss escalation — Phase 4 edge evidence now in hand), T-34 (noise-threshold wiring), T-31 (embed unification), T-35/T-38–T-41 (extraction experiments).
 
 ## Deeper Memory → KNOWLEDGE.md

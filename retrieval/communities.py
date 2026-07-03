@@ -4,13 +4,14 @@ Reads nodes+edges from LanceDB, writes community_coarse/community_fine back
 to the nodes table (P4-D5/P4-D7, ref:ltg-phase4-decisions).
 """
 
-import shutil
 from pathlib import Path
 import pyarrow as pa
 import lancedb
 import networkx as nx
 import igraph as ig
 import leidenalg
+
+from store import backup_index, open_or_create_table
 
 def build_graph(ids: list[str], edge_rows: list[dict]) -> nx.Graph:
     g = nx.Graph()
@@ -47,12 +48,6 @@ def leiden_assignments(graph: nx.Graph, resolutions: dict, seed: int) -> dict[st
     names = igraph_graph.vs["_nx_name"]
     return {name: (coarse_partition[i], fine_partition[i]) for i, name in enumerate(names)}
 
-def _backup_index_dir(index_path: Path) -> None:
-    bak = index_path.with_suffix(".bak")
-    if bak.exists():
-        shutil.rmtree(bak)
-    shutil.copytree(index_path, bak)
-
 def write_communities(
     index_path: Path | str,
     assignments: dict,
@@ -61,8 +56,10 @@ def write_communities(
 ) -> None:
     index_path = Path(index_path)
     if backup:
-        _backup_index_dir(index_path)
-    
+        # append '.bak' (never with_suffix — that strips dotted dir names);
+        # single-slot .bak shared across stages — hardening tracked as T-71
+        backup_index(index_path, index_path.parent / (index_path.name + ".bak"))
+
     db = lancedb.connect(str(index_path))
     arrow = db.open_table(table_name).to_arrow()
     
@@ -88,7 +85,7 @@ def write_communities(
         else:
             arrow = arrow.append_column(name, data)
     
-    db.create_table(table_name, data=arrow, mode="overwrite")
+    open_or_create_table(db, table_name, arrow)
 
 import argparse
 from collections import Counter, defaultdict

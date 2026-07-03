@@ -62,6 +62,20 @@ other_section:
         load_graph_config(valid_graph_config_path)
 
 
+def test_empty_config_file_raises_keyerror_not_typeerror(tmp_path):
+    empty_file = tmp_path / "empty.yaml"
+    empty_file.write_text("")
+    with pytest.raises(KeyError, match="graph"):
+        load_graph_config(empty_file)
+
+
+def test_all_comments_config_file_raises_keyerror_not_typeerror(tmp_path):
+    comments_only_file = tmp_path / "comments_only.yaml"
+    comments_only_file.write_text("# just a comment\n# another comment\n")
+    with pytest.raises(KeyError, match="graph"):
+        load_graph_config(comments_only_file)
+
+
 @pytest.mark.parametrize("missing_key", ["tau_floor", "top_k", "resolutions", "seed"])
 def test_missing_required_key_raises_keyerror(tmp_path, missing_key):
     graph = {
