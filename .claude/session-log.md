@@ -1,35 +1,37 @@
 # Session Log
 
 **Current Layer:** Layer 5 — Expense Classifier
-**Current Session:** 2026-07-03 — Session 104: T-71 rebuild-all sequencer + backup hardening (subagent) + LTG Phase 5 relate(a,b) design frozen + plan authored
+**Current Session:** 2026-07-03 — Session 105: LTG Phase 5 relate(a,b) implemented + accepted via Opus subagents (PR #67)
 
 ---
-## 2026-07-03 - Session 104: T-71 rebuild-all sequencer + backup hardening (subagent) + LTG Phase 5 relate(a,b) design frozen + plan authored
+## 2026-07-03 - Session 105: LTG Phase 5 relate(a,b) implemented + accepted via Opus subagents (PR #67)
 
 ### Context
 
-PR #66 (Phase 4) merged and master updated at session start; session split into T-71 execution (delegated to a Sonnet subagent) and the LTG Phase 5 design discussion in parallel.
+Session dedicated to executing the Phase 5 plan frozen in session 104. Two new single-shot Opus agent types created (`impl-opus` high / `impl-opus-med` medium, per-user directives: directed reading, advisor ≤3 first-after-contextualization, proposed-not-applied memory updates), then T1–T3 and T4–T5 run as background subagents with main-session verification, and T6 live acceptance run interactively in the main session.
 
 ### What Was Done
 
-- Merged PR #66 landing acknowledged; T-71 executed: `retrieval/run-rebuild-all.sh` sequencer (store→anchors→graph→communities) + backup-chain hardening — one authoritative pre-rebuild `{index}.bak` taken by the wrapper (`store.py --backup-only`), stages run `--no-backup`, ad-hoc single-stage runs use stage-suffixed slots (`.bak-store`/`.bak-anchors`/`.bak-communities`); `anchors.py` gained `--no-backup`; implemented by a Sonnet subagent, main-session review added a no-index guard to `--backup-only`; 321 tests green (310 baseline)
-- LTG Phase 5 `relate(a,b)` design discussed and frozen (P5-D1–D7); plan authored: `docs/plans/ltg-phase5-relate.md` (`ref:ltg-phase5-plan`) with output schema, TDD tasks T1–T6, manifest-pinned acceptance pairs
-- Acceptance pairs verified against the frozen corpus manifest: 6/7 present; `memory-architecture-design.md` lives in the web-research repo, not this corpus → pair substituted with `(smart-rag-mempalace.md, docs/research/QUICK-MEMORY.md)` (cross-source-group, also exercises provenance); copy-from-web-research recorded as opt-in fallback only
-- Read `retrieval/.memories/` QUICK+KNOWLEDGE before plan-writing; two findings folded in: fine Leiden resolution barely splits (207→214, tuning lever noted) and L2-vs-cosine foot-gun (nearest_miss computes cosine via matmul, never LanceDB ANN)
-- T-73 (relate anchor_key input extension) + T-74 (T-65 weighting excluded from relate) recorded in tasks.md
+- chore(agents): impl-opus + impl-opus-med — single-shot Opus implementation subagents (high/medium effort)
+- feat(ltg): Phase 5 relate(a,b) — pairwise relation tool (P5-D1-D7, T1-T5) — 56 new tests, 377 total green
+- docs(ltg): Phase 5 acceptance ACCEPTED — 5 pairs, bands final; memories + plan checkoff
+- PR #67 opened (`feature/ltg-phase5-relate`)
+- T6 in main session: 4 planned pairs + 1 added cross-group probe run live; every prose claim checked against the structured dicts; one prompt iteration + two formatter fixes; acceptance report `retrieval/probes/phase5-relate-acceptance.md` (`ref:ltg-phase5-acceptance`)
 
 ### Decisions Made
 
-- T-71 backup design = A+B combined: single-writer-per-slot invariant — plain `.bak` written only by run-rebuild-all pre-pipeline; every other backup path stage-suffixed (session-102 loss was a shared-mutable-slot bug)
-- P5-D1–D7 frozen (see plan): file-path-only inputs; direct edges + community overlap, no multi-hop (written escalation trigger); `nearest_miss` = narrow, principled exception to P4-D6 (sub-τ evidence can't exist in the edges table); verdict bands derived from recorded thresholds; qwen3:14b `relate_summary` is the ONLY model call, prose narrates precomputed facts, never discovers; null community columns → abort with rebuild remedy
-- Synthesis prompt lives in `retrieval/prompts/relate_summary.txt` (extract.txt pattern) — prompt iterations diffable without code churn
-- Plan mode (/plan) deliberately skipped: design was settled interactively and the deliverable is itself the plan doc — the doc review is the approval gate
+- Verdict bands FINAL at provisional values (strong: same_as or sim≥0.85; moderate: any similarity edge; weak: nearest-miss≥0.55) — pair-2 "expected low, got moderate" accepted as correct-over-expectation (one genuine 0.79 topic link); the weak/moderate nearest-miss inversion kept deliberately as evidence-honest
+- Master-plan pair-1 "divergence" criterion amended — divergence has no structured field and prose may only cite structured facts (P5-D5) → new deferred T-75 (divergences view)
+- Prose defects fixed at the rendering layer, not by prompt-wrestling: `_fmt_community_overlap` now renders counts (raw id lists read as counts by the model), `_fmt_nearest_miss(None)` renders `n/a` (explanatory sentence was paraphrased as speculation); prompt rules 6–7 added (no absent-field narration, quote numbers as-is)
+- Effort split validated: impl-opus (high) for the correctness-trap batch T1–T3, impl-opus-med for pattern-following T4–T5, T6 judgment in main session
 
 ### Next
 
-- Implement LTG Phase 5 per `ref:ltg-phase5-plan` — tasks T1–T6 (loaders/guards → aggregation → nearest_miss/banding → prose synthesis → CLI → live acceptance on the 4 pairs)
+- Merge PR #67; then LTG Phase 6 (MCP retrieve_context/relate_files) — but evaluate T-33 repo separation FIRST (`ref:ltg-plan-phase-6` pre-phase gate)
+- T-63 Phase 3.5 anchor escalation remains unblocked side-option; T-75 divergence view when a consumer needs contrast
 
 ### Gotchas
 
-- Acceptance criteria written at concept time drift with the corpus: the master plan's `(mempalace, memory-architecture-design)` pair referenced a doc that was never in this repo (lives in `web-research/docs/research/`). Pin acceptance pairs to manifest paths in plan docs
-- anchors is the only derivation stage with a live model call (embedding anchor descriptions) — it's the stage where "hermetic" subagent tests quietly stop being hermetic (T-71 subagent's smoke test crashed on a 16-dim fixture vs 4096-dim live model)
+- New `.claude/agents/*.md` were spawnable WITHOUT a session reload (harness picked both up immediately) — contradicts the T-66(c) session-97 finding; current Claude Code appears to hot-load agent files. Update T-66 evidence when next exercised
+- LLM prose "hallucinations" traced to the facts formatter, not the model: `shared [4]` (community id list) became "four shared communities"; the null-formatter's explanatory sentence became speculation. The formatter is part of the prompt — check it before blaming the model
+- Both Opus implementation subagents under-delegated to the local model (wrote code/tests directly, self-reported honestly) — Opus agents skew toward writing code themselves; convention-compliance needs stronger prompt emphasis or acceptance of the trade-off
