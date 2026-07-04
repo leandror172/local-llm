@@ -140,6 +140,14 @@ The executing session should confirm or revise each of these before Phase 1. Dec
 <!-- ref:ltg-plan-phase-5 -->
 ## Phase 5 — `relate(a, b)` Tool (0.5 session)
 
+> **✅ EXECUTED (session 105, 2026-07-03).** Implementation plan: `docs/plans/ltg-phase5-relate.md` (`ref:ltg-phase5-plan`).
+> Results: `retrieval/probes/phase5-relate-acceptance.md` (`ref:ltg-phase5-acceptance`) — replaces the
+> `relate-test-results.md` deliverable name below (probes/ convention). ACCEPTED: 4 planned pairs + 1 added
+> cross-group probe; verdict bands final at provisional values. Deviations: `(mempalace, memory-architecture-design)`
+> pair substituted with `(mempalace, QUICK-MEMORY)` (doc lives in web-research repo, outside corpus); the pair-1
+> "divergence" criterion amended → deferred `divergences` view (T-75); pair-2 "low similarity" superseded by a
+> genuine single-topic link (moderate, one 0.79 edge — reason still specific).
+
 **Goal:** Build the pairwise relation query that serves as the primary acceptance test.
 
 **Steps:**

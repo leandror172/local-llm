@@ -3,16 +3,20 @@
 *Working memory for the LTG substrate. Current-state only, keep under ~30 lines —
 per-session history lives in KNOWLEDGE.md ("Phase history ledger") and session logs.*
 
-## Current State (as of 2026-07-02, session 102)
+## Current State (as of 2026-07-04, session 106)
 
-**Phases 0–4 COMPLETE. Next: Phase 5 `relate(a,b)` tool** (`ref:ltg-plan-phase-5`).
+**Phases 0–5 COMPLETE. Next: T-33 REPO SPLIT (lean decided session 106: split BEFORE Phase 6) — freeze S-D1–S-D7 → author plan → execute (1.5–2 sessions); Phase 6 then lands in the NEW repo** (`ref:ltg-plan-phase-6`).
+
+- **T-33 split discovery** (`docs/plans/ltg-repo-split-discovery.md`, `ref:ltg-split-decisions`): imports are fully self-contained; the llm-repo coupling is data+convention — `corpus.yaml`, anchors git-grep, and the **`store.py:44` `REPO_ROOT = parent.parent` landmine** (assumes retrieval/ sits inside the corpus repo; dies at split). Engine moves; `corpus.yaml` + `index/` stay (per-repo instance data). Design stance in force NOW: engine never imports source-specific code; sources emit schema rows with distinct `source_class`. Registry/product record: `docs/ideas/ltg-model-registry-design.md` Part 2 (`ref:model-registry-library-decision`, T-76 deferred). Future code/mechanical node source: T-77 signature extractor.
+
+- **Phase 5 `relate(a,b)` ACCEPTED** (`ref:ltg-phase5-acceptance`): `relate.py` + `run-relate.sh` + `prompts/relate_summary.txt` (role `relate_summary`, qwen3:14b think:false — the only model call; `--no-summary` skips it). Read-only over topics+edges. Verdict = **cascade** on edge evidence (same_as→strong; max similarity-kind weight ≥0.85→strong; any similarity edge→moderate; else nearest-miss matmul ≥0.55→weak); bands FINAL at provisional values. Deferred: T-73 anchor-key input, T-75 divergence view.
 
 - **Index** (`retrieval/index/`, gitignored): 875 topics (113 files) + 147 anchors = **1022 nodes**; `edges` table **3367 edges** (3222 similarity @ frozen τ=0.70/K=10 + 28 same_as + 117 references); Leiden communities 207 coarse / 214 fine, 1022/1022 assigned.
 - **Rebuild order (MANDATORY):** extract → embed → store → anchors → graph → communities. Graph + communities are pure derivation (~11 s, **zero model calls**) — always regenerate after an anchors rebuild. Anchors rebuild is idempotent since the session-102 `_topic_rows_only` fix — but store-from-embeddings first remains the canonical full path. Backups are **copy-based** since the PR #66 review round: `edges` survives an anchors rebuild (stale until regenerated); single-slot `.bak` hardening = T-71.
 - **Models:** extractor qwen3:14b prose / qwen2.5-coder:14b code (frozen Phase 1); embedding qwen3-embedding:8b (4096-dim).
 - **P4-D6:** consumers read relationships from the `edges` table, never the `alias_of` row column. Null community columns mean "not regenerated since last anchors rebuild".
 - **Reports:** Phase 4 → `ref:ltg-phase4-degree-probe` + `ref:ltg-phase4-acceptance` + `ref:ltg-phase4-findings`; dataflow model → `ref:ltg-phase4-dataflow` (stage×state matrix — update in the same PR that changes stage behavior); Phase 2.5 → `probes/phase2.5-calibration.md`; Phase 2 → `ref:ltg-phase2-findings`.
-- **Open threads:** T-63 (near-miss escalation — Phase 4 edge evidence now in hand), T-34 (noise-threshold wiring), T-31 (embed unification), T-35/T-38–T-41 (extraction experiments).
+- **Open threads:** T-33 (split — S-D1–S-D7 to freeze), T-63 (near-miss escalation — Phase 4 edge evidence now in hand), T-34 (noise-threshold wiring), T-31 (embed unification), T-35/T-38–T-41 (extraction experiments), T-76 (model-registry library, deferred w/ triggers), T-77 (signature extractor node source).
 
 ## Deeper Memory → KNOWLEDGE.md
 
@@ -41,6 +45,8 @@ retrieval/
   anchors.py                # Phase 3: ref:KEY anchor ingest + alias matching (run-anchors.sh)
   graph.py                  # Phase 4: edges build (similarity/same_as/references) + degree probe (run-graph.sh)
   communities.py            # Phase 4: Leiden 2-resolution communities → nodes table (run-communities.sh)
+  relate.py                 # Phase 5: pairwise relate(a,b) — aggregation, banding, prose summary (run-relate.sh)
+  prompts/relate_summary.txt # Phase 5 synthesis prompt (template slots from structured dict)
   routing.py                # 2-arm extractor routing (retrofit, sessions 78–80)
   schemas.py                # Pydantic schemas for extractor output (retrofit)
   sweep_extractors.py       # Batch sweep runner (retrofit)
@@ -52,7 +58,7 @@ retrieval/
   run-vram-probe.sh         # VRAM co-residence probe
   run-embed.sh / run-store.sh / run-inspect.sh / run-extract-topics.sh / run-sweep-extractors.sh
   prompts/extract.txt       # Structured-output extraction prompt
-  tests/                    # 18 test files, 304 tests (pytest via `uv run`)
+  tests/                    # 24 test files, 377 tests (pytest via `uv run`)
   runs/                     # Extraction/embed outputs + graph run reports (large *-embeddings.jsonl gitignored)
   probes/                   # Acceptance + calibration findings markdown (ref-anchored)
   index/                    # LanceDB store: topics (1022 rows) + edges (3367) tables (gitignored)

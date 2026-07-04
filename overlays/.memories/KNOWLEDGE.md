@@ -299,6 +299,36 @@ registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side
 - `templates:` → `overlay_dir/templates/<tmpl_name>`
 - `manual_if_exists:` → `overlay_dir/files/<basename(dest_rel)>` (NOT templates dir)
 
+## Model-registry library decision + product topology (2026-07-04, session 106)
+
+Session-106 product-framing discussion (T-33 LTG repo split) produced decisions that bind
+overlays. Authoritative record: `docs/ideas/ltg-model-registry-design.md` Part 2
+(`ref:model-registry-library-decision`) + `docs/plans/ltg-repo-split-discovery.md`.
+
+- **`ai-backends.yaml` is one of two parents of a future shared registry library (T-76).**
+  Prior-art survey concluded: provider *transport* is commodity (LiteLLM/any-llm — delegate,
+  never rebuild); the *registry/roles layer* is the unowned library-worthy part. ai-backends
+  contributes multi-provider, priority fallback, `schema_mode` strategy, and the CLI-subprocess
+  backend (nobody else has it); `retrieval/config.yaml` contributes semantic roles + provider
+  quirk encoding. Extraction DEFERRED — triggers: first non-Ollama provider in LTG, first
+  external adopter, or a third internal consumer of the shape.
+  **Rationale:** both implementations are contained (backends resolution in `overlays/lib`,
+  `load_config()` in one retrieval module) so deferral stays cheap; real requirements arrive
+  with the first cross-provider consumer.
+  **Implication:** evolving `ai-backends.yaml` requires checking `retrieval/config.yaml`'s
+  vocabulary first (no gratuitous divergence); when T-76 fires, design multi-provider from day one.
+- **Topology rule — products depend on primitives, never product↔product:** overlays and the
+  LTG engine are products; shared needs (model registry, ref-key grammar, signature extractor
+  T-77) become layer-0 primitives both consume. Resolves "registry as public dep — and vice
+  versa?" with: no vice versa, ever.
+  **Implication:** never import LTG-engine code into overlay tooling (or vice versa); extract
+  a primitive instead.
+- **Future LTG overlay = scaffolding-only:** if/when LTG ships an overlay, it carries per-repo
+  config (corpus.yaml template, MCP registration, .memories integration) — the engine is a
+  package dependency, never overlay-distributed files. This is the B+C lesson (engine central,
+  config per-repo; wholesale-overwrite + stale-engine propagation were the paid-for failure
+  modes) applied to a second product.
+
 ## Overlay Test Convention — hermetic + ships with the overlay (2026-06-30, ref-indexing v4)
 
 PR #63 review (T-42) established how overlay code is tested. Three rules, each with a reason
