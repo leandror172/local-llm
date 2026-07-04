@@ -1,6 +1,8 @@
 # LTG Repo Split (T-33) — Discovery + Open Decision Register
 
-**Status:** DISCOVERY — decisions NOT frozen. Created session 106 (2026-07-04).
+**Status:** SUPERSEDED — S-D1–S-D7 FROZEN session 107 (2026-07-04) in
+`docs/plans/ltg-repo-split.md` (`ref:ltg-split-frozen-decisions`). This doc remains the
+discovery record (drivers, dependency map, register rationale). Created session 106.
 **Task:** T-33 (`.claude/tasks.md`). Plan-gate note: `ref:ltg-plan-phase-6`.
 **Next step:** one fresh session = freeze S-D1–S-D7 + author `docs/plans/ltg-repo-split.md`
 (the session-104 shape: freeze + plan in one sitting, execute in the following session(s)).
