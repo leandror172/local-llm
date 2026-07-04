@@ -20,12 +20,23 @@ discussion; that doc carries the registry/product half. Read both before the fre
 
 Two independent drivers align:
 
-1. **Workflow decoupling (the primary, user-confirmed driver).** LTG development stops
-   competing with llm-repo branch/session serialization. This is a constraint-driven
-   argument, stronger than the master plan's schema-stability one.
+1. **Workflow decoupling (the primary, user-confirmed driver).** The constraint, as
+   stated (session 106): **the blocking is mutual** — "there are things I want to develop
+   in the other parts of the repo, and that stops LTG, and vice-versa." Concrete example:
+   the deep session-tracking-overlay change/fix arc (sessions ~88–93) serialized the repo
+   and stalled LTG for weeks; equally, LTG phase work blocks overlay/tooling development.
+   This is a constraint-driven argument, stronger than the master plan's
+   schema-stability one.
 2. **Deliverable framing.** LTG + overlays are to be usable by other people/companies
    ("viable in the use sense, not the sell one"). Phase 6's MCP tool is LTG's first
    public-facing API — building it in the old home and moving later means designing it twice.
+
+Plus a **third, smaller driver (session 106):** portfolio evidence. The deliverable
+framing is partly career/portfolio-motivated — presentable tools alongside the
+engineer-profile/career track. Explicitly smaller ("still a bit far from the presentation
+point"), so it does NOT add engineering scope; what it does is reorder tier-3 priorities:
+**cheap-and-early visibility polish (README, quickstart, demo transcript) is worth doing
+well before any tier-3 engineering** (provider abstraction etc.), which stays deferred.
 
 Counterweights, acknowledged and accepted: ~1.5–2 sessions of split mechanics; a second
 repo's ongoing tracking overhead (session-handoff, PR flow, "which repo does this belong
@@ -87,6 +98,21 @@ cost barely rises with delay, so urgency was never the argument. The drivers are
 - ollama-bridge is already machine-global: cross-repo *consumption* never required
   cross-repo *code residence* — which is why workflow decoupling, not architecture, is
   the honest primary driver.
+- **Future LTG overlay (user-raised, session 106: "there may be a case for an LTG overlay").**
+  The eventual per-repo distribution shape: an overlay carries the **scaffolding** —
+  `corpus.yaml` template, MCP registration, `.memories/` integration, rebuild
+  conventions — while the **engine arrives as a package dependency, never via overlay**.
+  This is the session-handoff B+C lesson applied verbatim (engine central, config
+  per-repo; wholesale-file overwrite and stale-engine propagation were the failure modes
+  paid for in T-61 / session 91). Feeds S-D1 and S-D4; not split scope — recorded so the
+  freeze session designs S-D1 with this end-state in view.
+- **Licensing (tier-3 constraint, surfaced session 106).** `leidenalg` is **GPL-3** and
+  `python-igraph` **GPL-2** — the Phase 4 community stack. Internal use: unaffected.
+  Distribution as an adoptable product (tier 3): constrains the license choice — either
+  copyleft the product, or make `communities.py` an optional/swappable component.
+  T-72(3) (drop networkx, build igraph directly) goes *deeper* into GPL — fine
+  internally; caveat recorded on that task. CLAUDE.md's licensing hard rule applies the
+  moment tier 3 becomes real; decide the product license then, not now.
 
 ---
 
@@ -112,7 +138,9 @@ cost barely rises with delay, so urgency was never the argument. The drivers are
   The `DECISIONS.md` ref-coupling is the subtle one nobody will rediscover cheaply.
 - **S-D4 — New repo bootstrap.** Name; session-tracking/handoff overlay install (it becomes
   the 5th tracked repo); its own `.memories/`; PR/branch conventions; CLAUDE.md; whether
-  it gets its own LTG corpus (self-indexing) from day one or later.
+  it gets its own LTG corpus (self-indexing) from day one or later; whether per-repo
+  consumer scaffolding is eventually delivered as an **LTG overlay** (see Established §
+  "Future LTG overlay" — end-state to design toward, not split scope).
 - **S-D5 — Phase 6 MCP placement.** (a) New `retrieval-mcp` server in the new repo — the
   master plan's lean ("first external-facing deliverable"); (b) tools added to
   ollama-bridge (llm repo) importing the engine — reuses existing machine-global
@@ -125,11 +153,13 @@ cost barely rises with delay, so urgency was never the argument. The drivers are
   lean = yes), or keep the 3-line bash shims one more round? Interacts with the
   llm repo's `[ref:bash-wrappers]` convention — wrappers stay for the *instance* rebuild
   tooling regardless.
-- **S-D7 — Multi-repo session cadence.** How new-repo work interleaves with llm-repo work
-  under the user's "multiple things in this repo" constraint — the constraint that made
-  workflow decoupling the primary driver. Options: LTG sessions run wholly in the new
-  repo (llm repo only touched for instance rebuilds); or paired-session pattern.
-  User's call; the plan should encode whatever is chosen so handoffs know where to write.
+- **S-D7 — Multi-repo session cadence.** How new-repo work interleaves with llm-repo work,
+  given the now-stated constraint (see driver 1: **mutual blocking** — other-repo-part work
+  stops LTG and vice-versa; session-tracking-overlay arc as the proven example). The split
+  succeeds only if both directions unblock: LTG sessions run wholly in the new repo (llm
+  repo touched only for instance rebuilds), AND llm-repo tooling/overlay work proceeds
+  without parking LTG. Decide the cadence pattern + where handoffs write; the plan should
+  encode it explicitly.
 <!-- /ref:ltg-split-decisions -->
 
 ---
