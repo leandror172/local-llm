@@ -1,37 +1,40 @@
 # Session Log
 
 **Current Layer:** Layer 5 — Expense Classifier
-**Current Session:** 2026-07-03 — Session 105: LTG Phase 5 relate(a,b) implemented + accepted via Opus subagents (PR #67)
+**Current Session:** 2026-07-04 — Session 106: T-33 repo-split discovery + model-registry decision capture (T-76/T-77, S-D1–S-D7)
 
 ---
-## 2026-07-03 - Session 105: LTG Phase 5 relate(a,b) implemented + accepted via Opus subagents (PR #67)
+## 2026-07-04 - Session 106: T-33 repo-split discovery + model-registry decision capture (T-76/T-77, S-D1–S-D7)
 
 ### Context
 
-Session dedicated to executing the Phase 5 plan frozen in session 104. Two new single-shot Opus agent types created (`impl-opus` high / `impl-opus-med` medium, per-user directives: directed reading, advisor ≤3 first-after-contextualization, proposed-not-applied memory updates), then T1–T3 and T4–T5 run as background subagents with main-session verification, and T6 live acceptance run interactively in the main session.
+Discussion session while PR #67 (Phase 5) sat under user review — started from tasks.md + resume.sh + a full read of the LTG master plan, aimed at "what's next" and grew into the T-33 split + product-framing decision capture.
 
 ### What Was Done
 
-- chore(agents): impl-opus + impl-opus-med — single-shot Opus implementation subagents (high/medium effort)
-- feat(ltg): Phase 5 relate(a,b) — pairwise relation tool (P5-D1-D7, T1-T5) — 56 new tests, 377 total green
-- docs(ltg): Phase 5 acceptance ACCEPTED — 5 pairs, bands final; memories + plan checkoff
-- PR #67 opened (`feature/ltg-phase5-relate`)
-- T6 in main session: 4 planned pairs + 1 added cross-group probe run live; every prose claim checked against the structured dicts; one prompt iteration + two formatter fixes; acceptance report `retrieval/probes/phase5-relate-acceptance.md` (`ref:ltg-phase5-acceptance`)
+- docs(ltg): session-106 decision capture — model-registry library (T-76 deferred), T-33 split lean, T-77 signature extractor (`ltg-model-registry-design.md` restructured: Part 1 IMPLEMENTED, Part 2 = full session record)
+- docs(ltg): T-33 repo-split discovery doc — established facts + open decision register S-D1–S-D7 (`docs/plans/ltg-repo-split-discovery.md`, `ref:ltg-split-decisions`)
+- docs(ltg): split-discovery audit round — S-D7 substance (mutual blocking), LTG-overlay end-state, GPL licensing, portfolio driver
+- Prior-art web survey (LiteLLM / any-llm / AbstractCore / PyALM / LLM Master): transport layer is commodity; registry+roles layer is the unowned library-worthy 20%
+- Verified retrieval/ dependency map firsthand: all imports self-contained; real coupling = corpus.yaml paths + anchors git-grep convention + `store.py:44` REPO_ROOT landmine
+- New branch `feature/model-registry-decision` (stacked on `feature/ltg-phase5-relate` for tasks.md consistency; rebase onto master after #67 merges)
+- New feedback memory: never cat/grep a file you intend to Edit (Edit gates on Read → full file enters context twice)
 
 ### Decisions Made
 
-- Verdict bands FINAL at provisional values (strong: same_as or sim≥0.85; moderate: any similarity edge; weak: nearest-miss≥0.55) — pair-2 "expected low, got moderate" accepted as correct-over-expectation (one genuine 0.79 topic link); the weak/moderate nearest-miss inversion kept deliberately as evidence-honest
-- Master-plan pair-1 "divergence" criterion amended — divergence has no structured field and prose may only cite structured facts (P5-D5) → new deferred T-75 (divergences view)
-- Prose defects fixed at the rendering layer, not by prompt-wrestling: `_fmt_community_overlap` now renders counts (raw id lists read as counts by the model), `_fmt_nearest_miss(None)` renders `n/a` (explanatory sentence was paraphrased as speculation); prompt rules 6–7 added (no absent-field narration, quote numbers as-is)
-- Effort split validated: impl-opus (high) for the correctness-trap batch T1–T3, impl-opus-med for pattern-following T4–T5, T6 judgment in main session
+- T-33 lean: **split before Phase 6** — drivers: mutual-blocking workflow decoupling (primary, user-confirmed; session-tracking arc ~88–93 as example), deliverable framing, portfolio evidence (smaller; reorders tier-3 → cheap-and-early visibility polish). S-D1–S-D7 to freeze in a fresh session post-#67-merge (session-104 freeze+plan shape), execute after
+- T-76: model-registry shared-library extraction DEFERRED with triggers (first non-Ollama provider in LTG / first external adopter / third internal consumer); discipline rules in force (load_config stays one module; no config.yaml↔ai-backends.yaml shape divergence; multi-provider from day one when fired; delegate transport, never rebuild)
+- T-77: signature/doc extractor = layer-0 primitive, Python + tree-sitter (not bash/ctags); completes the extraction-source quadrant (code/mechanical) and dual-serves ollama-scaffolding overlay + LTG
+- Dependency topology rule: products (LTG engine, overlays) depend on layer-0 primitives (registry, ref-key grammar, sig extractor), never product↔product — resolves the "registry as public dep, vice versa?" question with no cycles
+- Product-tier framing validated: tier 1 = Phase 6 / tier 2 = Phase 8 / tier 3 = non-phase work (provider abstraction = biggest gap)
 
 ### Next
 
-- Merge PR #67; then LTG Phase 6 (MCP retrieve_context/relate_files) — but evaluate T-33 repo separation FIRST (`ref:ltg-plan-phase-6` pre-phase gate)
-- T-63 Phase 3.5 anchor escalation remains unblocked side-option; T-75 divergence view when a consumer needs contrast
+- Merge PR #67; then fresh session: freeze S-D1–S-D7 + author `docs/plans/ltg-repo-split.md` (read `ltg-repo-split-discovery.md` + registry doc Part 2 first); rebase `feature/model-registry-decision` onto master
+- Then execute the split (1.5–2 sessions); Phase 6 lands in the new repo
 
 ### Gotchas
 
-- New `.claude/agents/*.md` were spawnable WITHOUT a session reload (harness picked both up immediately) — contradicts the T-66(c) session-97 finding; current Claude Code appears to hot-load agent files. Update T-66 evidence when next exercised
-- LLM prose "hallucinations" traced to the facts formatter, not the model: `shared [4]` (community id list) became "four shared communities"; the null-formatter's explanatory sentence became speculation. The formatter is part of the prompt — check it before blaming the model
-- Both Opus implementation subagents under-delegated to the local model (wrote code/tests directly, self-reported honestly) — Opus agents skew toward writing code themselves; convention-compliance needs stronger prompt emphasis or acceptance of the trade-off
+- leidenalg is GPL-3 / python-igraph GPL-2 — irrelevant internally, but constrains tier-3 distribution license; caveat added to T-72(3) (igraph-direct deepens GPL)
+- Never cat/grep a file you intend to Edit — Edit/Write gate on the Read tool, so the content enters context twice; decide edit-vs-read-only before reading (feedback memory saved)
+- Capture audit caught 2 dropped pieces of user *intent* (LTG-overlay case, S-D7 substance) despite all *resolutions* being recorded — a closing "did we capture reasoning, not just conclusions?" pass is worth it on discovery/freeze sessions
