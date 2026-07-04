@@ -307,6 +307,37 @@ subagents (`impl-opus` high for T1–T3, `impl-opus-med` for T4–T5); T6 accept
    `docs-research` + the negative-case shape.
 <!-- /ref:ltg-phase5-findings -->
 
+<!-- ref:ltg-split-knowledge -->
+## Repo split (T-33) — session-106 discovery state (2026-07-04)
+
+Authoritative docs: `docs/plans/ltg-repo-split-discovery.md` (`ref:ltg-split-decisions`) +
+`docs/ideas/ltg-model-registry-design.md` Part 2 (`ref:model-registry-library-decision`).
+Compact operational summary for work in this directory before the split lands:
+
+- **Lean (established): split BEFORE Phase 6**; drivers = mutual-blocking workflow decoupling
+  (primary) + deliverable framing + portfolio (smaller). S-D1–S-D7 open (freeze session pending,
+  after PR #67 merges).
+- **`store.py:44` is the landmine:** `REPO_ROOT = Path(__file__).parent.parent` assumes
+  retrieval/ lives inside the corpus repo. Any new code should take `repo_root`/paths as
+  parameters (like `anchors.py` does), never derive them from `__file__`.
+- **Engine/config/data split:** `.py` files = portable engine (moves); `corpus.yaml` +
+  `corpus-manifest.yaml` + `index/` = per-repo instance data (stays). Don't blur these.
+- **Pluggable-source stance in force now:** the engine must never import source-specific
+  code; every node source (topic extractor, anchors, future T-77 signature extractor —
+  the code/mechanical quadrant) emits schema-conformant rows with a distinct `source_class`.
+  The store schema + docs ARE the plugin interface; no plugin API gets built.
+- **`config.yaml` discipline (T-76):** `load_config()` + the config schema stay in ONE module
+  (`model_client.py`); no gratuitous shape divergence vs `overlays/ai-backends.yaml` (the two
+  merge into a shared registry library when T-76 fires: first non-Ollama provider / first
+  external adopter / third internal consumer).
+- **Licensing caveat:** leidenalg GPL-3 / python-igraph GPL-2 — fine internally; tier-3
+  distribution needs a license decision (copyleft, or `communities.py` swappable). T-72(3)
+  igraph-direct deepens GPL.
+- **DECISIONS.md ref-coupling (S-D3):** its `ref:` blocks are consumed by llm-repo
+  `ref-lookup.sh` AND ingested as LTG anchors — moving the file changes the corpus and breaks
+  keys. Do not relocate it casually.
+<!-- /ref:ltg-split-knowledge -->
+
 ## Phase history ledger (moved from QUICK.md, session 102 — append new entries HERE, not in QUICK)
 
 - Session 59 (2026-05-04): Phase 1 closed — extractor frozen (qwen3:14b prose, qwen2.5-coder:14b code). `ref:ltg-phase1-summary`
@@ -321,3 +352,4 @@ subagents (`impl-opus` high for T1–T3, `impl-opus-med` for T4–T5); T6 accept
 - Session 101 (2026-07-02): Phase 4 designed — P4-D1–D7 frozen. `ref:ltg-phase4-decisions`
 - Session 102 (2026-07-02): **Phase 4 complete** — graph.py + communities.py, edges table (3367), schema 23→25, Leiden 207/214, all acceptance PASS, anchors-rebuild idempotency bug found+fixed live. PR #66. `ref:ltg-phase4-findings`, `ref:ltg-phase4-degree-probe`, `ref:ltg-phase4-acceptance`
 - Session 105 (2026-07-03): **Phase 5 complete** — relate.py + relate_summary role/prompt + CLI/wrapper, cascade banding FINAL, 5-pair acceptance ACCEPTED, 377 tests. Two Opus subagents (T1–T3, T4–T5) + main-session T6. `ref:ltg-phase5-findings`, `ref:ltg-phase5-acceptance`. New deferred: T-75 divergence view.
+- Session 106 (2026-07-04): **T-33 split discovery + model-registry decision capture** (docs only, PR #68) — split-before-Phase-6 lean, S-D1–S-D7 register, dependency map verified, T-76 registry library deferred w/ triggers, T-77 signature extractor. `ref:ltg-split-decisions`, `ref:model-registry-library-decision`, `ref:ltg-split-knowledge` (above).

@@ -23,6 +23,11 @@
 - **session-89 stage/promote + session-29 fixes:** `--payload` stage / `--id` promote / `--amend` / `--abort`; error messages name regions `role(target)@file:line`; copy-don't-move; idempotency by commit-title suffix.
 - **Deferred:** Increment-4 separate-window synthesis (documented only); local-model Placer (E1–E2) fills the same value schema.
 
+## cross-product notes (session 106, 2026-07-04)
+- **`ai-backends.yaml` is the product-mature half of a future shared model-registry library (T-76, DEFERRED w/ triggers):** its multi-provider + priority-fallback + `schema_mode` + CLI-subprocess shape merges with `retrieval/config.yaml`'s roles shape when T-76 fires. **Discipline until then: when evolving `ai-backends.yaml`, check `retrieval/config.yaml`'s vocabulary first — no gratuitous shape divergence.** Full record: `docs/ideas/ltg-model-registry-design.md` Part 2 (`ref:model-registry-library-decision`).
+- **Topology rule:** overlays and the LTG engine are *products*; both may depend on layer-0 *primitives* (model registry, ref-key grammar, T-77 signature extractor) but NEVER on each other.
+- **Future LTG overlay (idea, not scheduled):** would carry per-repo *scaffolding only* (corpus.yaml template, MCP registration, .memories integration); the engine always arrives as a package dependency — the B+C lesson (engine central, config per-repo) applied. See `docs/plans/ltg-repo-split-discovery.md`.
+
 ## installer capabilities
 - `--verify` mode available (T-58, 2026-06-26): read-only drift check per installed file; exit 1 on any DIFF/MISSING/SRC-MISSING; all categories gate exit (files, always_user_files, user_files, templates, manual_if_exists, merge_sections); EOL-normalized comparison (CRLF=LF).
 
