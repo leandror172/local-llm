@@ -873,4 +873,4 @@
 {"file_path": "retrieval/.memories/QUICK.md", "node_kind": "extracted"}
 {"file_path": "retrieval/.memories/QUICK.md", "node_kind": "extracted"}
 {"file_path": "retrieval/.memories/QUICK.md", "node_kind": "extracted"}
-{"event": "summary", "n_rows": 4096, "table_path": "index", "table_bytes": 4096}
+{"event": "summary", "n_rows": 4096, "table_path": "/mnt/i/workspaces/llm/ltg/index", "table_bytes": 4096}

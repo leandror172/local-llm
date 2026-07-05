@@ -1,9 +1,0 @@
-{"file": "docs/research/smart-rag-repowise.md", "topics_emitted": 7}
-{"file": ".memories/QUICK.md", "topics_emitted": 8}
-{"file": "docs/research/smart-rag-index.md", "topics_emitted": 8}
-{"file": ".claude/plan-v2.md", "topics_emitted": 10}
-{"file": "personas/persona-template.md", "topics_emitted": 9}
-{"file": ".memories/KNOWLEDGE.md", "topics_emitted": 10}
-{"file": "docs/ideas/smart-rag3.md", "topics_emitted": 9}
-{"file": "personas/build-persona.py", "topics_emitted": 8}
-{"event": "summary", "n_files": 8, "n_topics": 69, "total_latency_s": 5.02}
