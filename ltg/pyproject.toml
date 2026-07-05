@@ -1,0 +1,25 @@
+# llm repo's LTG *instance* project (S-D1/S-D2, docs/plans/ltg-repo-split.md).
+#
+# This is not a package — it exists so `uv run` here resolves the LTG engine
+# (sibling checkout, editable path-dependency) and exposes its ltg-* entry
+# points. The instance data lives in this directory: corpus.yaml (intent),
+# corpus-manifest.yaml (frozen resolution), config.yaml (models/roles + graph
+# thresholds probed on THIS corpus), index/ (derived, gitignored).
+#
+# S-D1 escalation note: flip the path source to an installed/published package
+# when either fires: (a) working from a machine without the sibling checkout,
+# (b) first external adopter.
+
+[project]
+name = "llm-ltg-instance"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "latent-topic-graph",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+latent-topic-graph = { path = "../../latent-topic-graph", editable = true }

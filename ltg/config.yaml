@@ -1,0 +1,63 @@
+# LTG retrieval — model client config.
+#
+# Two-level shape: named model configs under `models:`, role references under `roles:`.
+# load_config() resolves roles → full model config dicts at load time.
+#
+# Naming convention: {provider}-{model-slug}-{differentiating-params}
+# Full design: docs/ideas/ltg-model-registry-design.md
+
+models:
+  ollama-qwen3-embedding-8b-dim-4096:
+    provider: ollama
+    model: qwen3-embedding:8b
+    address: http://localhost:11434
+    embed_dim: 4096
+
+  ollama-qwen3-14b-no-think:
+    provider: ollama
+    model: qwen3:14b
+    address: http://localhost:11434
+    think: false                   # top-level payload key (NOT inside options{})
+    timeout_s: 600
+    options:
+      num_ctx: 32768
+      temperature: 0.1
+
+  ollama-qwen25coder-14b:
+    provider: ollama
+    model: qwen2.5-coder:14b
+    address: http://localhost:11434
+    timeout_s: 600
+    options:
+      num_ctx: 32768
+      temperature: 0.1
+
+  # Phase 5 relate() prose synthesis (P5-D5). Frozen prose arm (qwen3:14b),
+  # low temperature — synthesis-from-facts, not generation; think:false is a
+  # top-level payload key (NOT inside options{}). Separate model config from the
+  # extractor so summary temperature can be tuned independently at T6 acceptance.
+  ollama-qwen3-14b-relate-summary:
+    provider: ollama
+    model: qwen3:14b
+    address: http://localhost:11434
+    think: false                   # top-level payload key (NOT inside options{})
+    timeout_s: 600
+    options:
+      num_ctx: 32768
+      temperature: 0.2
+
+roles:
+  embedding: ollama-qwen3-embedding-8b-dim-4096
+  extraction_prose: ollama-qwen3-14b-no-think
+  extraction_code: ollama-qwen25coder-14b
+  relate_summary: ollama-qwen3-14b-relate-summary
+
+# Phase 4 graph build (ref:ltg-phase4-plan). tau_floor/top_k FROZEN by the
+# Step-0 degree probe 2026-07-02 (probes/phase4-degree-probe.md).
+graph:
+  tau_floor: 0.70      # similarity-edge floor (probe: 3189 edges, 18% isolated, no archive hairball)
+  top_k: 10            # per-node kNN cap (union semantics; K=15 = fatter hubs, no new connectivity)
+  resolutions:
+    coarse: 0.5        # leiden RBConfiguration resolution_parameter
+    fine: 1.5
+  seed: 42             # leiden RNG seed — reproducible partitions

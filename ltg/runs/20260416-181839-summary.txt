@@ -1,0 +1,35 @@
+
+Model                        File                                Status         Topics   Cov    NC    TPS  P-tok  O-tok
+------------------------------------------------------------------------------------------------------------------------
+gemma3:12b                   smart-rag-repowise.md               ok                  6   56%   83%   14.8   1761    591
+gemma3:12b                   QUICK.md                            ok                  6   76%  100%   19.0   1205    527
+gemma3:12b                   smart-rag-index.md                  ok                  7   34%   71%   18.6   2103    592
+gemma3:12b                   plan-v2.md                          ok                  5   32%   60%   14.1   8124    417
+gemma3:12b                   persona-template.md                 ok                  8   77%   50%   17.3   3265    634
+gemma3:12b                   KNOWLEDGE.md                        ok                  9   90%    0%   16.8   4535    696
+gemma3:12b                   smart-rag3.md                       ok                  6   50%  100%   17.4   2888    599
+gemma3:12b                   build-persona.py                    ok                  6   69%  100%   15.9   7115    694
+qwen3:14b                    smart-rag-repowise.md               ok                  7   44%  100%    9.7   1722    515
+qwen3:14b                    QUICK.md                            ok                  8   69%   75%   11.4   1197    482
+qwen3:14b                    smart-rag-index.md                  ok                  8   50%   88%   10.7   2069    576
+qwen3:14b                    plan-v2.md                          ok                 10   42%  100%    8.0   7867   1065
+qwen3:14b                    persona-template.md                 ok                  9   84%    0%    9.5   3209    483
+qwen3:14b                    KNOWLEDGE.md                        ok                 10   92%    0%    8.5   4436    632
+qwen3:14b                    smart-rag3.md                       ok                  9   48%   89%   10.0   2898    637
+qwen3:14b                    build-persona.py                    ok                  9   82%   89%    7.1   6854    591
+qwen2.5-coder:14b            smart-rag-repowise.md               ok                  8   70%    0%    6.2   1735    435
+qwen2.5-coder:14b            QUICK.md                            ok                  9   86%    0%    7.9   1210    444
+qwen2.5-coder:14b            smart-rag-index.md                  ok                  9   73%   78%    7.6   2080    535
+qwen2.5-coder:14b            plan-v2.md                          ok                  8   57%   38%    5.0   7865    609
+qwen2.5-coder:14b            persona-template.md                 ok                  8   75%   25%    6.8   3212    425
+qwen2.5-coder:14b            KNOWLEDGE.md                        ok                 10   94%    0%    6.3   4449    542
+qwen2.5-coder:14b            smart-rag3.md                       ok                  8   67%   50%    7.1   2889    500
+qwen2.5-coder:14b            build-persona.py                    ok                  8   78%   25%    4.8   6570    456
+qwen3:8b                     smart-rag-repowise.md               ok                  7   52%  100%   32.9   1722    496
+qwen3:8b                     QUICK.md                            ok                  7   36%   71%   46.9   1197    430
+qwen3:8b                     smart-rag-index.md                  ok                 10   86%  100%   45.1   2069    558
+qwen3:8b                     plan-v2.md                          ok                  5   31%  100%   33.9   7867    775
+qwen3:8b                     persona-template.md                 ok                  7   76%   57%   38.7   3209    480
+qwen3:8b                     KNOWLEDGE.md                        ok                  9   73%   22%   37.6   4436    601
+qwen3:8b                     smart-rag3.md                       ok                  8   54%   88%   41.1   2898    622
+qwen3:8b                     build-persona.py                    ok                  7   72%   71%   30.8   6854    450

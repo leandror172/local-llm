@@ -1,0 +1,652 @@
+{
+  "tag": "20260416-181839-slice",
+  "exit_threshold": 2.2,
+  "weights": {
+    "dim5": 0.35,
+    "dim6": 0.35,
+    "dim7": 0.2,
+    "dim8": 0.1
+  },
+  "data": [
+    {
+      "run_id": "8723950f-a0a8-45b4-949d-3af6e96021b0",
+      "timestamp": "2026-04-16T21:19:16.892426+00:00",
+      "model": "gemma3:12b",
+      "file": "docs/research/smart-rag-repowise.md",
+      "file_role": "long_research_doc",
+      "line_count": 54,
+      "char_count": 4907,
+      "prompt_tokens": 1761,
+      "output_tokens": 591,
+      "latency_s": 40.05,
+      "status": "ok",
+      "raw_response": "{\n  \"topics\": [\n    {\n      \"name\": \"code_intelligence_layers\",\n      \"description\": \"This topic describes the core architecture of Repowise, which builds multiple layers of intelligence (graph, git, documentation, decision) over a code repository to enhance AI agent understanding.\",\n      \"spans\": [\n        [10, 16]\n      ]\n    },\n    {\n      \"name\": \"git_co_change_analysis\",\n      \"description\": \"This topic focuses on the use of Git history, specifically identifying 'co-change pairs' (files that change together) to uncover hidden dependencies and relationships within a codebase.\",\n      \"spans\": [\n        [12, 14],\n        [26, 30],\n        [34, 35],\n        [44, 45],\n        [50, 52]\n      ]\n    },\n    {\n      \"name\": \"dependency_graph_generation\",\n      \"description\": \"This topic covers the creation of dependency graphs using tree-sitter to parse code and identify relationships between files and symbols, improving code navigation and understanding.\",\n      \"spans\": [\n        [12, 13],\n        [22, 23],\n        [33, 34],\n        [47, 48]\n      ]\n    },\n    {\n      \"name\": \"decision_record_linking\",\n      \"description\": \"This topic addresses the linking of architectural decisions to code graph nodes and tracking their staleness, providing context and rationale for code changes.\",\n      \"spans\": [\n        [14, 15],\n        [36, 37],\n        [43, 44]\n      ]\n    },\n    {\n      \"name\": \"llm_context_optimization\",\n      \"description\": \"This topic highlights the potential for Repowise to reduce the number of tokens required for LLM queries by providing more targeted context based on code dependencies and change history.\",\n      \"spans\": [\n        [18, 19],\n        [34, 35],\n        [50, 52]\n      ]\n    },\n    {\n      \"name\": \"knowledge_wiki_generation\",\n      \"description\": \"This topic describes the generation of an LLM-powered wiki with RAG capabilities, incorporating semantic search and freshness scoring to keep information up-to-date.\",\n      \"spans\": [\n        [14, 15],\n        [23, 24]\n      ]\n    }\n  ]\n}",
+      "parsed_topics": [
+        {
+          "name": "code_intelligence_layers",
+          "description": "This topic describes the core architecture of Repowise, which builds multiple layers of intelligence (graph, git, documentation, decision) over a code repository to enhance AI agent understanding.",
+          "spans": [
+            [
+              10,
+              16
+            ]
+          ]
+        },
+        {
+          "name": "git_co_change_analysis",
+          "description": "This topic focuses on the use of Git history, specifically identifying 'co-change pairs' (files that change together) to uncover hidden dependencies and relationships within a codebase.",
+          "spans": [
+            [
+              12,
+              14
+            ],
+            [
+              26,
+              30
+            ],
+            [
+              34,
+              35
+            ],
+            [
+              44,
+              45
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "dependency_graph_generation",
+          "description": "This topic covers the creation of dependency graphs using tree-sitter to parse code and identify relationships between files and symbols, improving code navigation and understanding.",
+          "spans": [
+            [
+              12,
+              13
+            ],
+            [
+              22,
+              23
+            ],
+            [
+              33,
+              34
+            ],
+            [
+              47,
+              48
+            ]
+          ]
+        },
+        {
+          "name": "decision_record_linking",
+          "description": "This topic addresses the linking of architectural decisions to code graph nodes and tracking their staleness, providing context and rationale for code changes.",
+          "spans": [
+            [
+              14,
+              15
+            ],
+            [
+              36,
+              37
+            ],
+            [
+              43,
+              44
+            ]
+          ]
+        },
+        {
+          "name": "llm_context_optimization",
+          "description": "This topic highlights the potential for Repowise to reduce the number of tokens required for LLM queries by providing more targeted context based on code dependencies and change history.",
+          "spans": [
+            [
+              18,
+              19
+            ],
+            [
+              34,
+              35
+            ],
+            [
+              50,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "knowledge_wiki_generation",
+          "description": "This topic describes the generation of an LLM-powered wiki with RAG capabilities, incorporating semantic search and freshness scoring to keep information up-to-date.",
+          "spans": [
+            [
+              14,
+              15
+            ],
+            [
+              23,
+              24
+            ]
+          ]
+        }
+      ],
+      "rubric": {
+        "dim1_structural": true,
+        "dim2_topic_count": 6,
+        "dim3_span_coverage": 0.556,
+        "dim4_noncontiguity_rate": 0.833,
+        "dim10_latency_tps": 14.8,
+        "dim11_token_economy": 0.336
+      }
+    },
+    {
+      "run_id": "d242986f-ffe5-4829-8d88-72e0cc920479",
+      "timestamp": "2026-04-16T21:24:02.543813+00:00",
+      "model": "qwen3:14b",
+      "file": "docs/research/smart-rag-repowise.md",
+      "file_role": "long_research_doc",
+      "line_count": 54,
+      "char_count": 4907,
+      "prompt_tokens": 1722,
+      "output_tokens": 515,
+      "latency_s": 52.95,
+      "status": "ok",
+      "raw_response": "{\n  \"topics\": [\n    {\n      \"name\": \"git_co_change_analysis\",\n      \"description\": \"Focuses on analyzing co-change pairs in Git commits to identify files that change together, revealing relationships missed by static analysis.\",\n      \"spans\": [[12, 14], [26, 32], [44, 45], [52, 52]]\n    },\n    {\n      \"name\": \"code_graph_intelligence\",\n      \"description\": \"Involves building and analyzing dependency graphs using tree-sitter, including community detection and centrality ranking of code elements.\",\n      \"spans\": [[12, 14], [43, 43], [52, 52]]\n    },\n    {\n      \"name\": \"llm_wiki_and_rag\",\n      \"description\": \"Describes the use of LLM-generated documentation and RAG techniques with semantic search and freshness scoring for knowledge retrieval.\",\n      \"spans\": [[14, 15], [38, 38], [52, 52]]\n    },\n    {\n      \"name\": \"decision_intelligence\",\n      \"description\": \"Links architectural decisions to graph nodes and tracks their relevance and staleness over time.\",\n      \"spans\": [[15, 15], [36, 36], [43, 43], [52, 52]]\n    },\n    {\n      \"name\": \"token_reduction_and_efficiency\",\n      \"description\": \"Highlights the efficiency gains from using structured intelligence layers, such as a 27\u00d7 reduction in tokens per query compared to naive methods.\",\n      \"spans\": [[18, 18], [52, 52]]\n    },\n    {\n      \"name\": \"infrastructure_integration\",\n      \"description\": \"Discusses how Repowise can integrate with existing tools and systems, such as `ref:KEY`, Git history, and LanceDB.\",\n      \"spans\": [[42, 47], [52, 52]]\n    },\n    {\n      \"name\": \"cross_file_coupling\",\n      \"description\": \"Explores how files can be coupled across a codebase without explicit import links, often revealed through Git co-change analysis.\",\n      \"spans\": [[25, 32], [34, 35], [52, 52]]\n    }\n  ]\n}",
+      "parsed_topics": [
+        {
+          "name": "git_co_change_analysis",
+          "description": "Focuses on analyzing co-change pairs in Git commits to identify files that change together, revealing relationships missed by static analysis.",
+          "spans": [
+            [
+              12,
+              14
+            ],
+            [
+              26,
+              32
+            ],
+            [
+              44,
+              45
+            ],
+            [
+              52,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "code_graph_intelligence",
+          "description": "Involves building and analyzing dependency graphs using tree-sitter, including community detection and centrality ranking of code elements.",
+          "spans": [
+            [
+              12,
+              14
+            ],
+            [
+              43,
+              43
+            ],
+            [
+              52,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "llm_wiki_and_rag",
+          "description": "Describes the use of LLM-generated documentation and RAG techniques with semantic search and freshness scoring for knowledge retrieval.",
+          "spans": [
+            [
+              14,
+              15
+            ],
+            [
+              38,
+              38
+            ],
+            [
+              52,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "decision_intelligence",
+          "description": "Links architectural decisions to graph nodes and tracks their relevance and staleness over time.",
+          "spans": [
+            [
+              15,
+              15
+            ],
+            [
+              36,
+              36
+            ],
+            [
+              43,
+              43
+            ],
+            [
+              52,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "token_reduction_and_efficiency",
+          "description": "Highlights the efficiency gains from using structured intelligence layers, such as a 27\u00d7 reduction in tokens per query compared to naive methods.",
+          "spans": [
+            [
+              18,
+              18
+            ],
+            [
+              52,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "infrastructure_integration",
+          "description": "Discusses how Repowise can integrate with existing tools and systems, such as `ref:KEY`, Git history, and LanceDB.",
+          "spans": [
+            [
+              42,
+              47
+            ],
+            [
+              52,
+              52
+            ]
+          ]
+        },
+        {
+          "name": "cross_file_coupling",
+          "description": "Explores how files can be coupled across a codebase without explicit import links, often revealed through Git co-change analysis.",
+          "spans": [
+            [
+              25,
+              32
+            ],
+            [
+              34,
+              35
+            ],
+            [
+              52,
+              52
+            ]
+          ]
+        }
+      ],
+      "rubric": {
+        "dim1_structural": true,
+        "dim2_topic_count": 7,
+        "dim3_span_coverage": 0.444,
+        "dim4_noncontiguity_rate": 1.0,
+        "dim10_latency_tps": 9.7,
+        "dim11_token_economy": 0.299
+      }
+    },
+    {
+      "run_id": "7ad94fb8-2422-4e6b-bc0b-69622be2fc6e",
+      "timestamp": "2026-04-16T21:33:09.920454+00:00",
+      "model": "qwen2.5-coder:14b",
+      "file": "docs/research/smart-rag-repowise.md",
+      "file_role": "long_research_doc",
+      "line_count": 54,
+      "char_count": 4907,
+      "prompt_tokens": 1735,
+      "output_tokens": 435,
+      "latency_s": 70.18,
+      "status": "ok",
+      "raw_response": "{\n  \"topics\": [\n    {\n      \"name\": \"graph_intelligence\",\n      \"description\": \"The use of tree-sitter to parse code into dependency graphs and identify logical modules and central code.\",\n      \"spans\": [\n        [12, 13]\n      ]\n    },\n    {\n      \"name\": \"git_intelligence\",\n      \"description\": \"Analysis of commit history to identify hotspots, ownership, and co-change pairs.\",\n      \"spans\": [\n        [14, 14]\n      ]\n    },\n    {\n      \"name\": \"documentation\",\n      \"description\": \"Generation of an LLM-powered wiki with semantic search and freshness scoring.\",\n      \"spans\": [\n        [15, 15]\n      ]\n    },\n    {\n      \"name\": \"decision_intelligence\",\n      \"description\": \"Tracking of architectural decisions linked to graph nodes and their staleness.\",\n      \"spans\": [\n        [16, 16]\n      ]\n    },\n    {\n      \"name\": \"local_storage\",\n      \"description\": \"Use of local storage solutions like NetworkX, LanceDB, and generated wiki pages.\",\n      \"spans\": [\n        [17, 17]\n      ]\n    },\n    {\n      \"name\": \"relation_to_projects\",\n      \"description\": \"Discussion of how Repowise can be integrated into various projects like web-research, llm repo, and Augmenting Claude Code.\",\n      \"spans\": [\n        [20, 38]\n      ]\n    },\n    {\n      \"name\": \"existing_infrastructure\",\n      \"description\": \"Connections to existing infrastructure such as the `ref:KEY` system, Git history, and tree-sitter.\",\n      \"spans\": [\n        [41, 49]\n      ]\n    },\n    {\n      \"name\": \"takeaways\",\n      \"description\": \"Summary of the new ideas from Repowise and their potential impact on the llm repo.\",\n      \"spans\": [\n        [50, 53]\n      ]\n    }\n  ]\n}",
+      "parsed_topics": [
+        {
+          "name": "graph_intelligence",
+          "description": "The use of tree-sitter to parse code into dependency graphs and identify logical modules and central code.",
+          "spans": [
+            [
+              12,
+              13
+            ]
+          ]
+        },
+        {
+          "name": "git_intelligence",
+          "description": "Analysis of commit history to identify hotspots, ownership, and co-change pairs.",
+          "spans": [
+            [
+              14,
+              14
+            ]
+          ]
+        },
+        {
+          "name": "documentation",
+          "description": "Generation of an LLM-powered wiki with semantic search and freshness scoring.",
+          "spans": [
+            [
+              15,
+              15
+            ]
+          ]
+        },
+        {
+          "name": "decision_intelligence",
+          "description": "Tracking of architectural decisions linked to graph nodes and their staleness.",
+          "spans": [
+            [
+              16,
+              16
+            ]
+          ]
+        },
+        {
+          "name": "local_storage",
+          "description": "Use of local storage solutions like NetworkX, LanceDB, and generated wiki pages.",
+          "spans": [
+            [
+              17,
+              17
+            ]
+          ]
+        },
+        {
+          "name": "relation_to_projects",
+          "description": "Discussion of how Repowise can be integrated into various projects like web-research, llm repo, and Augmenting Claude Code.",
+          "spans": [
+            [
+              20,
+              38
+            ]
+          ]
+        },
+        {
+          "name": "existing_infrastructure",
+          "description": "Connections to existing infrastructure such as the `ref:KEY` system, Git history, and tree-sitter.",
+          "spans": [
+            [
+              41,
+              49
+            ]
+          ]
+        },
+        {
+          "name": "takeaways",
+          "description": "Summary of the new ideas from Repowise and their potential impact on the llm repo.",
+          "spans": [
+            [
+              50,
+              53
+            ]
+          ]
+        }
+      ],
+      "rubric": {
+        "dim1_structural": true,
+        "dim2_topic_count": 8,
+        "dim3_span_coverage": 0.704,
+        "dim4_noncontiguity_rate": 0.0,
+        "dim10_latency_tps": 6.2,
+        "dim11_token_economy": 0.251
+      }
+    },
+    {
+      "run_id": "2ced40dd-c4c3-4e21-b244-006c95bfeff4",
+      "timestamp": "2026-04-16T21:42:22.753536+00:00",
+      "model": "qwen3:8b",
+      "file": "docs/research/smart-rag-repowise.md",
+      "file_role": "long_research_doc",
+      "line_count": 54,
+      "char_count": 4907,
+      "prompt_tokens": 1722,
+      "output_tokens": 496,
+      "latency_s": 15.06,
+      "status": "ok",
+      "raw_response": "{\n  \"topics\": [\n    {\n      \"name\": \"code_graph_intelligence\",\n      \"description\": \"The use of tree-sitter to parse code into a dependency graph with multiple tiers, including files, symbols, and call resolution with confidence scoring.\",\n      \"spans\": [[12, 12], [17, 17], [41, 41]]\n    },\n    {\n      \"name\": \"git_co_change_analysis\",\n      \"description\": \"Analyzing recent commits to identify co-changing files that do not have import links, capturing cross-file dependencies missed by static analysis.\",\n      \"spans\": [[13, 13], [25, 33], [41, 41]]\n    },\n    {\n      \"name\": \"decision_intelligence\",\n      \"description\": \"Linking architectural decisions to code graph nodes and tracking their staleness, enabling contextual awareness of design rationale.\",\n      \"spans\": [[15, 15], [36, 36], [41, 41]]\n    },\n    {\n      \"name\": \"llm_wiki_generation\",\n      \"description\": \"Generating LLM-powered wikis with semantic search and freshness scoring to provide up-to-date documentation for codebases.\",\n      \"spans\": [[14, 14], [39, 39], [41, 41]]\n    },\n    {\n      \"name\": \"code_context_enhancement\",\n      \"description\": \"Improving code editing by providing context from co-changing files, enabling more informed and less error-prone modifications.\",\n      \"spans\": [[34, 35], [41, 41]]\n    },\n    {\n      \"name\": \"token_efficiency_optimization\",\n      \"description\": \"Reducing token usage by 27\u00d7 through efficient retrieval of code context, avoiding naive context loading methods.\",\n      \"spans\": [[18, 18], [41, 41]]\n    },\n    {\n      \"name\": \"existing_infrastructure_integration\",\n      \"description\": \"Leveraging existing tools like `ref:KEY`, Git history, and `benchmarks/` results to complement and extend repowise's capabilities.\",\n      \"spans\": [[42, 49], [41, 41]]\n    }\n  ]\n}",
+      "parsed_topics": [
+        {
+          "name": "code_graph_intelligence",
+          "description": "The use of tree-sitter to parse code into a dependency graph with multiple tiers, including files, symbols, and call resolution with confidence scoring.",
+          "spans": [
+            [
+              12,
+              12
+            ],
+            [
+              17,
+              17
+            ],
+            [
+              41,
+              41
+            ]
+          ]
+        },
+        {
+          "name": "git_co_change_analysis",
+          "description": "Analyzing recent commits to identify co-changing files that do not have import links, capturing cross-file dependencies missed by static analysis.",
+          "spans": [
+            [
+              13,
+              13
+            ],
+            [
+              25,
+              33
+            ],
+            [
+              41,
+              41
+            ]
+          ]
+        },
+        {
+          "name": "decision_intelligence",
+          "description": "Linking architectural decisions to code graph nodes and tracking their staleness, enabling contextual awareness of design rationale.",
+          "spans": [
+            [
+              15,
+              15
+            ],
+            [
+              36,
+              36
+            ],
+            [
+              41,
+              41
+            ]
+          ]
+        },
+        {
+          "name": "llm_wiki_generation",
+          "description": "Generating LLM-powered wikis with semantic search and freshness scoring to provide up-to-date documentation for codebases.",
+          "spans": [
+            [
+              14,
+              14
+            ],
+            [
+              39,
+              39
+            ],
+            [
+              41,
+              41
+            ]
+          ]
+        },
+        {
+          "name": "code_context_enhancement",
+          "description": "Improving code editing by providing context from co-changing files, enabling more informed and less error-prone modifications.",
+          "spans": [
+            [
+              34,
+              35
+            ],
+            [
+              41,
+              41
+            ]
+          ]
+        },
+        {
+          "name": "token_efficiency_optimization",
+          "description": "Reducing token usage by 27\u00d7 through efficient retrieval of code context, avoiding naive context loading methods.",
+          "spans": [
+            [
+              18,
+              18
+            ],
+            [
+              41,
+              41
+            ]
+          ]
+        },
+        {
+          "name": "existing_infrastructure_integration",
+          "description": "Leveraging existing tools like `ref:KEY`, Git history, and `benchmarks/` results to complement and extend repowise's capabilities.",
+          "spans": [
+            [
+              42,
+              49
+            ],
+            [
+              41,
+              41
+            ]
+          ]
+        }
+      ],
+      "rubric": {
+        "dim1_structural": true,
+        "dim2_topic_count": 7,
+        "dim3_span_coverage": 0.519,
+        "dim4_noncontiguity_rate": 1.0,
+        "dim10_latency_tps": 32.9,
+        "dim11_token_economy": 0.288
+      }
+    },
+    {
+      "run_id": "515ce917-1c1b-4b09-a88e-9771727780f8",
+      "timestamp": "2026-04-16T21:42:09.072177+00:00",
+      "model": "qwen2.5-coder:14b",
+      "file": "personas/build-persona.py",
+      "file_role": "code_file",
+      "line_count": 478,
+      "char_count": 17799,
+      "prompt_tokens": 6570,
+      "output_tokens": 456,
+      "latency_s": 94.08,
+      "status": "ok",
+      "raw_response": "{\n  \"topics\": [\n    {\n      \"name\": \"prompt_construction\",\n      \"description\": \"Constructs prompts for the LLM to generate persona specifications.\",\n      \"spans\": [\n        [86, 134],\n        [137, 157]\n      ]\n    },\n    {\n      \"name\": \"llm_interaction\",\n      \"description\": \"Handles interactions with the LLM, including calling the model and handling responses.\",\n      \"spans\": [\n        [163, 202],\n        [204, 224]\n      ]\n    },\n    {\n      \"name\": \"spec_validation\",\n      \"description\": \"Validates the persona specification generated by the LLM to ensure it meets required criteria.\",\n      \"spans\": [\n        [207, 254]\n      ]\n    },\n    {\n      \"name\": \"display_proposal\",\n      \"description\": \"Displays the proposed persona specification to the user for review.\",\n      \"spans\": [\n        [257, 276]\n      ]\n    },\n    {\n      \"name\": \"handoff_to_creator\",\n      \"description\": \"Converts the validated persona specification into arguments for the create-persona.py script and runs it.\",\n      \"spans\": [\n        [279, 330]\n      ]\n    },\n    {\n      \"name\": \"main_flow\",\n      \"description\": \"Manages the overall flow of the persona building process, including user input, LLM interaction, and handoff to the creator script.\",\n      \"spans\": [\n        [332, 421]\n      ]\n    },\n    {\n      \"name\": \"argument_parsing\",\n      \"description\": \"Parses command-line arguments to configure the persona building process.\",\n      \"spans\": [\n        [423, 448]\n      ]\n    },\n    {\n      \"name\": \"interactive_mode\",\n      \"description\": \"Handles interactive mode where the script prompts the user for input if no description is provided.\",\n      \"spans\": [\n        [450, 474]\n      ]\n    }\n  ]\n}",
+      "parsed_topics": [
+        {
+          "name": "prompt_construction",
+          "description": "Constructs prompts for the LLM to generate persona specifications.",
+          "spans": [
+            [
+              86,
+              134
+            ],
+            [
+              137,
+              157
+            ]
+          ]
+        },
+        {
+          "name": "llm_interaction",
+          "description": "Handles interactions with the LLM, including calling the model and handling responses.",
+          "spans": [
+            [
+              163,
+              202
+            ],
+            [
+              204,
+              224
+            ]
+          ]
+        },
+        {
+          "name": "spec_validation",
+          "description": "Validates the persona specification generated by the LLM to ensure it meets required criteria.",
+          "spans": [
+            [
+              207,
+              254
+            ]
+          ]
+        },
+        {
+          "name": "display_proposal",
+          "description": "Displays the proposed persona specification to the user for review.",
+          "spans": [
+            [
+              257,
+              276
+            ]
+          ]
+        },
+        {
+          "name": "handoff_to_creator",
+          "description": "Converts the validated persona specification into arguments for the create-persona.py script and runs it.",
+          "spans": [
+            [
+              279,
+              330
+            ]
+          ]
+        },
+        {
+          "name": "main_flow",
+          "description": "Manages the overall flow of the persona building process, including user input, LLM interaction, and handoff to the creator script.",
+          "spans": [
+            [
+              332,
+              421
+            ]
+          ]
+        },
+        {
+          "name": "argument_parsing",
+          "description": "Parses command-line arguments to configure the persona building process.",
+          "spans": [
+            [
+              423,
+              448
+            ]
+          ]
+        },
+        {
+          "name": "interactive_mode",
+          "description": "Handles interactive mode where the script prompts the user for input if no description is provided.",
+          "spans": [
+            [
+              450,
+              474
+            ]
+          ]
+        }
+      ],
+      "rubric": {
+        "dim1_structural": true,
+        "dim2_topic_count": 8,
+        "dim3_span_coverage": 0.782,
+        "dim4_noncontiguity_rate": 0.25,
+        "dim10_latency_tps": 4.8,
+        "dim11_token_economy": 0.069
+      }
+    }
+  ],
+  "sources": {
+    "docs/research/smart-rag-repowise.md": "<!-- ref:rag-repowise -->\n# Repowise: Code-Graph + Git-Signal Intelligence\n\n**Source:** https://github.com/repowise-dev/repowise\n**Philosophy:** AI agents lack *institutional* knowledge about codebases \u2014 ownership, co-change, dead code, architectural rationale. Static source reading isn't enough.\n**Relevance:** **High** \u2014 clearest match for \"make Claude Code smarter about where to look\" across code repos.\n\n## Summary\n\nBuilds four intelligence layers locally over a code repository and exposes them to agents:\n\n1. **Graph Intelligence** \u2014 tree-sitter parses 14 languages into a two-tier dependency graph (files + symbols). A 3-tier call resolver with confidence scoring handles imports/aliases. Leiden community detection identifies logical modules; PageRank + betweenness centrality rank central code.\n2. **Git Intelligence** \u2014 analyzes 500 recent commits for hotspots (high churn \u00d7 complexity), ownership percentages, and **co-change pairs** (files that change together *without* import links \u2014 an edge type static analysis misses).\n3. **Documentation** \u2014 LLM-generated wiki with RAG via semantic search + freshness scoring.\n4. **Decision Intelligence** \u2014 architectural decisions linked to graph nodes, tracked for staleness.\n\n**Storage:** NetworkX (graphs), LanceDB (embeddings), generated wiki pages, git metadata \u2014 all local.\n**Claim:** 27\u00d7 fewer tokens per query vs naive context loading.\n\n## Relation to Our Projects\n\n### web-research\nPartial match. The Python code of the web-research pipeline would benefit from a dependency graph + hotspot analysis during active development, but the *research output* (scraped knowledge) is not code \u2014 so only the infrastructure side matters here. Decision Intelligence + LLM-wiki layers are more portable across domains.\n\n### Local LLMs (llm repo)\nVery high match. The llm repo has heavy cross-file coupling that static analysis *misses*: a decision in `benchmarks/lib/record-verdicts.py` ripples into `models.yaml`, `personas/registry.yaml`, Modelfiles, and session logs \u2014 none of which import each other. Git co-change is the edge type that captures this. A nightly job computing co-change edges over the last 500 commits would surface:\n- Which session logs correlate with which Modelfile updates\n- Which benchmark files co-evolve with which personas\n- Dead personas (not touched in N commits, not referenced)\n\nThis is a feature the `ref:KEY` graph can never capture because nobody writes `[ref:...]` for \"these files just happen to change together.\"\n\n### Augmenting Claude Code\nThe biggest concrete win. When Claude Code is about to edit `personas/create-persona.py`, the repowise view would say \"these 4 files typically change with it: registry.yaml, models.yaml, persona-template.md, ollama-scaffolding/README.md \u2014 budget 5 files of context, not 1.\" That's a directly actionable signal Claude Code doesn't have today, and it specifically addresses the \"what could break?\" question.\n\nThe decision-records-linked-to-graph-nodes feature matches our `ref:` blocks exactly. Making those blocks queryable *by graph proximity* (\"what decisions touched files near this one?\") is a new access path we don't currently have.\n\n### Career chat (HF Space)\nMinimal applicability. The chatbot's corpus is documentation + profile data, not code; the git-signal layer doesn't help there. However, the generated-wiki layer with freshness scoring is a pattern we could reuse: annotate chatbot context chunks with \"how recently was this mentioned\" for staleness gating.\n\n## Existing Infrastructure Connections\n\n- **`ref:KEY` system** \u2014 already a manual version of Decision Intelligence linked to content. Repowise's \"linked to graph nodes\" is the automation we don't have.\n- **Git history** \u2014 we already have rich commit messages (see `git log --oneline -5` discipline). The co-change edges computation would work out of the box.\n- **`benchmarks/` results + `~/.local/share/ollama-bridge/calls.jsonl`** \u2014 already a \"behavioral signal\" layer like git-intelligence but for LLM calls. Co-use pairs (which personas get invoked together in a session) is the LLM-call analog of git co-change.\n- **tree-sitter** \u2014 not currently used; would be a new dependency. But Python binding is tiny and only needs to run at index time.\n- **LanceDB** \u2014 matches the lightweight-embedded vector store direction mentioned in `docs/ideas/smart-rag.md`.\n- **`evaluator/` framework** \u2014 can score which co-change edges are meaningful (noise filter).\n\n## Takeaway\n\nThe three genuinely new ideas from this research cluster come from repowise: **git co-change as an edge type**, **tree-sitter dependency graphs as structural retrieval**, and **27\u00d7 token-reduction claim as a concrete target**. For the llm repo specifically, git co-change edges are a ~2-day addition that would measurably improve cross-file awareness without building anything as heavy as a full RAG pipeline.\n<!-- /ref:rag-repowise -->\n",
+    "personas/build-persona.py": "#!/usr/bin/env python3\n\"\"\"\nbuild-persona.py \u2014 LLM-driven conversational persona builder.\n\nUses a local Ollama model (my-persona-designer-q3) to analyze a user's\nfree-form description and optional codebase context, then proposes a\ncomplete persona specification. Supports one round of refinement feedback.\n\nHands off to create-persona.py --non-interactive for Modelfile generation,\nOllama registration, and registry update.\n\nUsage:\n  # Interactive (asks for description, optional refinement)\n  personas/run-build-persona.sh\n\n  # Non-interactive (pipeline-friendly)\n  personas/run-build-persona.sh --describe \"Java Spring Boot microservice developer\"\n  personas/run-build-persona.sh --describe \"Go developer\" --codebase /path/to/repo\n  personas/run-build-persona.sh --describe \"Go developer\" --dry-run\n\nSafer to invoke via the bash wrapper (whitelist-safe):\n  personas/run-build-persona.sh [args]\n\"\"\"\n\nimport argparse\nimport json\nimport subprocess\nimport sys\nfrom pathlib import Path\n\n# Resolve paths relative to this script's location (personas/)\nSCRIPT_DIR = Path(__file__).resolve().parent\nREPO_ROOT = SCRIPT_DIR.parent\n\n# Add personas/ to path for imports\nsys.path.insert(0, str(SCRIPT_DIR))\n\nfrom lib.ollama_client import ollama_chat\nfrom lib.interactive import ask, ask_confirm\nfrom models import DOMAIN_CHOICES, TEMPERATURES, MODEL_MATRIX\n\n# Import detect function from detect-persona.py (hyphenated filename \u2192 importlib)\nimport importlib.util as _ilu\n_spec = _ilu.spec_from_file_location(\"detect_persona\", SCRIPT_DIR / \"detect-persona.py\")\n_mod = _ilu.module_from_spec(_spec)\n_spec.loader.exec_module(_mod)\ndetect = _mod.detect\n\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Configuration\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nDESIGNER_MODEL = \"my-persona-designer-q3\"\n\n# Temperature name lookup (reverse of TEMPERATURES)\nTEMP_VALUE_TO_NAME = {\n    data[\"value\"]: name for name, data in TEMPERATURES.items()\n}\n\n# Valid temperatures (single source of truth from TEMPERATURES)\nVALID_TEMPERATURES = tuple(TEMP_VALUE_TO_NAME.keys())\n\n# JSON schema for structured output from the designer model\nPERSONA_SPEC_SCHEMA = {\n    \"type\": \"object\",\n    \"properties\": {\n        \"persona_name\": {\"type\": \"string\"},\n        \"domain\": {\"type\": \"string\", \"enum\": DOMAIN_CHOICES},\n        \"language\": {\"type\": \"string\"},\n        \"temperature\": {\"type\": \"number\", \"enum\": list(VALID_TEMPERATURES)},\n        \"role\": {\"type\": \"string\"},\n        \"constraints\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n        \"output_format\": {\"type\": \"string\"},\n        \"tier\": {\"type\": \"string\", \"enum\": [\"full\", \"bare\"]},\n    },\n    \"required\": [\n        \"persona_name\", \"domain\", \"language\", \"temperature\",\n        \"role\", \"constraints\", \"output_format\", \"tier\",\n    ],\n}\n\n\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Prompt construction\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef build_initial_prompt(description: str, detect_results: list | None = None) -> str:\n    \"\"\"\n    Construct the prompt for the designer model's first pass.\n\n    Args:\n        description: User's free-form description of what they want.\n        detect_results: Optional output from detect() (list of dicts).\n\n    Returns:\n        Prompt string for the LLM.\n    \"\"\"\n    parts = []\n\n    parts.append(\"You are designing an Ollama Modelfile persona. Analyze the requirements below and output a complete persona specification as JSON.\\n\")\n\n    # Inject codebase context if available\n    if detect_results:\n        top = detect_results[0]\n        parts.append(\"CODEBASE ANALYSIS (from file-based detection):\")\n        parts.append(f\"  Top match: {top['persona_name']} (confidence: {top['confidence']})\")\n        parts.append(f\"  Reason: {top['reason']}\")\n        if len(detect_results) > 1:\n            alts = \", \".join(f\"{r['persona_name']} ({r['confidence']})\" for r in detect_results[1:])\n            parts.append(f\"  Alternatives: {alts}\")\n        parts.append(\"\")\n\n    parts.append(f\"USER REQUEST: {description}\")\n    parts.append(\"\")\n\n    # Provide available options as context\n    parts.append(\"AVAILABLE OPTIONS:\")\n    parts.append(f\"  Domains: {', '.join(DOMAIN_CHOICES)}\")\n    parts.append(f\"  Temperatures: 0.1 (deterministic), 0.3 (balanced), 0.7 (creative)\")\n    parts.append(f\"  Tiers: full (standalone with SYSTEM prompt), bare (for external tools)\")\n    parts.append(f\"  Name pattern: my-<slug>-q3 (e.g., my-java-q3, my-fastapi-q3)\")\n    parts.append(\"\")\n\n    parts.append(\"CONSTRAINT GUIDELINES:\")\n    parts.append(\"  - Each constraint MUST start with 'MUST' or 'MUST NOT'\")\n    parts.append(\"  - Target specific, observable failure modes (not vague goals)\")\n    parts.append(\"  - 4-7 constraints total (7-8B models follow fewer rules more reliably)\")\n    parts.append(\"  - Example good: 'MUST use jakarta.* namespace, NOT javax.*'\")\n    parts.append(\"  - Example bad: 'MUST write good code'\")\n    parts.append(\"\")\n\n    parts.append(\"Output a JSON object with these exact keys: persona_name, domain, language, temperature, role, constraints, output_format, tier.\")\n\n    return \"\\n\".join(parts)\n\n\ndef build_refinement_prompt(original_spec: dict, feedback: str) -> str:\n    \"\"\"\n    Construct the prompt for the refinement pass.\n\n    Args:\n        original_spec: The JSON spec from the first pass.\n        feedback: User's free-form feedback on what to change.\n\n    Returns:\n        Prompt string for the LLM.\n    \"\"\"\n    parts = []\n\n    parts.append(\"You previously proposed this persona specification:\")\n    parts.append(json.dumps(original_spec, indent=2))\n    parts.append(\"\")\n    parts.append(f\"The user wants these changes: {feedback}\")\n    parts.append(\"\")\n    parts.append(\"Output the REVISED JSON specification with the same keys. Apply the requested changes while keeping everything else intact.\")\n\n    return \"\\n\".join(parts)\n\n\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# LLM interaction\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef call_designer(prompt: str, model: str = DESIGNER_MODEL, verbose: bool = False) -> dict:\n    \"\"\"\n    Call the designer model with structured output.\n\n    Args:\n        prompt: The constructed prompt.\n        model: Ollama model name to use (default: DESIGNER_MODEL).\n        verbose: If True, print prompt and raw response to stderr.\n\n    Returns:\n        Parsed JSON dict from the LLM.\n\n    Raises:\n        RuntimeError: If LLM returns invalid JSON or connection fails.\n    \"\"\"\n    if verbose:\n        print(f\"\\n[VERBOSE] Prompt ({len(prompt)} chars):\\n{prompt}\\n\", file=sys.stderr)\n\n    try:\n        response = ollama_chat(\n            prompt,\n            model=model,\n            format_schema=PERSONA_SPEC_SCHEMA,\n        )\n    except (ConnectionError, TimeoutError, RuntimeError) as e:\n        raise RuntimeError(f\"LLM call failed: {e}\") from e\n\n    if verbose:\n        print(f\"[VERBOSE] Raw response:\\n{response['content']}\\n\", file=sys.stderr)\n\n    try:\n        spec = json.loads(response[\"content\"])\n    except json.JSONDecodeError as e:\n        raise RuntimeError(\n            f\"LLM returned invalid JSON: {e}\\nRaw content: {response['content'][:500]}\"\n        ) from e\n\n    return spec\n\n\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Validation\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef validate_spec(spec: dict) -> list[str]:\n    \"\"\"\n    Check that the LLM's proposed spec has valid values.\n\n    Returns:\n        List of error strings (empty = valid).\n    \"\"\"\n    errors = []\n\n    # Check required keys\n    required = [\"persona_name\", \"domain\", \"language\", \"temperature\", \"role\", \"constraints\", \"output_format\", \"tier\"]\n    for key in required:\n        if key not in spec:\n            errors.append(f\"Missing key: {key}\")\n\n    if errors:\n        return errors  # Can't validate further without keys\n\n    # Domain\n    if spec[\"domain\"] not in DOMAIN_CHOICES:\n        errors.append(f\"Invalid domain '{spec['domain']}'. Must be one of: {', '.join(DOMAIN_CHOICES)}\")\n\n    # Temperature\n    if spec[\"temperature\"] not in VALID_TEMPERATURES:\n        temps = \", \".join(str(t) for t in sorted(VALID_TEMPERATURES))\n        errors.append(f\"Invalid temperature {spec['temperature']}. Must be one of: {temps}\")\n\n    # Name pattern\n    name = spec.get(\"persona_name\", \"\")\n    if not name.startswith(\"my-\"):\n        errors.append(f\"Persona name '{name}' must start with 'my-'\")\n\n    # Constraints\n    constraints = spec.get(\"constraints\", [])\n    if not isinstance(constraints, list):\n        errors.append(\"constraints must be an array\")\n    elif len(constraints) == 0:\n        errors.append(\"Must have at least one constraint\")\n    elif len(constraints) > 8:\n        errors.append(f\"Too many constraints ({len(constraints)}). Max 8 for 7-8B reliability.\")\n\n    # Tier\n    if spec.get(\"tier\") not in (\"full\", \"bare\"):\n        errors.append(f\"Invalid tier '{spec.get('tier')}'. Must be 'full' or 'bare'\")\n\n    return errors\n\n\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Display\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef display_proposal(spec: dict) -> None:\n    \"\"\"Pretty-print the proposed persona spec for user review.\"\"\"\n    print(\"\\n\u2501\u2501\u2501 Proposed Persona \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\")\n    print(f\"  Name:        {spec.get('persona_name', '?')}\")\n    print(f\"  Domain:      {spec.get('domain', '?')}\")\n    print(f\"  Language:    {spec.get('language', '?')}\")\n    temp = spec.get('temperature', '?')\n    temp_name = TEMP_VALUE_TO_NAME.get(temp, '?')\n    print(f\"  Temperature: {temp} ({temp_name})\")\n    print(f\"  Tier:        {spec.get('tier', '?')}\")\n    print(f\"  Role:        {spec.get('role', '?')}\")\n    print(f\"  Format:      {spec.get('output_format', '?')}\")\n    print(\"  Constraints:\")\n    for i, c in enumerate(spec.get(\"constraints\", []), 1):\n        print(f\"    {i}. {c}\")\n    print(\"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\")\n\n\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Handoff to create-persona.py\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef build_creator_command(spec: dict, dry_run: bool = False) -> list[str]:\n    \"\"\"\n    Convert the LLM's spec dict into create-persona.py --non-interactive flags.\n\n    Args:\n        spec: Validated persona specification dict.\n        dry_run: If True, add --dry-run flag.\n\n    Returns:\n        List of command arguments.\n    \"\"\"\n    creator = str(SCRIPT_DIR / \"run-create-persona.sh\")\n\n    temp_name = TEMP_VALUE_TO_NAME.get(spec[\"temperature\"], \"balanced\")\n\n    cmd = [\n        creator,\n        \"--non-interactive\",\n        \"--role\", spec[\"role\"],\n        \"--domain\", spec[\"domain\"],\n        \"--name\", spec[\"persona_name\"],\n        \"--temperature\", temp_name,\n        \"--tier\", spec.get(\"tier\", \"full\"),\n        \"--output-format\", spec[\"output_format\"],\n        \"--constraints\", \",\".join(c.replace(\",\", \";\") for c in spec[\"constraints\"]),\n    ]\n\n    if spec.get(\"language\"):\n        cmd.extend([\"--language\", spec[\"language\"]])\n\n    if dry_run:\n        cmd.append(\"--dry-run\")\n\n    return cmd\n\n\ndef handoff_to_creator(spec: dict, dry_run: bool = False) -> int:\n    \"\"\"\n    Run create-persona.py --non-interactive with the spec.\n\n    Returns:\n        Exit code from the creator script.\n    \"\"\"\n    cmd = build_creator_command(spec, dry_run=dry_run)\n    print(f\"\\n[HANDOFF] {' '.join(cmd[:4])} ...\")\n    result = subprocess.run(cmd)\n    return result.returncode\n\n\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n# Main flow\n# \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef run(description: str, codebase_path: str | None = None,\n        dry_run: bool = False, json_only: bool = False,\n        skip_refinement: bool = False, designer_model: str = DESIGNER_MODEL,\n        verbose: bool = False) -> int:\n    \"\"\"\n    Main entry point for the conversational builder flow.\n\n    Args:\n        description: User's free-form persona description.\n        codebase_path: Optional path to scan with detect().\n        dry_run: If True, don't write files (preview only).\n        json_only: If True, output raw JSON and exit (for testing).\n        skip_refinement: If True, skip the refinement feedback step.\n        designer_model: Ollama model to use as the persona designer.\n        verbose: If True, print prompts and raw responses to stderr.\n\n    Returns:\n        Exit code (0 = success).\n    \"\"\"\n    # Step 1: Codebase detection (optional)\n    detect_results = None\n    if codebase_path:\n        print(f\"[DETECT] Scanning {codebase_path}...\")\n        try:\n            detect_results = detect(codebase_path)\n            top = detect_results[0]\n            print(f\"[DETECT] Top match: {top['persona_name']} (confidence: {top['confidence']})\")\n        except Exception as e:\n            print(f\"[DETECT] Warning: detection failed ({e}), continuing without codebase context\")\n            detect_results = None\n\n    # Step 2: Initial LLM call\n    print(f\"[LLM] Generating persona proposal (model: {designer_model})...\")\n    prompt = build_initial_prompt(description, detect_results)\n\n    try:\n        spec = call_designer(prompt, model=designer_model, verbose=verbose)\n    except RuntimeError as e:\n        print(f\"[ERROR] {e}\", file=sys.stderr)\n        return 1\n\n    # Step 3: Validate\n    errors = validate_spec(spec)\n    if errors:\n        print(\"[WARN] LLM produced spec with issues:\")\n        for err in errors:\n            print(f\"  - {err}\")\n        print(\"[WARN] Proceeding with best-effort values.\")\n\n    # json_only mode: output and exit (for testing)\n    if json_only:\n        print(json.dumps(spec, indent=2))\n        return 0\n\n    # Step 4: Display proposal\n    display_proposal(spec)\n\n    # Step 5: Refinement pass (optional)\n    if not skip_refinement:\n        wants_changes = ask_confirm(\"\\nWant to refine this proposal?\", default=False)\n        if wants_changes:\n            feedback = ask(\"What would you like to change?\")\n            print(\"[LLM] Refining proposal...\")\n            refine_prompt = build_refinement_prompt(spec, feedback)\n            try:\n                spec = call_designer(refine_prompt, model=designer_model, verbose=verbose)\n            except RuntimeError as e:\n                print(f\"[ERROR] Refinement failed: {e}\", file=sys.stderr)\n                print(\"        Using original proposal.\")\n\n            errors = validate_spec(spec)\n            if errors:\n                print(\"[WARN] Refined spec has issues:\")\n                for err in errors:\n                    print(f\"  - {err}\")\n\n            display_proposal(spec)\n\n    # Step 6: Confirm and hand off\n    if not dry_run:\n        proceed = ask_confirm(\"\\nCreate this persona?\", default=True)\n        if not proceed:\n            print(\"Aborted.\")\n            return 0\n\n    return handoff_to_creator(spec, dry_run=dry_run)\n\n\ndef parse_args():\n    p = argparse.ArgumentParser(\n        description=\"LLM-driven persona builder. Uses AI to propose a complete persona from your description.\",\n        formatter_class=argparse.RawDescriptionHelpFormatter,\n        epilog=\"Examples:\\n\"\n               \"  personas/run-build-persona.sh --describe 'Java Spring Boot microservice dev'\\n\"\n               \"  personas/run-build-persona.sh --describe 'Go developer' --codebase /path/to/repo\\n\"\n               \"  personas/run-build-persona.sh --describe 'Python FastAPI dev' --dry-run\\n\"\n               \"  personas/run-build-persona.sh  # interactive (asks for description)\\n\",\n    )\n    p.add_argument(\"--describe\", metavar=\"TEXT\",\n                   help=\"Free-form description of the persona you want.\")\n    p.add_argument(\"--codebase\", metavar=\"PATH\",\n                   help=\"Path to a codebase to analyze for language/framework hints.\")\n    p.add_argument(\"--dry-run\", action=\"store_true\",\n                   help=\"Preview the generated persona without writing files.\")\n    p.add_argument(\"--json-only\", action=\"store_true\",\n                   help=\"Output raw JSON proposal and exit (for testing/piping).\")\n    p.add_argument(\"--skip-refinement\", action=\"store_true\",\n                   help=\"Skip the refinement feedback step.\")\n    p.add_argument(\"--designer-model\", metavar=\"MODEL\", default=DESIGNER_MODEL,\n                   help=f\"Ollama model to use as persona designer (default: {DESIGNER_MODEL}).\")\n    p.add_argument(\"--verbose\", action=\"store_true\",\n                   help=\"Print prompts and raw LLM responses to stderr (useful for debugging).\")\n    return p.parse_args()\n\n\ndef main() -> int:\n    args = parse_args()\n\n    # Interactive mode: ask for description if not provided\n    description = args.describe\n    if not description:\n        print(\"\\n\u2501\u2501\u2501 Persona Builder \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\")\n        print(\"Describe the persona you want in plain language.\")\n        print(\"Examples:\")\n        print(\"  'Java Spring Boot microservice developer with strict Jakarta EE'\")\n        print(\"  'Python data scientist for pandas and sklearn workflows'\")\n        print(\"  'Go gRPC service developer for Kubernetes'\")\n        print(\"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\\n\")\n        description = ask(\"Describe the persona you want\")\n\n    return run(\n        description=description,\n        codebase_path=args.codebase,\n        dry_run=args.dry_run,\n        json_only=args.json_only,\n        skip_refinement=args.skip_refinement,\n        designer_model=args.designer_model,\n        verbose=args.verbose,\n    )\n\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n"
+  }
+}

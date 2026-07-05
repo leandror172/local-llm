@@ -1,0 +1,19 @@
+
+Model                        File                                Status         Topics   Cov    NC    TPS  P-tok  O-tok
+------------------------------------------------------------------------------------------------------------------------
+qwen3:30b-a3b                smart-rag-repowise.md               timeout             -     -     -      -      0      0
+qwen3:30b-a3b                QUICK.md                            timeout             -     -     -      -      0      0
+qwen3:30b-a3b                smart-rag-index.md                  timeout             -     -     -      -      0      0
+qwen3:30b-a3b                plan-v2.md                          timeout             -     -     -      -      0      0
+qwen3:30b-a3b                persona-template.md                 timeout             -     -     -      -      0      0
+qwen3:30b-a3b                KNOWLEDGE.md                        timeout             -     -     -      -      0      0
+qwen3:30b-a3b                smart-rag3.md                       timeout             -     -     -      -      0      0
+qwen3:30b-a3b                build-persona.py                    timeout             -     -     -      -      0      0
+qwen3-coder:30b              smart-rag-repowise.md               ok                  8   52%  100%   10.4   1714    607
+qwen3-coder:30b              QUICK.md                            ok                  8   38%   62%   14.8   1361    542
+qwen3-coder:30b              smart-rag-index.md                  ok                  8   33%  100%   12.6   2061    646
+qwen3-coder:30b              plan-v2.md                          ok                  9    6%  100%    7.5   7859    795
+qwen3-coder:30b              persona-template.md                 ok                  9   84%   33%   10.7   3201    662
+qwen3-coder:30b              KNOWLEDGE.md                        ok                  9   98%  100%    8.1   5577    836
+qwen3-coder:30b              smart-rag3.md                       ok                  8   49%  100%   11.3   2890    722
+qwen3-coder:30b              build-persona.py                    ok                  8   66%  100%    6.7   6846    676

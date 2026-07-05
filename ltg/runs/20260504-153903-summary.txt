@@ -1,0 +1,8 @@
+
+Model                        File                                Status         Topics   Cov    NC    TPS  P-tok  O-tok
+------------------------------------------------------------------------------------------------------------------------
+qwen3:14b                    smart-rag-index.md                  ok                  8   55%   88%   10.8   2069    558
+qwen3:14b                    smart-rag-index.md                  ok                  8   48%   75%   12.9   2069    531
+qwen3:14b                    smart-rag-index.md                  ok                  8   47%  100%   13.1   2069    561
+qwen3:14b                    smart-rag-index.md                  ok                  8   52%   88%   13.2   2069    552
+qwen3:14b                    smart-rag-index.md                  ok                  8   48%   88%   13.0   2069    566
