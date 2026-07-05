@@ -93,7 +93,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Personas | `personas/.memories/QUICK.md` | `personas/.memories/KNOWLEDGE.md` |
 | Benchmarks | `benchmarks/.memories/QUICK.md` | `benchmarks/.memories/KNOWLEDGE.md` |
 | Overlays | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` |
-| LTG instance | `ltg/.memories/QUICK.md` | — (engine memories live in the `latent-topic-graph` repo) |
+| LTG instance | `ltg/.memories/QUICK.md` | `ltg/.memories/KNOWLEDGE.md` (corpus-specific: calibration values, scope rules, retrieval gaps; engine memories live in the `latent-topic-graph` repo) |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
 <!-- /ref:memory-files -->

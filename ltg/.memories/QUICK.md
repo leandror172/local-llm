@@ -35,3 +35,5 @@ path-dependency in `pyproject.toml`).
 - Sequential constraint: embed and infer calls must not run in parallel (VRAM).
 - Engine questions (schema, decisions, phase history) → sibling repo's
   `DECISIONS.md`, `docs/plans/`, `.memories/`.
+- Corpus-specific knowledge (calibration values + provenance, scope rules,
+  known retrieval gaps, operating gotchas) → `KNOWLEDGE.md` here.
