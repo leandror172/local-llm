@@ -219,9 +219,11 @@ parallel with Layers 5/6, does not block them.
 
 **Concept paper:** `ref:concept-latent-topic-graph` (`docs/research/latent-topic-graph.md`)
 — model-agnostic, publishable-grade idea note.
-**Implementation plan:** `ref:plan-latent-topic-graph` (`docs/plans/2026-04-13-latent-topic-graph-implementation.md`)
-— 10 phases (0–9), Phase 0 decisions required at session start, acceptance test is the
-`relate(file_a, file_b)` pairwise query returning specific verifiable answers.
+**Implementation plan:** 10 phases (0–9); acceptance test is the `relate(file_a, file_b)`
+pairwise query returning specific verifiable answers. **Moved (T-33 split, session 107):**
+the plan and all engine knowledge now live in the sibling `latent-topic-graph` repo
+(`docs/plans/2026-04-13-latent-topic-graph-implementation.md` there); llm keeps the
+instance at `ltg/` and the split record at `docs/plans/ltg-repo-split.md`.
 
 **Rationale:** The research cluster showed that off-the-shelf RAG falls short on content-
 relation queries; existing infrastructure (`ref:KEY` as seed graph, `.memories/` as tier-0,

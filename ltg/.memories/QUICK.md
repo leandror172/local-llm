@@ -15,10 +15,11 @@ path-dependency in `pyproject.toml`).
 
 ## Current index state
 
-- 875 topics (113 files) + 147 anchors = 1022 nodes; edges 3367 (similarity
-  τ=0.70/K=10 + same_as + references); Leiden 207 coarse / 214 fine.
-  (Pre-split counts — the first post-split rebuild drops the anchors whose
-  ref blocks moved to the engine repo; delta must be explainable, SP-10.)
+- 875 topics (113 files) + 101 anchors = **976 nodes**; edges **3067** (3006
+  similarity τ=0.70/K=10 + 21 same_as + 40 references); Leiden 207 coarse /
+  218 fine. First post-split rebuild = SP-10 acceptance PASS (2026-07-05):
+  all 49 removed anchors traced to moved files, 875 topics exact
+  (record: engine repo `probes/split-acceptance.md`).
 - **Rebuild order (MANDATORY):** extract → embed → store → anchors → graph →
   communities; `run-rebuild-all.sh --embeddings runs/<tag>-embeddings.jsonl`
   covers the derivation stages (store onward).
