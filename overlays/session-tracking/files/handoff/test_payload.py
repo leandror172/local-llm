@@ -289,6 +289,61 @@ def test_parse_log_entry_unknown_slot_raises():
     assert "unknown_slot" in str(exc_info.value)
 
 
+# ---- T-78 — wrapped bullet continuation lines --------------------------------
+
+def test_parse_log_entry_wrapped_bullet_joins_to_single_item():
+    """A '- ' bullet followed by indented continuation lines is one item, space-joined."""
+    text = _log_entry_payload(
+        "\n### what_was_done\n"
+        "- implemented a fairly long change that\n"
+        "  wraps onto a second line\n"
+        "  and even a third line\n"
+        "\n### next\n- do B\n"
+    )
+    p = parse(text)
+    assert p.log_entry.what_was_done == [
+        "implemented a fairly long change that wraps onto a second line and even a third line"
+    ]
+
+
+def test_parse_log_entry_wrapped_bullet_then_single_line_bullet():
+    """A wrapped bullet followed by a separate single-line bullet parses to exactly 2 items."""
+    text = _log_entry_payload(
+        "\n### what_was_done\n"
+        "- first item that wraps\n"
+        "  onto a continuation line\n"
+        "- second item, single line\n"
+        "\n### next\n- do B\n"
+    )
+    p = parse(text)
+    assert p.log_entry.what_was_done == [
+        "first item that wraps onto a continuation line",
+        "second item, single line",
+    ]
+
+
+def test_parse_log_entry_prefixless_multiline_block_joins_to_single_item():
+    """A multi-line block with no '- ' prefix at all collapses to one joined item."""
+    text = _log_entry_payload(
+        "\n### what_was_done\n- placeholder\n"
+        "\n### next\n"
+        "no dash here\n"
+        "just a continuation\n"
+        "of plain text\n"
+    )
+    p = parse(text)
+    assert p.log_entry.next == ["no dash here just a continuation of plain text"]
+
+
+def test_parse_log_entry_two_single_line_bullets_stay_separate():
+    """Regression: two separate single-line '- ' bullets still parse to 2 distinct items."""
+    text = _log_entry_payload(
+        "\n### what_was_done\n- did A\n- did B\n\n### next\n- do B\n"
+    )
+    p = parse(text)
+    assert p.log_entry.what_was_done == ["did A", "did B"]
+
+
 def test_validate_rejects_log_entry_in_amend_mode():
     """log-entry is not allowed in amend mode (would duplicate session heading)."""
     text = _log_entry_payload("\n### what_was_done\n- A\n\n### next\n- B\n")

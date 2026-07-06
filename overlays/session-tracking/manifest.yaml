@@ -1,5 +1,5 @@
 name: session-tracking
-version: 8
+version: 9
 description: >
   Session continuity tools for Claude Code projects. Installs resume.sh
   (session-start summary) and rotate-session-log.sh (log archival). Installs
@@ -13,6 +13,10 @@ description: >
   v7: append↔checkoff consistency fix + failure-clarity sweep (where/whose/what + kind).
   v8: harvest boundary tightened to 'chore(session-handoff): session ' (T-59) — avoids
   false boundaries from bare chore(session-handoff): prefix reuse.
+  v9: handoff-tooling bug sweep — T-78 wrapped-bullet parser continuation-join
+  (payload.py); T-62 run-handoff shim honors --registry + prefers a co-located
+  engine over the user-level install; T-61 resume.sh reading-guide backported so
+  overlay source ⊇ installed.
 
 # Copied verbatim to target repo. Backed up if dest differs.
 files:

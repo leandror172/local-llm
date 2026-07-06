@@ -231,7 +231,10 @@ def _parse_log_entry_slots(content: str) -> LogEntry:
             if stripped.startswith("- "):
                 result.append(stripped[2:])
             elif stripped:
-                result.append(stripped)
+                if result:
+                    result[-1] += " " + stripped
+                else:
+                    result.append(stripped)
         return result
 
     what_was_done = _parse_bullets(slots["what_was_done"])
