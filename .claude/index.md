@@ -51,21 +51,15 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | **Cache-warmed subagent fan-out pattern** | `docs/patterns/cache-warmed-subagent-fanout.md` | Manual (Agent + SendMessage) fan-out that caches one large shared context per model tier via turn-boundary breakpoints; deferred task injection (copy-to-unique + `copied` ack); planner(Opus)→implementer(Sonnet/worktree) tiers; when this beats a workflow. Ready-to-use shared prompts. `ref:cache-warmed-fanout`. |
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | **Code design conventions** | `docs/patterns/code-design-conventions.md` | Structural patterns: named semantic methods over role strings. Self-indexed via `ref:patterns-code-design-index` |
-| **LTG extractor retrofit plan** | `docs/plans/ltg-extractor-retrofit.md` | Full implementation spec: routing.py, schemas.py, ModelClient extensions, config upgrade, file split. Ready to execute. |
+| **LTG ENGINE — MOVED to sibling repo `latent-topic-graph`** | `/mnt/i/workspaces/latent-topic-graph/` | T-33 split (session 107): engine code (`src/ltg/` package), tests, ALL phase plans (master plan + phases 2/2.5/3/4/5 + extractor retrofit), `DECISIONS.md`, `probes/`, spike results, Phase 4 dataflow diagram — moved with full git history. llm keeps the **instance** at `ltg/` (corpus.yaml, config.yaml, index/, wrappers). Split record stays here: `docs/plans/ltg-repo-split.md`. |
 | **Session-handoff pipeline design** | `docs/plans/session-handoff-pipeline-design.md` | **Scope A (deterministic spine, NO model):** replace the all-in-Claude handoff with a register-driven pipeline — reuse existing handoff `ref:` blocks as write-slots (no new markers), deterministic locate/apply/verify/commit, git rollback, per-run `input.md`+`report.md` logging. Register shared with `resume.sh`; lives in `session-tracking` overlay. `ref:handoff-pipeline-design`. Frozen, not built (session 83). |
 | **Session-handoff Placer enhancement** | `docs/plans/session-handoff-placer-enhancement.md` | **[FUTURE]** the deferred local-model layer on top of Scope A: model expands *terse intent* → prose (saves authoring tokens). Placer altitude, F4 trust boundary, L0/L1 layered verdict, deferred-labeling (a), input↔report vs report↔reality deltas, DPO `calls.jsonl`, model pick, E1–E6 build steps. `ref:handoff-placer-enhancement`. |
 | **Session-handoff failure-clarity fix** | `docs/plans/session-handoff-failure-clarity.md` | append↔checkoff consistency fix (verifier `_segment`/loop insertion semantics) + full failure-clarity sweep (where/whose/what triad via `kind`-on-exception, `payload_error`/`internal_tool_bug` statuses). Two-agent dispatch plan. Triggered by expenses bug report (session 93). |
-| **LTG Phase 3 anchor discovery** | `docs/plans/ltg-phase3-anchor-discovery.md` | Session 81 discovery state (historical); dual-path reframe, three-confidence concepts, empirical enumeration, decision register D1–D7. |
-| **LTG repo split (T-33) discovery — decisions NOT frozen** | `docs/plans/ltg-repo-split-discovery.md` | Session 106: split-before-Phase-6 lean + drivers (workflow decoupling primary), verified dependency map (`store.py:44` REPO_ROOT landmine, corpus/convention coupling), scope lean (engine moves; corpus.yaml+index stay; pluggable-source stance rides along; T-76 registry OUT), open decision register **S-D1–S-D7** (`ref:ltg-split-decisions`: consumption path, instance residency, DECISIONS.md ref-coupling, new-repo bootstrap, MCP placement, packaging flip, session cadence). Freeze + author `ltg-repo-split.md` in a fresh session after PR #67 merges. Companion: `ltg-model-registry-design.md` Part 2. |
-| **LTG Phase 3 decisions discussion** | `docs/plans/ltg-phase3-decisions-discussion.md` | Full decision-making discussion session 82; all angles, probe results, advisor refs. `ref:ltg-phase3-discussion`. |
+| **LTG repo split (T-33) — FROZEN plan, ready to execute** | `docs/plans/ltg-repo-split.md` | Session 107: S-D1–S-D7 frozen (`ref:ltg-split-frozen-decisions`) — uv path-dep consumption, `ltg/` instance dir, moves/stays/copies table (filter-repo non-destructive extraction), day-one self-index as decoupling acceptance, MCP in new repo, packaging flip during split, single-repo cadence + task migration. Execution: SP-1–SP-14 over 2 sessions. Open input: repo name. |
+| **LTG repo split (T-33) discovery — superseded by frozen plan** | `docs/plans/ltg-repo-split-discovery.md` | Session 106: split-before-Phase-6 lean + drivers (workflow decoupling primary), verified dependency map (`store.py:44` REPO_ROOT landmine, corpus/convention coupling), scope lean (engine moves; corpus.yaml+index stay; pluggable-source stance rides along; T-76 registry OUT), open decision register **S-D1–S-D7** (`ref:ltg-split-decisions`: consumption path, instance residency, DECISIONS.md ref-coupling, new-repo bootstrap, MCP placement, packaging flip, session cadence). Freeze + author `ltg-repo-split.md` in a fresh session after PR #67 merges. Companion: `ltg-model-registry-design.md` Part 2. |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
 | Verdict numeric migration plan | `docs/plans/verdict-numeric-migration.md` | Replace ACCEPTED/IMPROVED/REJECTED string verdicts with 0/1/2 integers across all repos, hooks, data, docs, and memory. 8 phases. |
-| **LTG Phase 2 implementation plan** | `docs/plans/ltg-phase2-implementation.md` | embed.py + store.py + inspect.py. Decisions locked, ready to execute. `ref:ltg-phase2-plan` |
-| **LTG Phase 5 implementation plan — EXECUTED (session 105)** | `docs/plans/ltg-phase5-relate.md` | `relate(a,b)` pairwise relation tool: P5-D1–D7 (file-path inputs, direct edges + community overlap no multi-hop, `nearest_miss` sub-τ exception to P4-D6, threshold-derived verdict bands, qwen3:14b `relate_summary` single model call, provenance reported-not-weighted per T-74, null-community abort). **Module:** `retrieval/relate.py` (+ `run-relate.sh`, `prompts/relate_summary.txt`). **Acceptance:** `retrieval/probes/phase5-relate-acceptance.md` (`ref:ltg-phase5-acceptance`) — 5 pairs, bands final, prose-fidelity findings (rendering-layer bugs). `ref:ltg-phase5-plan`. Deferred: T-73 anchor_key input, T-75 divergence view |
-| **LTG Phase 4 implementation plan — EXECUTED (session 102, PR #66)** | `docs/plans/ltg-phase4-graph-communities.md` | Graph assembly + Leiden communities: P4-D1–D7 (exact matmul, τ-floor+top-K union kNN, mention-based `references` edges, `edges` table, nullable community columns, `alias_of` projected not migrated). **Modules:** `retrieval/graph.py` (edges build + degree probe) + `retrieval/communities.py` (Leiden 2-res). `ref:ltg-phase4-plan`; decisions in `retrieval/DECISIONS.md` (`ref:ltg-phase4-decisions`). **Reports:** degree probe `retrieval/probes/phase4-degree-probe.md` (`ref:ltg-phase4-degree-probe`, froze τ=0.70/K=10), acceptance `retrieval/probes/phase4-acceptance.md` (`ref:ltg-phase4-acceptance`), gotchas `ref:ltg-phase4-findings` |
-| **LTG Phase 4 data/code flow model** | `docs/diagrams/ltg-phase4-dataflow.md` | System-operation model (first of a collection): mermaid pipeline dataflow + stage × state matrix (what each stage reads/writes/destroys: topics, edges, index.bak) + edge-kinds table. `ref:ltg-phase4-dataflow`. Update the matrix in the same PR that changes stage behavior. |
-| **Attributions & license tracking** | `docs/ATTRIBUTIONS.md` | External-dependency license table per CLAUDE.md licensing rule. Note: leidenalg GPL-3 / python-igraph GPL-2+ (copyleft — revisit before publishing retrieval/ code). |
-| **LTG Phase 2.5 corpus expansion plan** | `docs/plans/ltg-phase2.5-corpus.md` | Full-corpus re-extraction + threshold recalibration (T-34/T-36); corpus-selection config (include/exclude/group tags) → frozen manifest; source-group provenance (T-65); ~45–70 min local GPU. Drafted session 95, not started. |
+| **Attributions & license tracking** | `docs/ATTRIBUTIONS.md` | External-dependency license table per CLAUDE.md licensing rule. Note: leidenalg GPL-3 / python-igraph GPL-2+ (copyleft — tracked in the `latent-topic-graph` repo's license decision). |
 | patch_file acceptance test results | `docs/plans/ollama-bridge-patch-file-acceptance-results.md` | Session 67 live test results: 10/10 scenarios pass (6 original + tilde fix + 3 user scenarios). `ref:mcp-patch-file-acceptance-results` |
 | Overlay wizard idea | `docs/ideas/overlay-wizard.md` | Deferred: running overlay install interactively inside an AI CLI; wizard pattern generalization; eventual local TUI |
 | Claude Code source + related repos | `docs/ideas/claude-code-python-port.md` | Leaked TS source (cloned locally), open-multi-agent (MIT TS framework). Key files: `services/mcp/normalization.ts` (MCP response format), `services/autoDream/` (memory consolidation). open-multi-agent supports Ollama via baseURL; verified tool-calling with Gemma 4 + Qwen 3. |
@@ -99,7 +93,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Personas | `personas/.memories/QUICK.md` | `personas/.memories/KNOWLEDGE.md` |
 | Benchmarks | `benchmarks/.memories/QUICK.md` | `benchmarks/.memories/KNOWLEDGE.md` |
 | Overlays | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` |
-| Retrieval | `retrieval/.memories/QUICK.md` | `retrieval/.memories/KNOWLEDGE.md` |
+| LTG instance | `ltg/.memories/QUICK.md` | `ltg/.memories/KNOWLEDGE.md` (corpus-specific: calibration values, scope rules, retrieval gaps; engine memories live in the `latent-topic-graph` repo) |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
 <!-- /ref:memory-files -->
@@ -154,22 +148,18 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `overlays/scripts/run-all-tests.sh` | Aggregator — runs every overlay suite, prints a PASS/FAIL summary, exits nonzero on any failure (runs all suites even if one fails). Backs `make test` | CI / one-shot full overlay test run |
 | `overlays/scripts/test-{ref-indexing,session-tracking,installer}.sh` | Per-suite runners (resolve cwd + interpreter for each suite); args pass through to the underlying test/pytest. Backs the per-suite `make` targets | Running one overlay's suite standalone |
 
-### Retrieval / LTG Tools
+### LTG Instance Tools (`ltg/` — engine lives in the sibling `latent-topic-graph` repo)
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
-| `retrieval/run-vram-probe.sh` | VRAM co-residence probe: qwen3:14b + bge-m3 simultaneous load + interleaved stress. PASS/WARN/FAIL verdict. | Phase 2 gate before writing embed pipeline; re-run if embedding model changes |
-| `retrieval/run-preflight.sh` | 5-check preflight: deps, Ollama, bge-m3, JSONL input, disk space. | Before any embed/store run |
-| `retrieval/run-extract-topics.sh` | 2-arm production runner: routes each CORPUS file by extension, calls qwen3:14b (prose) or qwen2.5-coder:14b (code), writes one JSONL row per file. | Phase 1 production extraction; feeds run-embed.sh |
-| `retrieval/run-sweep-extractors.sh` | Benchmark sweep runner: N models × CORPUS files × rubric scoring. Replaces old extract_topics.py sweep mode. | Evaluating new model candidates |
-| `retrieval/run-embed.sh` | Reads Phase 1 JSONL, routes by extension, batches embed via bge-m3, writes 16-field embedding JSONL. | Phase 2 step 1: produce embeddings.jsonl |
-| `retrieval/run-store.sh` | Reads embedding JSONL, creates/overwrites LanceDB `topics` table with backup. | Phase 2 step 2: build the index |
-| `retrieval/run-inspect.sh` | 5-mode index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging index, running acceptance suite, Phase 5+ relate() preview |
-| `retrieval/run-anchors.sh` | Phase 3 anchor rebuild: `--index`, `--method`, `--repo-root`. Ingests ref:KEY anchors, embeds, matches topics, writes combined LanceDB table. | After any ref:KEY changes; Phase 3 live acceptance |
-| `retrieval/run-build-corpus-manifest.sh` | Phase 2.5 corpus freeze: resolves `corpus.yaml` (intent) against `git ls-files`, hashes each file (sha256), records commit SHA, writes frozen `corpus-manifest.yaml`. `--dry-run` prints the resolution summary. | Step 0 before any full-corpus re-extraction; re-run when `corpus.yaml` changes |
-| `retrieval/run-graph.sh` | Phase 4 edges build (default): similarity (frozen τ=0.70/K=10) + `same_as` projection + `references` mention scan → LanceDB `edges` table + run report. `--degree-probe` prints τ×K grid stats without writing. | After any anchors rebuild (edges are pure derivation); re-probe before changing `graph:` config |
-| `retrieval/run-communities.sh` | Phase 4 Leiden communities (2 seeded resolutions) → writes `community_coarse`/`community_fine` back to nodes table (copytree backup) + sizes/crosstab sanity report. | After `run-graph.sh` (rebuild order: … anchors → graph → communities) |
-| `retrieval/run-rebuild-all.sh` | T-71 derivation-stage sequencer: store → anchors → graph → communities, in order, aborting on first failure. Takes ONE authoritative pre-rebuild backup into `{index}.bak` before any stage, then passes `--no-backup` to each. `--embeddings` (required), `--index`/`--repo-root` (optional, default to stage defaults). | Full derivation rebuild after extract+embed have produced a fresh embeddings JSONL |
-| `retrieval/run-relate.sh` | Phase 5 `relate(a, b)`: structured pairwise relation between two corpus files (`--a`/`--b`, `--index`, `--json`, `--no-summary`) — cross-file edge aggregation, community overlap, shared anchors, verdict banding, nearest-miss matmul, + qwen3:14b prose summary (`prompts/relate_summary.txt`, role `relate_summary`). Read-only; one model call unless `--no-summary`. | Relating two indexed files; Phase 5 acceptance |
+| `ltg/run-rebuild-all.sh` | T-71 derivation-stage sequencer: store → anchors → graph → communities against the llm corpus; ONE authoritative `{index}.bak` pre-backup, stages run `--no-backup`. `--embeddings` (required). | Full derivation rebuild after extract+embed produced a fresh embeddings JSONL |
+| `ltg/run-extract-topics.sh` | 2-arm extraction over the frozen manifest (qwen3:14b prose / qwen2.5-coder:14b code); passes `--repo-root ..`. | Re-extraction after corpus changes; feeds run-embed.sh |
+| `ltg/run-embed.sh` | Embeds extraction JSONL via qwen3-embedding:8b (4096-dim). | After extraction; produces `runs/<tag>-embeddings.jsonl` |
+| `ltg/run-store.sh` / `run-anchors.sh` / `run-graph.sh` / `run-communities.sh` | Individual derivation stages (prefer `run-rebuild-all.sh` for the full chain; ad-hoc runs use stage-suffixed backup slots). | Single-stage reruns, `--degree-probe` |
+| `ltg/run-inspect.sh` | Index query CLI: `--list`, `--stats`, `--query TEXT`, `--relate`, `--acceptance`. | Debugging the llm index |
+| `ltg/run-relate.sh` | Phase 5 `relate(a,b)` against the llm index (`--a`/`--b`/`--json`/`--no-summary`). | Relating two indexed llm files |
+| `ltg/run-build-corpus-manifest.sh` | Freeze `corpus.yaml` intent → `corpus-manifest.yaml` (sha256 + commit); `--repo-root ..`. | After any corpus.yaml change |
+
+All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the engine's `ltg-*` entry points via the editable path-dependency (`ltg/pyproject.toml`).
 
 ### Personas Test Harness
 | Script | Purpose | When to Use |
@@ -312,63 +302,18 @@ Cluster investigating retrieval techniques beyond keyword/vector RAG — trigger
 | Dify (baseline platform — what not to build) | `docs/research/smart-rag-dify.md` | `rag-dify` |
 | Prior conversation (initial survey + architecture) | `docs/ideas/smart-rag.md`, `docs/ideas/smart-rag2.md`, `docs/ideas/smart-rag3.md` | — |
 | **Concept paper (publishable-grade, model-agnostic)** | `docs/research/latent-topic-graph.md` | `concept-latent-topic-graph` |
-| **Implementation plan (for future session)** | `docs/plans/2026-04-13-latent-topic-graph-implementation.md` | `plan-latent-topic-graph` (intro+goal) |
+| **Implementation plan (Phases 0–9)** | moved → `latent-topic-graph` repo `docs/plans/` | (was `plan-latent-topic-graph`) |
 
-### LTG Plan — Per-Section Ref Keys
+### LTG — engine knowledge moved to the `latent-topic-graph` repo (T-33 split, session 107)
 
-The plan file is long; narrow ref keys let `ref-lookup.sh` return a single phase or section rather than the full document. All blocks live in `docs/plans/2026-04-13-latent-topic-graph-implementation.md`.
-
-| Section | Ref Key |
-|---|---|
-| Required Reading | `ltg-plan-required-reading` |
-| Phase 0 — Decisions | `ltg-plan-phase-0` |
-| Phase 1 — Topic Extractor Spike | `ltg-plan-phase-1` |
-| Phase 2 — Embedding + Storage | `ltg-plan-phase-2` |
-| Phase 3 — Anchor Integration | `ltg-plan-phase-3` |
-| Phase 4 — Graph + Communities | `ltg-plan-phase-4` |
-| Phase 5 — `relate(a,b)` Tool | `ltg-plan-phase-5` |
-| Phase 6 — MCP `retrieve_context` | `ltg-plan-phase-6` |
-| Phase 7 — Reranker (optional) | `ltg-plan-phase-7` |
-| Phase 8 — Per-Repo Configuration | `ltg-plan-phase-8` |
-| Phase 9 — Federation Layer | `ltg-plan-phase-9` |
-| Deferred / Out of Scope | `ltg-plan-deferred` |
-| Relationship to plan-v2 | `ltg-plan-relationship` |
-| Integration Points | `ltg-plan-integration` |
-| Risks and Mitigations | `ltg-plan-risks` |
-| Work Estimate | `ltg-plan-estimate` |
-| Success Definition | `ltg-plan-success` |
-| Handoff Notes | `ltg-plan-handoff` |
-
-## LTG Phase 1 Spike Results (Sessions 54-57, 2026-04-16 to 2026-04-25)
-
-Topic extractor A/B sweep results and Claude-track verdict. Full files: `retrieval/spike-results.md` (scoring + numbered insights), `retrieval/spike-rater-notes.md` (per-cell rationale + meta-insights). **Claude draft track complete (8/8 files scored).** The `ref:ltg-extractor` decision remains open until two-rater reconciliation + determinism + MoE eval complete.
-
-| Topic | Ref Key | Summary |
-|---|---|---|
-| Phase 1 results | `ltg-phase1-results` | 32/32 runs ok; 8/8 files scored by Claude draft; qwen3:14b wins (2.69 raw, 2.44 after speed penalty); qwen3:8b backup (2.27, best on cross-reference index) |
-| Phase 1 insights | `ltg-phase1-insights` | 8 numbered findings: coder off-by-one on prose; qwen3:8b duplicate spans; gemma3 boilerplate; whole-section drops; hierarchical-vs-crossed overlap; section-drop pattern + rubric weighting; cross-ref index breaks 14b lead; paired-file format-sensitivity proven |
-| Routing hypothesis | `ltg-phase1-routing-hypothesis` | 3-arm specialized-model-by-file-type now empirically backed (insight #8); MoE probe deferred to Phase 2 VRAM co-residence work |
-| Claude rater notes | `ltg-phase1-claude-rater-notes` | Per-file dim-by-dim scoring rationale and evidence quotes for the Claude draft track (sessions 54-57). Critical input for two-rater reconciliation |
-| Meta-insights | `ltg-phase1-meta-insights` | File-class taxonomy, paired-file methodology, per-model trends, reconciliation priorities, mechanical post-pass guards. Held outside `.memories/KNOWLEDGE.md` until reconciliation closes |
-| Pending revisions | `ltg-phase1-pending-revisions` | Stale-wording cleanup queue + 3 conditional drafts (A/B/C) for the routing-hypothesis revision based on user-track outcome. Decision tree for the future session executing reconciliation |
-
-Sweep artifacts in `retrieval/runs/20260416-181839.{jsonl,html,summary.txt,manual-rubric.md}`. HTML is a self-contained scorer (drop-in rubric UI, localStorage persistence, span-aware source preview) generated by `retrieval/viz_sweep.py` from `retrieval/ltg-rater.template.html`.
-
-## LTG Phase 0 Decisions (Session 52, 2026-04-14)
-
-Frozen decisions for the Latent Topic Graph substrate, reached before any code was written. Each decision records rationale, alternatives, and revisit triggers. Full file: `retrieval/DECISIONS.md`.
-
-| Decision | Ref Key | Summary |
-|---|---|---|
-| Index scope | `ltg-scope` | Per-repo index; federation deferred to Phase 9 |
-| Embedding model | `ltg-embedding` | `bge-m3` via Ollama (dense 1024-dim); fallback chain to mxbai/arctic/nomic |
-| Vector store | `ltg-vector-store` | LanceDB, no separate SQL layer |
-| Graph library | `ltg-graph-lib` | networkx + leidenalg |
-| Topic extractor | `ltg-extractor` | Empirical A/B in Phase 1: 5-6 models, 8 files + long-file appendix, 11-dim rubric |
-| Code placement | `ltg-placement` | New top-level `retrieval/` directory |
-| Storage layout | `ltg-storage-layout` | Pure LanceDB + JSON/YAML sidecars + `inspect.py` |
-| MVP corpus | `ltg-corpus` | Curated subset (`docs/research/` + `docs/ideas/` + `.claude/` + `.memories/`); two branch points after Phase 1 |
-| Cross-cutting notes | `ltg-notes` | Call logging, warm-up, gitignore for raw Phase 1 extractions |
+All engine reference material — the master plan (+ its 19 `ltg-plan-*` section ref keys),
+Phase 0/3/4 decisions (`DECISIONS.md`: `ltg-scope`, `ltg-embedding`, `ltg-extractor`, …),
+Phase 1 spike results (`spike-results.md`, `spike-rater-notes.md`, `ltg-phase1-*` keys),
+probes (`ltg-phase4-*`, `ltg-phase5-acceptance`), and the Phase 4 dataflow diagram — lives
+in the sibling repo `/mnt/i/workspaces/latent-topic-graph/` and its `ref-lookup.sh`.
+llm keeps: the instance (`ltg/`), the split record (`docs/plans/ltg-repo-split*.md`,
+`ref:ltg-split-frozen-decisions`), the registry decision (`docs/ideas/ltg-model-registry-design.md`),
+and the concept + smart-rag lineage (`docs/research/`, dual-cited copies in both repos).
 
 ## Web Research Tool (Session 44+)
 

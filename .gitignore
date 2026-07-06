@@ -38,10 +38,10 @@ docs/portfolio/hf-space/context/*.md
 __pycache__/
 
 # LTG retrieval artifacts (binary index + transient embedding output)
-# Keep tracked: retrieval/probes/*.md, retrieval/runs/embed-*.jsonl, retrieval/runs/store-*.jsonl
-retrieval/index/
-retrieval/index.bak/
-retrieval/embeddings.jsonl
+# Keep tracked: ltg/probes/*.md, ltg/runs/embed-*.jsonl, retrieval/runs/store-*.jsonl
+ltg/index/
+ltg/index.bak*/
+ltg/embeddings.jsonl
 
 # Environment variables (API keys, secrets)
 .env
@@ -60,7 +60,7 @@ docs/plans/verdict-numeric-migration.md
 docs/plans/verdict-numeric-migration-report.md
 
 .idea/
-retrieval/.venv/
+ltg/.venv/
 
 # LTG large embedding output (48M+, regenerable from extraction via run-embed.sh)
-retrieval/runs/*-embeddings.jsonl
+ltg/runs/*-embeddings.jsonl
