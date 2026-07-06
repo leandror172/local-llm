@@ -255,14 +255,16 @@ payload schema, register, mechanics, rotator unchanged.
 discovery in one handoff). Failure diagnosis for end users shifts from "read pipeline source" to "read
 error message" — messages now contain actionable specifics (the exact file/role/id that failed and why).
 
-**Gotcha discovered while running this session's own handoff (shim/SKILL drift):** the home-repo
-`run-handoff.sh` shim, after the B+C rewrite, guards on `[ -f "$_root/.claude/handoff/registry.yaml" ]`
-and `exec`s `~/.claude/tools/handoff/handoff.py "$@"` — it does NOT honor a `--registry` pointing at the
-overlay-source register. The llm home repo has no `.claude/handoff/registry.yaml` (runs from source), so
-the shim silently `exit 0`s with no output. Workaround used: call `python3 ~/.claude/tools/handoff/handoff.py
---payload <p> --registry overlays/session-tracking/files/registry.yaml --repo-root .` directly. The SKILL
-still documents the old "source run-handoff.sh --registry" home-repo invocation — a real doc/shim drift to
-fix (either teach the shim to pass through `--registry`, or update the SKILL's home-repo note).
+**Home-repo shim `--registry` — RESOLVED v9 (T-62, 2026-07-06):** before v9 the `run-handoff.sh`
+shim guarded on `[ -f "$_root/.claude/handoff/registry.yaml" ]` and hard-`exec`d the user-level
+`~/.claude/tools/handoff/handoff.py`, so it silently `exit 0`d in the llm home repo (no per-repo
+registry) and ignored `--registry`. FIXED: the shim now (a) bypasses the registry-file guard when an
+explicit `--registry` is passed, and (b) prefers a `handoff.py` co-located with the shim (source tree /
+dev home repo) over the user-level install, falling back to user-level when none is co-located.
+Net: `overlays/session-tracking/files/handoff/run-handoff.sh --registry overlays/session-tracking/files/registry.yaml`
+works from the llm home repo AND runs source; target repos (shim-only, no co-located engine) still use the
+shared user-level engine unchanged. The SKILL home-repo note is now correct as written; the "call
+`handoff.py` directly" workaround is retired.
 
 **Reinstall gotcha (shared engine, per-repo blast radius):** running the overlay installer with
 `--target <llm-repo> --install-level user` to refresh `~/.claude/tools/handoff/` ALSO reconciles
@@ -270,6 +272,12 @@ project-level files against overlay source — it tried to overwrite llm's local
 was staler, would have dropped the pre-session reading-guide block) and drop a stray `.claude/handoff/
 registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side writes before a
 "just refresh the engine" install.
+**Update (T-61, v9, 2026-07-06):** the reading-guide block (§2b) is now backported into the overlay
+source `resume.sh`, so source ⊇ installed — a reinstall no longer drops it in the llm repo. Diff-review
+is still warranted for repos with their OWN `resume.sh` customizations: career-search has a deliberate
+"What to read first" §2b variant (different title + lighter output filter), preserved on the v9 sync
+(shim-only) rather than flattened. That divergence is the open half of T-61 (a per-repo customization
+seam / marked-file install mode is the general fix; option b/c).
 
 ## Installer --verify mode (T-58, 2026-06-26) — IMPLEMENTED
 

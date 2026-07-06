@@ -1,12 +1,12 @@
 # Overlays — Quick Memory
 
 ## session-tracking overlay
-- **Version:** v8 (2026-06-26)
-- **Status:** T-59 harvest boundary tightened to `chore(session-handoff): session ` COMPLETE (2026-06-26)
-- **Tests:** 174 green (173 existing + 1 new `test_prefix_reuse_commit_is_not_a_boundary`)
-- **Installed in:** expenses/code, web-research, career-search (per-repo shim/SKILL still v6-era); llm runs the engine from source. Since B+C, the **shared user-level engine** `~/.claude/tools/handoff/` is the v7 code ALL repos execute — reinstalled this session. `session-log.md` latest-only in ALL 4 repos.
+- **Version:** v9 (2026-07-06)
+- **Status:** v9 handoff-tooling bug sweep COMPLETE (2026-07-06) — T-78 wrapped-bullet parser continuation-join (`payload.py`), T-62 shim honors `--registry` + prefers co-located engine, T-61 resume.sh reading-guide backported (source ⊇ installed). llm commit on `fix/handoff-tooling-bugs`.
+- **Tests:** 178 green (174 + 4 new wrapped-bullet tests in `test_payload.py`, T-78)
+- **Installed in:** shared user-level engine `~/.claude/tools/handoff/` is **v9** (carries the T-78 `payload.py` fix) — ALL repos execute it. Per-repo files synced v9 (2026-07-06): expenses/code + web-research got `resume.sh` (T-61) + project shim (T-62); career-search got the shim ONLY — its local "What to read first" `resume.sh` variant preserved (T-61 option 2). llm runs the engine from source. `session-log.md` latest-only in ALL repos.
 - **PR:** #53 (failure-clarity) stacked on #52 (`feature/handoff-redesign-stage-promote`)
-- **Home-repo invocation drift:** the `run-handoff.sh` shim guards on `.claude/handoff/registry.yaml` + ignores `--registry`; in the llm repo call `python3 ~/.claude/tools/handoff/handoff.py --payload <p> --registry overlays/session-tracking/files/registry.yaml --repo-root .` directly (see KNOWLEDGE gotcha).
+- **Home-repo invocation (FIXED v9, T-62):** the `run-handoff.sh` shim now honors an explicit `--registry` (bypasses the registry-file guard) and prefers a co-located `handoff.py` over the user-level install — so `overlays/session-tracking/files/handoff/run-handoff.sh --registry overlays/session-tracking/files/registry.yaml` works from the llm home repo AND runs source. The old "call `handoff.py` directly" workaround is retired.
 - **Key files:** `files/handoff/` (source), `manifest.yaml`, `files/rotate-session-log.sh`, `files/handoff-harvest.sh` (boundary: `^chore(session-handoff): session `), `files/session-handoff/SKILL.md`
 
 ### B+C distribution (2026-06-17)
