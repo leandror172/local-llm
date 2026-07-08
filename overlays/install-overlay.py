@@ -39,7 +39,7 @@ from lib.backends import load_backends, resolve_backend
 from lib.actions import (
     handle_files, handle_always_user_files, handle_user_files,
     handle_templates, handle_append_lines,
-    handle_merge_sections, handle_manual_if_exists,
+    handle_merge_sections, handle_manual_if_exists, handle_customizable,
     verify_overlay,
 )
 from lib.report import print_report
@@ -125,6 +125,8 @@ def main():
         print_report(args.report_format, args.report)
         sys.exit(1 if (n_diff or n_missing or n_src_missing) else 0)
 
+    # customizable: before files: — a path is owned by exactly one category.
+    handle_customizable(manifest, overlay_dir, target_root, args.dry_run, args.backup)
     handle_files(manifest, overlay_dir, target_root, args.dry_run, args.backup)
     handle_always_user_files(manifest, overlay_dir, args.dry_run, args.backup)
     handle_user_files(manifest, overlay_dir, args.install_level, target_root, args.dry_run, args.backup)
