@@ -1,5 +1,5 @@
 name: session-tracking
-version: 9
+version: 10
 description: >
   Session continuity tools for Claude Code projects. Installs resume.sh
   (session-start summary) and rotate-session-log.sh (log archival). Installs
@@ -17,12 +17,23 @@ description: >
   (payload.py); T-62 run-handoff shim honors --registry + prefers a co-located
   engine over the user-level install; T-61 resume.sh reading-guide backported so
   overlay source ⊇ installed.
+  v10: T-61 general customization seam — resume.sh moved files: -> customizable:
+  with an overlay-keep:reading-guide region a repo may customize (career-search's
+  title/filter variant) while still receiving every other resume.sh update.
 
 # Copied verbatim to target repo. Backed up if dest differs.
 files:
-  resume.sh: .claude/tools/resume.sh
   rotate-session-log.sh: .claude/tools/rotate-session-log.sh
   handoff-harvest.sh: .claude/tools/handoff-harvest.sh
+
+# Overlay-owned EXCEPT named overlay-keep:<name> regions, which are repo-owned:
+# seeded on first install, preserved on every update (never overwritten). The
+# reading-guide region carries the section title + output filter a consumer may
+# tailor. See docs/plans/overlay-customizable-regions.md.
+customizable:
+  .claude/tools/resume.sh:
+    keep_regions:
+      - reading-guide
 
 # Always installed to ~/.claude/tools/handoff/ — shared across all repos.
 # Pipeline modules: never per-repo, never controlled by --install-level.
