@@ -30,6 +30,7 @@
 
 ## installer capabilities
 - `--verify` mode available (T-58, 2026-06-26): read-only drift check per installed file; exit 1 on any DIFF/MISSING/SRC-MISSING; all categories gate exit (files, always_user_files, user_files, templates, manual_if_exists, merge_sections); EOL-normalized comparison (CRLF=LF).
+- **`customizable:` keep-regions — FROZEN, not built (T-61 option b):** plan `docs/plans/overlay-customizable-regions.md`. Overlay owns a file EXCEPT named `overlay-keep:<name>`…`/overlay-keep:<name>` regions (repo-owned; shipped default = first-install seed, never re-applied). Explicit comment-agnostic markers (NOT `ref:KEY` — both ref-lookup + `anchors.py` are `*.md`-only, so a `.sh` marker is LTG-inert; only the topic extractor sees ~2 lines of marginal, graph-free noise). No per-region version. resume.sh moves `files:`→`customizable:`. 21 TDD cases + acceptance. **Algorithmic acceptance-test spec (8 ACCEPT cases, derive an automated harness): `ref:overlay-customizable-acceptance`.**
 
 ## overlay test runner (2026-06-30)
 - `overlays/Makefile` + `overlays/scripts/` — `make -C overlays test` runs **all 196**: `test-ref-indexing` (bash, 9) + `test-session-tracking` (pytest, 174) + `test-installer` (pytest, 13, `test_verify.py`). Default `make` prints help; `ARGS='-k x'` passes pytest filters to one suite.
