@@ -93,7 +93,8 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Evaluator | `evaluator/.memories/QUICK.md` | `evaluator/.memories/KNOWLEDGE.md` |
 | Personas | `personas/.memories/QUICK.md` | `personas/.memories/KNOWLEDGE.md` |
 | Benchmarks | `benchmarks/.memories/QUICK.md` | `benchmarks/.memories/KNOWLEDGE.md` |
-| Overlays | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` |
+| Overlays (system) | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` (overlay SYSTEM: installer, manifest schema, `--verify`, `customizable:`, test convention, product topology) |
+| session-tracking overlay | `overlays/session-tracking/.memories/QUICK.md` | `overlays/session-tracking/.memories/KNOWLEDGE.md` (handoff-pipeline design + per-session history; split out of overlays/.memories session 109) |
 | LTG instance | `ltg/.memories/QUICK.md` | `ltg/.memories/KNOWLEDGE.md` (corpus-specific: calibration values, scope rules, retrieval gaps; engine memories live in the `latent-topic-graph` repo) |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
