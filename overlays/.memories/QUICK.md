@@ -11,10 +11,16 @@ concepts live in `KNOWLEDGE.md`, chronology in `git log -- overlays/`.*
   any `DIFF`/`MISSING`/`SRC-MISSING`, EOL-normalized); `customizable:` keep-regions (T-61,
   overlay v10) — `_extract_regions` / `_splice_regions` / `handle_customizable` in
   `lib/actions.py`.
-- **Tests: 221 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
-  `test-session-tracking` (pytest, 178) + `test-installer` (pytest, 34: `test_verify.py` +
-  `test_customizable.py`). Bare `make` prints help; `ARGS='-k x'` filters one suite.
-  Not a test: `test-merge-plan.py` (manual Ollama diagnostic, network).
+- **Discriminating signals (T-54 + T-80a, session 111):** `manual_if_exists` records `SAME`
+  when the installed file is EOL-normalized-identical to source (was: unconditional `TODO`);
+  `customizable:` decision-3 records `INFO … no-op` when the overlay default is already
+  present verbatim, else `WARN-CLOBBER`. **Silence only on proof of safety** —
+  `WARN-CLOBBER` means "cannot prove safe", not "will destroy". Helpers `_same_content` /
+  `_reset_is_provable_noop` in `lib/actions.py`.
+- **Tests: 231 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
+  `test-session-tracking` (pytest, 178) + `test-installer` (pytest, 44: `test_verify.py` +
+  `test_customizable.py` + `test_signals.py`). Bare `make` prints help; `ARGS='-k x'` filters
+  one suite. Not a test: `test-merge-plan.py` (manual Ollama diagnostic, network).
 - **ref-indexing overlay:** v4 — hermetic overlay-shipped suite at `files/tests/`.
   PR **#63** (`feat/t42-ref-lookup-paths`) not yet merged into umbrella `batch/session-97-base` (#57).
 - **session-tracking overlay:** v10. Open PR **#70**. Consumers still on v9 — see T-79.

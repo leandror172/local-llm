@@ -38,6 +38,30 @@ anything.**
 **The real discriminator is the step-1 §2b diff**, which must be run per repo *before* any install.
 The `WARN` is a reminder to go look, never a verdict.
 
+### RESOLVED (session 111, T-80a) — the signal now discriminates
+
+`handle_customizable` no longer emits a blanket `WARN`. Decision-3 fires only when the installed
+file has **no markers**, so there is no installed interior to compare against `src_regions[name]` —
+the installer cannot locate the region. The answerable question is whether the overlay's default
+interior is already present in the installed file as a contiguous run of whole lines
+(`_reset_is_provable_noop`, trailing whitespace ignored):
+
+| installed state | signal | meaning |
+|---|---|---|
+| default present verbatim | `INFO … reset is a no-op` | **proven safe** — silent by design |
+| default absent | `WARN-CLOBBER … not present verbatim` | cannot prove safe; diff before proceeding |
+
+**Polarity is deliberate:** silence only on *proof* of safety. `WARN-CLOBBER` does not assert that
+content will be lost — a file predating the region entirely also lands there. Over-warning on genuine
+ambiguity is the correct failure direction; the old behavior under-warned on everything.
+
+Against the four repos of this propagation: expenses (v10 only added marker lines around the existing
+body) → `INFO`, silent. career-search (different title, fewer filters) → `WARN-CLOBBER`. Those two
+producing different output was the acceptance criterion, and it is now a test
+(`test_benign_and_destructive_produce_different_output` in `overlays/test_signals.py`).
+
+The step-1 §2b diff is still the right habit, but it is no longer the *only* discriminator.
+
 **Follow-up (T-80):** make `--dry-run` report whether a reset actually *changes* the region content —
 i.e. compare the installed interior against the overlay default and emit a distinct, loud line
 (`WARN-CLOBBER`) only when they differ. That would make the tripwire real.

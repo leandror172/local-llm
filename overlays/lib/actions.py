@@ -322,6 +322,40 @@ def handle_merge_sections(
                        f"wrap content with markers per {overlay_dir}/APPLY.md")
 
 
+def _same_content(a: Path, b: Path) -> bool:
+    """True when both files exist and hold the same text, ignoring line endings."""
+    if not a.exists() or not b.exists():
+        return False
+    return _read_text_eol(a)[0] == _read_text_eol(b)[0]
+
+
+def _normalized_lines(text: str) -> list[str]:
+    return [line.rstrip() for line in text.strip("\n").split("\n")]
+
+
+def _reset_is_provable_noop(installed_text: str, default_interior: str) -> bool:
+    """True when `default_interior` already sits in `installed_text` as a contiguous
+    run of whole lines (trailing whitespace ignored), so splicing the overlay default
+    back in cannot change those bytes.
+
+    Asymmetric on purpose. True is a PROOF of safety. False means "cannot prove safe"
+    — never "proven unsafe": a file predating the region entirely also returns False.
+    Decision-3 fires when the installed file has NO markers, so there is no installed
+    interior to compare against; presence of the default is the only question we can
+    answer. Spend silence only where safety is proven.
+    """
+    if not installed_text.strip():
+        return False
+    haystack = _normalized_lines(installed_text)
+    needle = _normalized_lines(default_interior)
+    if not needle:
+        return False
+    return any(
+        haystack[i:i + len(needle)] == needle
+        for i in range(len(haystack) - len(needle) + 1)
+    )
+
+
 def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path, dry_run: bool):
     files_dir = overlay_dir / "files"
     for dest_rel in manifest.get("manual_if_exists", []):
@@ -330,10 +364,15 @@ def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path
         src = files_dir / src_name
 
         if dest.exists():
-            record("TODO", dest_rel,
-                   "manual merge required — file already exists",
-                   f"overlay source: overlays/{manifest['name']}/files/{src_name}"
-                   if src.exists() else "no overlay source available")
+            # T-54: flagging an identical file trains the operator to ignore the flag.
+            if _same_content(src, dest):
+                record("SAME", dest_rel, "identical to overlay source — no merge needed")
+            else:
+                record("TODO", dest_rel,
+                       "manual merge required — differs from overlay source"
+                       if src.exists() else "manual merge required — file already exists",
+                       f"overlay source: overlays/{manifest['name']}/files/{src_name}"
+                       if src.exists() else "no overlay source available")
         else:
             if src.exists():
                 if not dry_run:
@@ -415,9 +454,19 @@ def handle_customizable(manifest: dict, overlay_dir: Path, target_root: Path,
                 reset.append(name)
 
         merged = _splice_regions(src_text, replacements)
+        # T-80a: an unconditional WARN carries zero bits. Stay silent only where the
+        # reset is a provable no-op; otherwise say loudly what is at stake.
         for name in sorted(reset):
-            record("WARN", dest_rel,
-                   f"keep-region '{name}' marker absent in installed — reset to overlay default")
+            if _reset_is_provable_noop(inst_text, src_regions[name]):
+                record("INFO", dest_rel,
+                       f"keep-region '{name}' marker absent — overlay default already "
+                       f"present verbatim; reset is a no-op")
+            else:
+                record("WARN-CLOBBER", dest_rel,
+                       f"keep-region '{name}' marker absent AND the overlay default is "
+                       f"not present verbatim — installing REPLACES that area; a repo "
+                       f"customization there is LOST",
+                       "diff the region against the overlay default before proceeding")
 
         if merged == inst_text:
             record("SKIP", dest_rel, "up to date")

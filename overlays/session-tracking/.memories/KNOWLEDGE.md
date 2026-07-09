@@ -282,9 +282,17 @@ Source / more detail: `manifest.yaml`; `docs/plans/overlay-customizable-regions.
   shape. Installer `--verify` mode (T-58) now automates this; run it.
 - **The `customizable:` decision-3 clobber.** If a repo has customized a region but the
   installed file carries **no `overlay-keep` markers**, the installer resets that region to
-  the overlay default and emits a `WARN`. That `WARN` in `--dry-run` is the tripwire —
-  never install a customized repo that shows it. Pre-wrap the variant in markers first.
-  career-search's "What to read first" §2b variant is the live instance.
+  the overlay default. Since T-80a (session 111) the signal discriminates: `INFO … reset is
+  a no-op` when the overlay default is already present verbatim (**proven safe**, silent),
+  `WARN-CLOBBER` otherwise. Polarity is deliberate — silence only on proof of safety;
+  `WARN-CLOBBER` means "cannot prove safe", not "will destroy". Pre-wrap a variant in
+  markers before installing. career-search's "What to read first" §2b variant is the live
+  instance. Do **not** trust the pre-T-80a blanket `WARN` described in older notes.
+- **The installer records nothing about what it installed.** Both T-54 and T-80a are
+  downstream of this: with no baseline, `manual_if_exists` cannot tell "source changed since
+  you reconciled" from "this file legitimately differs" (expenses/career-search registers
+  flag on *every* install, correctly but uselessly), and `customizable:` cannot locate a
+  region in an unmarked file. A recorded source hash — or a package manager — closes both.
 - **`--verify` gating semantics.** `CUSTOMIZED` (sanctioned use of the seam) is
   **non-gating**; `DIFF` (out-of-region drift) **gates**. A repo that hasn't installed v10
   yet shows the customizable entry as `MISSING`/`DIFF` — so if wiring into CI, verify
