@@ -8,6 +8,8 @@ old `/mnt/i/ollama-models` reclaimed (162 GB → I: now 394 GB free). Artifacts 
 verified runbook: `~/workspaces/ollama-infra/` (machine-local, moved out of the repo 2026-07-02).
 **Author:** session 98 (2026-06-30).
 **Trigger:** `my-go-qcoder` HTTP 500 root-caused as host-RAM ENOMEM (see `.memories/KNOWLEDGE.md` "Host-RAM budget").
+**2026-07-09:** a `FAIL — serves only 0 models` from `ollama-store-check` turned out **not** to be a
+store fault at all, but a canonical-port squatter. See § "Failure mode: canonical-port squatter".
 
 ## ⚠ OUTCOME — the central premise was partly wrong
 
@@ -190,6 +192,109 @@ move becomes worth it **when a trigger fires**:
 Until then, T-67 stays open with this plan attached. If/when we execute, the dedicated-vhdx-
 on-I: design above is the chosen path; the distro-ext4 option is permanently ruled out by
 C: capacity.
+
+## Failure mode: canonical-port squatter (discovered 2026-07-09)
+
+`make -C ~/workspaces ollama-store-check` reported `FAIL — http://localhost:11434 serves only 0
+models`, implying the ext4 store link had broken. **It had not.** The store was mounted, intact
+(163 GB), and serving all 84 models. The store was never involved.
+
+### Mechanism
+
+Ollama **0.17.5** made the bare `ollama` command an interactive **TUI** (it is no longer a help
+screen). The TUI probes `$OLLAMA_HOST` — default `127.0.0.1:11434` — and **if nothing answers, it
+spawns a detached `ollama serve` that inherits the shell environment and outlives the TUI**
+(reparenting to `/init`). A login shell has no `OLLAMA_MODELS`, so that server opens the **empty
+default store** at `~/.ollama/models`.
+
+The spawned server never collides with `ollama.service`, which listens on `:11435`. It collides
+with `ollama-metrics-proxy.service`, which owns `:11434` — and at boot the TUI can win that race.
+The proxy then crash-loops forever on `bind: address already in use`.
+
+Resulting signals — note that every *individual* check is telling the truth:
+
+| Signal | Value | |
+|---|---|---|
+| `systemctl is-active mnt-ollama\x2dstore.mount` | `active` | true, and irrelevant |
+| `systemctl is-active ollama` | `active` | true, and irrelevant |
+| `systemctl is-active ollama-metrics-proxy` | `activating (auto-restart)`, `status=1/FAILURE` | the real signal |
+| `curl :11434/api/tags` | `{"models":[]}` | every client sees **zero** models |
+| `curl :11435/api/tags` | 84 models | the store is fine |
+
+Verified empirically 2026-07-09 (bare `ollama` under a pty, decoy port):
+
+| Condition | Bare `ollama` behaviour |
+|---|---|
+| `$OLLAMA_HOST` **unreachable** | spawns a detached `ollama serve`; empty store; survives TUI exit |
+| `$OLLAMA_HOST` **reachable** | reuses it; spawns nothing |
+
+**The hazard is therefore a boot-race window**, not a typo: running `ollama` before the proxy has
+bound `:11434`. Typing `ollama serve` does the same thing, but is *not* required to reproduce it.
+This is the "quiet, confusing failure" predicted in Cons §3 above, arriving from an unpredicted
+direction — the mount held; a second daemon supplied the empty store.
+
+### Detection — fixed in `~/workspaces/scripts/ollama-store-check.sh`
+
+The old step 3 probed `localhost:11434 localhost:11435` and `break`ed on the **first host that
+answered**. The second host was a fallback, not a cross-check, so a squatter's empty store masked
+the real 84 models. Replaced by two steps:
+
+- **Step 3 — endpoint identity.** `ollama-metrics-proxy.service` must be `active`; if it is, it
+  necessarily holds `:11434`, since two processes cannot bind one address. Corroborated by
+  comparing the port's listener PID (`ss`) against the unit's `MainPID` (`systemctl show`), which
+  also *names* the culprit. An unprivileged shell cannot see root-owned listener PIDs — but a
+  squatter is by construction user-owned, so the one case we are blind to cannot occur.
+- **Step 4 — both ports agree.** Require `count(:11434) == count(:11435) >= MIN_MODELS`.
+
+Both detectors fire independently on the real failure; neither alone is airtight. Verified against
+an impostor server returning `{"models":[]}` on a decoy port.
+
+### Recovery
+
+```bash
+kill <squatter-pid>                                    # the check names it
+sudo systemctl restart ollama-metrics-proxy.service
+make -C ~/workspaces ollama-store-check                # expect PASS, 84 models on both ports
+```
+
+### Prevention — DEPLOYED 2026-07-09
+
+**A healthy system is self-defending.** Every hazard is conditional on the canonical endpoint being
+unreachable: a reachable endpoint makes the TUI reuse it (no spawn), and makes `ollama serve` fail
+loudly on `bind: address already in use`. So the guard's job is narrow — cover the window where the
+endpoint is down.
+
+Machine-local (`~/workspaces/scripts/`, outside the repo per the session-100 boundary), both sourced
+from `~/.bashrc`:
+
+- **`ollama-guard.sh`** — shadows the `ollama` CLI. **Reroute, don't refuse:**
+
+  | Invocation | Proxy up | Proxy down, `ollama.service` up | Both down |
+  |---|---|---|---|
+  | `ollama` (TUI) | pass through | reroute to `:11435`, warn | **refuse** (this is the spawn) |
+  | `ollama list`/`run`/`ps` | pass through | reroute to `:11435` | pass through, fails cleanly |
+  | `ollama serve` | refuse (kernel would too) | **refuse** — the case that matters | pass through |
+
+  Rerouting works because a reachable endpoint is *itself* the safety property: hand the TUI
+  `:11435` and the spawn path never executes. Bypass with `OLLAMA_ALLOW_SERVE=1` or `command ollama`.
+- **`ollama-motd.sh`** — runs `ollama-store-check.sh --brief` once per WSL boot (sentinel in
+  `$XDG_RUNTIME_DIR`, tmpfs — the right lifetime, since a VM restart is also when the store attach
+  can evaporate per T-68/T-70). Writes the sentinel **only on success**, so a broken store nags every
+  new terminal until fixed. ~0.1 s on the healthy path. Retries a few times before complaining,
+  because the first shell of a boot can open while the proxy is still `activating`.
+- **`~/.bashrc:138` `export OLLAMA_CONTEXT_LENGTH=8192` — commented out.** It is a *server-side*
+  variable; systemd never reads `.bashrc` and the override does not set it, so the export was inert.
+  It appears in **no tracked file**. Origin: the 2026-02-17 CLI-tool bake-off suggested it alongside
+  `GOOSE_DISABLE_KEYRING=1` "so you don't need to prefix every Goose command" — the keyring var is a
+  genuine Goose client setting; this one was mis-scoped from birth. Its only possible effect was on a
+  hand- or TUI-spawned server, i.e. the bug itself. If an 8192 default is ever wanted it belongs in
+  `/etc/systemd/system/ollama.service.d/override.conf` as `Environment="OLLAMA_CONTEXT_LENGTH=8192"`.
+
+**Standing rule:** never `ollama serve` by hand — systemd owns the only server. The CLI is a
+*client*; on Linux no subcommand except `serve` spawns a server, and the bare TUI does so only when
+it can reach nothing.
+
+---
 
 ## Alternatives considered and rejected
 

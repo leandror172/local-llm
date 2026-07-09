@@ -126,6 +126,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | Hardware specs | `.claude/local/hardware-inventory.md` | RTX 3060 12GB, detailed system info (gitignored) |
 | Verification | `scripts/verify-installation.sh` | `./scripts/verify-installation.sh` (14 checks); manual: `nvidia-smi`, `ollama ps` |
 | **Ollama monitoring stack** | `docs/findings/ollama-monitoring-setup.md` | Prometheus + Grafana via ollama-metrics proxy (port-swap pattern); WSL2 networking gotcha; dashboard import. `ref:ollama-monitoring` |
+| **Ollama store + canonical-port squatter** | `docs/plans/ollama-store-ext4-move.md` | ext4 vhdx store; § "Failure mode: canonical-port squatter" — bare `ollama` (0.17.5 TUI) spawns an empty-store server when `:11434` is unreachable. Detection, recovery, guard |
 | Installation script | `scripts/setup-ollama.sh` | Idempotent native Ollama setup |
 | Docker portable setup | `docker/docker-compose.yml` | GPU config, healthcheck, named volume |
 | Ollama config rationale | `docs/modelfile-reference.md` | Why each Modelfile setting was chosen |
@@ -187,6 +188,9 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | `scripts/verify-installation.sh` | 14-check verification (GPU, service, models, API, benchmark) | After setup or to diagnose issues |
 | `scripts/pull-layer0-models.sh` | Tiered model downloader (Tier 1-3) | Adding new models |
 | `docker/init-docker.sh` | Docker container setup (start, wait, pull, create) | Docker-based deployment |
+| `~/workspaces/scripts/ollama-store-check.sh` *(machine-local)* | ext4 store health: mount + service + **canonical-port identity** + cross-port model-count agreement. `--brief` for login hooks | `make -C ~/workspaces ollama-store-check`; any "0 models" / model-not-found mystery |
+| `~/workspaces/scripts/ollama-guard.sh` *(machine-local)* | Shadows the `ollama` CLI: reroutes to `:11435` when the proxy is down, refuses only when a bare `ollama` would spawn a rogue empty-store server. Bypass: `OLLAMA_ALLOW_SERVE=1` | Sourced from `~/.bashrc`; edit if the port topology changes |
+| `~/workspaces/scripts/ollama-motd.sh` *(machine-local)* | One-line ollama health report per WSL boot (sentinel in `$XDG_RUNTIME_DIR`; nags until healthy) | Sourced from `~/.bashrc` (interactive only) |
 
 ### Benchmark Bash Wrappers (use these, not the .py files)
 | Wrapper | Wraps | Purpose |
