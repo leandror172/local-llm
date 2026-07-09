@@ -258,11 +258,36 @@ which is what an overlay is uniquely for.
 - **`--verify`'s code-drift check (T-58)** — built because a partial v4 propagation left
   expenses on a stale `verifier.py`. With one installed package there are no copies to
   drift. `--verify` survives, shrunk to config and doc files.
-- **The `<!-- overlay:session-tracking vN -->` CLAUDE.md marker** — which session 110 had to
-  *declare authoritative* because nothing else knew a repo's real version. Becomes a
-  queryable package version.
 
-Each of these compensates for a missing package manager. Stop copying code and they fade.
+Both compensate for a missing package manager. Stop copying code and they fade.
+
+#### The version marker does NOT dissolve — it disentangles (corrected)
+
+An earlier draft claimed the `<!-- overlay:session-tracking vN -->` CLAUDE.md marker
+"becomes a queryable package version." **Wrong.** A package version is *machine-global* —
+one shared install. The marker is *per-repo*. They answer different questions, and after
+R-D9 there are **three version facts**, not one:
+
+| Fact | Scope | Where it lives | Question it answers |
+|---|---|---|---|
+| Installed engine **code** | machine-global | package `--version` | what code will run? |
+| Config **schema** contract | per-file | `registry.yaml: version: 1` (already exists) | can this code read this config? |
+| Overlay **config generation** | **per-repo** | `<!-- overlay:session-tracking vN -->` | has this repo taken the latest config? |
+
+Today the marker straddles the first and third because one installer run writes both code
+and config — which is precisely the conflation session 110 caught: session 108's "v9 synced
+cross-repo" claim referred to the *shared user-level engine*, while consumer markers still
+read v6/v6/v6/v8. The marker had to be *declared* authoritative because nothing else was.
+
+After R-D9 the marker tracks exactly one thing and stops being a workaround. "Is repo X up
+to date?" splits into two cleanly answerable questions: *does the installed package support
+this repo's config schema?* — a check the package can run itself and fail loudly on, using
+the `version:` key `registry.yaml` already carries — and *has this repo taken the latest
+config generation?* — the marker. Neither was cleanly available before.
+
+**Consequence for R-D9:** the package must validate `registry.yaml: version:` (and
+`resume.yaml`'s, once it exists) on startup and refuse to run on an unsupported schema. That
+is a new requirement this plan owes, not a freebie.
 
 **The cost that does not dissolve:** editable installs are machine-local (the doc's own
 recorded con). LTG hit this and answered by writing the escalation trigger down rather than
