@@ -58,6 +58,7 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | **LTG repo split (T-33) — FROZEN plan, ready to execute** | `docs/plans/ltg-repo-split.md` | Session 107: S-D1–S-D7 frozen (`ref:ltg-split-frozen-decisions`) — uv path-dep consumption, `ltg/` instance dir, moves/stays/copies table (filter-repo non-destructive extraction), day-one self-index as decoupling acceptance, MCP in new repo, packaging flip during split, single-repo cadence + task migration. Execution: SP-1–SP-14 over 2 sessions. Open input: repo name. |
 | **LTG repo split (T-33) discovery — superseded by frozen plan** | `docs/plans/ltg-repo-split-discovery.md` | Session 106: split-before-Phase-6 lean + drivers (workflow decoupling primary), verified dependency map (`store.py:44` REPO_ROOT landmine, corpus/convention coupling), scope lean (engine moves; corpus.yaml+index stay; pluggable-source stance rides along; T-76 registry OUT), open decision register **S-D1–S-D7** (`ref:ltg-split-decisions`: consumption path, instance residency, DECISIONS.md ref-coupling, new-repo bootstrap, MCP placement, packaging flip, session cadence). Freeze + author `ltg-repo-split.md` in a fresh session after PR #67 merges. Companion: `ltg-model-registry-design.md` Part 2. |
 | Overlay system plan | `docs/plans/overlay-system-plan.md` | Portable repo augmentation: packaging patterns as installable/updatable overlays. 4 phases, manifest-driven, AI-assisted merge |
+| **Overlay `customizable:` keep-regions (T-61 option b)** | `docs/plans/overlay-customizable-regions.md` | FROZEN, not built: a `customizable:` manifest category where the overlay owns a file except named `overlay-keep:<name>` regions (repo-owned, seed-once). Explicit comment-agnostic markers (not `ref:KEY` — LTG-inert in `.sh`); no per-region version; ownership rule; decisions 1–4 + verify gating; 21 TDD cases + acceptance. Algorithmic acceptance spec `ref:overlay-customizable-acceptance`. |
 | Verdict numeric migration plan | `docs/plans/verdict-numeric-migration.md` | Replace ACCEPTED/IMPROVED/REJECTED string verdicts with 0/1/2 integers across all repos, hooks, data, docs, and memory. 8 phases. |
 | **Attributions & license tracking** | `docs/ATTRIBUTIONS.md` | External-dependency license table per CLAUDE.md licensing rule. Note: leidenalg GPL-3 / python-igraph GPL-2+ (copyleft — tracked in the `latent-topic-graph` repo's license decision). |
 | patch_file acceptance test results | `docs/plans/ollama-bridge-patch-file-acceptance-results.md` | Session 67 live test results: 10/10 scenarios pass (6 original + tilde fix + 3 user scenarios). `ref:mcp-patch-file-acceptance-results` |
@@ -92,7 +93,13 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Evaluator | `evaluator/.memories/QUICK.md` | `evaluator/.memories/KNOWLEDGE.md` |
 | Personas | `personas/.memories/QUICK.md` | `personas/.memories/KNOWLEDGE.md` |
 | Benchmarks | `benchmarks/.memories/QUICK.md` | `benchmarks/.memories/KNOWLEDGE.md` |
-| Overlays | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` |
+| Overlays (system) | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` (overlay SYSTEM: installer, manifest schema, `--verify`, `customizable:`, test convention, product topology) |
+| session-tracking overlay | `overlays/session-tracking/.memories/QUICK.md` | `overlays/session-tracking/.memories/KNOWLEDGE.md` (handoff-pipeline concepts: map, register, invariants, payload, CLI, topology, distribution, hazards — all `ref:`-keyed) |
+
+Both overlay KNOWLEDGE files are **concept-organized semantic memory** (session 110 dream pass,
+mirroring LTG's L-08): every section is `ref:`-keyed and ends with "Source / more detail" pointers.
+Per-round narrative was evicted to `.claude/archive/session-tracking-handoff-history.md`.
+Write protocol: update sections in place; never append a dated block.
 | LTG instance | `ltg/.memories/QUICK.md` | `ltg/.memories/KNOWLEDGE.md` (corpus-specific: calibration values, scope rules, retrieval gaps; engine memories live in the `latent-topic-graph` repo) |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
@@ -115,6 +122,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | Topic | File | Key Content |
 |-------|------|-------------|
 | Phases 0-6 completion details | `.claude/archive/phases-0-6.md` | All setup phases, decisions, gotchas, artifacts |
+| session-tracking handoff history | `.claude/archive/session-tracking-handoff-history.md` | Per-round narrative (sessions 86–109) evicted from the overlay's KNOWLEDGE.md — read for "why is it this way?", not "how does it work?" |
 | Hardware specs | `.claude/local/hardware-inventory.md` | RTX 3060 12GB, detailed system info (gitignored) |
 | Verification | `scripts/verify-installation.sh` | `./scripts/verify-installation.sh` (14 checks); manual: `nvidia-smi`, `ollama ps` |
 | **Ollama monitoring stack** | `docs/findings/ollama-monitoring-setup.md` | Prometheus + Grafana via ollama-metrics proxy (port-swap pattern); WSL2 networking gotcha; dashboard import. `ref:ollama-monitoring` |
@@ -144,7 +152,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/tools/ollama-stats.py` | DPO evaluation stats: total calls, model usage, verdict distribution | After evaluating local model outputs; track progress |
 | `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
 | `overlays/session-tracking/files/handoff/run-handoff.sh` | Session-handoff pipeline entrypoint (wraps `handoff.py`): `--payload` (stage) / `--id` (promote) / `--payload --amend` (additive follow-up to last committed session) / `--abort` / `--repo-root` / `--registry`. Lives in the overlay source; installs to `.claude/tools/handoff/run-handoff.sh` in target repos | Running the deterministic handoff transaction; stage emits a JSON handle, promote commits |
-| `overlays/Makefile` | Overlay dev test runner — delegates to `scripts/`: `make test` (all 196), `make test-ref-indexing` (9), `make test-session-tracking` (174), `make test-installer` (13). `ARGS='-k x'` passes pytest filters. Default `make` prints help | Before committing overlay changes |
+| `overlays/Makefile` | Overlay dev test runner — delegates to `scripts/`: `make test` (all 221), `make test-ref-indexing` (9), `make test-session-tracking` (178), `make test-installer` (34: `test_verify.py` + `test_customizable.py`). `ARGS='-k x'` passes pytest filters. Default `make` prints help | Before committing overlay changes |
 | `overlays/scripts/run-all-tests.sh` | Aggregator — runs every overlay suite, prints a PASS/FAIL summary, exits nonzero on any failure (runs all suites even if one fails). Backs `make test` | CI / one-shot full overlay test run |
 | `overlays/scripts/test-{ref-indexing,session-tracking,installer}.sh` | Per-suite runners (resolve cwd + interpreter for each suite); args pass through to the underlying test/pytest. Backs the per-suite `make` targets | Running one overlay's suite standalone |
 

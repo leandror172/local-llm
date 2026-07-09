@@ -46,6 +46,77 @@ def _write_text_eol(path: Path, content: str, crlf: bool):
     path.write_text(content, newline="")
 
 
+# ── customizable keep-regions (T-61) ─────────────────────────────────────────
+# A keep-region is delimited by `overlay-keep:<name>` … `/overlay-keep:<name>`
+# markers (comment-syntax-agnostic: the token is matched anywhere on a line).
+# The close token contains the open token as a substring, so opens use a
+# negative lookbehind for '/' and each line is tested for close FIRST.
+_KEEP_OPEN = re.compile(r"(?<!/)overlay-keep:([a-z0-9-]+)")
+_KEEP_CLOSE = re.compile(r"/overlay-keep:([a-z0-9-]+)")
+
+
+def _extract_regions(text: str) -> dict[str, str]:
+    """Map each `overlay-keep:<name>` region to its interior (text strictly
+    between the open/close marker lines; the marker lines are excluded).
+
+    Raises ValueError on an unbalanced marker (open without matching close, or a
+    close that does not match the currently-open region) or a duplicate name.
+    """
+    regions: dict[str, str] = {}
+    current: str | None = None
+    interior: list[str] = []
+    for line in text.splitlines(keepends=True):
+        close = _KEEP_CLOSE.search(line)
+        opn = _KEEP_OPEN.search(line)
+        if close:
+            name = close.group(1)
+            if current is None or current != name:
+                raise ValueError(
+                    f"unbalanced overlay-keep: close for '{name}' "
+                    f"but open region is {current!r}"
+                )
+            regions[current] = "".join(interior)
+            current, interior = None, []
+        elif opn:
+            name = opn.group(1)
+            if current is not None:
+                raise ValueError(
+                    f"nested overlay-keep: opened '{name}' inside '{current}'"
+                )
+            if name in regions:
+                raise ValueError(f"duplicate overlay-keep region '{name}'")
+            current = name
+        elif current is not None:
+            interior.append(line)
+    if current is not None:
+        raise ValueError(f"unclosed overlay-keep region '{current}'")
+    return regions
+
+
+def _splice_regions(source_text: str, replacements: dict[str, str]) -> str:
+    """Rebuild `source_text`, substituting each named region's interior with
+    `replacements[name]` while keeping the source's own marker lines. Regions
+    not in `replacements` (and non-region text) pass through unchanged.
+    """
+    out: list[str] = []
+    skipping = None
+    for line in source_text.splitlines(keepends=True):
+        close = _KEEP_CLOSE.search(line)
+        opn = _KEEP_OPEN.search(line)
+        if close:
+            skipping = None
+            out.append(line)
+        elif opn:
+            name = opn.group(1)
+            out.append(line)
+            if name in replacements:
+                out.append(replacements[name])
+                skipping = name
+        elif skipping is None:
+            out.append(line)
+    return "".join(out)
+
+
 def _copy_file(src: Path, dest: Path, display: str, executable: bool,
                do_backup: bool, dry_run: bool):
     if not src.exists():
@@ -274,6 +345,94 @@ def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path
                 record("TODO", dest_rel, "file missing and no overlay source — add manually")
 
 
+def handle_customizable(manifest: dict, overlay_dir: Path, target_root: Path,
+                        dry_run: bool, do_backup: bool):
+    """Install `customizable:` files: overlay owns everything except named
+    keep-regions, which are repo-owned (preserved on update; the shipped default
+    is a first-install seed only). See docs/plans/overlay-customizable-regions.md.
+    """
+    files_dir = overlay_dir / "files"
+    for dest_rel, spec in manifest.get("customizable", {}).items():
+        sanctioned = set(spec.get("keep_regions", []))
+        src = files_dir / Path(dest_rel).name
+        dest = target_root / dest_rel
+
+        if not src.exists():
+            record("ERROR", dest_rel, f"source missing in overlay: {src.name}")
+            continue
+
+        src_text, src_crlf = _read_text_eol(src)
+        try:
+            src_regions = _extract_regions(src_text)
+        except ValueError as e:
+            record("ERROR", dest_rel, f"overlay source has malformed keep-region: {e}")
+            continue
+
+        # decision 2: a listed region must exist in the source (author bug).
+        missing = sorted(sanctioned - set(src_regions))
+        if missing:
+            record("ERROR", dest_rel,
+                   f"keep_regions {missing} not found in overlay source (author bug)")
+            continue
+        # decision 1: no unsanctioned marker in the source.
+        rogue_src = sorted(set(src_regions) - sanctioned)
+        if rogue_src:
+            record("ERROR", dest_rel,
+                   f"unsanctioned overlay-keep region(s) in source: {rogue_src}")
+            continue
+
+        exe = _is_executable_payload(src)
+
+        if not dest.exists():
+            if not dry_run:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                _write_text_eol(dest, src_text, src_crlf)
+                _apply_mode(dest, exe)
+            record("COPY", dest_rel, "file missing — seeded from overlay")
+            continue
+
+        inst_text, inst_crlf = _read_text_eol(dest)
+        try:
+            inst_regions = _extract_regions(inst_text)
+        except ValueError as e:
+            record("ERROR", dest_rel, f"installed file has malformed keep-region: {e}")
+            continue
+        # decision 1: no unsanctioned marker the repo invented.
+        rogue_inst = sorted(set(inst_regions) - sanctioned)
+        if rogue_inst:
+            record("ERROR", dest_rel,
+                   f"unsanctioned overlay-keep region(s) in installed file: {rogue_inst}")
+            continue
+
+        # Preserve installed interior where present; reset to source default
+        # (decision 3) where the repo dropped the marker.
+        replacements, reset = {}, []
+        for name in sanctioned:
+            if name in inst_regions:
+                replacements[name] = inst_regions[name]
+            else:
+                replacements[name] = src_regions[name]
+                reset.append(name)
+
+        merged = _splice_regions(src_text, replacements)
+        for name in sorted(reset):
+            record("WARN", dest_rel,
+                   f"keep-region '{name}' marker absent in installed — reset to overlay default")
+
+        if merged == inst_text:
+            record("SKIP", dest_rel, "up to date")
+            continue
+
+        if not dry_run:
+            if do_backup:
+                _backup(dest)
+            _write_text_eol(dest, merged, inst_crlf)
+            _apply_mode(dest, exe)
+        preserved = sorted(sanctioned - set(reset))
+        bak_note = f"backup: {dest_rel}.bak" if do_backup else "no backup (use --backup to enable)"
+        record("UPDATE", dest_rel, f"regions preserved: {preserved}", bak_note)
+
+
 # ── verify mode (read-only) ───────────────────────────────────────────────────
 
 
@@ -431,5 +590,42 @@ def verify_overlay(
         else:
             record("MISSING", dest_rel, "overlay section marker not present")
             n_missing += 1
+
+    # ── customizable: → per-region; CUSTOMIZED is non-gating, outside-drift gates ─
+    for dest_rel, spec in manifest.get("customizable", {}).items():
+        sanctioned = set(spec.get("keep_regions", []))
+        src = files_dir / Path(dest_rel).name
+        dest = target_root / dest_rel
+        if not src.exists():
+            record("SRC-MISSING", dest_rel, "overlay source missing")
+            n_src_missing += 1
+            continue
+        if not dest.exists():
+            record("MISSING", dest_rel, "not installed")
+            n_missing += 1
+            continue
+        src_text = src.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+        inst_text = dest.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+        try:
+            src_regions = _extract_regions(src_text)
+            inst_regions = _extract_regions(inst_text)
+        except ValueError:
+            record("DIFF", dest_rel, "malformed keep-region markers")
+            n_diff += 1
+            continue
+        # What the installer WOULD produce: source skeleton with installed regions
+        # preserved (source default where a marker was dropped).
+        expected = _splice_regions(
+            src_text,
+            {n: inst_regions.get(n, src_regions.get(n, "")) for n in sanctioned},
+        )
+        if expected != inst_text:
+            record("DIFF", dest_rel, "differs from overlay source (outside keep-regions)")
+            n_diff += 1
+        elif any(n in inst_regions and inst_regions[n] != src_regions.get(n)
+                 for n in sanctioned):
+            record("CUSTOMIZED", dest_rel, "keep-region customized (sanctioned)")
+        else:
+            record("SAME", dest_rel, "up to date")
 
     return n_diff, n_missing, n_src_missing

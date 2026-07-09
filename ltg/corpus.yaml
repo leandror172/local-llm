@@ -6,6 +6,10 @@
 #
 # Kept separate from config.yaml (models/roles) by concern: this changes when
 # the corpus boundary moves; config.yaml changes when inference setup moves.
+#
+# corpus_root: where corpus file_path values resolve from, relative to this
+# instance dir (Phase 6, P6-D3). This instance lives INSIDE the llm repo.
+corpus_root: ..
 
 # Only these extensions are ingested. Prose-only MVP — code-file ingestion is
 # Phase 8 territory (ref:ltg-corpus "code branch point — DEFER").

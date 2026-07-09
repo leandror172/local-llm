@@ -324,3 +324,4 @@ the split past its ~1.5–2-session scope for no near-term consumer.
    rebuilt. Re-verify the library landscape at trigger time — this corner moves fast;
    the 2.3 survey is a snapshot of 2026-07.
 <!-- /ref:model-registry-library-decision -->
+

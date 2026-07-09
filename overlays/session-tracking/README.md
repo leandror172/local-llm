@@ -6,7 +6,7 @@ Packages the session continuity system for any Claude Code project.
 
 | Action | Target | Condition |
 |--------|--------|-----------|
-| COPY | `.claude/tools/resume.sh` | Always (backup if differs) |
+| CUSTOMIZABLE | `.claude/tools/resume.sh` | Overlay-owned **except** its `overlay-keep:reading-guide` region, which a repo may tailor (seeded once, preserved on every update — v10, T-61) |
 | COPY | `.claude/tools/rotate-session-log.sh` | Always (backup if differs) |
 | COPY | `.claude/tools/handoff-harvest.sh` | Always (backup if differs) |
 | COPY | `~/.claude/tools/handoff/*.py` (10 runtime modules) | **Always user-level** — shared across all repos regardless of `--install-level` |
@@ -69,6 +69,23 @@ the same file in one run is fully supported.
 # Dry run
 ./overlays/install-overlay.py session-tracking --target /path/to/repo --dry-run
 ```
+
+## Customizable resume.sh region (v10, T-61)
+
+`resume.sh` installs via the `customizable:` manifest category, not `files:`. The overlay owns the
+whole script **except** the `overlay-keep:reading-guide` region (its §2b "Pre-session reading guide"
+title + output filter). On install:
+
+- **first time** — the region is seeded from the overlay's default;
+- **every update after** — the region's *installed* content is preserved verbatim while the rest of
+  `resume.sh` is updated from the overlay. The overlay never overwrites the region again.
+
+This lets a repo tailor that section (e.g. career-search's "What to read first" variant) without its
+edit being clobbered on the next overlay update, and without freezing the rest of the file. To
+customize: edit only the lines between the `# overlay-keep:reading-guide` and
+`# /overlay-keep:reading-guide` markers. `--verify` reports a tailored region as `CUSTOMIZED`
+(non-gating); drift *outside* the markers reports `DIFF` (gating). Full design:
+`docs/plans/overlay-customizable-regions.md`.
 
 ## resume.sh output sections
 
