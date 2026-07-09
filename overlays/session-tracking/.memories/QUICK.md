@@ -10,9 +10,16 @@
 - **Engine:** `uv tool install --editable overlays/session-tracking` → console entry point
   `st-handoff`. The shim resolves `st-handoff` → source tree → **legacy**
   `~/.claude/tools/handoff/` (transitional; delete once every repo is migrated).
-- **Layout:** `src/sessiontracking/{register,handoff}`. `register/` = `registry_io` +
-  `locator` — the primitive, shared with the coming `resume/`; products never import each
-  other. `pyproject.toml` at the overlay root; tests moved to `tests/`.
+- **Layout:** `src/sessiontracking/{register,handoff,resume}`. `register/` = `registry_io`
+  + `locator` — the primitive both products import; products never import each other.
+  `pyproject.toml` at the overlay root; tests moved to `tests/`.
+- **resume is config-driven (R-D1/R-D2):** `files/resume.yaml` (ships via
+  `manual_if_exists`) lists steps — `text` / `region` / `log_next` / `git_log` /
+  `git_status` / `run`. `region:` names a **register role**, resolved through the SAME
+  `locate()` the handoff writes with. Entry point `st-resume`. A step earns a fixed kind
+  when the overlay owns the invariant it depends on; `run:` is the escape hatch.
+- **Register read-side wired:** `quick-pointers` added as a `used_by: [read]`,
+  `write_mode: nomodel` role (the applier refuses nomodel → read-only by construction).
 - **Schema guard:** `load_register` refuses an unrecognised `registry.yaml: version:`
   (exit 2); an absent version means schema 1. Three version facts, never conflate: package
   `--version` (machine-global) ≠ `registry.yaml: version:` (per-file contract) ≠ CLAUDE.md

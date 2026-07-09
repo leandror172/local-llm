@@ -1,2 +1,3 @@
 [console_scripts]
 st-handoff = sessiontracking.handoff.cli:main
+st-resume = sessiontracking.resume.cli:main

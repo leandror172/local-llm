@@ -29,6 +29,7 @@ dependencies = [
 # hooks, and docs keep working — the shim was always the designed seam.
 [project.scripts]
 st-handoff = "sessiontracking.handoff.cli:main"
+st-resume = "sessiontracking.resume.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

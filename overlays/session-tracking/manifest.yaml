@@ -71,6 +71,12 @@ templates:
 # Source resolves to files/registry.yaml (installer uses files_dir / basename).
 manual_if_exists:
   - .claude/handoff/registry.yaml
+  # resume.yaml is the step list `st-resume` renders (v11, R-D1/R-D2). Pure per-repo
+  # config with no code beside it: a repo reorders/retitles/filters its own sections
+  # here rather than patching resume.sh. Same category as the register — copy once,
+  # then flag rather than clobber. Safe to add now that T-54 makes the flag discriminate
+  # (an identical file records SAME, not TODO).
+  - .claude/resume.yaml
 
 # Section injected into CLAUDE.md using overlay markers.
 merge_sections:

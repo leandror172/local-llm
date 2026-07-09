@@ -19,6 +19,10 @@ src/sessiontracking/handoff/verifier.py
 src/sessiontracking/register/__init__.py
 src/sessiontracking/register/locator.py
 src/sessiontracking/register/registry_io.py
+src/sessiontracking/resume/__init__.py
+src/sessiontracking/resume/cli.py
+src/sessiontracking/resume/config.py
+src/sessiontracking/resume/steps.py
 tests/test_applier.py
 tests/test_failure_clarity.py
 tests/test_gitio.py
@@ -30,6 +34,7 @@ tests/test_orchestrator.py
 tests/test_p2_renderer.py
 tests/test_payload.py
 tests/test_registry_io.py
+tests/test_resume_steps.py
 tests/test_rotate.py
 tests/test_runlog.py
 tests/test_t1_specificity.py
