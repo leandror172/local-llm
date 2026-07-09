@@ -1,10 +1,11 @@
-# resume.sh → configurable step pipeline
+# resume.sh → configurable step pipeline (and the packaging flip it forces)
 
 **Created:** 2026-07-09 (session 111)
 **Branch:** `feature/resume-config-steps`
-**Status:** PLAN — decisions R-D1…R-D8 proposed, NOT frozen. Execution deferred pending review.
+**Status:** PLAN — decisions R-D1…R-D9. R-D2/R-D7 decided; R-D4 conditionally decided; rest are leans. **No code written.**
 **Supersedes:** most of `docs/plans/resume-sh-ref-audit.md` (T-43) — see § "What T-43 turns out to be".
-**Reframes:** T-80(b). Leaves T-80(a) independent and still worth doing.
+**Reframes:** T-80(b) (do not execute). Leaves T-80(a) independent — see § "The discriminating-signals release".
+**Answers:** `docs/findings/overlay-distribution-options.md` § "D deferred"; `.claude/tasks.md` line 40.
 
 ---
 
@@ -14,14 +15,14 @@
 order, filtered how, and under what title, is source code. A repo that wants a different
 session-start summary must edit the script.
 
-That is why the `customizable:` installer category (T-61, overlay v10) exists at all for
-this file: it lets a repo patch *code* inside `overlay-keep:<name>` markers. It works —
+That is why the `customizable:` installer category (T-61, overlay v10) exists for this
+file: it lets a repo patch *code* inside `overlay-keep:<name>` markers. It works —
 career-search's variant survived the v10 propagation — but every customization is a merge
 hazard, and the installer's own reset warning cannot tell a benign reset from a clobber
 (T-80a).
 
-The **write** side of session tracking solved this problem years-equivalent ago. Nobody
-edits `orchestrator.py` to change what the handoff writes; they edit `registry.yaml`. The
+The **write** side of session tracking solved this long ago. Nobody edits
+`orchestrator.py` to change what the handoff writes; they edit `registry.yaml`. The
 handoff's behavior is *data*. The read side never got the same treatment.
 
 ### The evidence that this was always the design
@@ -47,7 +48,7 @@ generalized: not just *which regions*, but *which steps*.
 
 ---
 
-## Why T-80(b) dissolves
+## The escape hatch belongs at step granularity, not file granularity
 
 Diff of career-search's `overlay-keep:reading-guide` region against llm's, in full:
 
@@ -56,26 +57,50 @@ Diff of career-search's `overlay-keep:reading-guide` region against llm's, in fu
 | Section title | `── Pre-session reading guide (…) ──` | `── What to read first (…) ──` |
 | Output filters | 4 `grep -v` | 2 `grep -v` |
 
-**That is the entire divergence.** It is purely presentational — a title string and a
-filter chain. With a config file those are a two-line YAML diff, and the keep-region for
-this file never needs to exist.
+**That is the entire divergence** — a title string and a filter chain. Purely
+presentational. With a config file it is a two-line YAML diff, and the keep-region for this
+file never needs to exist.
 
-T-80 has two halves. They part ways here:
+`customizable:` is to *files* what `run:` (below) is to *steps*: an escape hatch for "the
+repo knows something the overlay can't." Same idea, different granularity. The migration
+therefore does not remove the escape hatch — it **descends** it:
 
-- **T-80(a)** — `handle_customizable` decision-3 emits the same `WARN … reset to overlay
-  default` whether the reset is a no-op or a silent clobber. **Survives this reframe.**
-  `customizable:` is general machinery; the non-discriminating warning bites *any* future
-  customizable file regardless of what happens to `resume.sh`. Independent, cheap, real.
-- **T-80(b)** — move the `# 2b.` comment inside the keep-region, bump v11, re-propagate to
-  five repos. **Repairs a workaround this plan deletes.** Do not do it.
+| | file-granularity (`overlay-keep`) | step-granularity (`run:`) |
+|---|---|---|
+| Unit of divergence | a span of shell code | one config entry |
+| Merge behavior | hazard; hand-wrapping before install (T-79) | clean; YAML doesn't conflict like patched scripts |
+| Blast radius of an overlay update | whole file | one step |
+
+career-search keeps every freedom it has today and loses the propagation hazard.
+
+### The uncomfortable part, recorded honestly
+
+Every customization anyone has actually wanted from this overlay is **data**:
+
+| File | What a repo would want to change | Data? |
+|---|---|---|
+| `resume.sh` | Section titles, filters, order | yes |
+| `rotate-session-log.sh` | How many entries to keep | yes (`--keep N`) |
+| `handoff-harvest.sh` | The commit-boundary grep pattern | yes |
+| `registry.yaml` | Everything | already config |
+
+T-61 asked *"how do we let repos customize an overlay-owned file?"* — well-posed,
+competently answered, 21 tests, shipped to five repos. The question one level up — *"why
+does this file have repo-specific behavior at all?"* — was never asked.
+
+**Disposition:** keep the `customizable:` category (an unused escape hatch is the healthy
+steady state), delete its only consumer. Its durable outputs were never the category
+itself: they were `--verify`'s `CUSTOMIZED`-vs-`DIFF` gating semantics, the propagation
+runbook, and the discovery that the reset warning lies. All survive.
+
+Generalized rule → memory `feedback-config-over-keep-regions`.
 
 ---
 
 ## What T-43 turns out to be
 
-`docs/plans/resume-sh-ref-audit.md` (session 60) proposed adding `ref:quick-pointers` and
-`ref:active-decisions` to resume.sh, plus three structural fixes. Checked against the
-current script:
+`docs/plans/resume-sh-ref-audit.md` (session 60) proposed adding two ref tags plus three
+structural fixes. Checked against the current script:
 
 | T-43 item | Status today |
 |---|---|
@@ -92,37 +117,34 @@ The residue is one line. `resume.sh:118` prints:
 echo "  (items pending — see ref:deferred-infra)"
 ```
 
-The sentence has a hole where the number goes. It has been shipping that way to five
-repos. T-43 should be closed as "absorbed": the count becomes a `run:` step in the default
-config, not a bash edit.
+The sentence has a hole where the number goes, and has been shipping that way to five
+repos. Close T-43 as **absorbed**: the count becomes a `run:` step in the default config.
 
 ---
 
 ## Design
 
-### Two files, one referencing the other (R-D1)
+### R-D1 — Two files, one referencing the other
 
 **Do not fold presentation into the register.** `registry.yaml` is a *safety boundary* —
 the handoff's verifier (F4) hashes every byte outside a listed region and rejects any edit
-that changed them. Roles listed there define what the pipeline is *permitted to write*.
-Adding `head: 30`, `title:`, and `filters:` to a role would put display concerns inside the
-mechanism that decides write authority. Two concerns, two files:
+that changed them. Roles there define what the pipeline is *permitted to write*. Adding
+`head: 30`, `title:`, `filters:` would put display concerns inside the mechanism that
+decides write authority.
 
 | File | Owns | Consumers |
 |---|---|---|
 | `registry.yaml` | **Where** a region lives: file + locator (+ write mode) | handoff (write), resume (read) |
 | `resume.yaml` | **What** to show, in what order, filtered how | resume only |
 
-A `region:` step names a **register role**, not a raw ref key. Resume resolves the location
-*through* the register. That is the prize the deferred comment describes: rename a ref key
-or move a block between files, edit `registry.yaml` once, and both read and write follow.
+A `region:` step names a **register role**, not a raw ref key, and resume resolves the
+location *through* the register. That is the prize the deferred comment describes: rename a
+ref key or move a block between files, edit `registry.yaml` once, both sides follow.
 
-Steps that reference no region (a banner, a git command) name nothing.
+### R-D2 — Step vocabulary: fixed set + `run:` escape hatch  *(decided)*
 
-### Step vocabulary — fixed set plus a `run:` escape hatch (R-D2)
-
-Derived from what the current script actually does, not invented. Every one of the six
-sections plus the footer maps onto this set:
+Derived from what the script does today, not invented. All six sections plus the footer map
+onto this set:
 
 | Step kind | Purpose | Maps to today's |
 |---|---|---|
@@ -134,119 +156,241 @@ sections plus the footer maps onto this set:
 | `run` | **Escape hatch.** Arbitrary shell, output captured | deferred-count (T-43 residue), anything repo-specific |
 
 Shared per-step options: `title:`, `head:`, `filters:` (list of `grep -v` patterns),
-`fallback:` (text when output is empty), `omit_if_empty:` (skip the whole step, incl. its
-title — this is how §6 "Uncommitted changes" already behaves).
+`fallback:` (text when empty), `omit_if_empty:` (skip the step *and its title* — how §6
+already behaves).
 
-**The rule that decides fixed-vs-`run`:** a step earns a fixed kind when *the overlay owns
-the invariant it depends on.*
+**The rule that decides fixed-kind vs `run:`** — *a step earns a fixed kind when the
+overlay owns the invariant it depends on:*
 
-- `log_next` depends on `session-log.md`'s structure — which the overlay owns and has
-  already changed once (latest-only + slugged archive, session 90). As a `run: awk …` step
-  frozen into five repos, the next storage-topology change breaks all of them silently.
-- `git_log` depends on git, which is universal — but the overlay wants one place to encode
-  known hazards. Live example: `rtk git log` drops merge commits (session-110 gotcha), so
-  the fixed step pins plain `git`.
-- `run:` is for genuinely repo-specific things. The deferred-count is a good first citizen.
+- `log_next` parses `session-log.md`'s structure, which the overlay owns and **has already
+  changed once** (latest-only + slugged archive, session 90). Frozen into five repos as
+  `run: awk …`, the next storage-topology change breaks all of them silently.
+- `git_log` depends on git (universal), but the overlay wants one place to pin known
+  hazards — e.g. `rtk git log` drops merge commits (session-110 gotcha).
+- `run:` is for what only the repo knows.
 
-`run:` makes the config executable code, at the same trust level as a `Makefile` — checked
-into the repo, reviewed like source. Naming this explicitly rather than sleepwalking into
-it. It is not a new trust boundary; it is the CircleCI shape, adopted knowingly.
+`run:` makes the config executable code at the same trust level as a `Makefile` — checked
+in, reviewed like source. This is the CircleCI shape, adopted knowingly rather than by
+accident.
 
-### Language: Python, for reuse (R-D3)
+### R-D3 — Language: Python, for reuse
 
-Not "bash is bad" — **the pieces already exist in Python and are already installed.**
+Not "bash is bad" — **the pieces already exist in Python.**
 
-- `registry_io.load_register(path) -> Dict[role, role_dict]` — loads and validates the register.
-- `locator.locate(role, text) -> Region(start, end, interior)` — resolves all four locator
-  kinds, including `ref_block`.
+- `registry_io.load_register(path) -> Dict[role, role_dict]`
+- `locator.locate(role, text) -> Region(start, end, interior)` — all four locator kinds
 
-A `region:` step is `locate(register[role], read(file)).interior` — the resolver already
-exists and is the *same code the handoff uses*, so read and write can never disagree about
-where a region begins. Bash + `yq` would reimplement both and add a dependency the overlay
-does not currently require. PyYAML is already declared.
+A `region:` step is `locate(register[role], read(file)).interior`, using **the same
+resolver the handoff uses**, so read and write can never disagree about where a region
+begins. Bash + `yq` would reimplement both and add a dependency the overlay doesn't
+require. PyYAML is already declared. Startup (~40 ms) is irrelevant once per session.
 
-Startup cost (~40 ms) is irrelevant for a once-per-session script.
+**Non-register keys:** `ref-lookup.sh --paths` (T-42, shipped) emits `KEY<TAB>relpath`, so
+a `region:` step naming a key *not* in the register still resolves — with the documented
+caveat that it loses rename-safety. `ref-lookup.sh` belongs to a *different* overlay
+(`ref-indexing`) and stays bash; do not drag it into this package.
 
-**Fallback for non-register keys:** `ref-lookup.sh --paths` (T-42, shipped) emits
-`KEY<TAB>relpath`, so a `region:` step naming a ref key *not* in the register can still
-resolve. Prefer register roles; allow raw keys with a documented caveat that they lose the
-rename-safety property.
+### R-D7 — A real package  *(decided)* — and it is *cheaper*, not dearer
 
-### Installation shape (R-D4) — the unresolved one
+Earlier framing in this plan called the shared-primitive extraction expensive. **That was
+an artifact of the current layout, not of the extraction.** `~/.claude/tools/handoff/` is
+ten loose `.py` files copied into a directory — no `__init__.py`, no distribution, no
+import root. A sibling `resume/` importing `locator` from it needs `sys.path` hacks or
+duplication.
 
-`.claude/tools/resume.sh` stays as the invoked path (a thin bash shim, mirroring
-`run-handoff.sh`), and the step interpreter installs to `~/.claude/tools/handoff/` (or a
-sibling `resume/`) via `always_user_files:` — one shared engine, matching the handoff.
+Inside a real package, `from sessiontracking.register import locate` is just an import.
+**Packaging is the mechanism that makes R-D7 cheap.** R-D7 and R-D9 are one decision.
 
-The open question is **how `resume.yaml` ships**, and every option has a real cost:
+```
+sessiontracking/
+  register/     ← primitive: registry_io.py + locator.py  (the register + region resolution)
+    ↑      ↑
+  handoff/   resume/     ← products, mutually independent
+```
+
+Two products, one shared primitive, **no product↔product edge** — satisfying the repo's own
+topology rule (`ref:model-registry-library-decision`, *"products depend on primitives,
+never product↔product"*) structurally rather than by discipline. This is the second
+sighting of that shape in three sessions; T-77's signature extractor would be the third.
+
+Layering rule preserved: PyYAML stays confined to `registry_io`; `locator` and the handoff
+safety core remain stdlib-only.
+
+### R-D9 — Distribution flip: code ships as a package, config ships as an overlay  *(new)*
+
+`docs/findings/overlay-distribution-options.md:47` already specifies this as **Option D —
+pip editable install**, and line 135 defers it:
+
+> D would clean up the shim further and pre-stage H, but **adds pip/venv complexity with no
+> immediate benefit.** Adopt when H becomes concrete.
+
+**That rationale is now false.** The immediate benefit is R-D7: a second product needs to
+share a primitive with the first, and only a package makes that a plain import. The
+recorded trigger was "when H becomes concrete"; the *real* trigger turned out to be "when a
+second consumer appears," which nobody wrote down.
+
+**Precedent, two sessions old and in this repo's family:**
+`/mnt/i/workspaces/latent-topic-graph/pyproject.toml:21` declares thirteen
+`[project.scripts]` entry points (`ltg-extract`, `ltg-embed`, `ltg-relate`, …); the llm
+instance consumes them via an editable path-dependency (`ltg/pyproject.toml`); the bash
+wrappers survived as three-line shims. Exactly this shape, already load-bearing.
+
+Note on terminology: "binary" here means a **console-script entry point** — `pyproject.toml`
+declares `st-resume = "sessiontracking.resume:main"` and installing puts `st-resume` on
+`PATH`. It behaves like a binary; it is a launcher. A true single-file executable
+(PyInstaller / `shiv` / `zipapp`) is possible and **not worth it**: Python is already
+required (PyYAML, MCP server, `uv`), and real binaries mean per-platform builds for no gain.
+
+**The line this draws:**
+
+| Ships as | What | Mechanism |
+|---|---|---|
+| **Package** | `register/`, `handoff/`, `resume/`, entry points | `uv tool install` / editable path-dep |
+| **Overlay** | `registry.yaml`, `resume.yaml`, templates, `CLAUDE.md`, `SKILL.md` | `install-overlay.py` |
+
+Today the installer does both and conflates them. `always_user_files:` copies ten `.py`
+files — a hand-rolled package manager. The other categories place per-repo config and docs,
+which is what an overlay is uniquely for.
+
+**What this dissolves** (named plainly, since the same thing just happened to `customizable:`):
+
+- **`always_user_files:`** — exists only to copy the ten pipeline modules. Gone.
+- **`--verify`'s code-drift check (T-58)** — built because a partial v4 propagation left
+  expenses on a stale `verifier.py`. With one installed package there are no copies to
+  drift. `--verify` survives, shrunk to config and doc files.
+- **The `<!-- overlay:session-tracking vN -->` CLAUDE.md marker** — which session 110 had to
+  *declare authoritative* because nothing else knew a repo's real version. Becomes a
+  queryable package version.
+
+Each of these compensates for a missing package manager. Stop copying code and they fade.
+
+**The cost that does not dissolve:** editable installs are machine-local (the doc's own
+recorded con). LTG hit this and answered by writing the escalation trigger down rather than
+solving it early (`ltg/pyproject.toml:9`): *flip the path source to a published package
+when (a) working from a machine without the sibling checkout, or (b) the first external
+adopter appears.* **Adopt that trigger verbatim.** Do not publish to PyPI now.
+
+Bash shims stay at `.claude/tools/resume.sh` and `run-handoff.sh` (`exec st-resume "$@"`) so
+existing paths, hooks, and docs keep working. The shim was always the designed seam.
+
+### R-D4 — How `resume.yaml` ships: `manual_if_exists`, conditional on fixing T-54
+
+Under R-D9 `resume.yaml` is **pure per-repo config with no code beside it** — which makes
+`manual_if_exists` the honest category, matching `registry.yaml`. The alternatives:
 
 | Option | Behavior | Cost |
 |---|---|---|
 | `templates:` | Created once, never overwritten | Overlay improvements to default steps never reach existing repos |
-| `manual_if_exists:` | Copy once, then flag for manual merge | Flags on **every** install unconditionally — the T-54 gap. `registry.yaml` already does this; a second file doubles the noise |
-| `customizable:` | Overlay owns it except keep-regions | The exact mechanism this plan is trying to stop needing |
+| **`manual_if_exists:`** | Copy once, then flag for manual merge | Flags on **every** install unconditionally — the T-54 gap |
+| `customizable:` | Overlay owns it except keep-regions | The mechanism this plan exists to stop needing |
 
-The register faces the identical problem today and chose `manual_if_exists`. Consistency
-argues for matching it; the T-54 gap argues for fixing T-54 first. **Not resolved here.**
+**Condition:** with two `manual_if_exists` files, every install prints two `[TODO]`s that
+usually mean nothing — alarm fatigue on the exact channel meant to protect the register.
+T-54 must be fixed before or with this. See below.
 
-### Fate of the keep-region (R-D5)
+### R-D5 — Fate of the keep-region
 
-Once `resume.yaml` exists, `resume.sh` becomes a shim with no customizable surface. The
-`customizable:` entry for it is removed from `manifest.yaml`, and the
-`overlay-keep:reading-guide` markers disappear from all five repos. career-search's variant
-migrates to two lines of its `resume.yaml`.
+Remove the `customizable:` entry for `resume.sh` from `manifest.yaml`; the
+`overlay-keep:reading-guide` markers disappear from all five repos; career-search's variant
+migrates to two lines of its `resume.yaml`. Keep the category.
 
-`customizable:` the **category** stays — it is general machinery with other plausible
-consumers, and T-80(a) is a genuine bug in it. This plan removes its only current *user*,
-which is worth being honest about: after this, `customizable:` is machinery with zero
-call-sites. That is an argument for landing T-80(a) on its own merits, or for questioning
-whether the category should have been built. Recorded, not resolved.
+### R-D6 — Migration gate
 
-### Migration across five repos (R-D6)
-
-Behavior must be byte-identical before and after for llm's own output, or we cannot tell a
-regression from a config error. Proposed gate: capture `resume.sh` output on master, run
-the new pipeline with the default `resume.yaml`, `diff` must be empty (modulo the date
-line and the T-43 count, which is a deliberate addition).
-
-career-search is the only repo with a customization and therefore the only real migration
-test. Its two-line config diff is the acceptance case.
+Behavior must be byte-identical before and after for llm's own output, or a regression is
+indistinguishable from a config error. Gate: capture `resume.sh` output on master, run the
+new pipeline with the default `resume.yaml`, `diff` must be empty — modulo the date line
+and the T-43 count, which is a deliberate addition. career-search is the only repo with a
+customization and therefore the only real migration test; its two-line config diff is the
+acceptance case.
 
 ---
 
-## Decision register (PROPOSED — not frozen)
+## The discriminating-signals release (T-54 + T-80a)
 
-| id | Decision | Lean | Open? |
-|---|---|---|---|
-| **R-D1** | Presentation config separate from the region register | Two files; `region:` steps resolve through `registry.yaml` | lean, needs ratification |
-| **R-D2** | Step vocabulary | Fixed set (`text`/`region`/`log_next`/`git_log`/`git_status`) + `run:` escape hatch | **decided by user** |
-| **R-D3** | Language | Python, reusing `registry_io` + `locator`; bash shim at the invoked path | lean, strong |
-| **R-D4** | How `resume.yaml` ships | `templates:` vs `manual_if_exists:` vs new | **OPEN — blocks execution** |
-| **R-D5** | Fate of `customizable:` for resume.sh | Remove the entry + markers; keep the category | lean |
-| **R-D6** | Migration gate | Byte-identical output diff on llm; career-search is the acceptance case | lean |
-| **R-D7** | Does the interpreter live in `handoff/` or a sibling `resume/` package? | Sibling — different lifecycle, shared imports | **OPEN** |
-| **R-D8** | T-43 disposition | Close as absorbed; the deferred-count becomes a `run:` step in the default config | lean |
+**Packaging does not touch this.** `handle_customizable` lives in `overlays/lib/actions.py`
+— part of `install-overlay.py`, a dev tool run from the llm repo. That is not what gets
+packaged. T-80(a) is fully independent of R-D9.
+
+What retires T-80(a)'s *call-site* is this plan (R-D5), not packaging. `customizable:` is
+used by exactly one manifest, for exactly one file.
+
+**T-54 and T-80(a) are the same bug.** Both are installer signals that fire identically in
+the dangerous case and the benign one, and therefore carry zero bits and train the operator
+to ignore them:
+
+- `handle_manual_if_exists` (`actions.py:325`) flags `[TODO] manual merge` on every install
+  — *even when the file is byte-identical to source* (live in latent-topic-graph today).
+- `handle_customizable` (`actions.py:348`) warns `reset to overlay default` on every
+  unmarked region — *even when the reset changes nothing* (all four repos in T-79 produced
+  byte-identical output for the benign reset and the destructive one).
+
+They are **adjacent functions, 23 lines apart**, needing the identical fix: *compare the
+installed content against the source before warning.* Write the comparison helper once,
+call it twice.
+
+**Priority, corrected.** An earlier draft argued "fix T-80(a) now while the fixtures are
+cheap, before career-search's pre-v10 state becomes archaeology." **That was wrong** —
+`test_customizable.py` is hermetic (54 `tmp_path` uses); the fixtures are synthetic and
+never expire. The real ordering:
+
+- **T-54 is live and worsening.** It guards `registry.yaml` today and `resume.yaml` under
+  R-D4. Do it because of that.
+- **T-80(a) rides along**, ~20 lines away, in the same file, same predicate. Doing one and
+  not the other leaves the bug class half-fixed.
+- **T-80(b) stays dead** — it repairs a workaround R-D5 deletes.
+
+Suite: `make -C overlays test-installer`.
+
+---
+
+## Decision register
+
+| id | Decision | State |
+|---|---|---|
+| **R-D1** | Presentation config separate from the region register; `region:` steps resolve through `registry.yaml` | lean, needs ratification |
+| **R-D2** | Fixed step vocabulary + `run:` escape hatch | **DECIDED** |
+| **R-D3** | Python, reusing `registry_io` + `locator`; bash shim at the invoked path | lean, strong |
+| **R-D4** | `resume.yaml` ships via `manual_if_exists` | **DECIDED, conditional on T-54** |
+| **R-D5** | Remove `customizable:` entry + markers; keep the category | lean |
+| **R-D6** | Byte-identical output diff on llm; career-search is the acceptance case | lean |
+| **R-D7** | New `sessiontracking` package; extract a `register/` primitive; no product↔product edge | **DECIDED** |
+| **R-D8** | Close T-43 as absorbed; deferred-count becomes a `run:` step | lean |
+| **R-D9** | Distribution flip to Option D: code as package + console entry points; overlay keeps config/docs. Adopt LTG's publish trigger verbatim | **DECIDED** (pending go) |
 
 ---
 
 ## Relationship to open tasks
 
-- **T-80(a)** — independent, unblocked, still valid. Do it or don't; this plan neither
-  needs nor prevents it.
-- **T-80(b)** — **do not execute.** Superseded.
+- **T-54** — live, worsening under R-D4. Fix first. Same bug as T-80(a).
+- **T-80(a)** — independent of packaging; rides along with T-54.
+- **T-80(b)** — **do not execute.** Superseded by R-D5.
 - **T-43** — close as absorbed (R-D8).
-- **T-54** — `manual_if_exists` unconditional flagging. Becomes load-bearing if R-D4 picks
-  `manual_if_exists`.
-- **T-61 / T-79** — the work that produced the `customizable:` category and propagated it.
-  This plan removes its only consumer; see R-D5.
-- **`tasks.md` line 40** — the "refactor resume.sh onto the shared register" open decision.
-  This plan answers it: **yes, now**, and wider than originally scoped.
+- **T-58 (`--verify`)** — code-drift half dissolves under R-D9; config/doc half survives.
+- **T-60 (distribution G/H)** — this plan resolves **D**. D was already recorded as the
+  stepping stone to H; adopting it pre-stages the plugin evaluation.
+- **T-61 / T-79** — produced the `customizable:` category and propagated it. R-D5 removes
+  its only consumer; the durable outputs survive.
+- **T-77 (signature extractor)** — would be the third consumer of the primitives topology.
+  R-D7 makes the shape explicit before it arrives.
+- **`.claude/tasks.md` line 40** — "refactor resume.sh onto the shared register, lean:
+  later." Answered: **yes, now**, and wider than scoped.
 
 ---
 
+## Execution order (proposed, pending go)
+
+1. **Discriminating-signals release** — T-54 + T-80(a), one comparison helper, two
+   call-sites, hermetic tests. Independent; unblocks R-D4.
+2. **Packaging flip (R-D9 + R-D7)** — `sessiontracking` package, `register/` primitive
+   extracted, entry points, shims rewritten. Guarded by the 178 existing handoff tests.
+3. **`resume.yaml` + step interpreter (R-D1/2/3)** — default config reproducing today's
+   output byte-for-byte (R-D6), plus the T-43 count.
+4. **Migration** — five repos; remove `customizable:` entry and markers (R-D5);
+   career-search's two-line config diff is the acceptance case.
+
+Steps 1 and 2 are independent of each other. Step 3 depends on 2. Step 4 depends on 3.
+
 ## What is NOT decided
 
-R-D4 (shipping mechanism) and R-D7 (package placement) block execution. R-D1/R-D3/R-D5/R-D6
-are leans awaiting ratification. No code has been written. The next session should freeze
-the register, then build — the session-106/107 shape (freeze in one sitting, execute the
-next).
+R-D1, R-D3, R-D5, R-D6, R-D8 are leans awaiting ratification. R-D4 is contingent on step 1
+landing. No code has been written; nothing starts without an explicit go.
