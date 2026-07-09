@@ -232,11 +232,28 @@ Source / more detail: `rotate-session-log.sh`, `handoff-harvest.sh`;
 <!-- ref:session-tracking-distribution -->
 ## Distribution — one shared engine, per-repo seams
 
-The overlay installs at two levels, deliberately:
+**Since v11 (R-D9): code ships as a package, config ships as an overlay.**
 
-- **Pipeline modules → always user-level** at `~/.claude/tools/handoff/`, via the
-  `always_user_files:` manifest key. Never per-repo. **All repos execute the same
-  engine.**
+The pipeline is the `session-tracking` Python package (`overlays/session-tracking/`,
+`src/sessiontracking/`), installed with `uv tool install --editable
+overlays/session-tracking`, exposing the console entry point `st-handoff`. The
+`always_user_files:` manifest key — which copied ten `.py` modules into
+`~/.claude/tools/handoff/`, a hand-rolled package manager — **is gone**.
+
+Package layout: `register/` (primitive: `registry_io` + `locator`) with `handoff/` and
+`resume/` as products above it. Products depend on the primitive, never on each other
+(`ref:model-registry-library-decision`). Sharing `locate()` is the point: read and write
+cannot disagree about where a region begins.
+
+`registry_io.load_register` validates the register's `version:` key against
+`SUPPORTED_REGISTER_SCHEMA` and refuses an unrecognised one (exit 2). An *absent* version
+is treated as schema 1 — absence cannot prove incompatibility. Three version facts, do not
+conflate: package `--version` (machine-global), `registry.yaml: version:` (per-file
+schema contract), CLAUDE.md `<!-- overlay:session-tracking vN -->` (per-repo config
+generation).
+
+The overlay still installs at two levels:
+
 - **Shim + SKILL.md → follow `--install-level`** (default `user` → `~/.claude/`;
   `project` → per-repo `.claude/`). Project-level copies SHADOW the global, so a repo
   wanting its own SKILL must force-copy it (`user_files` is skip-if-present).
@@ -246,21 +263,24 @@ The overlay installs at two levels, deliberately:
   is never overwritten; the shipped default is a **first-install seed only**. Currently
   one region: `reading-guide` (§2b).
 
-`run-handoff.sh` is a thin shim and the stable per-repo seam. It (a) bypasses its
-registry-file guard when an explicit `--registry` is passed, and (b) prefers a
-`handoff.py` co-located with itself (source tree / dev home repo) over the user-level
-install. So the llm home repo runs the engine **from source**:
+`run-handoff.sh` is a thin shim and the stable per-repo seam — migrating the engine changes
+only this file. It bypasses its registry-file guard when an explicit `--registry` is
+passed, and resolves the engine in order:
 
-```
-overlays/session-tracking/files/handoff/run-handoff.sh \
-  --registry overlays/session-tracking/files/registry.yaml
-```
+1. `st-handoff` on `PATH` — the installed package. Preferred.
+2. a sibling `src/sessiontracking` — the overlay source checkout, so the dev home repo
+   tests against source without installing.
+3. `~/.claude/tools/handoff/handoff.py` — **legacy** flat-module copy. Transitional, kept
+   only until every consumer repo has the package. Delete after migration.
 
-Target repos (shim-only, no co-located engine) transparently use the shared user-level
-engine. In an uninstalled repo the guard makes the shim `exit 0` — user-level hooks stay
-safe.
+In an uninstalled repo the guard makes the shim `exit 0` — user-level hooks stay safe.
 
-Deferred: pip-editable distribution (option D); G/H remain long-term targets.
+Option D (pip editable) is **adopted** as of v11; `docs/findings/overlay-distribution-options.md`
+deferred it as "no immediate benefit, adopt when H becomes concrete" — the real trigger
+turned out to be *a second consumer needing the primitive*. Publish-escalation trigger,
+adopted verbatim from the LTG split: flip from editable path install to a published package
+only when (a) working from a machine without this checkout, or (b) the first external
+adopter appears. G/H remain long-term targets.
 
 Source / more detail: `manifest.yaml`; `docs/plans/overlay-customizable-regions.md`;
 `overlays/session-tracking/README.md`.

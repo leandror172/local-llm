@@ -1,0 +1,42 @@
+# session-tracking — code ships as a package; config ships as an overlay (R-D9).
+#
+# The overlay installer (install-overlay.py) still places per-repo CONFIG and DOCS:
+# registry.yaml, resume.yaml, the starter templates, the CLAUDE.md section, SKILL.md,
+# and the run-handoff.sh shim. It no longer copies Python modules — that is this
+# package's job. See docs/plans/resume-config-steps.md § R-D9.
+#
+# Install (editable, machine-local):
+#     uv tool install --editable overlays/session-tracking
+#     # or: pipx install -e overlays/session-tracking
+#
+# S-D1 escalation trigger, adopted verbatim from the LTG split (ltg/pyproject.toml:9):
+# flip the source from an editable path install to a published package when either
+# fires: (a) working from a machine without this checkout, (b) the first external
+# adopter appears. Until then, do NOT publish to PyPI.
+
+[project]
+name = "session-tracking"
+version = "11.0.0"
+description = "Deterministic session continuity tooling for Claude Code repos: handoff (write) + resume (read) over a shared register."
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+# Console-script entry points. These are launchers, not compiled binaries: installing
+# puts `st-handoff` on PATH, which starts Python and calls the named function. The bash
+# shims (.claude/tools/resume.sh, run-handoff.sh) exec these, so existing repo paths,
+# hooks, and docs keep working — the shim was always the designed seam.
+[project.scripts]
+st-handoff = "sessiontracking.handoff.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

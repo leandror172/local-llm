@@ -11,7 +11,7 @@ import datetime
 
 import pytest
 
-from runlog import (
+from sessiontracking.handoff.runlog import (
     create_run_dir,
     write_input,
     write_report,

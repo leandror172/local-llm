@@ -10,7 +10,7 @@ passes the role dict in; tests construct role dicts inline.
 
 import pytest
 
-from locator import Region, LocatorError, locate
+from sessiontracking.register.locator import Region, LocatorError, locate
 
 
 # --------------------------------------------------------------------------- #

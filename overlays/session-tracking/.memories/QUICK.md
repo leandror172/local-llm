@@ -3,23 +3,26 @@
 *Working memory. Current-state only, keep under ~30 lines — chronology lives in
 `.claude/archive/session-tracking-handoff-history.md`; concepts in `KNOWLEDGE.md`.*
 
-## Current State (2026-07-08, session 110)
+## Current State (2026-07-09, session 111)
 
-- **Version:** v10 — the `customizable:` install category (T-61) closed the
-  overlay-clobbers-local-edits problem. `resume.sh` ships with one repo-owned region,
-  `overlay-keep:reading-guide`.
-- **Tests:** 221 across the overlay suite (`make test`); 178 in the handoff pipeline.
-- **Engine:** shared user-level `~/.claude/tools/handoff/` — ALL repos execute it. llm runs
-  it from source via the shim's co-located-`handoff.py` preference.
-- **Installed:** per-repo files synced **v9**; llm's own `resume.sh` is on **v10**.
-  Consumers (expenses/code, web-research, career-search, latent-topic-graph) still on v9.
-- **Next:** **T-79** — propagate v10 to the four consumers.
-  ⚠️ career-search's `resume.sh` §2b is customized with **no `overlay-keep` markers** →
-  a naive install resets it (decision-3 clobber). Pre-wrap in markers first.
-  Procedure + watch-outs: `docs/plans/overlay-v10-propagation.md`.
-- **Open PR:** #70 (`feature/overlay-customizable-regions`).
-- **Key files:** `files/handoff/` (10 modules + shim), `manifest.yaml`,
-  `files/registry.yaml`, `files/resume.sh`, `files/rotate-session-log.sh`,
+- **Version:** v11 — **R-D9 packaging flip.** Code ships as the `session-tracking` Python
+  package; the overlay installs config + docs only. `always_user_files:` is gone.
+- **Engine:** `uv tool install --editable overlays/session-tracking` → console entry point
+  `st-handoff`. The shim resolves `st-handoff` → source tree → **legacy**
+  `~/.claude/tools/handoff/` (transitional; delete once every repo is migrated).
+- **Layout:** `src/sessiontracking/{register,handoff}`. `register/` = `registry_io` +
+  `locator` — the primitive, shared with the coming `resume/`; products never import each
+  other. `pyproject.toml` at the overlay root; tests moved to `tests/`.
+- **Schema guard:** `load_register` refuses an unrecognised `registry.yaml: version:`
+  (exit 2); an absent version means schema 1. Three version facts, never conflate: package
+  `--version` (machine-global) ≠ `registry.yaml: version:` (per-file contract) ≠ CLAUDE.md
+  `<!-- overlay:session-tracking vN -->` (per-repo config generation).
+- **Tests:** 236 across the overlay suite (`make test`); 183 in the package.
+- **Installed:** consumer repos still execute the **legacy** flat-module engine and read
+  CLAUDE.md v10. Migrating them to the package rides with the `resume.yaml` work.
+- **Key files:** `pyproject.toml`, `src/sessiontracking/`, `tests/`, `manifest.yaml`,
+  `files/handoff/run-handoff.sh` (shim), `files/registry.yaml`, `files/resume.sh`,
+  `files/rotate-session-log.sh`,
   `files/handoff-harvest.sh` (boundary `^chore(session-handoff): session `),
   `files/session-handoff/SKILL.md`.
 - **Gotcha (recurring):** never run the installer to "just refresh the engine" without

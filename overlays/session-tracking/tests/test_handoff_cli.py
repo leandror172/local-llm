@@ -17,7 +17,8 @@ import pytest
 
 from test_orchestrator import _setup, _git_init
 
-HANDOFF_DIR = Path(__file__).resolve().parent
+# Subprocess CLI tests run the packaged module from the src root, so `-m` resolves.
+SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 
 REGISTRY_YAML = textwrap.dedent("""\
     version: 1
@@ -94,17 +95,17 @@ def _scaffold(tmp_path, payload_text=PAYLOAD):
 
 def _run_payload(root, reg, payload_file):
     return subprocess.run(
-        [sys.executable, "handoff.py", "--payload", str(payload_file),
+        [sys.executable, "-m", "sessiontracking.handoff.cli", "--payload", str(payload_file),
          "--repo-root", str(root), "--registry", str(reg)],
-        cwd=HANDOFF_DIR, capture_output=True, text=True,
+        cwd=SRC_DIR, capture_output=True, text=True,
     )
 
 
 def _run_id(root, reg, handle):
     return subprocess.run(
-        [sys.executable, "handoff.py", "--id", handle,
+        [sys.executable, "-m", "sessiontracking.handoff.cli", "--id", handle,
          "--repo-root", str(root), "--registry", str(reg)],
-        cwd=HANDOFF_DIR, capture_output=True, text=True,
+        cwd=SRC_DIR, capture_output=True, text=True,
     )
 
 
@@ -234,8 +235,8 @@ def test_payload_and_id_are_mutually_exclusive(tmp_path):
     """Passing both --payload and --id is a CLI error."""
     root, reg, well_known = _scaffold(tmp_path)
     result = subprocess.run(
-        [sys.executable, "handoff.py", "--payload", str(well_known),
+        [sys.executable, "-m", "sessiontracking.handoff.cli", "--payload", str(well_known),
          "--id", "some-handle", "--repo-root", str(root), "--registry", str(reg)],
-        cwd=HANDOFF_DIR, capture_output=True, text=True,
+        cwd=SRC_DIR, capture_output=True, text=True,
     )
     assert result.returncode != 0

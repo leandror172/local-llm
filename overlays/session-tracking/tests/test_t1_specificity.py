@@ -6,9 +6,9 @@
 
 import pytest
 
-from verifier import verify, VerifyError
-from locator import Region
-from payload import parse, validate
+from sessiontracking.handoff.verifier import verify, VerifyError
+from sessiontracking.register.locator import Region
+from sessiontracking.handoff.payload import parse, validate
 
 
 # ---- helpers ----------------------------------------------------------------

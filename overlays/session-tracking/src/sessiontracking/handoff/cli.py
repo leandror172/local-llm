@@ -14,16 +14,16 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from payload import parse, validate, PayloadError
-from registry_io import load_register, RegistryError
-from orchestrator import run_handoff, stage_and_apply
-from runlog import (
+from sessiontracking.handoff.payload import parse, validate, PayloadError
+from sessiontracking.register.registry_io import load_register, RegistryError
+from sessiontracking.handoff.orchestrator import run_handoff, stage_and_apply
+from sessiontracking.handoff.runlog import (
     create_run_dir, find_pending_run, promote_run_dir,
     mark_run_failed, mark_run_aborted, count_runs_by_status, peek_session_number,
     write_input, write_report, RunReport, RunNotFoundError,
 )
-from mechanics import current_session_number as _current_session_number
-from gitio import SubprocessGit
+from sessiontracking.handoff.mechanics import current_session_number as _current_session_number
+from sessiontracking.handoff.gitio import SubprocessGit
 
 
 def _parse_args(argv=None):

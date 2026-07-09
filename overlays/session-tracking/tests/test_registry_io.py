@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from registry_io import load_register, RegistryError
+from sessiontracking.register.registry_io import load_register, RegistryError
 
 
 FIXTURE = textwrap.dedent("""\
@@ -38,9 +38,9 @@ FIXTURE = textwrap.dedent("""\
         used_by: [read, write]
 """)
 
-# The real register lives one dir up, in the overlay's files/ dir
-# (alongside this handoff/ package), so manual_if_exists can install it.
-REAL_REGISTRY = Path(__file__).resolve().parents[1] / "registry.yaml"
+# The real register is overlay CONFIG, not package code: it ships via the
+# installer's manual_if_exists, so it lives in the overlay's files/ dir.
+REAL_REGISTRY = Path(__file__).resolve().parents[1] / "files" / "registry.yaml"
 
 
 def _write(tmp_path, text):
@@ -80,3 +80,41 @@ def test_real_registry_has_orchestrator_required_roles():
         assert role in reg
         assert "file" in reg[role] and "write_mode" in reg[role]
     assert reg["header-current-session"]["write_mode"] == "nomodel"
+
+
+# ── schema validation (R-D9: the package must refuse an unreadable register) ──
+
+
+def test_absent_version_is_treated_as_schema_1(tmp_path):
+    """Absence cannot prove incompatibility — schema 1 is the only one that ever
+    existed, so an unversioned register loads."""
+    p = _write(tmp_path, "roles:\n  a:\n    file: x.md\n")
+    assert load_register(p) == {"a": {"file": "x.md"}}
+
+
+def test_supported_version_loads(tmp_path):
+    p = _write(tmp_path, "version: 1\nroles:\n  a:\n    file: x.md\n")
+    assert load_register(p) == {"a": {"file": "x.md"}}
+
+
+def test_unsupported_version_is_refused(tmp_path):
+    """A present-but-unrecognised version is a hard stop: the repo's config and the
+    installed package disagree, and guessing is how config drift becomes data loss."""
+    p = _write(tmp_path, "version: 99\nroles:\n  a:\n    file: x.md\n")
+    with pytest.raises(RegistryError) as exc:
+        load_register(p)
+    assert "99" in str(exc.value)
+    assert "package" in str(exc.value).lower()
+
+
+def test_schema_is_checked_before_roles_structure(tmp_path):
+    """A future schema may not even have a `roles:` key — report the version
+    mismatch, not a confusing structural error."""
+    p = _write(tmp_path, "version: 99\nsomething_else: {}\n")
+    with pytest.raises(RegistryError) as exc:
+        load_register(p)
+    assert "99" in str(exc.value)
+
+
+def test_real_registry_declares_a_supported_schema():
+    load_register(REAL_REGISTRY)  # must not raise

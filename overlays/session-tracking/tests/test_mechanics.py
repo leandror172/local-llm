@@ -8,7 +8,7 @@
 
 import datetime
 
-from mechanics import (
+from sessiontracking.handoff.mechanics import (
     MechanicsError,
     next_session_number,
     today,
@@ -16,8 +16,8 @@ from mechanics import (
     header_field_edits,
     apply_field,
 )
-from locator import Region
-from verifier import verify
+from sessiontracking.register.locator import Region
+from sessiontracking.handoff.verifier import verify
 
 
 LOG = (

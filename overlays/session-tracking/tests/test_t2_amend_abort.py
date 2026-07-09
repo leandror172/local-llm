@@ -15,7 +15,8 @@ import pytest
 from test_orchestrator import _setup, _git_init
 from test_handoff_cli import _scaffold, _run_payload, _run_id
 
-HANDOFF_DIR = Path(__file__).resolve().parent
+# Subprocess CLI tests run the packaged module from the src root, so `-m` resolves.
+SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 
 # Payload that includes a replace-mode role (current-status) — forbidden in amend mode
 AMEND_PAYLOAD_WITH_REPLACE = textwrap.dedent("""\
@@ -60,17 +61,17 @@ AMEND_PAYLOAD_PREPEND_ONLY = textwrap.dedent("""\
 
 def _amend_run(root, reg, payload_file):
     return subprocess.run(
-        [sys.executable, "handoff.py", "--payload", str(payload_file),
+        [sys.executable, "-m", "sessiontracking.handoff.cli", "--payload", str(payload_file),
          "--amend", "--repo-root", str(root), "--registry", str(reg)],
-        cwd=HANDOFF_DIR, capture_output=True, text=True,
+        cwd=SRC_DIR, capture_output=True, text=True,
     )
 
 
 def _abort_run(root, reg, handle):
     return subprocess.run(
-        [sys.executable, "handoff.py", "--abort", handle,
+        [sys.executable, "-m", "sessiontracking.handoff.cli", "--abort", handle,
          "--repo-root", str(root), "--registry", str(reg)],
-        cwd=HANDOFF_DIR, capture_output=True, text=True,
+        cwd=SRC_DIR, capture_output=True, text=True,
     )
 
 

@@ -14,12 +14,13 @@ from pathlib import Path
 
 import pytest
 
-from verifier import verify, VerifyError
-from locator import Region, LocatorError, locate
-from orchestrator import stage_and_apply, _apply_all
+from sessiontracking.handoff.verifier import verify, VerifyError
+from sessiontracking.register.locator import Region, LocatorError, locate
+from sessiontracking.handoff.orchestrator import stage_and_apply, _apply_all
 from test_orchestrator import _setup, _git_init, REGISTER, _payload, CLOCK, TASKS
 
-HANDOFF_DIR = Path(__file__).resolve().parent
+# Subprocess CLI tests run the packaged module from the src root, so `-m` resolves.
+SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 
 
 # ---------------------------------------------------------------------------
@@ -56,8 +57,8 @@ def test_append_checkoff_combo_verifies_end_to_end(tmp_path):
     root = _setup(tmp_path)
     (root / ".claude" / "tasks.md").write_text(tasks_content)
 
-    from mechanics import LogEntry
-    from orchestrator import HandoffPayload
+    from sessiontracking.handoff.mechanics import LogEntry
+    from sessiontracking.handoff.orchestrator import HandoffPayload
     payload = HandoffPayload(
         session_title="combo test",
         current_layer="Layer X",
@@ -240,9 +241,9 @@ def _scaffold(tmp_path, payload_text):
 
 def _run_payload(root, reg, payload_file):
     return subprocess.run(
-        [sys.executable, "handoff.py", "--payload", str(payload_file),
+        [sys.executable, "-m", "sessiontracking.handoff.cli", "--payload", str(payload_file),
          "--repo-root", str(root), "--registry", str(reg)],
-        cwd=HANDOFF_DIR, capture_output=True, text=True,
+        cwd=SRC_DIR, capture_output=True, text=True,
     )
 
 
@@ -281,8 +282,8 @@ def test_cli_internal_tool_bug_for_verify_mismatch(tmp_path, monkeypatch):
     monkeypatch _apply_all to return corrupted text, drive _stage_path in-process.
     (subprocess cannot receive monkeypatching, so we call handoff._stage_path directly.)
     """
-    import orchestrator as _orch
-    import handoff as _handoff
+    from sessiontracking.handoff import orchestrator as _orch
+    from sessiontracking.handoff import cli as _handoff
     import datetime
 
     original_apply_all = _orch._apply_all
@@ -300,8 +301,8 @@ def test_cli_internal_tool_bug_for_verify_mismatch(tmp_path, monkeypatch):
     _git_init(root)
 
     import io, contextlib
-    from registry_io import load_register
-    from gitio import SubprocessGit
+    from sessiontracking.register.registry_io import load_register
+    from sessiontracking.handoff.gitio import SubprocessGit
 
     register = load_register(reg)
     git = SubprocessGit(root)

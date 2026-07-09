@@ -21,7 +21,7 @@ import subprocess
 import pytest
 from pathlib import Path
 
-SCRIPT_SOURCE = Path(__file__).parent.parent / "handoff-harvest.sh"
+SCRIPT_SOURCE = Path(__file__).parent.parent / "files" / "handoff-harvest.sh"
 
 
 def _setup(tmp_path: Path) -> Path:

@@ -13,17 +13,17 @@ from dataclasses import replace as _replace
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
-from locator import locate, Region, LocatorError
-from applier import apply as apply_edit
-from verifier import verify, VerifyError
-from mechanics import compute_header_values, apply_field, rotate as default_rotate, current_session_number, render_log_entry
-from runlog import (
+from sessiontracking.register.locator import locate, Region, LocatorError
+from sessiontracking.handoff.applier import apply as apply_edit
+from sessiontracking.handoff.verifier import verify, VerifyError
+from sessiontracking.handoff.mechanics import compute_header_values, apply_field, rotate as default_rotate, current_session_number, render_log_entry
+from sessiontracking.handoff.runlog import (
     peek_session_number,
     write_report,
     RunReport,
     RegionEdit,
 )
-from payload import HandoffPayload  # F7 schema — defined in payload.py (B4.1)
+from sessiontracking.handoff.payload import HandoffPayload  # F7 schema — defined in payload.py (B4.1)
 
 HEADER_ROLES = ("header-current-session", "header-current-layer")
 

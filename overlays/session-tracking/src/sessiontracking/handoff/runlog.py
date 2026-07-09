@@ -100,7 +100,7 @@ def count_runs_by_status(repo_root: Path) -> dict:
 
 def peek_session_number(repo_root: Path, log_rel: str) -> int:
     """Return the next session number by reading the current session log."""
-    from mechanics import next_session_number
+    from sessiontracking.handoff.mechanics import next_session_number
     return next_session_number((repo_root / log_rel).read_text())
 
 

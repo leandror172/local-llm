@@ -7,7 +7,7 @@
 # Flat imports — run from inside the handoff dir.
 
 import pytest
-from mechanics import render_log_entry, LogEntry
+from sessiontracking.handoff.mechanics import render_log_entry, LogEntry
 
 
 # ---- LogEntry dataclass -------------------------------------------------
@@ -201,7 +201,7 @@ def test_rendered_block_does_not_glue_onto_following_line():
     This is the F4-invisible failure: F4 cannot see the missing-newline gap,
     so we test the no-glue property explicitly here.
     """
-    from mechanics import _extract_heading_numbers
+    from sessiontracking.handoff.mechanics import _extract_heading_numbers
 
     existing_log = (
         "# Session Log\n"

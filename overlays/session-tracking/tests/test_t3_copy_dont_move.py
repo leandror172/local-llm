@@ -16,7 +16,8 @@ import pytest
 from test_orchestrator import _setup, _git_init
 from test_handoff_cli import _scaffold, REGISTRY_YAML
 
-HANDOFF_DIR = Path(__file__).resolve().parent
+# Subprocess CLI tests run the packaged module from the src root, so `-m` resolves.
+SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 
 # Payload that references a missing ref-block key → stage_and_apply will fail (locate error)
 BROKEN_PAYLOAD = textwrap.dedent("""\
@@ -91,9 +92,9 @@ def _scaffold_with_registry(tmp_path, registry_text, payload_text):
 
 def _run_payload(root, reg, payload_file):
     return subprocess.run(
-        [sys.executable, "handoff.py", "--payload", str(payload_file),
+        [sys.executable, "-m", "sessiontracking.handoff.cli", "--payload", str(payload_file),
          "--repo-root", str(root), "--registry", str(reg)],
-        cwd=HANDOFF_DIR, capture_output=True, text=True,
+        cwd=SRC_DIR, capture_output=True, text=True,
     )
 
 

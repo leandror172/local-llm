@@ -6,8 +6,8 @@ according to the region's write mode. It must never alter bytes outside the
 region it edits — that invariant is what F4 Verifier later proves by hashing.
 
 API under test:
-    from applier import apply, ApplierError
-    from locator import Region, locate
+    from sessiontracking.handoff.applier import apply, ApplierError
+    from sessiontracking.register.locator import Region, locate
     apply(text: str, region: Region, content: str = "") -> str
 
 Write modes:
@@ -23,8 +23,8 @@ the orchestrator uses — then applies and asserts on the resulting string.
 
 import pytest
 
-from applier import apply, ApplierError
-from locator import locate
+from sessiontracking.handoff.applier import apply, ApplierError
+from sessiontracking.register.locator import locate
 
 
 # --- fixtures: role dicts (mirror registry.yaml shapes) --------------------- #

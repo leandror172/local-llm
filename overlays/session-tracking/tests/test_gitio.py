@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import pytest
 from pathlib import Path
-from gitio import SubprocessGit
+from sessiontracking.handoff.gitio import SubprocessGit
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not available")

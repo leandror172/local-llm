@@ -13,9 +13,9 @@ F4 does NOT call apply() — it re-derives segments itself, so an orchestration
 bug (a skipped edit, a corrupted neighbouring byte) is caught.
 
 API under test:
-    from verifier import verify, VerifyError
-    from locator import Region, locate
-    from applier import apply
+    from sessiontracking.handoff.verifier import verify, VerifyError
+    from sessiontracking.register.locator import Region, locate
+    from sessiontracking.handoff.applier import apply
     verify(original: str, modified: str, edits: list[tuple[Region, str]]) -> None
         # returns None on success, raises VerifyError on any violation
 
@@ -28,9 +28,9 @@ Per-mode segment F4 expects in each region's span after edit:
 
 import pytest
 
-from verifier import verify, VerifyError
-from locator import Region, locate
-from applier import apply
+from sessiontracking.handoff.verifier import verify, VerifyError
+from sessiontracking.register.locator import Region, locate
+from sessiontracking.handoff.applier import apply
 
 
 # --- role fixtures (mirror registry.yaml shapes) ---------------------------- #

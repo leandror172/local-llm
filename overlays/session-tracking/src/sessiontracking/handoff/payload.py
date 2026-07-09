@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from mechanics import LogEntry
+from sessiontracking.handoff.mechanics import LogEntry
 
 
 class PayloadError(Exception):

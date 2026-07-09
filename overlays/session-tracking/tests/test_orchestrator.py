@@ -13,11 +13,11 @@ import types
 
 import pytest
 
-import orchestrator
-from orchestrator import run_handoff, stage_and_apply, HandoffPayload
-from gitio import SubprocessGit
-from verifier import VerifyError
-from mechanics import LogEntry
+from sessiontracking.handoff import orchestrator
+from sessiontracking.handoff.orchestrator import run_handoff, stage_and_apply, HandoffPayload
+from sessiontracking.handoff.gitio import SubprocessGit
+from sessiontracking.handoff.verifier import VerifyError
+from sessiontracking.handoff.mechanics import LogEntry
 
 
 CLOCK = lambda: datetime.datetime(2026, 6, 5, 14, 30, 0)

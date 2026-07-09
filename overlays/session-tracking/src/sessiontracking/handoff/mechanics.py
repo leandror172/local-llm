@@ -10,7 +10,7 @@ from pathlib import Path
 from subprocess import CompletedProcess, run
 from typing import Any, Dict, List, Tuple
 
-from locator import locate, Region
+from sessiontracking.register.locator import locate, Region
 
 
 @dataclass

@@ -9,8 +9,8 @@
 
 import pytest
 
-from payload import parse, validate, PayloadError, HandoffPayload
-from mechanics import LogEntry
+from sessiontracking.handoff.payload import parse, validate, PayloadError, HandoffPayload
+from sessiontracking.handoff.mechanics import LogEntry
 
 
 PAYLOAD = (

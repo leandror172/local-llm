@@ -17,8 +17,12 @@ concepts live in `KNOWLEDGE.md`, chronology in `git log -- overlays/`.*
   present verbatim, else `WARN-CLOBBER`. **Silence only on proof of safety** —
   `WARN-CLOBBER` means "cannot prove safe", not "will destroy". Helpers `_same_content` /
   `_reset_is_provable_noop` in `lib/actions.py`.
-- **Tests: 231 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
-  `test-session-tracking` (pytest, 178) + `test-installer` (pytest, 44: `test_verify.py` +
+- **session-tracking is a PACKAGE (v11, R-D9):** code ships via
+  `uv tool install --editable overlays/session-tracking` (entry point `st-handoff`);
+  the overlay installs config + docs only. `always_user_files:` removed. Consumers still
+  run the legacy `~/.claude/tools/handoff/` copy until migration.
+- **Tests: 236 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
+  `test-session-tracking` (pytest, 183) + `test-installer` (pytest, 44: `test_verify.py` +
   `test_customizable.py` + `test_signals.py`). Bare `make` prints help; `ARGS='-k x'` filters
   one suite. Not a test: `test-merge-plan.py` (manual Ollama diagnostic, network).
 - **ref-indexing overlay:** v4 — hermetic overlay-shipped suite at `files/tests/`.

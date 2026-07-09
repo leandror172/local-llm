@@ -20,7 +20,7 @@ import subprocess
 import pytest
 from pathlib import Path
 
-SCRIPT_SOURCE = Path(__file__).parent.parent / "rotate-session-log.sh"
+SCRIPT_SOURCE = Path(__file__).parent.parent / "files" / "rotate-session-log.sh"
 
 # Three-entry fixture — newest first (same ordering as real session-log.md)
 SESSION_LOG_THREE = (
@@ -327,7 +327,7 @@ def test_mechanics_rotate_default_keep_is_1():
     handoff_dir = str(Path(__file__).parent)
     if handoff_dir not in sys.path:
         sys.path.insert(0, handoff_dir)
-    import mechanics
+    from sessiontracking.handoff import mechanics
     sig = inspect.signature(mechanics.rotate)
     assert sig.parameters["keep"].default == 1, (
         f"mechanics.rotate keep default should be 1, got {sig.parameters['keep'].default}"
