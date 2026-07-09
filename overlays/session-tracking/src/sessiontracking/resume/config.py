@@ -84,18 +84,23 @@ def _require_supported_schema(data: Dict[str, Any], path: Path) -> None:
     )
 
 
-def _build_step(raw: Dict[str, Any], path: Path, index: int) -> Step:
+def _require_mapping(raw: Any, path: Path, index: int) -> None:
     if not isinstance(raw, dict):
         raise ResumeConfigError(f"{path}: step {index} must be a mapping, got {type(raw)}")
 
-    kind = raw.get("kind")
-    if kind not in STEP_KINDS:
-        raise ResumeConfigError(
-            f"{path}: step {index} has unknown kind {kind!r}. "
-            f"Known kinds: {', '.join(sorted(STEP_KINDS))}. "
-            f"Use `kind: run` for anything the overlay does not model."
-        )
 
+def _require_known_kind(kind: Any, path: Path, index: int) -> None:
+    if kind in STEP_KINDS:
+        return
+    raise ResumeConfigError(
+        f"{path}: step {index} has unknown kind {kind!r}. "
+        f"Known kinds: {', '.join(sorted(STEP_KINDS))}. "
+        f"Use `kind: run` for anything the overlay does not model."
+    )
+
+
+def _require_kind_keys(kind: str, raw: Dict[str, Any], path: Path, index: int) -> None:
+    """Each fixed kind names its own required keys — no generic key table to consult."""
     if kind == "region" and not (raw.get("role") or raw.get("ref_key")):
         raise ResumeConfigError(
             f"{path}: step {index} (region) needs `role:` (preferred — resolved through "
@@ -103,6 +108,13 @@ def _build_step(raw: Dict[str, Any], path: Path, index: int) -> Step:
         )
     if kind == "run" and not raw.get("command"):
         raise ResumeConfigError(f"{path}: step {index} (run) needs `command:`")
+
+
+def _build_step(raw: Dict[str, Any], path: Path, index: int) -> Step:
+    _require_mapping(raw, path, index)
+    kind = raw.get("kind")
+    _require_known_kind(kind, path, index)
+    _require_kind_keys(kind, raw, path, index)
 
     return Step(
         kind=kind,
@@ -129,21 +141,25 @@ def load_resume_config(path: str | Path) -> ResumeConfig:
             step kind, or a step missing its required key.
     """
     path = Path(path)
+    data = _load_yaml_mapping(path)
+    _require_supported_schema(data, path)
+    return ResumeConfig(steps=_build_steps(data, path))
+
+
+def _load_yaml_mapping(path: Path) -> Dict[str, Any]:
     if not path.exists():
         raise ResumeConfigError(f"File not found: {path}")
-
     try:
         data = yaml.safe_load(path.read_text())
     except yaml.YAMLError as exc:
         raise ResumeConfigError(f"Invalid YAML format in {path}") from exc
-
     if not isinstance(data, dict):
         raise ResumeConfigError(f"{path}: document must be a mapping, got {type(data)}")
+    return data
 
-    _require_supported_schema(data, path)
 
+def _build_steps(data: Dict[str, Any], path: Path) -> List[Step]:
     steps = data.get("steps")
     if not isinstance(steps, list):
         raise ResumeConfigError(f"{path}: missing 'steps' key, or it is not a list")
-
-    return ResumeConfig(steps=[_build_step(s, path, i) for i, s in enumerate(steps)])
+    return [_build_step(raw, path, i) for i, raw in enumerate(steps)]

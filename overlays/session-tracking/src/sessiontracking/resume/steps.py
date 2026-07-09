@@ -23,36 +23,49 @@ class StepError(Exception):
     """Raised when a step cannot produce its content."""
 
 
-def present(step: Step, raw: str) -> List[str]:
-    """Apply the shared presentation rules to a step's raw text.
+def _content_lines(step: Step, raw: str) -> List[str]:
+    """The step's lines after filtering and truncation.
 
-    Order: split → drop filtered lines → head → title/fallback → trailing blank.
-    Returns [] only when the step is omitted (`omit_if_empty` and nothing to show);
-    a trailing blank is never appended to an omitted step.
+    rstrip first: `"\\n".splitlines()` is `[""]` — one blank line, a NON-empty list — so a
+    whitespace-only producer would defeat `omit_if_empty` and leave a ghost section.
+    Interior blank lines are preserved; only trailing ones are shed.
     """
-    # rstrip first: "\n".splitlines() is [""] — one blank line, a NON-empty list — so a
-    # whitespace-only producer would defeat omit_if_empty and leave a ghost section.
-    # Interior blank lines are preserved; only trailing ones are shed.
-    lines = [
+    kept = [
         line for line in raw.rstrip("\n").splitlines()
         if not any(re.search(pattern, line) for pattern in step.filters)
     ]
-    if step.head is not None:
-        lines = lines[: step.head]
+    return kept if step.head is None else kept[: step.head]
 
-    if lines:
-        body = lines
-        title = [step.title] if step.title else []
-    else:
-        if step.omit_if_empty:
-            return []
-        body = [step.fallback] if step.fallback is not None else []
-        title = [step.title] if step.title and step.title_on_empty else []
 
-    result = title + body
-    if step.trailing_blank:
-        result.append("")
-    return result
+def _title_lines(step: Step, has_content: bool) -> List[str]:
+    """The heading, if this step shows one in this state."""
+    if not step.title:
+        return []
+    return [step.title] if has_content or step.title_on_empty else []
+
+
+def _body_lines(step: Step, content: List[str]) -> List[str]:
+    """The content, or the fallback. `fallback: ""` is a value, not an absence."""
+    if content:
+        return content
+    return [step.fallback] if step.fallback is not None else []
+
+
+def _with_trailing_blank(step: Step, lines: List[str]) -> List[str]:
+    return lines + [""] if step.trailing_blank else lines
+
+
+def present(step: Step, raw: str) -> List[str]:
+    """Apply the shared presentation rules to a step's raw text.
+
+    Returns [] only when the step is omitted (`omit_if_empty` and nothing to show);
+    an omitted step gets no trailing blank either.
+    """
+    content = _content_lines(step, raw)
+    if not content and step.omit_if_empty:
+        return []
+    rendered = _title_lines(step, bool(content)) + _body_lines(step, content)
+    return _with_trailing_blank(step, rendered)
 
 
 # ── producers: each returns the step's raw text ───────────────────────────────
@@ -98,29 +111,40 @@ def _produce_log_next(step: Step, ctx: "Context") -> str:
     return _extract_next_section(log.read_text())
 
 
+def _newest_entry_lines(text: str) -> List[str]:
+    """From the newest `## <date>` entry heading to end of file."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("## 20"):
+            return lines[i:]
+    return []
+
+
+def _next_block_lines(entry: List[str]) -> List[str]:
+    """The entry's `### Next` heading and body, up to the next horizontal rule."""
+    for i, line in enumerate(entry):
+        if line.startswith("### Next"):
+            break
+    else:
+        return []
+    body = []
+    for line in entry[i + 1:]:
+        if line.startswith("---"):
+            break
+        body.append(line)
+    return [entry[i]] + body
+
+
 def _extract_next_section(text: str) -> str:
-    """The newest entry's heading, then its `### Next` block, up to the next rule.
+    """The newest entry's heading, then its `### Next` block.
 
     The heading is included — it tells you *which* session's Next you are reading.
     Lines between the heading and `### Next` are skipped.
     """
-    out: List[str] = []
-    found_entry = in_next = False
-    for line in text.splitlines():
-        if not found_entry:
-            if line.startswith("## 20"):
-                found_entry = True
-                out.append(line)
-            continue
-        if not in_next:
-            if line.startswith("### Next"):
-                in_next = True
-                out.append(line)
-            continue
-        if line.startswith("---"):
-            break
-        out.append(line)
-    return "\n".join(out)
+    entry = _newest_entry_lines(text)
+    if not entry:
+        return ""
+    return "\n".join([entry[0]] + _next_block_lines(entry))
 
 
 def _produce_git_log(step: Step, ctx: "Context") -> str:

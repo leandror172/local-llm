@@ -356,6 +356,34 @@ def _reset_is_provable_noop(installed_text: str, default_interior: str) -> bool:
     )
 
 
+def _record_manual_merge_state(dest_rel: str, src: Path, dest: Path,
+                               overlay_name: str, src_name: str) -> None:
+    """T-54: flagging an identical file trains the operator to ignore the flag."""
+    if _same_content(src, dest):
+        record("SAME", dest_rel, "identical to overlay source — no merge needed")
+    elif src.exists():
+        record("TODO", dest_rel, "manual merge required — differs from overlay source",
+               f"overlay source: overlays/{overlay_name}/files/{src_name}")
+    else:
+        record("TODO", dest_rel, "manual merge required — file already exists",
+               "no overlay source available")
+
+
+def _record_reset_signal(dest_rel: str, name: str, inst_text: str,
+                         default_interior: str) -> None:
+    """T-80a: an unconditional WARN carries zero bits. Spend silence only on proof."""
+    if _reset_is_provable_noop(inst_text, default_interior):
+        record("INFO", dest_rel,
+               f"keep-region '{name}' marker absent — overlay default already "
+               f"present verbatim; reset is a no-op")
+    else:
+        record("WARN-CLOBBER", dest_rel,
+               f"keep-region '{name}' marker absent AND the overlay default is "
+               f"not present verbatim — installing REPLACES that area; a repo "
+               f"customization there is LOST",
+               "diff the region against the overlay default before proceeding")
+
+
 def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path, dry_run: bool):
     files_dir = overlay_dir / "files"
     for dest_rel in manifest.get("manual_if_exists", []):
@@ -364,15 +392,7 @@ def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path
         src = files_dir / src_name
 
         if dest.exists():
-            # T-54: flagging an identical file trains the operator to ignore the flag.
-            if _same_content(src, dest):
-                record("SAME", dest_rel, "identical to overlay source — no merge needed")
-            else:
-                record("TODO", dest_rel,
-                       "manual merge required — differs from overlay source"
-                       if src.exists() else "manual merge required — file already exists",
-                       f"overlay source: overlays/{manifest['name']}/files/{src_name}"
-                       if src.exists() else "no overlay source available")
+            _record_manual_merge_state(dest_rel, src, dest, manifest["name"], src_name)
         else:
             if src.exists():
                 if not dry_run:
@@ -454,19 +474,8 @@ def handle_customizable(manifest: dict, overlay_dir: Path, target_root: Path,
                 reset.append(name)
 
         merged = _splice_regions(src_text, replacements)
-        # T-80a: an unconditional WARN carries zero bits. Stay silent only where the
-        # reset is a provable no-op; otherwise say loudly what is at stake.
         for name in sorted(reset):
-            if _reset_is_provable_noop(inst_text, src_regions[name]):
-                record("INFO", dest_rel,
-                       f"keep-region '{name}' marker absent — overlay default already "
-                       f"present verbatim; reset is a no-op")
-            else:
-                record("WARN-CLOBBER", dest_rel,
-                       f"keep-region '{name}' marker absent AND the overlay default is "
-                       f"not present verbatim — installing REPLACES that area; a repo "
-                       f"customization there is LOST",
-                       "diff the region against the overlay default before proceeding")
+            _record_reset_signal(dest_rel, name, inst_text, src_regions[name])
 
         if merged == inst_text:
             record("SKIP", dest_rel, "up to date")

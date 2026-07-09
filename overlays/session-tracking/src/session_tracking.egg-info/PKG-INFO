@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: session-tracking
-Version: 11.0.0
-Summary: Deterministic session continuity tooling for Claude Code repos: handoff (write) + resume (read) over a shared register.
-Requires-Python: >=3.10
-Requires-Dist: pyyaml>=6.0

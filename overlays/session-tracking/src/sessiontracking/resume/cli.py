@@ -22,37 +22,46 @@ def _default_repo_root() -> str:
         return str(Path.cwd())
 
 
-def main(argv=None) -> int:
+def _parse_args(argv):
     parser = argparse.ArgumentParser(prog="st-resume", description="Session-start summary")
     parser.add_argument("--repo-root")
     parser.add_argument("--registry", help="default: <repo-root>/.claude/handoff/registry.yaml")
     parser.add_argument("--config", help="default: <repo-root>/.claude/resume.yaml")
     parser.add_argument("--date", help="override the {date} substitution (testing)")
-    args = parser.parse_args(argv)
+    return parser.parse_args(argv)
 
+
+def _resolve_paths(args) -> tuple[Path, Path, Path]:
     repo_root = Path(args.repo_root or _default_repo_root())
-    registry_path = Path(args.registry or repo_root / ".claude" / "handoff" / "registry.yaml")
-    config_path = Path(args.config or repo_root / ".claude" / "resume.yaml")
+    return (
+        repo_root,
+        Path(args.registry or repo_root / ".claude" / "handoff" / "registry.yaml"),
+        Path(args.config or repo_root / ".claude" / "resume.yaml"),
+    )
 
+
+def _build_context(args, repo_root: Path, registry_path: Path) -> Context:
+    date = args.date or datetime.date.today().isoformat()
+    return Context(repo_root, load_register(registry_path), date)
+
+
+def _render_all(config, ctx: Context) -> str:
+    lines = []
+    for step in config.steps:
+        lines.extend(render(step, ctx))
+    return "\n".join(lines)
+
+
+def main(argv=None) -> int:
+    args = _parse_args(argv)
+    repo_root, registry_path, config_path = _resolve_paths(args)
     try:
-        register = load_register(registry_path)
+        ctx = _build_context(args, repo_root, registry_path)
         config = load_resume_config(config_path)
-    except (RegistryError, ResumeConfigError) as e:
+        print(_render_all(config, ctx))
+    except (RegistryError, ResumeConfigError, StepError) as e:
         print(f"st-resume: {e}", file=sys.stderr)
         return 2
-
-    date = args.date or datetime.date.today().isoformat()
-    ctx = Context(repo_root, register, date)
-
-    out = []
-    for step in config.steps:
-        try:
-            out.extend(render(step, ctx))
-        except StepError as e:
-            print(f"st-resume: {e}", file=sys.stderr)
-            return 2
-
-    print("\n".join(out))
     return 0
 
 
