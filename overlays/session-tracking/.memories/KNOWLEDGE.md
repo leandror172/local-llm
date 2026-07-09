@@ -1,219 +1,298 @@
-# session-tracking/ — Knowledge (Semantic Memory)
+# session-tracking overlay — Knowledge (Semantic Memory)
 
-*Session-handoff pipeline design + per-session history. Split out of `overlays/.memories/`
-(session 109, during the T-61 customizable work) so the overlay-SYSTEM memory stays about the
-installer, not one overlay's pipeline. Read on demand.*
+*Concept-organized current truth for the session-handoff pipeline and the overlay that
+ships it. Read on demand. Each section = one concept, consolidated across rounds; the
+"Source / more detail" pointers at section end lead to the records holding the full
+findings. Chronology lives in `.claude/archive/session-tracking-handoff-history.md`
+(per-round narrative) and `git log -- overlays/session-tracking/`. Restructured
+2026-07-08 (session 110), per web-research `docs/research/memory-architecture-design.md`
+and mirroring latent-topic-graph's L-08 dream pass.*
 
-## Session-Handoff Pipeline Architecture (2026-06)
+*What belongs here: whatever a model should know about this overlay BEFORE working in
+it, that it would otherwise have to read the source to learn — orientation (what lives
+where, what the modules do) as much as hard-won invariants. Test for inclusion: "I'm
+about to use or change something in this area — what do I remember about it?" If the
+answer would save a read-the-source round-trip, it belongs.*
 
-The `session-tracking` overlay's handoff pipeline (`files/handoff/`) replaces the token-heavy
-"Claude reads every tracking file and writes each section via many Edits" skill with a
-register-driven deterministic transaction. Scope A uses **NO local model**.
+*Write protocol: when a session produces durable knowledge — a finding, OR new/changed
+structure a future session would otherwise rediscover by reading code — UPDATE the
+relevant concept section(s) in place; replace superseded values, don't append a dated
+block (consolidation happens at write-time, not in a later pass). Add a new section only
+for a genuinely new concept. Point "Source / more detail" at the PR/plan/report that
+established the fact. Per-round narrative belongs in the archive file, not here. Status
+trivia (open PRs, test counts, current version) belongs in `QUICK.md`, not here.*
 
-- **Register** (`registry.yaml`): per-repo source of truth mapping each handoff-owned region to a
-  file + locator (4 kinds: ref_block / structural / field / checklist) + write mode (replace /
-  prepend / append / checkoff / nomodel). It also draws the safety boundary — every OTHER ref key is
-  content / LTG anchor the pipeline MUST NOT touch.
-- **F1 Locator → F3 Applier → F4 Verifier** (safety core): pure functions over `(role/Region, text)`.
-  `Region(start,end,interior)` is the single boundary source of truth. F4 = recompute-and-compare
-  (re-derive expected text byte-exact, independent of apply) + ref-marker multiset invariant — the
-  trust boundary that will let an untrusted model run in the deferred enhancement.
-- **F5 Mechanics** (`mechanics.py`): header-field bumps through the **nomodel fence** (the applier
-  *refuses* nomodel so the payload path can never write headers — only the script can; the verifier
-  *accepts* nomodel as replace), next-session-N (bootstraps to 1 on a fresh repo), date, rotation invoker.
-- **F6 Orchestrator** (`orchestrator.py` + injected `gitio` adapter): atomic stage → apply → verify →
-  write → rotate → commit, with **two safety layers** — in-memory verify-then-write + git checkout
-  rollback — guarded by a clean-tree precondition on the tracking files.
-- **Per-run logging** (`runlog.py`): `.claude/local/handoff-runs/session-<N>-<ts>/` holds `input.md`
-  (verbatim payload = recovery artifact) + `report.md` (audit).
-- **F7 payload + entrypoint** (`payload.py` schema; `registry_io.py` PyYAML loader; `handoff.py` CLI +
-  `run-handoff.sh`): payload = first-two-`---` frontmatter (`session_title`/`current_layer`/`checkoffs`)
-  + `## role:` sections. `--dry-run` runs the pure half (`_stage_and_apply`) and writes nothing — the
-  rehearsal and the foundation for the T-53 preflight. PyYAML is allowed only in the entrypoint glue
-  (`registry_io`); the F1–F6 safety core stays stdlib-only.
-- **Install layout** (`manifest.yaml`): 10 runtime modules + `run-handoff.sh` ship via `files:` →
-  `.claude/tools/handoff/`; the **register** ships via `manual_if_exists` → `.claude/handoff/registry.yaml`
-  (**Option C**: copy-once, then *flag-on-update* — it's load-bearing yet per-repo, so neither silent
-  overwrite nor silent skip is right). `handoff.py` resolves `repo_root` via `git rev-parse`, so the
-  default registry path is correct without flags in installed repos.
+---
 
-**Rationale:** keep *decide content* with Claude, collapse *read+write* into one deterministic
-register-driven call — no new in-file markers (they would pollute the LTG corpus that ingests
-`.claude/` + `.memories/`). **Implication:** the register is both the repo-customization seam and the
-handoff-owned-vs-content boundary; load-bearing contracts (register, F7 schema, F6 orchestration) stay
-Claude-authored, while leaf modules (F5, logging) are local-model-delegable. Status (session 87):
-**B1–B4 complete — Scope A fully done, 77 tests, dog-food-validated** (clone run on real content/register).
-**PR #50** open (stacked on `feature/ltg-phase3-anchors`; retarget to master after the LTG PR merges).
-**Home-repo activation:** the skill is installed *project-level* in the llm repo; the pipeline code is
-NOT copied into `.claude/tools/` there (would duplicate the overlay source) — the skill's home-repo note
-runs `overlays/session-tracking/files/handoff/run-handoff.sh` with an explicit `--registry`. Target repos
-get the canonical `.claude/tools/handoff/` layout via the installer instead.
+<!-- ref:handoff-pipeline-map -->
+## Pipeline orientation — what lives where (`files/handoff/`, 10 modules)
 
-**Planned redesign (session 89) — stage/promote:** Replaces the `--dry-run --payload` two-step with
-**rename-on-ingest + stage/promote**. `--payload` ingests (renames file into run dir via `shutil.move`,
-freeing the well-known path) + stages (locate+apply+verify in memory) + emits JSON handle.
-`--id <handle>` promotes: finds pending run dir, recomputes everything from current files (no cached
-edits), checks git for idempotency (prevents double-apply if process dies between commit and dir-rename),
-applies, commits, renames dir `-pending`→`-success`. Run dir status suffix (`-pending`/`-success`/
-`-failed`) replaces the old "writes nothing in dry-run" invariant. `--dry-run` flag dropped.
-Two failure branches: validation-fail = no handle (re-edit same file); stage-fail = handle exists
-in `-failed` dir (author fresh content). Full plan: `~/.claude/plans/handoff-redesign-rename-on-ingest.md`.
-Branch: `feature/handoff-redesign-stage-promote`.
+The handoff pipeline replaces the token-heavy "Claude reads every tracking file and
+writes each section via many Edits" skill with a **register-driven deterministic
+transaction**. Scope A uses NO local model — Claude decides *content*, the pipeline does
+*read + write*.
 
-**Dog-food learning (session 86):** F4's invariants are *out-of-region bytes* + *ref-marker multiset* —
-neither sees a **missing newline before a present marker**. A payload's last `## role:` section has no
-trailing blank, so `payload.py` returned non-newline-terminated content, and append/replace/prepend glued
-the line onto the closing marker. Fixed at the seam (`_normalize_block` in `_collect_edits`), NOT in the
-safety core: the applier/verifier share an implicit "content is newline-terminated" contract and must
-stay byte-identical, so normalize once upstream where both consume the same `items`.
+Safety core (pure functions over `(role/Region, text)`, stdlib-only):
+- `locator.py` — finds the byte range a role owns. Four locator kinds: `ref_block` /
+  `structural` / `field` / `checklist`. Returns `Region(start, end, interior)` — the
+  single boundary source of truth.
+- `applier.py` — mutates text. Write modes: `replace` / `prepend` / `append` /
+  `checkoff` / `nomodel`.
+- `verifier.py` — recompute-and-compare: re-derives the expected text byte-exact,
+  independently of the applier, then diffs. Plus the ref-marker multiset invariant.
 
-## Stage/promote redesign (sessions 89–90) — IMPLEMENTED
+Around it:
+- `mechanics.py` — header-field bumps, `next-session-N` (bootstraps to 1 on a fresh
+  repo), date, rotation invoker, `LogEntry` + `render_log_entry()`.
+- `orchestrator.py` (+ injected `gitio.py` adapter) — atomic stage → apply → verify →
+  write → rotate → commit.
+- `payload.py` — the payload schema + parser. `registry_io.py` — PyYAML register loader.
+- `runlog.py` — per-run dir `.claude/local/handoff-runs/session-<N>-<ts>-<status>/`
+  holding `input.md` (verbatim payload = recovery artifact) + `report.md` (audit).
+- `handoff.py` — the CLI. `run-handoff.sh` — the thin per-repo shim.
 
-- **Status:** COMPLETE — PR #52 open, 126 tests green, overlay v5 propagated to 3 repos (byte-verified)
-- **`--payload` (stage):** validate → ingest (copy payload into run dir) → locate+apply+verify in memory → emit JSON handle; dir stays `-pending`; original payload deleted only on success (unlink is the LAST op — crash-safe, failed stage leaves the author's file in place)
-- **`--id` (promote):** find `-pending` run → idempotency check by commit-title suffix → `run_handoff` → rename dir to `-success`/`-failed`
-- **Idempotency key insight:** check commit-title suffix, NOT session number — after first commit the header updates and `peek_session_number` returns N+1 (false-miss on crash-recovery)
-- **T-57 fix:** `_effective_range` in `verifier.py` collapses append→insertion-point and checkoff→3-byte range; reconstruction sort matches applier's stable-sort-descending for equal-start regions
+Sibling scripts in `files/`: `rotate-session-log.sh`, `handoff-harvest.sh`,
+`resume.sh`, `registry.yaml`, `session-handoff/SKILL.md`.
 
-## Session-29 feedback round (2026-06-12) — five fixes from expenses field report
+**Layering rule:** PyYAML is allowed *only* in the entrypoint glue (`registry_io`); the
+locator/applier/verifier/mechanics/orchestrator core stays stdlib-only.
 
-The first real-world run in expenses (session 29) surfaced 5 problems (P1–P5, report at
-`~/workspaces/expenses/code/.claude/local/handoff-pipeline-feedback-session29.md`). Root-cause
-analysis found TWO meta-failures beyond the pipeline itself: (a) commit 75886bb *claimed* the
-SKILL.md rewrite (T5) but only touched manifest.yaml — the work never existed, so every SKILL.md
-still taught the removed `--dry-run`; (b) the v4 propagation was PARTIAL — expenses had a stale
-`verifier.py` without `_effective_range`, so they hit the already-fixed T-57 overlap on the most
-common payload shape (checkoffs + tasks-append).
+Source / more detail: module docstrings; `ref:handoff-pipeline-design`;
+`overlays/session-tracking/README.md`.
+<!-- /ref:handoff-pipeline-map -->
 
-Fixes (commits f6d1116, 771ea5c, bba6cce, 0fdb42f, 979f66f):
-- **Error specificity (P-msg):** overlap errors name both regions `role(target)@file:line`;
-  validation errors state WHY ("required because this run bumps the Current Session header").
-  Rationale: converts every failure from "read pipeline source" (~5 calls) into "fix payload" (1 call).
-- **`--amend` (P4+P5):** follow-up run attached to LAST COMMITTED session N (derived, never typed);
-  append+checkoff modes only (prepend excluded — a log-entry prepend would duplicate the session
-  heading); scalars not required; no header write; idempotency check skipped; commit suffix `— amend`.
-  Design principle: the recovery path is strictly LESS powerful than the happy path — worst possible
-  amend mistake is a duplicate appended task. Mode persisted in `<run_dir>/mode` sidecar.
-- **`--abort <handle>`:** renames `-pending`→`-aborted`. Every missing CLI verb becomes an ad-hoc
-  `rm` invented under pressure; this closes that gap.
-- **Copy-don't-move (P3):** stage copies payload to `input.md` up front; unlink-original is the final
-  step on success only. Failed/crashed stage never consumes the author's file.
-- **SKILL.md (P1):** rewritten for the real CLI; exact pre-flight one-liner with correct empty-output
-  semantics; the 3 copies (overlay source / llm project / user-level) unified byte-identical — the
-  overlay+user copies also had a WRONG checkoff description (claimed bolded ids fail; locator.py is
-  flexible) that the project copy had right.
+---
 
-**Process learnings:** (1) overlay propagation needs a verify step — per-file `cmp` against source
-caught nothing wrong this time only because we ran it; installer `--verify` mode DONE (T-58, 2026-06-26).
-(2) "Task done" claims in commit messages/memory are unverified — T5 was recorded done in QUICK.md
-and a commit message while no diff existed. (3) Subagent review must re-derive invariants, not trust
-green tests: review caught an amend stage/promote session-number mismatch (N+1 vs N — would have
-recreated the exact "session 30 surprise") and the prepend allowlist hole, both behind passing tests.
+<!-- ref:handoff-register -->
+## The register — safety boundary *and* customization seam
 
-## Session-90 redesign — latest-only topology + value-only + harvest (2026-06-16) — IMPLEMENTED
+`registry.yaml` is the per-repo source of truth mapping each handoff-owned region to a
+file + locator + write mode. It does double duty:
 
-This round cut the *token cost of AUTHORING a handoff* (the prior work cut the mechanical apply cost).
-Three increments + a one-time data migration; manifest v5→v6 (clean break, D2). 126→166 tests green.
+- **Customization seam:** it is the *only* thing a consuming repo edits to change what
+  the handoff writes. Ships via `manual_if_exists` (copy-once, then flag-on-update) —
+  load-bearing yet per-repo, so neither silent overwrite nor silent skip is right.
+- **Safety boundary:** every ref key *not* named in the register is content or an LTG
+  anchor that the pipeline **must not touch**.
 
-- **Latest-only topology (P1):** `session-log.md` holds exactly the newest entry. `rotate-session-log.sh`
-  archives EACH spilled entry into its own `session-log-<date>-s<N>-<slug>.md` (slug = lowercased,
-  alnum→hyphen, ≤40 chars; fallback `sNN`) and runs with `--keep 1`. The `header-previous-logs` role is
-  dropped from `registry.yaml` and the ~46-ref `Previous logs:` pointer line is gone — the archive dir +
-  slugged filenames ARE the index. Rationale: the single growing file + giant pointer line was the bloat;
-  self-identifying per-entry files mirror the user's `/export` naming and pair with exported transcripts.
-- **Value-only payload (P2, D1=2-full):** `log-entry` became structured snake_case sub-slots; the pipeline
-  renders ALL scaffold (the `## <date> - Session N: <title>` heading from date + derived N + session_title,
-  plus `### Context/What Was Done/Decisions Made/Next/Gotchas` + bullets). New: `LogEntry` dataclass +
-  `render_log_entry()` (mechanics.py), `HandoffPayload.log_entry` + slot parser (payload.py); orchestrator
-  computes `header_values` once and renders log-entry with the SAME `session_number`. CRITICAL: `parse()`
-  excludes log-entry from `payload.blocks` to prevent double-apply; the session-86 newline contract is
-  double-guarded (`render_log_entry` rstrips then re-adds one `\n`; `_normalize_block` still wraps). Field
-  names kept aligned with the deferred local-model Placer schema (forward-compatible). Clean break: the old
-  free-block `log-entry` form is rejected with a migration error.
-- **Git-log harvest (P3):** `handoff-harvest.sh` = `git log <newest chore(session-handoff):>..HEAD
-  --format=%s` (fallback: last 20 + stderr note). Seeds `what_was_done` deterministically — zero model,
-  zero re-read. SKILL Step 2 calls it as the skeleton; Step 3 adds "reuse replace-mode interiors already
-  resident in context rather than re-`ref-lookup`" (attacks the duplicate-resident-content failure mode iii).
-- **Propagation (P4):** manifest v5→v6; installed into expenses/code, web-research, career-search; every
-  `files:` entry byte-verified with `cmp` (14/14 per repo — the ONLY safety net, targets ship no tests).
-  SKILL is per-consumer: global `~/.claude/skills/` serves web-research+career-search; expenses/code and
-  llm have project-level copies that SHADOW the global (force-cp each — `user_files` is skip-if-present).
-  llm runs the engine from source but calls rotate by the INSTALLED path, so its installed rotate + harvest
-  were refreshed too. Target registries left untouched (`manual_if_exists`) — confirmed safe: the pipeline
-  only walks payload→register, never register→payload, so the orphaned `header-previous-logs` role is inert.
-- **Data migration (one-time, all 4 repos):** live `session-log.md` migrated to latest-only via
-  `rotate --keep 1` + an `awk` that drops the `Previous logs:` block (handles single-line AND multi-line
-  WRAPPED pointers — expenses/code's spanned ~40 lines). career-search had a byte-identical duplicate
-  `Session 56`; the migration collapsed it to one archive (heal, not loss). Discipline: inspect → dry-run →
-  byte-diff → verify, before writing any live tracking file — it turned two latent corruptions into
-  verified-safe ops.
+The pipeline only ever walks **payload → register**, never register → payload. A role
+left in a target's register with no payload slot is therefore inert, not a hazard — this
+is why stale roles (e.g. the retired `header-previous-logs`) can be left in place across
+an upgrade without breaking anything.
 
-**Why this matters:** the handoff is expensive at the worst moment (context near-full, end of session,
-maybe Sonnet, maybe usage-limit cliff). Value-only + harvest move authoring cost OFF the main window;
-latest-only keeps the resident file small. The value schema is also the contract the deferred local-model
-Placer (E1–E2) will fill via structured output. Increment-4 (separate-window synthesis sourced from the
-persisted transcript JSONL, for the budget-cliff case) is documented only — build later.
+`handoff.py` resolves `repo_root` via `git rev-parse`, so the default register path is
+correct without flags in installed repos.
 
-## Session-93 fix — append↔checkoff consistency + failure-clarity (2026-06-17) — IMPLEMENTED
+Load-bearing contracts (register, payload schema, orchestration) stay Claude-authored;
+leaf modules (mechanics, logging) are local-model-delegable.
 
-Expense-user report: a payload with BOTH `tasks-append` AND `checkoffs:` in one run failed with an
-opaque "Modified text does not match the expected text" message, requiring 5-file investigation to recover.
-Two defects fixed; **changes to applier.py, verifier.py, orchestrator.py, locator.py, handoff.py ONLY** —
-payload schema, register, mechanics, rotator unchanged.
+Source / more detail: `files/registry.yaml`; `ref:handoff-pipeline-design`.
+<!-- /ref:handoff-register -->
 
-- **Defect 1 — correctness (append+checkoff in one file):** `applier.py` inserts at `region.end` for
-  append (correct); `verifier.py` was doing a `replace([start,end], region.interior + content)` (wrong).
-  The interior snapshot was stale — any nested edit (checkoff flip) applied earlier in the descending-sort
-  loop was lost when verifier reconstructed with the old interior. Fix: verifier's reconstruction loop
-  special-cases `append` and `prepend` as zero-width insertions (like applier), preserving any bytes already
-  mutated by nested edits. `_effective_range` already returned zero-width for insertion modes; reconstruction
-  now agrees. (Prepend has the identical hazard; fixed too.) Test: `test_append_region_enclosing_checkoff_verifies`.
-  
-- **Defect 2 — diagnostics (the failure was unreadable):** error named no file, no roles, gave no diff.
-  Requirement: every failure message must answer WHERE (file + role[s]), WHOSE FAULT (payload error the
-  author can fix vs internal tool bug to report), and WHAT (diff or specifics). Mechanism: `kind` attribute
-  on exceptions (`kind="payload"` or `kind="internal"`, default per exception type). Sweep through all
-  raises: locator.py now names file + id + found-vs-expected count (e.g., "task id T-02 matched 0 checklist
-  items in .claude/tasks.md"); verifier.py adds `_first_diff()` (first differing byte + context) to the
-  mismatch message + `_edits_label()` to summarize files/roles; applier.py unsupported-mode message names
-  the role; orchestrator.py exception handlers prefix reasons with `[payload]`/`[internal]` so handoff.py
-  can extract `kind` and emit status `payload_error` / `internal_tool_bug` (replacing flat `stage_failed`).
-  Guard: overlap message prefixed "two payload edits target overlapping bytes:" so reader knows it's
-  author-fixable. CLI now returns JSON `{"status": "payload_error" | "internal_tool_bug", "reason": "..."}`
-  and internal failures append "report with input.md" so the author never re-authors a tool bug.
-  
-- **Manifest v6→v7, SKILL.md updated:** path nit — documented user-level install path `.claude/tools/handoff/`
-  (vs source `.claude/tools/run-handoff`); new status docs distinguish payload_error (author fix) from
-  internal_tool_bug (file report); append+checkoff combo now explicitly supported (was de facto after fix).
-  
-- **Tests:** 166 green → 173 green (xfailed locator-message test now xpasses when locator.py messages
-  enriched; new `test_append_region_enclosing_checkoff_verifies` passes). Full suite green.
-  
-**Implication:** The append+checkoff pattern is now safe and useful (e.g., completing a complex task
-discovery in one handoff). Failure diagnosis for end users shifts from "read pipeline source" to "read
-error message" — messages now contain actionable specifics (the exact file/role/id that failed and why).
+---
 
-**Home-repo shim `--registry` — RESOLVED v9 (T-62, 2026-07-06):** before v9 the `run-handoff.sh`
-shim guarded on `[ -f "$_root/.claude/handoff/registry.yaml" ]` and hard-`exec`d the user-level
-`~/.claude/tools/handoff/handoff.py`, so it silently `exit 0`d in the llm home repo (no per-repo
-registry) and ignored `--registry`. FIXED: the shim now (a) bypasses the registry-file guard when an
-explicit `--registry` is passed, and (b) prefers a `handoff.py` co-located with the shim (source tree /
-dev home repo) over the user-level install, falling back to user-level when none is co-located.
-Net: `overlays/session-tracking/files/handoff/run-handoff.sh --registry overlays/session-tracking/files/registry.yaml`
-works from the llm home repo AND runs source; target repos (shim-only, no co-located engine) still use the
-shared user-level engine unchanged. The SKILL home-repo note is now correct as written; the "call
-`handoff.py` directly" workaround is retired.
+<!-- ref:handoff-invariants -->
+## Invariants (the load-bearing rules)
 
-**Reinstall gotcha (shared engine, per-repo blast radius):** running the overlay installer with
-`--target <llm-repo> --install-level user` to refresh `~/.claude/tools/handoff/` ALSO reconciles
-project-level files against overlay source — it tried to overwrite llm's local `resume.sh` (overlay source
-was staler, would have dropped the pre-session reading-guide block) and drop a stray `.claude/handoff/
-registry.yaml`. Both reverted. Always `--dry-run` + diff-review the project-side writes before a
-"just refresh the engine" install.
-**Update (T-61, v9, 2026-07-06):** the reading-guide block (§2b) is now backported into the overlay
-source `resume.sh`, so source ⊇ installed — a reinstall no longer drops it in the llm repo. Diff-review
-is still warranted for repos with their OWN `resume.sh` customizations: career-search has a deliberate
-"What to read first" §2b variant (different title + lighter output filter), preserved on the v9 sync
-(shim-only) rather than flattened. That divergence is the open half of T-61 (a per-repo customization
-seam / marked-file install mode is the general fix; option b/c).
+Break any of these and the failure is silent or near-silent. Each was paid for once.
 
+- **The nomodel fence.** The *applier* REFUSES `nomodel`; the *verifier* ACCEPTS it as
+  `replace`. Consequence: a payload can never write header fields — only the script can.
+  This is what will let an untrusted model drive the payload path in the deferred
+  local-model Placer enhancement.
+- **Newline-termination contract.** Applier and verifier share an implicit "content is
+  newline-terminated" contract and must stay byte-identical. Normalize **once, upstream,
+  at the seam** (`_normalize_block` in `_collect_edits`) — never inside the safety core.
+  F4's invariants (out-of-region bytes + ref-marker multiset) cannot see a missing
+  newline before a present marker, so nothing downstream will catch it.
+- **Append and prepend are ZERO-WIDTH insertions — in the verifier too.** The applier
+  inserts at `region.end`. A verifier that reconstructs via
+  `replace([start,end], region.interior + content)` uses a **stale interior snapshot**
+  and silently loses any nested edit (e.g. a checkoff flip) applied earlier in the
+  descending-sort loop. `_effective_range` collapses append→insertion-point and
+  checkoff→3-byte range; reconstruction must agree with it.
+- **Idempotency key is the commit-title suffix, never the session number.** After the
+  first commit the header updates and `peek_session_number` returns N+1 — a false-miss
+  on crash-recovery, which would double-apply.
+- **Sort order is stable-descending for equal-start regions**, identically in applier and
+  verifier reconstruction.
+- **`log-entry` is excluded from `payload.blocks`** by `parse()`, or it double-applies.
+- **The recovery path is strictly LESS powerful than the happy path.** `--amend` allows
+  append + checkoff only; no prepend, no header write, no scalars required. The worst
+  possible amend mistake is therefore a duplicate appended task.
+- **Two safety layers on write:** in-memory verify-then-write, plus git-checkout
+  rollback — both guarded by a clean-tree precondition on the tracking files.
+
+Source / more detail: `.claude/archive/session-tracking-handoff-history.md`
+(sessions 86, 89–90, 93); tests `test_verifier.py`, `test_orchestrator.py`,
+`test_append_region_enclosing_checkoff_verifies`.
+<!-- /ref:handoff-invariants -->
+
+---
+
+<!-- ref:handoff-payload-contract -->
+## Payload contract — value-only
+
+A payload is first-two-`---` frontmatter (`session_title` / `current_layer` /
+`checkoffs`) plus `## role:` sections. **The author supplies values; the pipeline renders
+all scaffold.**
+
+`log-entry` is structured snake_case sub-slots, not a free block. The pipeline renders
+the `## <date> - Session N: <title>` heading (from date + derived N + `session_title`)
+and the `### Context / What Was Done / Decisions Made / Next / Gotchas` subheadings and
+bullets. The orchestrator computes `header_values` once and renders the log entry with
+the SAME `session_number`. The old free-block `log-entry` form is rejected with a
+migration error (clean break at v6).
+
+Field names are deliberately aligned with the deferred local-model Placer schema, which
+will fill this same contract via structured output.
+
+Wrapped bullets are continuation-joined by the parser (T-78) — a bullet may span lines.
+
+The newline contract is double-guarded here: `render_log_entry` rstrips then re-adds one
+`\n`, and `_normalize_block` still wraps.
+
+Source / more detail: `payload.py`; `files/session-handoff/SKILL.md`;
+`ref:handoff-placer-enhancement`.
+<!-- /ref:handoff-payload-contract -->
+
+---
+
+<!-- ref:handoff-cli-surface -->
+## CLI surface and failure taxonomy
+
+Stage / promote, not dry-run / apply:
+
+- **`--payload <file>` (stage):** validate → ingest (copy into the run dir) → locate +
+  apply + verify in memory → emit a JSON handle. The run dir stays `-pending`. The
+  original payload is unlinked **last**, on success only — a failed or crashed stage
+  never consumes the author's file.
+- **`--id <handle>` (promote):** find the `-pending` run → idempotency check → apply →
+  commit → rename the dir `-success` / `-failed`. Everything is recomputed from current
+  files; no cached edits.
+- **`--amend`:** attaches to the last *committed* session N (derived, never typed).
+  Commit suffix `— amend`. Mode persisted in a `<run_dir>/mode` sidecar.
+- **`--abort <handle>`:** renames `-pending` → `-aborted`. **Never `rm` a run dir by
+  hand** — that is exactly the ad-hoc gesture this verb exists to replace.
+
+The run-dir status suffix (`-pending` / `-success` / `-failed` / `-aborted`) *is* the
+state machine. There is no `--dry-run`.
+
+**Every failure message must answer three questions:** WHERE (file + role, as
+`role(target)@file:line`), WHOSE FAULT, and WHAT (a diff or specifics). Whose-fault is
+mechanized as a `kind` attribute on exceptions, surfaced as the CLI's exit status:
+
+| status | meaning | what the author does |
+|---|---|---|
+| `payload_error` | the payload is wrong | fix the payload, re-stage |
+| `internal_tool_bug` | the pipeline is wrong | file a report with `input.md` — never re-author |
+
+Validation errors state *why* ("required because this run bumps the Current Session
+header"). The overlap error is prefixed "two payload edits target overlapping bytes:" so
+the reader immediately knows it is author-fixable.
+
+Source / more detail: `handoff.py`, `orchestrator.py`;
+`overlays/session-tracking/README.md`.
+<!-- /ref:handoff-cli-surface -->
+
+---
+
+<!-- ref:handoff-storage-topology -->
+## Storage topology — latest-only log + slugged archive
+
+`session-log.md` holds **exactly one entry**: the newest. `rotate-session-log.sh` runs
+with `--keep 1` and archives each spilled entry into its own file:
+
+```
+session-log-<date>-s<N>-<slug>.md      slug = lowercased, alnum→hyphen, ≤40 chars
+                                       fallback: sNN
+```
+
+**The archive directory and its self-identifying filenames ARE the index.** There is no
+`Previous logs:` pointer line and no `header-previous-logs` role — a single growing file
+plus a giant pointer line was the bloat being removed. The naming mirrors `/export`, so
+archived entries pair with exported transcripts.
+
+`handoff-harvest.sh` seeds `what_was_done` deterministically:
+`git log <newest chore(session-handoff): session >..HEAD --format=%s` (fallback: last 20
++ a stderr note). Zero model, zero re-read. The commit-boundary grep is tightened to
+`^chore(session-handoff): session ` — a looser pattern matches unrelated commits.
+
+**Why this shape:** the handoff runs at the worst possible moment — context near-full,
+end of session, possibly on a weaker model, possibly against a usage-limit cliff.
+Value-only payloads + harvest move authoring cost off the main window; latest-only keeps
+the resident file small.
+
+Source / more detail: `rotate-session-log.sh`, `handoff-harvest.sh`;
+`.claude/archive/session-tracking-handoff-history.md` (session 90).
+<!-- /ref:handoff-storage-topology -->
+
+---
+
+<!-- ref:session-tracking-distribution -->
+## Distribution — one shared engine, per-repo seams
+
+The overlay installs at two levels, deliberately:
+
+- **Pipeline modules → always user-level** at `~/.claude/tools/handoff/`, via the
+  `always_user_files:` manifest key. Never per-repo. **All repos execute the same
+  engine.**
+- **Shim + SKILL.md → follow `--install-level`** (default `user` → `~/.claude/`;
+  `project` → per-repo `.claude/`). Project-level copies SHADOW the global, so a repo
+  wanting its own SKILL must force-copy it (`user_files` is skip-if-present).
+- **Register → `manual_if_exists`** (see the register section).
+- **`resume.sh` → `customizable:`** (v10, T-61): the overlay owns the file *except* named
+  `overlay-keep:<name>` regions, which are repo-owned. Region content installed on disk
+  is never overwritten; the shipped default is a **first-install seed only**. Currently
+  one region: `reading-guide` (§2b).
+
+`run-handoff.sh` is a thin shim and the stable per-repo seam. It (a) bypasses its
+registry-file guard when an explicit `--registry` is passed, and (b) prefers a
+`handoff.py` co-located with itself (source tree / dev home repo) over the user-level
+install. So the llm home repo runs the engine **from source**:
+
+```
+overlays/session-tracking/files/handoff/run-handoff.sh \
+  --registry overlays/session-tracking/files/registry.yaml
+```
+
+Target repos (shim-only, no co-located engine) transparently use the shared user-level
+engine. In an uninstalled repo the guard makes the shim `exit 0` — user-level hooks stay
+safe.
+
+Deferred: pip-editable distribution (option D); G/H remain long-term targets.
+
+Source / more detail: `manifest.yaml`; `docs/plans/overlay-customizable-regions.md`;
+`overlays/session-tracking/README.md`.
+<!-- /ref:session-tracking-distribution -->
+
+---
+
+<!-- ref:session-tracking-hazards -->
+## Operational hazards
+
+- **Reinstall blast radius (shared engine, per-repo writes).** Running the installer with
+  `--target <llm-repo> --install-level user` to "just refresh the engine" ALSO reconciles
+  *project-level* files against overlay source. It has tried to overwrite llm's local
+  `resume.sh` and to drop a stray `.claude/handoff/registry.yaml`. **Always `--dry-run`
+  and diff-review the project-side writes before any engine refresh.**
+- **Propagation must be byte-verified.** Targets ship no tests, so `cmp` against source
+  per `files:` entry is the only safety net. A partial v4 propagation once left expenses
+  running a stale `verifier.py` — they hit an already-fixed bug on the most common payload
+  shape. Installer `--verify` mode (T-58) now automates this; run it.
+- **The `customizable:` decision-3 clobber.** If a repo has customized a region but the
+  installed file carries **no `overlay-keep` markers**, the installer resets that region to
+  the overlay default and emits a `WARN`. That `WARN` in `--dry-run` is the tripwire —
+  never install a customized repo that shows it. Pre-wrap the variant in markers first.
+  career-search's "What to read first" §2b variant is the live instance.
+- **`--verify` gating semantics.** `CUSTOMIZED` (sanctioned use of the seam) is
+  **non-gating**; `DIFF` (out-of-region drift) **gates**. A repo that hasn't installed v10
+  yet shows the customizable entry as `MISSING`/`DIFF` — so if wiring into CI, verify
+  *after* install, not before.
+- **Only the marked regions are repo-owned.** Divergence in a `customizable:` file
+  *outside* a keep-region will be overwritten, by design. Decide per case whether it
+  should have been a keep-region (widen the manifest) or is stale (let it go).
+
+Source / more detail: `docs/plans/overlay-v10-propagation.md`;
+`docs/plans/overlay-customizable-regions.md` (`ref:overlay-customizable-acceptance`).
+<!-- /ref:session-tracking-hazards -->

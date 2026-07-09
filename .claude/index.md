@@ -94,7 +94,12 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 | Personas | `personas/.memories/QUICK.md` | `personas/.memories/KNOWLEDGE.md` |
 | Benchmarks | `benchmarks/.memories/QUICK.md` | `benchmarks/.memories/KNOWLEDGE.md` |
 | Overlays (system) | `overlays/.memories/QUICK.md` | `overlays/.memories/KNOWLEDGE.md` (overlay SYSTEM: installer, manifest schema, `--verify`, `customizable:`, test convention, product topology) |
-| session-tracking overlay | `overlays/session-tracking/.memories/QUICK.md` | `overlays/session-tracking/.memories/KNOWLEDGE.md` (handoff-pipeline design + per-session history; split out of overlays/.memories session 109) |
+| session-tracking overlay | `overlays/session-tracking/.memories/QUICK.md` | `overlays/session-tracking/.memories/KNOWLEDGE.md` (handoff-pipeline concepts: map, register, invariants, payload, CLI, topology, distribution, hazards — all `ref:`-keyed) |
+
+Both overlay KNOWLEDGE files are **concept-organized semantic memory** (session 110 dream pass,
+mirroring LTG's L-08): every section is `ref:`-keyed and ends with "Source / more detail" pointers.
+Per-round narrative was evicted to `.claude/archive/session-tracking-handoff-history.md`.
+Write protocol: update sections in place; never append a dated block.
 | LTG instance | `ltg/.memories/QUICK.md` | `ltg/.memories/KNOWLEDGE.md` (corpus-specific: calibration values, scope rules, retrieval gaps; engine memories live in the `latent-topic-graph` repo) |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
@@ -117,6 +122,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | Topic | File | Key Content |
 |-------|------|-------------|
 | Phases 0-6 completion details | `.claude/archive/phases-0-6.md` | All setup phases, decisions, gotchas, artifacts |
+| session-tracking handoff history | `.claude/archive/session-tracking-handoff-history.md` | Per-round narrative (sessions 86–109) evicted from the overlay's KNOWLEDGE.md — read for "why is it this way?", not "how does it work?" |
 | Hardware specs | `.claude/local/hardware-inventory.md` | RTX 3060 12GB, detailed system info (gitignored) |
 | Verification | `scripts/verify-installation.sh` | `./scripts/verify-installation.sh` (14 checks); manual: `nvidia-smi`, `ollama ps` |
 | **Ollama monitoring stack** | `docs/findings/ollama-monitoring-setup.md` | Prometheus + Grafana via ollama-metrics proxy (port-swap pattern); WSL2 networking gotcha; dashboard import. `ref:ollama-monitoring` |
