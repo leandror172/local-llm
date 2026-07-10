@@ -132,9 +132,18 @@ per-repo artifact is a thin `run-handoff.sh` shim that delegates there.
 - **Hooks always per-repo** — user-level hooks fire in ALL repos including those without the
   overlay. The shim includes a registry guard (`exit 0` if `.claude/handoff/registry.yaml`
   absent) so any hook invoking the shim is safe at user level if desired in future.
-- **D (pip editable install) deferred** — B+C already delivers the decoupling goal (shim
-  points to `~/.claude/`, not the llm repo). D would clean up the shim further and pre-stage
-  H, but adds pip/venv complexity with no immediate benefit. Adopt when H becomes concrete.
+- **D (pip editable install) — ADOPTED, session 111.** The deferral rationale above ("no
+  immediate benefit; adopt when H becomes concrete") was **falsified**. The real trigger was
+  never H: it was *a second consumer needing the primitive*. When `resume` had to share
+  `locator.py` with `handoff`, the flat directory at `~/.claude/tools/handoff/` had no package
+  semantics, so the import needed `sys.path` hacks. Packaging made the extraction trivial.
+  `overlays/session-tracking/pyproject.toml`, entry points `st-handoff` / `st-resume`,
+  `uv tool install --editable`. `always_user_files:` removed. **Code ships as a package;
+  config ships as an overlay.** Publish-escalation trigger adopted verbatim from the LTG
+  split: flip to a published package only when (a) working from a machine without the
+  checkout, or (b) a first external adopter appears. H is now pre-staged, as predicted.
+  Lesson for the remaining options: a deferral whose trigger is guessed will fire on a
+  different trigger. Record what would *force* the change, not what would make it fashionable.
 
 ### Migration performed
 
