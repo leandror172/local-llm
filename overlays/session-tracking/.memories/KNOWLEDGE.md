@@ -76,9 +76,11 @@ file + locator + write mode. It does double duty:
   anchor that the pipeline **must not touch**.
 
 The pipeline only ever walks **payload → register**, never register → payload. A role
-left in a target's register with no payload slot is therefore inert, not a hazard — this
-is why stale roles (e.g. the retired `header-previous-logs`) can be left in place across
-an upgrade without breaking anything.
+left in a target's register with no payload slot is therefore *operationally* inert — but
+it is dead config that claims the handoff owns a region which may not exist. `--verify`'s
+locator contract now reports such a role as `BROKEN`, and the retired
+`header-previous-logs` was removed from all repos (session 111). Delete stale roles; the
+payload→register direction is why deleting them is safe.
 
 `handoff.py` resolves `repo_root` via `git rev-parse`, so the default register path is
 correct without flags in installed repos.
@@ -313,13 +315,17 @@ Source / more detail: `manifest.yaml`; `docs/plans/overlay-customizable-regions.
   you reconciled" from "this file legitimately differs" (expenses/career-search registers
   flag on *every* install, correctly but uselessly), and `customizable:` cannot locate a
   region in an unmarked file. A recorded source hash — or a package manager — closes both.
-- **`--verify` is permanently red (T-82, found session 111).** `CUSTOMIZED` is non-gating,
-  but `DIFF` gates *even on entries labelled `(USER-MANAGED)`* — and `templates:`
-  (`session-log.md`, `tasks.md`, `session-context.md`) diverge from their starter template
-  after one session, while `manual_if_exists:` registers diverge by design. So `--verify`
-  exits 1 on all five repos, llm included. **Do not treat a nonzero `--verify` as drift**
-  until T-82 lands; read the per-file lines instead. Session 110's "`--verify` exit 0
-  everywhere" note is wrong.
+- **`--verify` asks a different question per kind of ownership (T-82, session 111).**
+  Overlay-owned `files:` → byte-diff, `DIFF` gates (real drift). `merge_sections:` →
+  version marker, `DIFF` gates (behind). User-managed `templates:` / `manual_if_exists:` →
+  byte-diff is **meaningless** (a session log diverges from its template immediately; a
+  per-repo register diverges by design), so they record non-gating `EXPECTED`. What
+  protects them is the **locator contract**: `verify_locators:` loads the repo's register
+  and asserts every role resolves. Gating follows `used_by` — a *write* role that cannot
+  resolve is `BROKEN` (the handoff will fail); a *read-only* role is `ABSENT` (resume
+  prints its fallback). Before T-82 the gate fired on every repo always, so nobody read
+  it — which is how a `tasks-append` role pointing at a nonexistent block survived.
+  Exits 0 on all five repos as of session 111.
 - **Only the marked regions are repo-owned.** Divergence in a `customizable:` file
   *outside* a keep-region will be overwritten, by design. Decide per case whether it
   should have been a keep-region (widen the manifest) or is stale (let it go).

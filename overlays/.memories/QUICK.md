@@ -21,8 +21,14 @@ concepts live in `KNOWLEDGE.md`, chronology in `git log -- overlays/`.*
   `uv tool install --editable overlays/session-tracking` (entry point `st-handoff`);
   the overlay installs config + docs only. `always_user_files:` removed. Consumers still
   run the legacy `~/.claude/tools/handoff/` copy until migration.
-- **Tests: 236 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
-  `test-session-tracking` (pytest, 183) + `test-installer` (pytest, 44: `test_verify.py` +
+- **`--verify` (T-82):** three questions, one per ownership — overlay-owned files byte-diff
+  (gates); merge_sections version marker (gates); user-managed files record non-gating
+  `EXPECTED` and are protected by the **locator contract** (`verify_locators:`): every
+  register role must resolve, write roles gate (`BROKEN`), read-only advise (`ABSENT`).
+  Exits 0 on all five repos. It found the starter templates did not satisfy their own
+  register — a fresh install's first handoff would have failed on four roles.
+- **Tests: 270 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
+  `test-session-tracking` (pytest, 214) + `test-installer` (pytest, 47+: `test_verify.py` +
   `test_customizable.py` + `test_signals.py`). Bare `make` prints help; `ARGS='-k x'` filters
   one suite. Not a test: `test-merge-plan.py` (manual Ollama diagnostic, network).
 - **ref-indexing overlay:** v4 — hermetic overlay-shipped suite at `files/tests/`.
