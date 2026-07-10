@@ -20,11 +20,6 @@
 
 version: 1
 
-# The llm repo IS the overlay's home: it runs the handoff against the overlay-source
-# register rather than a copy under .claude/handoff/. Saying so here keeps the
-# overlay-owned shim free of repo-specific paths. (--registry still overrides.)
-registry: overlays/session-tracking/files/registry.yaml
-
 steps:
   # ── banner ──
   # Spacing is `trailing_blank:`, never a bare "" in `lines:` — the presentation layer
