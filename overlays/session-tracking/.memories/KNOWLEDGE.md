@@ -25,37 +25,43 @@ trivia (open PRs, test counts, current version) belongs in `QUICK.md`, not here.
 ---
 
 <!-- ref:handoff-pipeline-map -->
-## Pipeline orientation — what lives where (`files/handoff/`, 10 modules)
+## Pipeline orientation — what lives where (`src/sessiontracking/`, v11 package)
 
 The handoff pipeline replaces the token-heavy "Claude reads every tracking file and
 writes each section via many Edits" skill with a **register-driven deterministic
 transaction**. Scope A uses NO local model — Claude decides *content*, the pipeline does
 *read + write*.
 
+Layout: `register/` (primitive) + `handoff/` and `resume/` (products). Products import the
+primitive; never each other.
+
 Safety core (pure functions over `(role/Region, text)`, stdlib-only):
-- `locator.py` — finds the byte range a role owns. Four locator kinds: `ref_block` /
+- `register/locator.py` — finds the byte range a role owns. Four locator kinds: `ref_block` /
   `structural` / `field` / `checklist`. Returns `Region(start, end, interior)` — the
   single boundary source of truth.
-- `applier.py` — mutates text. Write modes: `replace` / `prepend` / `append` /
+- `handoff/applier.py` — mutates text. Write modes: `replace` / `prepend` / `append` /
   `checkoff` / `nomodel`.
-- `verifier.py` — recompute-and-compare: re-derives the expected text byte-exact,
+- `handoff/verifier.py` — recompute-and-compare: re-derives the expected text byte-exact,
   independently of the applier, then diffs. Plus the ref-marker multiset invariant.
 
 Around it:
-- `mechanics.py` — header-field bumps, `next-session-N` (bootstraps to 1 on a fresh
+- `handoff/mechanics.py` — header-field bumps, `next-session-N` (bootstraps to 1 on a fresh
   repo), date, rotation invoker, `LogEntry` + `render_log_entry()`.
-- `orchestrator.py` (+ injected `gitio.py` adapter) — atomic stage → apply → verify →
+- `handoff/orchestrator.py` (+ injected `handoff/gitio.py` adapter) — atomic stage → apply → verify →
   write → rotate → commit.
-- `payload.py` — the payload schema + parser. `registry_io.py` — PyYAML register loader.
-- `runlog.py` — per-run dir `.claude/local/handoff-runs/session-<N>-<ts>-<status>/`
+- `handoff/payload.py` — the payload schema + parser. `register/registry_io.py` — PyYAML
+  register loader; validates `registry.yaml`'s `version:` against `SUPPORTED_REGISTER_SCHEMA`.
+- `handoff/runlog.py` — per-run dir `.claude/local/handoff-runs/session-<N>-<ts>-<status>/`
   holding `input.md` (verbatim payload = recovery artifact) + `report.md` (audit).
-- `handoff.py` — the CLI. `run-handoff.sh` — the thin per-repo shim.
+- `handoff/cli.py` — the CLI, entry point `st-handoff`. `run-handoff.sh` — the thin shim.
+- `resume/` — `config.py` (resume.yaml schema) + `steps.py` (step kinds) + `cli.py`
+  (`st-resume`). `resume.sh` is its shim.
 
-Sibling scripts in `files/`: `rotate-session-log.sh`, `handoff-harvest.sh`,
-`resume.sh`, `registry.yaml`, `session-handoff/SKILL.md`.
+Config shipped by the overlay in `files/`: `rotate-session-log.sh`, `handoff-harvest.sh`,
+`resume.sh`, `resume.yaml`, `registry.yaml`, `session-handoff/SKILL.md`.
 
-**Layering rule:** PyYAML is allowed *only* in the entrypoint glue (`registry_io`); the
-locator/applier/verifier/mechanics/orchestrator core stays stdlib-only.
+**Layering rule:** PyYAML is allowed *only* in the entrypoint glue (`register/registry_io`,
+`resume/config`); the locator/applier/verifier/mechanics/orchestrator core stays stdlib-only.
 
 Source / more detail: module docstrings; `ref:handoff-pipeline-design`;
 `overlays/session-tracking/README.md`.
@@ -266,8 +272,15 @@ The overlay still installs at two levels:
   one region: `reading-guide` (§2b).
 
 `run-handoff.sh` is a thin shim and the stable per-repo seam — migrating the engine changes
-only this file. It bypasses its registry-file guard when an explicit `--registry` is
-passed, and resolves the engine in order:
+only this file.
+
+**Every repo invokes it identically**: no `--registry`, because the engine resolves
+`<repo-root>/.claude/handoff/registry.yaml` itself. The home repo holds a register copy like
+any consumer; the overlay source is the authoring/distribution copy, and `manual_if_exists` +
+T-54's `SAME`/`TODO` signal keep the two honest. `--registry` survives for the genuine case of
+a register living elsewhere, and still bypasses the shim's registry-file guard.
+
+It resolves the engine in order:
 
 1. `st-handoff` on `PATH` — the installed package. Preferred.
 2. a sibling `src/sessiontracking` — the overlay source checkout, so the dev home repo
@@ -276,6 +289,12 @@ passed, and resolves the engine in order:
    only until every consumer repo has the package. Delete after migration.
 
 In an uninstalled repo the guard makes the shim `exit 0` — user-level hooks stay safe.
+
+`SKILL.md` installs via `user_files` (skip-if-present), so a project-level copy SHADOWS the
+global one and silently stops receiving updates. llm carried such a shadow, three overlay
+versions stale: it documented a `stage_failed` status the CLI never emits and omitted the
+`payload_error` / `internal_tool_bug` triage entirely. Removed (session 111). Do not create a
+project-level SKILL copy unless the repo genuinely needs a different skill.
 
 Option D (pip editable) is **adopted** as of v11; `docs/findings/overlay-distribution-options.md`
 deferred it as "no immediate benefit, adopt when H becomes concrete" — the real trigger
