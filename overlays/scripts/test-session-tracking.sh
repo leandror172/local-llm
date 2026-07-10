@@ -7,5 +7,5 @@
 # (e.g. `-k harvest`, `-x`, `-vv`).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$HERE/../session-tracking/files/handoff"
+cd "$HERE/../session-tracking"
 exec python3 -m pytest -q "$@"

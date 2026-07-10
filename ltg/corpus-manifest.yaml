@@ -3,16 +3,17 @@
 # Freeze = meta.commit + per-file sha256. Re-hash to detect drift.
 
 meta:
-  generated_from: retrieval/corpus.yaml
-  commit: b186c6e0cee030f75b21b4b0d1b4d70fbae6e0ac
-  file_count: 113
-  total_bytes: 857613
+  generated_from: ltg/corpus.yaml
+  commit: ca30f9d1f711b8518ef1800491ca67dc6d49ca6c
+  file_count: 133
+  total_bytes: 978644
   group_counts:
-    archive: 58
-    claude-meta: 7
+    archive: 77
+    claude-meta: 6
     docs-ideas: 13
     docs-research: 21
-    memories: 14
+    memories: 16
+  missing_on_disk: []
   dirty_corpus_files: []
 files:
 - path: .claude/archive/decisions-layers-1-3.md
@@ -243,46 +244,118 @@ files:
   group: archive
   sha256: cf292cafea7e2c83e598b02919893fb308a4842d5376fd1706d2a42fc90cd0f6
   bytes: 3388
+- path: .claude/archive/session-log-2026-06-23-s93-ltg-phase-2-5-planning-corpus-expansion-.md
+  group: archive
+  sha256: 8e1170b2b4853ce5ccc3a4c5086dfde8a7252cf0a322ebe8ebc88c44d3378144
+  bytes: 2034
+- path: .claude/archive/session-log-2026-06-26-s94-ltg-phase-2-5-full-corpus-expansion-t-34.md
+  group: archive
+  sha256: 033ccb18ac036b9966f61cf334d3c64b3d4dbc6209d34d9d6820bb23f0eb0d60
+  bytes: 3287
+- path: .claude/archive/session-log-2026-06-26-s95-cache-warmed-subagent-fan-out-6-task-bat.md
+  group: archive
+  sha256: dca5e6002bc362a428d0e8549af6b502a47411d5d9f279a77c4d004a0791d7e6
+  bytes: 3068
+- path: .claude/archive/session-log-2026-06-30-s96-land-session-97-batch-prs-56-57-to-maste.md
+  group: archive
+  sha256: 1d7c8d04fddaf8ea55c810ccd14492581dfeff36fc1ae1d6664123fe22c23953
+  bytes: 4207
+- path: .claude/archive/session-log-2026-06-30-s97-my-go-qcoder-http-500-root-cause-host-ra.md
+  group: archive
+  sha256: acbacf5127e3aa55d34f02b345396ea0e69ad8c27e94d8e3337ff1004bc0a28f
+  bytes: 3139
+- path: .claude/archive/session-log-2026-07-01-s98-t-68-ext4-store-reboot-persistence-self-.md
+  group: archive
+  sha256: 2a01dc1d0b192222c1581549f31857bb8e94a6ea3085afaab1dfb1064b8fb76a
+  bytes: 2921
+- path: .claude/archive/session-log-2026-07-01-s99-career-chatbot-groq-tpm-fix-routed-quick.md
+  group: archive
+  sha256: 9a8834b140f028281e7e2a03425b295c1b057d1170bc6b313d559790a569d814
+  bytes: 2923
+- path: .claude/archive/session-log-2026-07-02-s100-ollama-outage-fix-vm-restart-store-attac.md
+  group: archive
+  sha256: 9b9cf5af58f345533d5a2ff9f86dd737feba9860e7e4be4b97e8e165715fa8db
+  bytes: 3569
+- path: .claude/archive/session-log-2026-07-02-s101-ltg-phase-4-design-locked-p4-d1-d7-imple.md
+  group: archive
+  sha256: 8ef591c5014f8363f385a3dec6ca38635de103e66594e00eabc55fe6133f8ab9
+  bytes: 2951
+- path: .claude/archive/session-log-2026-07-02-s102-ltg-phase-4-executed-t1-t7-graph-communi.md
+  group: archive
+  sha256: 4ab72b8789d72f86b57c57e9df6e6458bd1ec90f184f1d8139b344350227e4eb
+  bytes: 4373
+- path: .claude/archive/session-log-2026-07-03-s103-pr-66-review-round-9-angle-code-review-8.md
+  group: archive
+  sha256: 26d9e9ce79220f257629c82ac16f0c196e20e572ec1ed348b743191994c73239
+  bytes: 2897
+- path: .claude/archive/session-log-2026-07-03-s104-t-71-rebuild-all-sequencer-backup-harden.md
+  group: archive
+  sha256: 77d7c0181a7206e5354c99566d8e396d44518968f2139ba5d88844173591252e
+  bytes: 3536
+- path: .claude/archive/session-log-2026-07-03-s105-ltg-phase-5-relate-a-b-implemented-accep.md
+  group: archive
+  sha256: 0ab9e69af554e9eadb8ef80261fdf02afff2441add0cb26b9c752ab39df87ff7
+  bytes: 3285
+- path: .claude/archive/session-log-2026-07-04-s106-t-33-repo-split-discovery-model-registry.md
+  group: archive
+  sha256: 44d54d193bb37d550cfeeae3b4d839c3c83693c6c14f86e3d88c88e9515fdbaf
+  bytes: 3719
+- path: .claude/archive/session-log-2026-07-04-s107-t-33-ltg-repo-split-executed-engine-late.md
+  group: archive
+  sha256: 399c3eb17c066263ccb385838a5a095487ecec06bedf2345ae409723f1e6d6e2
+  bytes: 4962
+- path: .claude/archive/session-log-2026-07-06-s108-handoff-tooling-bug-sweep-t-78-t-62-t-61.md
+  group: archive
+  sha256: 3a29094341a3ed41458fa13592fd453007058e45a1a0a0a940de6a3b58637dc6
+  bytes: 3401
+- path: .claude/archive/session-log-2026-07-08-s109-t-61-general-customization-seam-built-cu.md
+  group: archive
+  sha256: 09f19d5915635150757832751bd3a7cd99447d79ee28ed13342953f0e10660db
+  bytes: 2999
+- path: .claude/archive/session-log-2026-07-08-s110-t-79-overlay-v10-propagated-to-all-4-con.md
+  group: archive
+  sha256: 7d0525678ea68f8c7e5a052870752059ec587999567195c7a2652554e3f861a7
+  bytes: 4928
 - path: .claude/archive/session-log-layer0.md
   group: archive
   sha256: 500baa8e091a420aaea0088337bd5051efd7eb6eb9e19ba08dfc5774fbdfbdb1
   bytes: 36500
+- path: .claude/archive/session-tracking-handoff-history.md
+  group: archive
+  sha256: b3bf69f45d67204c831ab3706e3d1ee630261291d90a049da9b8aaa73fa4fe89
+  bytes: 15617
 - path: .claude/index.md
   group: claude-meta
-  sha256: 4c895cc6a81955cd6efa65daa43ce70f45fd5889125d6902323474f20148db7c
-  bytes: 30590
+  sha256: 0162ad68adebf40564e1d1e560c2a5e0a728d9d309debcc0051d324f1f9182e6
+  bytes: 35313
 - path: .claude/plan-v2.md
   group: claude-meta
   sha256: a7fd2cf477890cf8eb3a6188e5c50bc772cbd4a8290cb89e509f4f21235a26ea
   bytes: 20946
 - path: .claude/session-context.md
   group: claude-meta
-  sha256: add33542a3d2a3c42bde2276ce570e034d2509f174e6ca7612a1e8e1bba4a4d9
-  bytes: 20549
+  sha256: c3340b439acbe822a177467b505bef2edbbc986359730a93b7a2eb08df50e69d
+  bytes: 23672
 - path: .claude/skills/create-persona/SKILL.md
   group: claude-meta
   sha256: 551638e18748f29ec656701fe3cf2de4329d9433bc03e58dc5b4169624472fd5
   bytes: 2160
-- path: .claude/skills/session-handoff/SKILL.md
-  group: claude-meta
-  sha256: d3dff7b0ec23168fdf8f50d49647a9740abd7df6e863f8d1beaff5a2ea4a012e
-  bytes: 12236
 - path: .claude/tasks.md
   group: claude-meta
-  sha256: 39abe53ed486642f65a333b3534425f85f2aea3cb190ea412ef8acb92af87d04
-  bytes: 36181
+  sha256: 3c48c723db2a5d7cb8b653584ae6b8a2a9287f42f71fdcbf06f641bd6e937139
+  bytes: 54295
 - path: .claude/tools/OLLAMA-ANALYSIS-README.md
   group: claude-meta
   sha256: f341e5c1d778b5187eda0c6f7ce2aab3f6db0feb10c0226efa443189ef18846f
   bytes: 2349
 - path: .memories/KNOWLEDGE.md
   group: memories
-  sha256: 1ecb8e89c42a4d42bbb32043cdfd8d03c598e46113adeb603e232a23ee3bfbff
-  bytes: 19985
+  sha256: ea0946c818a75eb4da250baacb6a17ac060506f72cf440ec339f76b5cec2b4d5
+  bytes: 24072
 - path: .memories/QUICK.md
   group: memories
-  sha256: 678471ca5f24f88ede0df0ad5dc92efc734579ae7eac207f937f393da85201e4
-  bytes: 6906
+  sha256: b4a7fe2211511382f52aa23becb7158c7a1c463e987cebd6eab4442f237cdb06
+  bytes: 8282
 - path: benchmarks/.memories/KNOWLEDGE.md
   group: memories
   sha256: 25d9068617cfa96d9d6551958f39a8b4ed501d1b0c989914efe661a1941935bd
@@ -301,8 +374,8 @@ files:
   bytes: 3935
 - path: docs/ideas/ltg-model-registry-design.md
   group: docs-ideas
-  sha256: 23cfdaf87bfb27147b98791d3b56cbd318fcf86549220bbc693e5d2e1043e184
-  bytes: 4820
+  sha256: 421ce71288ff9a662ff36b066014ec4a582676ce96a2f7d98468e66f94c47272
+  bytes: 19008
 - path: docs/ideas/ollama-coordination-layer.md
   group: docs-ideas
   sha256: 65b345cf575a3c7de443f2cdb839f1120e1d44503f165d81bb39c0ca2be29e3a
@@ -435,6 +508,14 @@ files:
   group: memories
   sha256: d8be12ced6c31a20027b8f384d26384e20d9107987069704145cb0507a9d8682
   bytes: 1271
+- path: ltg/.memories/KNOWLEDGE.md
+  group: memories
+  sha256: 73104d6496feb3a8ad8a9244b728161e5c2fc58b20f75cb0aacbe39b2a53160a
+  bytes: 3499
+- path: ltg/.memories/QUICK.md
+  group: memories
+  sha256: e739e032febe6941d0f0dcddcdfb18d88858b57bc3805adc2bc5effc3d07856f
+  bytes: 2058
 - path: mcp-server/.memories/KNOWLEDGE.md
   group: memories
   sha256: dc3545e38cd7428e8c0a6f765ce9d775a95cd2c9e081d3218efbc2ec5585a4a9
@@ -445,25 +526,25 @@ files:
   bytes: 2756
 - path: overlays/.memories/KNOWLEDGE.md
   group: memories
-  sha256: 0a1a2372af714d00b84bd2cab61a29ed7bb38bd819c0ea64b83009f1a3159b37
-  bytes: 21544
+  sha256: 26325ad65a7f912bd089f9f603ceb070d4df6a23d9cae46e4b86d761a164ffca
+  bytes: 15958
 - path: overlays/.memories/QUICK.md
   group: memories
-  sha256: 330ab024c51605d4dc80409a6426e5a5772b95535e238420f63509bfb858a4a7
-  bytes: 2440
+  sha256: 4d3d10331ccfea955986aff7f5a74d5afcb9b1ffc6a1d26466ff41b4f7c9edc2
+  bytes: 4417
+- path: overlays/session-tracking/.memories/KNOWLEDGE.md
+  group: memories
+  sha256: 2a899ad227a7dd2ab0648bae7cf277073685b6424f25a413e4bb715f863e49cf
+  bytes: 20200
+- path: overlays/session-tracking/.memories/QUICK.md
+  group: memories
+  sha256: ab1a4b5f0484ad22f0cee29700cdf383b09dbcad41d95623eed999a269257029
+  bytes: 3702
 - path: personas/.memories/KNOWLEDGE.md
   group: memories
-  sha256: 32100363dcfb73142652d12832bb382eb6e815e3845b718567f42997a67c3a25
-  bytes: 4240
+  sha256: 25711f4a3b58f705f6696b1a619257c0f99ed0ce2e82ac864254b0a8a322c807
+  bytes: 4742
 - path: personas/.memories/QUICK.md
   group: memories
-  sha256: aa1b9a1676abd8087e3b4201f6eb89d9f954d54d3e78c53972a81832bfe6c766
-  bytes: 1583
-- path: retrieval/.memories/KNOWLEDGE.md
-  group: memories
-  sha256: 7308fcadc39d434cb694a7076754944b0b614beaf2e6857d2f1435badab78b41
-  bytes: 11331
-- path: retrieval/.memories/QUICK.md
-  group: memories
-  sha256: e8c1e7864f6c99d1c2a2f8bbe2c1d6716d40310e59353d68633e740d874b14f4
-  bytes: 5314
+  sha256: f81e5aa52e3bf7878e028ea773dce1cc90577baf10226e048f69bafb4760a4a9
+  bytes: 1716

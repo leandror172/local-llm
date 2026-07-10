@@ -25,37 +25,43 @@ trivia (open PRs, test counts, current version) belongs in `QUICK.md`, not here.
 ---
 
 <!-- ref:handoff-pipeline-map -->
-## Pipeline orientation — what lives where (`files/handoff/`, 10 modules)
+## Pipeline orientation — what lives where (`src/sessiontracking/`, v11 package)
 
 The handoff pipeline replaces the token-heavy "Claude reads every tracking file and
 writes each section via many Edits" skill with a **register-driven deterministic
 transaction**. Scope A uses NO local model — Claude decides *content*, the pipeline does
 *read + write*.
 
+Layout: `register/` (primitive) + `handoff/` and `resume/` (products). Products import the
+primitive; never each other.
+
 Safety core (pure functions over `(role/Region, text)`, stdlib-only):
-- `locator.py` — finds the byte range a role owns. Four locator kinds: `ref_block` /
+- `register/locator.py` — finds the byte range a role owns. Four locator kinds: `ref_block` /
   `structural` / `field` / `checklist`. Returns `Region(start, end, interior)` — the
   single boundary source of truth.
-- `applier.py` — mutates text. Write modes: `replace` / `prepend` / `append` /
+- `handoff/applier.py` — mutates text. Write modes: `replace` / `prepend` / `append` /
   `checkoff` / `nomodel`.
-- `verifier.py` — recompute-and-compare: re-derives the expected text byte-exact,
+- `handoff/verifier.py` — recompute-and-compare: re-derives the expected text byte-exact,
   independently of the applier, then diffs. Plus the ref-marker multiset invariant.
 
 Around it:
-- `mechanics.py` — header-field bumps, `next-session-N` (bootstraps to 1 on a fresh
+- `handoff/mechanics.py` — header-field bumps, `next-session-N` (bootstraps to 1 on a fresh
   repo), date, rotation invoker, `LogEntry` + `render_log_entry()`.
-- `orchestrator.py` (+ injected `gitio.py` adapter) — atomic stage → apply → verify →
+- `handoff/orchestrator.py` (+ injected `handoff/gitio.py` adapter) — atomic stage → apply → verify →
   write → rotate → commit.
-- `payload.py` — the payload schema + parser. `registry_io.py` — PyYAML register loader.
-- `runlog.py` — per-run dir `.claude/local/handoff-runs/session-<N>-<ts>-<status>/`
+- `handoff/payload.py` — the payload schema + parser. `register/registry_io.py` — PyYAML
+  register loader; validates `registry.yaml`'s `version:` against `SUPPORTED_REGISTER_SCHEMA`.
+- `handoff/runlog.py` — per-run dir `.claude/local/handoff-runs/session-<N>-<ts>-<status>/`
   holding `input.md` (verbatim payload = recovery artifact) + `report.md` (audit).
-- `handoff.py` — the CLI. `run-handoff.sh` — the thin per-repo shim.
+- `handoff/cli.py` — the CLI, entry point `st-handoff`. `run-handoff.sh` — the thin shim.
+- `resume/` — `config.py` (resume.yaml schema) + `steps.py` (step kinds) + `cli.py`
+  (`st-resume`). `resume.sh` is its shim.
 
-Sibling scripts in `files/`: `rotate-session-log.sh`, `handoff-harvest.sh`,
-`resume.sh`, `registry.yaml`, `session-handoff/SKILL.md`.
+Config shipped by the overlay in `files/`: `rotate-session-log.sh`, `handoff-harvest.sh`,
+`resume.sh`, `resume.yaml`, `registry.yaml`, `session-handoff/SKILL.md`.
 
-**Layering rule:** PyYAML is allowed *only* in the entrypoint glue (`registry_io`); the
-locator/applier/verifier/mechanics/orchestrator core stays stdlib-only.
+**Layering rule:** PyYAML is allowed *only* in the entrypoint glue (`register/registry_io`,
+`resume/config`); the locator/applier/verifier/mechanics/orchestrator core stays stdlib-only.
 
 Source / more detail: module docstrings; `ref:handoff-pipeline-design`;
 `overlays/session-tracking/README.md`.
@@ -76,9 +82,11 @@ file + locator + write mode. It does double duty:
   anchor that the pipeline **must not touch**.
 
 The pipeline only ever walks **payload → register**, never register → payload. A role
-left in a target's register with no payload slot is therefore inert, not a hazard — this
-is why stale roles (e.g. the retired `header-previous-logs`) can be left in place across
-an upgrade without breaking anything.
+left in a target's register with no payload slot is therefore *operationally* inert — but
+it is dead config that claims the handoff owns a region which may not exist. `--verify`'s
+locator contract now reports such a role as `BROKEN`, and the retired
+`header-previous-logs` was removed from all repos (session 111). Delete stale roles; the
+payload→register direction is why deleting them is safe.
 
 `handoff.py` resolves `repo_root` via `git rev-parse`, so the default register path is
 correct without flags in installed repos.
@@ -232,11 +240,28 @@ Source / more detail: `rotate-session-log.sh`, `handoff-harvest.sh`;
 <!-- ref:session-tracking-distribution -->
 ## Distribution — one shared engine, per-repo seams
 
-The overlay installs at two levels, deliberately:
+**Since v11 (R-D9): code ships as a package, config ships as an overlay.**
 
-- **Pipeline modules → always user-level** at `~/.claude/tools/handoff/`, via the
-  `always_user_files:` manifest key. Never per-repo. **All repos execute the same
-  engine.**
+The pipeline is the `session-tracking` Python package (`overlays/session-tracking/`,
+`src/sessiontracking/`), installed with `uv tool install --editable
+overlays/session-tracking`, exposing the console entry point `st-handoff`. The
+`always_user_files:` manifest key — which copied ten `.py` modules into
+`~/.claude/tools/handoff/`, a hand-rolled package manager — **is gone**.
+
+Package layout: `register/` (primitive: `registry_io` + `locator`) with `handoff/` and
+`resume/` as products above it. Products depend on the primitive, never on each other
+(`ref:model-registry-library-decision`). Sharing `locate()` is the point: read and write
+cannot disagree about where a region begins.
+
+`registry_io.load_register` validates the register's `version:` key against
+`SUPPORTED_REGISTER_SCHEMA` and refuses an unrecognised one (exit 2). An *absent* version
+is treated as schema 1 — absence cannot prove incompatibility. Three version facts, do not
+conflate: package `--version` (machine-global), `registry.yaml: version:` (per-file
+schema contract), CLAUDE.md `<!-- overlay:session-tracking vN -->` (per-repo config
+generation).
+
+The overlay still installs at two levels:
+
 - **Shim + SKILL.md → follow `--install-level`** (default `user` → `~/.claude/`;
   `project` → per-repo `.claude/`). Project-level copies SHADOW the global, so a repo
   wanting its own SKILL must force-copy it (`user_files` is skip-if-present).
@@ -246,21 +271,37 @@ The overlay installs at two levels, deliberately:
   is never overwritten; the shipped default is a **first-install seed only**. Currently
   one region: `reading-guide` (§2b).
 
-`run-handoff.sh` is a thin shim and the stable per-repo seam. It (a) bypasses its
-registry-file guard when an explicit `--registry` is passed, and (b) prefers a
-`handoff.py` co-located with itself (source tree / dev home repo) over the user-level
-install. So the llm home repo runs the engine **from source**:
+`run-handoff.sh` is a thin shim and the stable per-repo seam — migrating the engine changes
+only this file.
 
-```
-overlays/session-tracking/files/handoff/run-handoff.sh \
-  --registry overlays/session-tracking/files/registry.yaml
-```
+**Every repo invokes it identically**: no `--registry`, because the engine resolves
+`<repo-root>/.claude/handoff/registry.yaml` itself. The home repo holds a register copy like
+any consumer; the overlay source is the authoring/distribution copy, and `manual_if_exists` +
+T-54's `SAME`/`TODO` signal keep the two honest. `--registry` survives for the genuine case of
+a register living elsewhere, and still bypasses the shim's registry-file guard.
 
-Target repos (shim-only, no co-located engine) transparently use the shared user-level
-engine. In an uninstalled repo the guard makes the shim `exit 0` — user-level hooks stay
-safe.
+It resolves the engine in order:
 
-Deferred: pip-editable distribution (option D); G/H remain long-term targets.
+1. `st-handoff` on `PATH` — the installed package. Preferred.
+2. a sibling `src/sessiontracking` — the overlay source checkout, so the dev home repo
+   tests against source without installing.
+3. `~/.claude/tools/handoff/handoff.py` — **legacy** flat-module copy. Transitional, kept
+   only until every consumer repo has the package. Delete after migration.
+
+In an uninstalled repo the guard makes the shim `exit 0` — user-level hooks stay safe.
+
+`SKILL.md` installs via `user_files` (skip-if-present), so a project-level copy SHADOWS the
+global one and silently stops receiving updates. llm carried such a shadow, three overlay
+versions stale: it documented a `stage_failed` status the CLI never emits and omitted the
+`payload_error` / `internal_tool_bug` triage entirely. Removed (session 111). Do not create a
+project-level SKILL copy unless the repo genuinely needs a different skill.
+
+Option D (pip editable) is **adopted** as of v11; `docs/findings/overlay-distribution-options.md`
+deferred it as "no immediate benefit, adopt when H becomes concrete" — the real trigger
+turned out to be *a second consumer needing the primitive*. Publish-escalation trigger,
+adopted verbatim from the LTG split: flip from editable path install to a published package
+only when (a) working from a machine without this checkout, or (b) the first external
+adopter appears. G/H remain long-term targets.
 
 Source / more detail: `manifest.yaml`; `docs/plans/overlay-customizable-regions.md`;
 `overlays/session-tracking/README.md`.
@@ -282,13 +323,28 @@ Source / more detail: `manifest.yaml`; `docs/plans/overlay-customizable-regions.
   shape. Installer `--verify` mode (T-58) now automates this; run it.
 - **The `customizable:` decision-3 clobber.** If a repo has customized a region but the
   installed file carries **no `overlay-keep` markers**, the installer resets that region to
-  the overlay default and emits a `WARN`. That `WARN` in `--dry-run` is the tripwire —
-  never install a customized repo that shows it. Pre-wrap the variant in markers first.
-  career-search's "What to read first" §2b variant is the live instance.
-- **`--verify` gating semantics.** `CUSTOMIZED` (sanctioned use of the seam) is
-  **non-gating**; `DIFF` (out-of-region drift) **gates**. A repo that hasn't installed v10
-  yet shows the customizable entry as `MISSING`/`DIFF` — so if wiring into CI, verify
-  *after* install, not before.
+  the overlay default. Since T-80a (session 111) the signal discriminates: `INFO … reset is
+  a no-op` when the overlay default is already present verbatim (**proven safe**, silent),
+  `WARN-CLOBBER` otherwise. Polarity is deliberate — silence only on proof of safety;
+  `WARN-CLOBBER` means "cannot prove safe", not "will destroy". Pre-wrap a variant in
+  markers before installing. career-search's "What to read first" §2b variant is the live
+  instance. Do **not** trust the pre-T-80a blanket `WARN` described in older notes.
+- **The installer records nothing about what it installed.** Both T-54 and T-80a are
+  downstream of this: with no baseline, `manual_if_exists` cannot tell "source changed since
+  you reconciled" from "this file legitimately differs" (expenses/career-search registers
+  flag on *every* install, correctly but uselessly), and `customizable:` cannot locate a
+  region in an unmarked file. A recorded source hash — or a package manager — closes both.
+- **`--verify` asks a different question per kind of ownership (T-82, session 111).**
+  Overlay-owned `files:` → byte-diff, `DIFF` gates (real drift). `merge_sections:` →
+  version marker, `DIFF` gates (behind). User-managed `templates:` / `manual_if_exists:` →
+  byte-diff is **meaningless** (a session log diverges from its template immediately; a
+  per-repo register diverges by design), so they record non-gating `EXPECTED`. What
+  protects them is the **locator contract**: `verify_locators:` loads the repo's register
+  and asserts every role resolves. Gating follows `used_by` — a *write* role that cannot
+  resolve is `BROKEN` (the handoff will fail); a *read-only* role is `ABSENT` (resume
+  prints its fallback). Before T-82 the gate fired on every repo always, so nobody read
+  it — which is how a `tasks-append` role pointing at a nonexistent block survived.
+  Exits 0 on all five repos as of session 111.
 - **Only the marked regions are repo-owned.** Divergence in a `customizable:` file
   *outside* a keep-region will be overwritten, by design. Decide per case whether it
   should have been a keep-region (widen the manifest) or is stale (let it go).

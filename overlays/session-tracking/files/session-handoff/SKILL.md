@@ -205,11 +205,11 @@ The pipeline validates, applies in-memory, and emits JSON to stdout. Parse it:
   your fault. The `reason` field will suggest reporting it with the run's `input.md`.
   Do NOT keep re-authoring; file a bug report instead.
 
-> In the overlay's **home** repo (where the pipeline lives in source, not installed),
-> use `overlays/session-tracking/files/handoff/run-handoff.sh` and pass
-> `--registry overlays/session-tracking/files/registry.yaml`. In target repos
-> (expenses, etc.) where the engine is installed at `~/.claude/tools/handoff/`, use
-> `.claude/tools/handoff/run-handoff.sh` and the default registry is automatic.
+> **Every repo invokes it the same way.** `run-handoff.sh` needs no `--registry`: the
+> engine resolves `<repo-root>/.claude/handoff/registry.yaml` on its own. The overlay's
+> home repo is not special — it holds a register copy like any consumer, and the overlay
+> source is the authoring/distribution copy. (`--registry` still exists for the genuine
+> case of a register that lives elsewhere.)
 
 ### Promote
 

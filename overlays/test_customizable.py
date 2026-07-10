@@ -264,7 +264,12 @@ def test_10_overlay_changed_default_repo_untouched_stays_installed(tmp_path, hom
 
 
 def test_11_marker_deleted_from_installed_resets_and_warns(tmp_path, home_isolation):
-    """Installed file lost the region markers → reset to source default + WARN (decision 3)."""
+    """Installed file lost the region markers → reset to source default (decision 3).
+
+    This fixture holds `echo SOMETHING_ELSE` where the default interior belongs, so the
+    reset genuinely destroys content → WARN-CLOBBER. T-80a: the benign twin (default
+    already present verbatim) must stay silent; see test_signals.py.
+    """
     installed_no_markers = (
         "#!/usr/bin/env bash\n"
         "echo SECTION_1_UPDATED\n"
@@ -281,7 +286,7 @@ def test_11_marker_deleted_from_installed_resets_and_warns(tmp_path, home_isolat
     merged = dest.read_text()
     assert "DEFAULT_TITLE" in merged              # region reset to source default
     assert OPEN in merged and CLOSE in merged     # markers restored from source
-    assert "WARN" in _statuses()
+    assert "WARN-CLOBBER" in _statuses()
 
 
 def test_12_region_listed_but_missing_in_source_errors(tmp_path, home_isolation):

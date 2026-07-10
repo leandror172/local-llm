@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+import sys
 import shutil
 from pathlib import Path
 
@@ -322,6 +323,68 @@ def handle_merge_sections(
                        f"wrap content with markers per {overlay_dir}/APPLY.md")
 
 
+def _same_content(a: Path, b: Path) -> bool:
+    """True when both files exist and hold the same text, ignoring line endings."""
+    if not a.exists() or not b.exists():
+        return False
+    return _read_text_eol(a)[0] == _read_text_eol(b)[0]
+
+
+def _normalized_lines(text: str) -> list[str]:
+    return [line.rstrip() for line in text.strip("\n").split("\n")]
+
+
+def _reset_is_provable_noop(installed_text: str, default_interior: str) -> bool:
+    """True when `default_interior` already sits in `installed_text` as a contiguous
+    run of whole lines (trailing whitespace ignored), so splicing the overlay default
+    back in cannot change those bytes.
+
+    Asymmetric on purpose. True is a PROOF of safety. False means "cannot prove safe"
+    — never "proven unsafe": a file predating the region entirely also returns False.
+    Decision-3 fires when the installed file has NO markers, so there is no installed
+    interior to compare against; presence of the default is the only question we can
+    answer. Spend silence only where safety is proven.
+    """
+    if not installed_text.strip():
+        return False
+    haystack = _normalized_lines(installed_text)
+    needle = _normalized_lines(default_interior)
+    if not needle:
+        return False
+    return any(
+        haystack[i:i + len(needle)] == needle
+        for i in range(len(haystack) - len(needle) + 1)
+    )
+
+
+def _record_manual_merge_state(dest_rel: str, src: Path, dest: Path,
+                               overlay_name: str, src_name: str) -> None:
+    """T-54: flagging an identical file trains the operator to ignore the flag."""
+    if _same_content(src, dest):
+        record("SAME", dest_rel, "identical to overlay source — no merge needed")
+    elif src.exists():
+        record("TODO", dest_rel, "manual merge required — differs from overlay source",
+               f"overlay source: overlays/{overlay_name}/files/{src_name}")
+    else:
+        record("TODO", dest_rel, "manual merge required — file already exists",
+               "no overlay source available")
+
+
+def _record_reset_signal(dest_rel: str, name: str, inst_text: str,
+                         default_interior: str) -> None:
+    """T-80a: an unconditional WARN carries zero bits. Spend silence only on proof."""
+    if _reset_is_provable_noop(inst_text, default_interior):
+        record("INFO", dest_rel,
+               f"keep-region '{name}' marker absent — overlay default already "
+               f"present verbatim; reset is a no-op")
+    else:
+        record("WARN-CLOBBER", dest_rel,
+               f"keep-region '{name}' marker absent AND the overlay default is "
+               f"not present verbatim — installing REPLACES that area; a repo "
+               f"customization there is LOST",
+               "diff the region against the overlay default before proceeding")
+
+
 def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path, dry_run: bool):
     files_dir = overlay_dir / "files"
     for dest_rel in manifest.get("manual_if_exists", []):
@@ -330,10 +393,7 @@ def handle_manual_if_exists(manifest: dict, overlay_dir: Path, target_root: Path
         src = files_dir / src_name
 
         if dest.exists():
-            record("TODO", dest_rel,
-                   "manual merge required — file already exists",
-                   f"overlay source: overlays/{manifest['name']}/files/{src_name}"
-                   if src.exists() else "no overlay source available")
+            _record_manual_merge_state(dest_rel, src, dest, manifest["name"], src_name)
         else:
             if src.exists():
                 if not dry_run:
@@ -416,8 +476,7 @@ def handle_customizable(manifest: dict, overlay_dir: Path, target_root: Path,
 
         merged = _splice_regions(src_text, replacements)
         for name in sorted(reset):
-            record("WARN", dest_rel,
-                   f"keep-region '{name}' marker absent in installed — reset to overlay default")
+            _record_reset_signal(dest_rel, name, inst_text, src_regions[name])
 
         if merged == inst_text:
             record("SKIP", dest_rel, "up to date")
@@ -534,12 +593,15 @@ def verify_overlay(
         elif _norm(src) == _norm(dest):
             record("SAME", dest_rel, "up to date (USER-MANAGED)")
         else:
-            record("DIFF", dest_rel, "differs from template source (USER-MANAGED)")
-            n_diff += 1
+            # T-82: byte-equality is the WRONG question for a file the repo owns.
+            # session-log.md diverges from its starter template after one session.
+            # Gating here made --verify permanently red, so nobody read it.
+            record("EXPECTED", dest_rel, "diverged from template (USER-MANAGED, expected)")
 
     # ── manual_if_exists: → target_root/dest_rel, src = files/<basename> ─────
-    # Decision (a): DIFF and MISSING both gate exit (same as overlay-owned).
-    # USER-MANAGED label kept for readability only.
+    # T-82: a per-repo register has per-repo locators — differing IS the design.
+    # MISSING still gates (not installed is actionable). What protects this file is
+    # the locator-contract check below, not a byte-diff.
     for dest_rel in manifest.get("manual_if_exists", []):
         src = files_dir / Path(dest_rel).name
         dest = target_root / dest_rel
@@ -552,8 +614,7 @@ def verify_overlay(
         elif _norm(src) == _norm(dest):
             record("SAME", dest_rel, "up to date (USER-MANAGED)")
         else:
-            record("DIFF", dest_rel, "differs from overlay source (USER-MANAGED)")
-            n_diff += 1
+            record("EXPECTED", dest_rel, "differs from overlay source (USER-MANAGED, expected)")
 
     # ── merge_sections: version-marker based (separate mechanism) ────────────
     # SAME = installed version matches manifest version.
@@ -628,4 +689,102 @@ def verify_overlay(
         else:
             record("SAME", dest_rel, "up to date")
 
+    n_diff += _verify_locators(manifest, overlay_dir, target_root)
+
     return n_diff, n_missing, n_src_missing
+
+
+def _load_register_api(overlay_dir: Path):
+    """The register primitive, or None if this overlay does not ship it.
+
+    Tries a plain import first (package installed / already on sys.path), then the
+    overlay's own `src/` tree. Returns (load_register, locate, LocatorError).
+    """
+    for candidate in (None, overlay_dir / "src"):
+        if candidate is not None:
+            if not (candidate / "sessiontracking").is_dir():
+                continue
+            sys.path.insert(0, str(candidate))
+        try:
+            from sessiontracking.register import LocatorError, load_register, locate
+            return load_register, locate, LocatorError
+        except ImportError:
+            continue
+    return None
+
+
+def _verify_locators(manifest: dict, overlay_dir: Path, target_root: Path) -> int:
+    """Do the register's locators still resolve against this repo's files?
+
+    The question byte-comparison cannot ask. A user-managed file may legitimately
+    differ from its template in every byte and still be *broken* — a moved ref block,
+    a deleted header field, a key that never existed. latent-topic-graph's register
+    pointed `tasks-append` at a `ref:deferred-infra` block that was never written; it
+    survived every --verify run because the bytes were "expected to differ".
+
+    Gating follows `used_by`, because the consequence does:
+      write role, unresolvable -> BROKEN. The handoff WILL fail to locate its region.
+      read role,  unresolvable -> ABSENT. resume prints its fallback. Advisory.
+
+    Checklist locators need a task_id from a payload, so they are contract-checked
+    only for file existence.
+
+    Returns the number of gating failures.
+    """
+    spec = manifest.get("verify_locators")
+    if not spec:
+        return 0
+    register_path = target_root / spec["register"]
+    if not register_path.exists():
+        return 0  # manual_if_exists already reports MISSING; not this check's job
+
+    api = _load_register_api(overlay_dir)
+    if api is None:
+        record("SKIP", spec["register"], "locator contract unchecked — register package not importable")
+        return 0
+    load_register, locate, LocatorError = api
+
+    try:
+        register = load_register(register_path)
+    except Exception as e:
+        record("BROKEN", spec["register"], f"register will not load: {e}")
+        return 1
+
+    broken = 0
+    resolved = 0
+    for name, role in sorted(register.items()):
+        target = target_root / role["file"]
+        gates = "write" in role.get("used_by", ["write"])
+        if not target.exists():
+            # Same used_by rule as an unresolvable block: a read-only role whose file
+            # does not exist yet (a fresh install has no .claude/index.md) is advisory,
+            # not broken. Only the handoff's write path is a hard dependency.
+            if gates:
+                record("BROKEN", spec["register"],
+                       f"role '{name}' (write) points at a missing file: {role['file']}")
+                broken += 1
+            else:
+                record("ABSENT", spec["register"],
+                       f"role '{name}' (read-only) points at a missing file: "
+                       f"{role['file']} — resume prints its fallback")
+            continue
+        if role.get("locator", {}).get("type") == "checklist":
+            resolved += 1  # needs a task_id; file existence is all we can assert
+            continue
+        try:
+            locate(role, target.read_text())
+            resolved += 1
+        except (LocatorError, ValueError) as e:
+            if gates:
+                record("BROKEN", spec["register"],
+                       f"role '{name}' (write) does not resolve in {role['file']}: {e}")
+                broken += 1
+            else:
+                record("ABSENT", spec["register"],
+                       f"role '{name}' (read-only) has no block in {role['file']} "
+                       f"— resume prints its fallback")
+
+    if not broken:
+        record("SAME", spec["register"],
+               f"{resolved}/{len(register)} register locators resolve")
+    return broken

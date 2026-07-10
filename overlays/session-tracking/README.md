@@ -6,12 +6,12 @@ Packages the session continuity system for any Claude Code project.
 
 | Action | Target | Condition |
 |--------|--------|-----------|
-| CUSTOMIZABLE | `.claude/tools/resume.sh` | Overlay-owned **except** its `overlay-keep:reading-guide` region, which a repo may tailor (seeded once, preserved on every update — v10, T-61) |
+| COPY | `.claude/tools/resume.sh` | Thin shim over `st-resume` (v11) |
 | COPY | `.claude/tools/rotate-session-log.sh` | Always (backup if differs) |
 | COPY | `.claude/tools/handoff-harvest.sh` | Always (backup if differs) |
-| COPY | `~/.claude/tools/handoff/*.py` (10 runtime modules) | **Always user-level** — shared across all repos regardless of `--install-level` |
-| COPY | `~/.claude/tools/handoff/run-handoff.sh` | User-level by default; `--install-level project` installs per-repo as `.claude/tools/handoff/run-handoff.sh` |
+| COPY | `~/.claude/tools/handoff/run-handoff.sh` | Thin shim over `st-handoff`. User-level by default; `--install-level project` installs per-repo |
 | MANUAL | `.claude/handoff/registry.yaml` | Copied if missing; **flagged for manual merge if present** (per-repo register — `manual_if_exists`) |
+| MANUAL | `.claude/resume.yaml` | Copied if missing; flagged if present. The step list `st-resume` renders (v11) |
 | COPY | `~/.claude/skills/session-handoff/SKILL.md` | User-level by default; `--install-level project` installs per-repo |
 | CREATE | `.claude/session-log.md` | Only if missing |
 | CREATE | `.claude/session-context.md` | Only if missing |
@@ -21,7 +21,16 @@ Packages the session continuity system for any Claude Code project.
 ## Prerequisites
 
 - `ref-indexing` overlay recommended (provides `ref-lookup.sh` used by `resume.sh` **and** by the handoff skill to fetch replace-mode interiors)
-- **PyYAML** required by the handoff pipeline (`pip install pyyaml`) — only `registry_io.py` imports it; the F1–F6 safety core is stdlib-only
+- **The `session-tracking` package** — since v11 the overlay does NOT install Python code. Install it once per machine:
+
+  ```
+  uv tool install --editable <llm-repo>/overlays/session-tracking
+  ```
+
+  This puts `st-handoff` and `st-resume` on `PATH`. The bash shims exec them, so existing repo
+  paths, hooks, and docs keep working. **Code ships as a package; config ships as an overlay.**
+- **PyYAML** is a package dependency — only `register/registry_io.py` imports it; the safety core
+  (`register/locator.py`, `handoff/applier.py`, `handoff/verifier.py`) is stdlib-only
 
 ## Deterministic handoff pipeline
 
@@ -57,35 +66,49 @@ the same file in one run is fully supported.
 ## Usage
 
 ```bash
-# Install with shim + skill at user level (default)
+# 0. Once per machine — the engine is a package, not overlay-installed files
+uv tool install --editable <llm-repo>/overlays/session-tracking
+
+# Install config + docs, with shim + skill at user level (default)
 ./overlays/install-overlay.py session-tracking --target /path/to/repo
 
-# Install shim + skill per-repo (self-contained repo; pipeline .py files still go to ~/.claude/)
+# Install shim + skill per-repo (self-contained repo)
 ./overlays/install-overlay.py session-tracking --target /path/to/repo --install-level project
-
-# AI-assisted CLAUDE.md merge
-./overlays/install-overlay.py session-tracking --target /path/to/repo --mode ai --yes
 
 # Dry run
 ./overlays/install-overlay.py session-tracking --target /path/to/repo --dry-run
+
+# Check an installed repo: overlay-owned drift, version marker, and the locator contract
+./overlays/install-overlay.py session-tracking --target /path/to/repo --verify
+
+# AI-assisted CLAUDE.md merge — see the caveat below before using
+./overlays/install-overlay.py session-tracking --target /path/to/repo --mode ai --yes
 ```
 
-## Customizable resume.sh region (v10, T-61)
+> **`--mode ai` caveat (T-81):** `--dry-run` does **not** call the model — it only reports that
+> it would. There is currently no way to preview an AI merge before it rewrites `CLAUDE.md`,
+> and on a large file it may not finish. Prefer a hand-merge per `APPLY.md`; you can check it
+> afterwards, because a correct hand-merge makes `--dry-run` report
+> `[SKIP] CLAUDE.md — already installed vN`.
 
-`resume.sh` installs via the `customizable:` manifest category, not `files:`. The overlay owns the
-whole script **except** the `overlay-keep:reading-guide` region (its §2b "Pre-session reading guide"
-title + output filter). On install:
+## resume.sh is configuration, not code (v11, R-D5)
 
-- **first time** — the region is seeded from the overlay's default;
-- **every update after** — the region's *installed* content is preserved verbatim while the rest of
-  `resume.sh` is updated from the overlay. The overlay never overwrites the region again.
+`resume.sh` used to hold six hardcoded bash sections, which is why it needed an
+`overlay-keep:reading-guide` region a repo could tailor. It doesn't any more. It is a thin shim,
+and **what it prints lives in `.claude/resume.yaml`** — a step list rendered by `st-resume`.
 
-This lets a repo tailor that section (e.g. career-search's "What to read first" variant) without its
-edit being clobbered on the next overlay update, and without freezing the rest of the file. To
-customize: edit only the lines between the `# overlay-keep:reading-guide` and
-`# /overlay-keep:reading-guide` markers. `--verify` reports a tailored region as `CUSTOMIZED`
-(non-gating); drift *outside* the markers reports `DIFF` (gating). Full design:
-`docs/plans/overlay-customizable-regions.md`.
+Customize by editing that file: reorder, retitle, filter, drop steps, or add your own. Step kinds
+are a fixed vocabulary (`text`, `region`, `log_next`, `git_log`, `git_status`) plus a `run:` escape
+hatch for anything the overlay does not model. A step earns a fixed kind when the overlay owns the
+invariant it depends on — `log_next` parses `session-log.md`'s structure; `git_log` pins plain
+`git` because `rtk git log` drops merge commits.
+
+A `region:` step names a **role in the register**, so it resolves through the same `locate()` the
+handoff writes with. Rename or move a `ref:KEY` and both read and write follow, from one edit.
+
+The installer's `customizable:` category still exists — it is the general escape hatch for overlay
+files that have no config layer — but nothing uses it. That is the healthy steady state for an
+escape hatch. Design: `docs/plans/resume-config-steps.md`.
 
 ## resume.sh output sections
 
@@ -95,9 +118,14 @@ customize: edit only the lines between the `# overlay-keep:reading-guide` and
 |---|---------|--------|
 | 1 | Current status | `ref:current-status` in `session-context.md` (head -30) |
 | 2 | Last session "Next" pointer | Parsed from top entry in `session-log.md` under `### Next` |
+| 2b | Pre-session reading guide | `ref:session-reading-guide` in `session-context.md` |
 | 3 | Key file locations | `ref:quick-pointers` in `session-context.md` (full) |
 | 4 | Active decisions | `ref:active-decisions` in `session-context.md` (head -12) |
-| 5 | Recent git commits + uncommitted changes | `git log` / `git status` |
+| 5 | Recent git commits + uncommitted changes | `git log` / `git status` (the dirt section vanishes when clean) |
+| 6 | Footer: user prefs, open-task count, ref-key count | `ref:user-prefs` + two `run:` steps |
+
+Section order and content are **not** fixed by this table — it describes the shipped default
+`resume.yaml`. Your repo's copy is the source of truth.
 | 6 | Footer: user preferences + ref key count | `ref:user-prefs` in `session-context.md` |
 
 All ref blocks are optional — missing blocks print a `(no ref:X block found)` notice rather than failing.
@@ -106,7 +134,16 @@ The `### Next` section in `session-log.md` entries should end with a `---` separ
 
 ## After install
 
-1. Edit `.claude/session-context.md` — populate `ref:current-status`, `ref:quick-pointers`, `ref:active-decisions`, and `ref:user-prefs` blocks
-2. Edit `.claude/tasks.md` — replace placeholder phases with actual project phases
-3. Edit `.claude/session-log.md` — add a `### Next` subsection to the first entry
-4. Run `.claude/tools/resume.sh` to verify all sections output correctly
+1. Edit `.claude/session-context.md` — populate the `ref:current-status`, `ref:quick-pointers`,
+   `ref:session-reading-guide`, `ref:active-decisions`, and `ref:user-prefs` blocks
+2. Edit `.claude/tasks.md` — replace the placeholder phases; keep the `ref:deferred-infra` block,
+   which is where the handoff appends newly-discovered tasks
+3. Edit `.claude/session-log.md` — add a `### Next` subsection to the first entry. Keep the
+   `**Current Session:**` / `**Current Layer:**` header fields; the pipeline bumps them via
+   `field` locators
+4. Tailor `.claude/resume.yaml` — the step list `resume.sh` renders. If this repo keeps a
+   `ref:` block somewhere unusual, repoint the role in `.claude/handoff/registry.yaml` rather
+   than editing `resume.sh`
+5. Run `.claude/tools/resume.sh` to check the output
+6. Run `--verify` — it asserts every register role still resolves. `BROKEN` means the handoff
+   will fail; `ABSENT` means a read-only block is missing and resume prints its fallback

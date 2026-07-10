@@ -61,3 +61,11 @@ graph:
     coarse: 0.5        # leiden RBConfiguration resolution_parameter
     fine: 1.5
   seed: 42             # leiden RNG seed — reproducible partitions
+
+# L-09 step 3 post-commit trigger (ref:ltg-l09s3-decisions). `refresh` = a
+# post-commit spawns a detached incremental refresh behind index/.refresh.lock
+# (L9-D6); the hook re-reads this each commit, so setting it back to `off` here
+# makes the hook dormant without uninstalling. Instance != repo-root is handled
+# by corpus.yaml's `corpus_root: ..`, so the hook needs no --repo-root.
+triggers:
+  on_commit: check

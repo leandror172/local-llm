@@ -7,13 +7,34 @@ This file provides guidance to Claude Code when working with code in this reposi
 Rules in this file may include `[ref:KEY]` tags pointing to detailed reference material.
 **To look up:** `.claude/tools/ref-lookup.sh KEY` — prints the referenced section. Run with no args to list all keys.
 
-## WORKFLOW RULES (HARD REQUIREMENTS)
+<!-- overlay:session-tracking v11 -->
+## Resuming Multi-Session Work
 
-1. **DO NOT proceed to the next phase automatically** - Always wait for explicit user permission
-2. **Step-by-step configuration** - Build config files incrementally, explaining each setting
-3. **Explanatory mode active** - Use "Explanatory" output style with Insight boxes
-4. **Licensing compliance** - When using or referencing external code/projects, always check and honor their license. If a license requires attribution, add it. Track attributions in `docs/ATTRIBUTIONS.md`.
-5. **Technology conventions** - Before making technology choices (language, framework, tooling), check `ref:patterns-index` for established conventions.
+**On session start:** run `.claude/tools/resume.sh` — outputs current status, last session's Next, the pre-session reading guide, key files, active decisions, and recent commits in ~80-100 lines.
+**What it prints is config, not code.** Edit `.claude/resume.yaml` to reorder, retitle, filter, or add sections. A `region:` step names a role in the handoff register, so renaming a `ref:KEY` updates both what resume reads and what the handoff writes, in one edit. Use a `run:` step for anything the overlay does not model.
+For deeper context: `ref-lookup.sh current-status` | `ref-lookup.sh active-decisions` | `ref-lookup.sh quick-pointers` | `ref-lookup.sh user-prefs`
+**Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
+
+## Workflow Rules (HARD REQUIREMENTS)
+
+1. **DO NOT proceed to the next phase automatically** — Always wait for explicit user permission
+2. **Step-by-step configuration** — Build config files incrementally, explaining each setting
+<!-- /overlay:session-tracking -->
+
+## Project Workflow Rules (HARD REQUIREMENTS)
+
+These are additional to the overlay rules above.
+
+1. **Explanatory mode active** - Use "Explanatory" output style with Insight boxes
+2. **Licensing compliance** - When using or referencing external code/projects, always check and honor their license. If a license requires attribution, add it. Track attributions in `docs/ATTRIBUTIONS.md`.
+3. **Technology conventions** - Before making technology choices (language, framework, tooling), check `ref:patterns-index` for established conventions.
+
+## Project Resume Pointers
+
+This repo is the session-tracking overlay's home: `resume.sh` and the handoff resolve the
+register from the **overlay source** (`overlays/session-tracking/files/registry.yaml`),
+declared in `.claude/resume.yaml`'s `registry:` key rather than copied to `.claude/handoff/`.
+For deeper project context: `ref-lookup.sh layer4-status` | `ref-lookup.sh bash-wrappers`
 
 ## Troubleshooting Approach
 
@@ -28,6 +49,7 @@ Rules in this file may include `[ref:KEY]` tags pointing to detailed reference m
 - **sudo commands:** Cannot run through Claude Code. Ask the user.
 - **API endpoint:** `http://localhost:11434` — use `/api/chat` with `stream: false`, not CLI
 - **Port 11434:** Native and Docker Ollama cannot run simultaneously
+- **Sensitive data:** `.claude/local/` (gitignored)
 
 ## Repository Purpose
 
@@ -45,6 +67,7 @@ Local AI infrastructure on RTX 3060 12GB: multiple specialized models, benchmark
 - **Qwen3 thinking:** Use API `think: false` (default off; `/no_think` doesn't work) [ref:thinking-mode]
 - **Structured output:** Always use `format` param for JSON — 100% reliable, no speed penalty [ref:structured-output]
 - **Benchmarks:** Always invoke via bash wrappers (`lib/run-*.sh`), never `python3` directly [ref:bash-wrappers]
+- **LTG post-commit hook (`check` mode):** after each commit, if the `ltg/` topic index lags the working tree, git prints one line `LTG: index stale — N changed, M added, K removed (…)`. It is **non-destructive** — check mode only reports; it never auto-refreshes and never fails a commit. Converge manually with `cd ltg && ./run-refresh.sh --repo-root ..`. Behaviour is set by `ltg/config.yaml` `triggers.on_commit` (`off`|`check`|`refresh`, re-read each commit); manage the hook with `uv run ltg-hooks status|install|uninstall` from `ltg/`.
 
 ## Documentation Rules (HARD REQUIREMENTS)
 
@@ -63,13 +86,6 @@ Use `git worktree` for parallel branch work. [ref:git-worktrees]
 unrelated pre-existing untracked files into the commit. Stage explicit paths
 (`git add path/a path/b`), or `git add -u` for tracked-file modifications only. Enforced by the
 `PreToolUse` guard (`.claude/hooks/guard-git-add-all.py`) + the `block-bulk-git-add` hookify rule.
-
-## Resuming Multi-Session Work
-
-**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~80-100 lines.
-For deeper context: `ref-lookup.sh layer4-status` | `ref-lookup.sh bash-wrappers`
-**Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
-**Sensitive data:** `.claude/local/` (gitignored).
 
 ## Local Model Usage (Layer 5+)
 

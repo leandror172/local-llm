@@ -1,0 +1,4 @@
+
+# Python build artifacts (session-tracking package)
+*.egg-info/
+__pycache__/

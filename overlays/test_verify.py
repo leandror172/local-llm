@@ -140,10 +140,18 @@ def test_always_user_file_diff(tmp_path, home_isolation):
     assert any(a["action"] == "DIFF" for a in report._actions)
 
 
-# ── case 5a: templates DIFF gates exit (decision (a)) ────────────────────────
+# ── case 5a: templates DIFF is EXPECTED, not a gate (T-82 reverses decision (a)) ──
 
 
-def test_template_diff_gates_exit(tmp_path, home_isolation):
+def test_template_diff_does_not_gate_exit(tmp_path, home_isolation):
+    """T-82 reverses T-58's "Decision (a)".
+
+    The old contract — "DIFF and MISSING both gate exit, same as overlay-owned;
+    USER-MANAGED label kept in report for readability only" — made --verify exit 1 on
+    every repo that had ever held a session, because session-log.md diverges from its
+    starter template immediately. A gate that always trips is a gate nobody reads, which
+    is how latent-topic-graph's unresolvable `tasks-append` role survived every run.
+    """
     ov_dir, _, tmpl_dir, m = _make_overlay(tmp_path)
     target = _make_target(tmp_path)
 
@@ -154,8 +162,9 @@ def test_template_diff_gates_exit(tmp_path, home_isolation):
     m["templates"] = {"session-log.md.tmpl": ".claude/session-log.md"}
 
     n_diff, n_missing, n_src = verify_overlay(m, ov_dir, target, "project")
-    assert n_diff >= 1, f"template DIFF should gate exit: ({n_diff},{n_missing},{n_src})"
-    assert any(a["action"] == "DIFF" for a in report._actions)
+    assert (n_diff, n_missing, n_src) == (0, 0, 0)
+    assert any(a["action"] == "EXPECTED" for a in report._actions)
+    assert not any(a["action"] == "DIFF" for a in report._actions)
 
 
 # ── case 5b: manual_if_exists MISSING gates exit (decision (a)) ──────────────
@@ -352,3 +361,209 @@ def test_eol_normalize_crlf_is_same(tmp_path, home_isolation):
     tally = verify_overlay(m, ov_dir, target, "project")
     assert tally == (0, 0, 0), f"CRLF↔LF should be SAME (EOL-normalized), got {tally}"
     assert all(a["action"] == "SAME" for a in report._actions)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# T-82 + locator contract: --verify must ask the right question per ownership
+#
+# Byte-equality is the wrong question for a file the repo OWNS. session-log.md
+# diverges from its starter template after one session; a per-repo register
+# diverges by design. Gating on those made --verify permanently red, so nobody
+# read it — which is how a `tasks-append` role pointing at a ref block that never
+# existed survived in latent-topic-graph through every verify run.
+#
+# Three questions, one per kind of ownership:
+#   overlay-owned files  -> are the bytes what we shipped?      (drift, gates)
+#   merge sections       -> is the version marker current?      (behind, gates)
+#   user-managed files   -> do the register's locators resolve? (contract)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# The locator contract check imports the register primitive from the overlay's own
+# package. Make it importable for the test process.
+sys.path.insert(0, str(Path(__file__).parent / "session-tracking" / "src"))
+
+
+def _statuses():
+    return [a["action"] for a in report._actions]
+
+
+def _reason_for(action):
+    return " ".join(a["reason"] for a in report._actions if a["action"] == action)
+
+
+def _ov(tmp_path):
+    ov = tmp_path / "ov"
+    (ov / "files").mkdir(parents=True)
+    (ov / "templates").mkdir(parents=True)
+    return ov
+
+
+def _tgt(tmp_path):
+    t = tmp_path / "target"
+    t.mkdir()
+    return t
+
+
+# ── gating semantics (T-82) ──────────────────────────────────────────────────
+
+
+def test_template_divergence_is_expected_and_does_not_gate(tmp_path, home_isolation):
+    """session-log.md differs from its starter template after one session. Always."""
+    ov, tgt = _ov(tmp_path), _tgt(tmp_path)
+    (ov / "templates" / "session-log.md.tmpl").write_text("# Log\n")
+    (tgt / "session-log.md").write_text("# Log\n\n## 2026-07-09 - Session 1\n")
+    m = {"name": "ov", "version": 1, "templates": {"session-log.md.tmpl": "session-log.md"}}
+
+    n_diff, n_missing, n_src = verify_overlay(m, ov, tgt, "project")
+
+    assert "EXPECTED" in _statuses()
+    assert "DIFF" not in _statuses()
+    assert (n_diff, n_missing, n_src) == (0, 0, 0)
+
+
+def test_template_absent_still_gates(tmp_path, home_isolation):
+    """Not installed is actionable; diverged is not."""
+    ov, tgt = _ov(tmp_path), _tgt(tmp_path)
+    (ov / "templates" / "session-log.md.tmpl").write_text("# Log\n")
+    m = {"name": "ov", "version": 1, "templates": {"session-log.md.tmpl": "session-log.md"}}
+
+    n_diff, n_missing, n_src = verify_overlay(m, ov, tgt, "project")
+
+    assert "MISSING" in _statuses()
+    assert n_missing == 1
+
+
+def test_manual_if_exists_divergence_is_expected_and_does_not_gate(tmp_path, home_isolation):
+    """A per-repo register has per-repo locators. Differing IS the design."""
+    ov, tgt = _ov(tmp_path), _tgt(tmp_path)
+    (ov / "files" / "registry.yaml").write_text("version: 1\nroles: {}\n")
+    (tgt / "registry.yaml").write_text("version: 1\nroles: {a: {}}\n")
+    m = {"name": "ov", "version": 1, "manual_if_exists": ["registry.yaml"]}
+
+    n_diff, n_missing, n_src = verify_overlay(m, ov, tgt, "project")
+
+    assert "EXPECTED" in _statuses()
+    assert (n_diff, n_missing, n_src) == (0, 0, 0)
+
+
+def test_overlay_owned_file_divergence_still_gates(tmp_path, home_isolation):
+    """Regression: real drift in an overlay-owned file is what --verify is FOR."""
+    ov, tgt = _ov(tmp_path), _tgt(tmp_path)
+    (ov / "files" / "tool.sh").write_text("v2\n")
+    (tgt / "tool.sh").write_text("v1\n")
+    m = {"name": "ov", "version": 1, "files": {"tool.sh": "tool.sh"}}
+
+    n_diff, _, _ = verify_overlay(m, ov, tgt, "project")
+
+    assert "DIFF" in _statuses()
+    assert n_diff == 1
+
+
+# ── locator contract ─────────────────────────────────────────────────────────
+
+
+REGISTER = """version: 1
+roles:
+  tasks-append:
+    file: tasks.md
+    locator: {type: ref_block, key: deferred-infra}
+    write_mode: append
+    used_by: [write]
+  quick-pointers:
+    file: context.md
+    locator: {type: ref_block, key: quick-pointers}
+    write_mode: nomodel
+    used_by: [read]
+"""
+
+
+def _with_register(tmp_path, register=REGISTER):
+    ov, tgt = _ov(tmp_path), _tgt(tmp_path)
+    (tgt / "registry.yaml").write_text(register)
+    m = {"name": "ov", "version": 1, "verify_locators": {"register": "registry.yaml"}}
+    return ov, tgt, m
+
+
+def test_write_role_with_absent_block_is_broken_and_gates(tmp_path, home_isolation):
+    """latent-topic-graph's live bug: tasks-append pointed at ref:deferred-infra,
+    which never existed. Any handoff task append would fail to locate its region.
+    Byte-comparison cannot see this."""
+    ov, tgt, m = _with_register(tmp_path)
+    (tgt / "tasks.md").write_text("# Tasks\nno block here\n")
+    (tgt / "context.md").write_text("<!-- ref:quick-pointers -->\nx\n<!-- /ref:quick-pointers -->\n")
+
+    n_diff, _, _ = verify_overlay(m, ov, tgt, "project")
+
+    assert "BROKEN" in _statuses()
+    assert "tasks-append" in _reason_for("BROKEN")
+    assert n_diff == 1
+
+
+def test_read_only_role_with_absent_block_is_absent_and_does_not_gate(tmp_path, home_isolation):
+    """expenses/web-research: no ref:quick-pointers block. resume prints its
+    fallback — advisory, not broken."""
+    ov, tgt, m = _with_register(tmp_path)
+    (tgt / "tasks.md").write_text("<!-- ref:deferred-infra -->\nx\n<!-- /ref:deferred-infra -->\n")
+    (tgt / "context.md").write_text("nothing here\n")
+
+    n_diff, n_missing, n_src = verify_overlay(m, ov, tgt, "project")
+
+    assert "ABSENT" in _statuses()
+    assert "quick-pointers" in _reason_for("ABSENT")
+    assert (n_diff, n_missing, n_src) == (0, 0, 0)
+
+
+def test_role_pointing_at_a_missing_file_is_broken(tmp_path, home_isolation):
+    ov, tgt, m = _with_register(tmp_path)
+    (tgt / "context.md").write_text("x\n")
+
+    n_diff, _, _ = verify_overlay(m, ov, tgt, "project")
+
+    assert "BROKEN" in _statuses()
+    assert n_diff == 1
+
+
+def test_all_locators_resolving_reports_same_and_does_not_gate(tmp_path, home_isolation):
+    ov, tgt, m = _with_register(tmp_path)
+    (tgt / "tasks.md").write_text("<!-- ref:deferred-infra -->\nx\n<!-- /ref:deferred-infra -->\n")
+    (tgt / "context.md").write_text("<!-- ref:quick-pointers -->\ny\n<!-- /ref:quick-pointers -->\n")
+
+    n_diff, n_missing, n_src = verify_overlay(m, ov, tgt, "project")
+
+    assert (n_diff, n_missing, n_src) == (0, 0, 0)
+    assert "2/2" in _reason_for("SAME")
+
+
+def test_checklist_role_is_skipped_not_crashed(tmp_path, home_isolation):
+    """_locate_checklist raises without a task_id — there is no payload here, so the
+    contract check can only assert the file exists."""
+    reg = ("version: 1\nroles:\n  tasks-checkoff:\n    file: tasks.md\n"
+           "    locator: {type: checklist, scope: file}\n"
+           "    write_mode: checkoff\n    used_by: [write]\n")
+    ov, tgt, m = _with_register(tmp_path, reg)
+    (tgt / "tasks.md").write_text("- [ ] (T-01) thing\n")
+
+    n_diff, n_missing, n_src = verify_overlay(m, ov, tgt, "project")
+
+    assert "BROKEN" not in _statuses()
+    assert (n_diff, n_missing, n_src) == (0, 0, 0)
+
+
+def test_no_verify_locators_key_records_nothing(tmp_path, home_isolation):
+    ov, tgt = _ov(tmp_path), _tgt(tmp_path)
+    m = {"name": "ov", "version": 1}
+
+    assert verify_overlay(m, ov, tgt, "project") == (0, 0, 0)
+    assert _statuses() == []
+
+
+def test_missing_register_is_skipped_not_broken(tmp_path, home_isolation):
+    """An uninstalled repo has no register. That is manual_if_exists' MISSING to
+    report, not the contract check's."""
+    ov, tgt = _ov(tmp_path), _tgt(tmp_path)
+    m = {"name": "ov", "version": 1, "verify_locators": {"register": "registry.yaml"}}
+
+    n_diff, n_missing, n_src = verify_overlay(m, ov, tgt, "project")
+
+    assert "BROKEN" not in _statuses()
+    assert (n_diff, n_missing, n_src) == (0, 0, 0)

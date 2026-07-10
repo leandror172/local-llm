@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Whitelist-safe entrypoint for the session-handoff pipeline.
 #
-# Engine resolution: prefer a handoff.py co-located with THIS shim (the overlay
-# source tree / dev home repo, where changes are tested against source); else the
-# shared user-level install at ~/.claude/tools/handoff/. Target-repo installs ship
-# only the shim, so they resolve to the user-level engine.
+# Engine resolution, in order (R-D9 — code ships as a package, config as an overlay):
+#   1. `st-handoff` on PATH     — the installed package (uv tool / pipx). Preferred.
+#   2. a sibling src/ tree      — the overlay source checkout, so the dev home repo
+#                                 tests against source without installing.
+#   3. ~/.claude/tools/handoff/ — LEGACY flat-module copy from the pre-package
+#                                 installer. Transitional: keeps consumer repos working
+#                                 until the package is installed there. Remove once
+#                                 every repo is migrated.
+#
+# The shim is the stable per-repo seam: migrating the engine changes only this file.
 #
 # Registry guard: no-ops silently in repos that have no handoff registry, so the
 # user-level hook is safe in uninstalled repos. An explicit --registry (the
@@ -25,10 +31,24 @@ if [ "$_explicit_registry" -eq 0 ]; then
   [ -f "$_root/.claude/handoff/registry.yaml" ] || exit 0
 fi
 
-# Prefer a co-located engine (source tree); fall back to the user-level install.
-if [ -f "$_here/handoff.py" ]; then
-  _engine="$_here/handoff.py"
-else
-  _engine="$HOME/.claude/tools/handoff/handoff.py"
+# 1. Installed package.
+if command -v st-handoff >/dev/null 2>&1; then
+  exec st-handoff "$@"
 fi
-exec python3 "$_engine" "$@"
+
+# 2. Overlay source checkout: this shim sits at <overlay>/files/handoff/, so the
+#    package source is two levels up, in src/.
+_src="$(cd "$_here/../.." >/dev/null 2>&1 && pwd)/src"
+if [ -d "$_src/sessiontracking" ]; then
+  exec env PYTHONPATH="$_src${PYTHONPATH:+:$PYTHONPATH}" python3 -m sessiontracking.handoff.cli "$@"
+fi
+
+# 3. Legacy flat-module install (pre-package). Transitional.
+_legacy="$HOME/.claude/tools/handoff/handoff.py"
+if [ -f "$_legacy" ]; then
+  exec python3 "$_legacy" "$@"
+fi
+
+echo "session-handoff: no engine found. Install the package:" >&2
+echo "  uv tool install --editable <llm-repo>/overlays/session-tracking" >&2
+exit 127

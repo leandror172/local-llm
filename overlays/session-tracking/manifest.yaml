@@ -1,15 +1,18 @@
 name: session-tracking
-version: 10
+version: 11
 description: >
   Session continuity tools for Claude Code projects. Installs resume.sh
   (session-start summary) and rotate-session-log.sh (log archival). Installs
   the session-handoff skill and run-handoff shim at user level by default
-  (--install-level project for per-repo). Pipeline modules always go to
-  ~/.claude/tools/handoff/ regardless of --install-level. Creates starter
-  templates for session-log.md, session-context.md, and tasks.md. Injects
-  session workflow rules into CLAUDE.md.
-  The deterministic handoff pipeline requires PyYAML (pip install pyyaml) —
-  only registry_io.py imports it; the safety core is stdlib-only.
+  (--install-level project for per-repo). Creates starter templates for
+  session-log.md, session-context.md, and tasks.md. Injects session workflow
+  rules into CLAUDE.md.
+  Since v11 the pipeline itself is NOT installed by this overlay: it is the
+  `session-tracking` Python package (see pyproject.toml). This overlay installs
+  config and docs only.
+  The package requires PyYAML — only register/registry_io.py imports it; the
+  safety core (register/locator.py, handoff/applier.py, handoff/verifier.py)
+  is stdlib-only.
   v7: append↔checkoff consistency fix + failure-clarity sweep (where/whose/what + kind).
   v8: harvest boundary tightened to 'chore(session-handoff): session ' (T-59) — avoids
   false boundaries from bare chore(session-handoff): prefix reuse.
@@ -20,35 +23,31 @@ description: >
   v10: T-61 general customization seam — resume.sh moved files: -> customizable:
   with an overlay-keep:reading-guide region a repo may customize (career-search's
   title/filter variant) while still receiving every other resume.sh update.
+  v11: R-D9 packaging flip — the pipeline modules are no longer copied per machine.
+  Code ships as the `session-tracking` Python package (src/sessiontracking, console
+  entry point `st-handoff`); this overlay now installs CONFIG and DOCS only. Install
+  the engine with `uv tool install --editable overlays/session-tracking`. The shim
+  resolves st-handoff -> source tree -> legacy ~/.claude/tools/handoff (transitional).
 
 # Copied verbatim to target repo. Backed up if dest differs.
 files:
   rotate-session-log.sh: .claude/tools/rotate-session-log.sh
   handoff-harvest.sh: .claude/tools/handoff-harvest.sh
+  # v11 (R-D5): resume.sh is a thin shim again — overlay-owned, no keep-region. What it
+  # prints is per-repo CONFIG in .claude/resume.yaml, so a repo customizes data, not code.
+  # The `customizable:` CATEGORY stays in the installer (T-61) — it is the general escape
+  # hatch for files with no config layer. This was its only consumer; zero call-sites is
+  # the healthy steady state for an escape hatch.
+  resume.sh: .claude/tools/resume.sh
 
-# Overlay-owned EXCEPT named overlay-keep:<name> regions, which are repo-owned:
-# seeded on first install, preserved on every update (never overwritten). The
-# reading-guide region carries the section title + output filter a consumer may
-# tailor. See docs/plans/overlay-customizable-regions.md.
-customizable:
-  .claude/tools/resume.sh:
-    keep_regions:
-      - reading-guide
-
-# Always installed to ~/.claude/tools/handoff/ — shared across all repos.
-# Pipeline modules: never per-repo, never controlled by --install-level.
-# Runtime modules only; test_*.py are dev artifacts and are not shipped.
-always_user_files:
-  handoff/locator.py: tools/handoff/locator.py
-  handoff/applier.py: tools/handoff/applier.py
-  handoff/verifier.py: tools/handoff/verifier.py
-  handoff/mechanics.py: tools/handoff/mechanics.py
-  handoff/runlog.py: tools/handoff/runlog.py
-  handoff/gitio.py: tools/handoff/gitio.py
-  handoff/orchestrator.py: tools/handoff/orchestrator.py
-  handoff/payload.py: tools/handoff/payload.py
-  handoff/registry_io.py: tools/handoff/registry_io.py
-  handoff/handoff.py: tools/handoff/handoff.py
+# NOTE (v11, R-D9): `always_user_files:` is GONE. It copied ten .py modules into
+# ~/.claude/tools/handoff/ — a hand-rolled package manager. The engine is now the
+# `session-tracking` Python package:
+#
+#     uv tool install --editable overlays/session-tracking
+#
+# Code ships as a package; config ships as an overlay. Everything below is per-repo
+# config or docs, which no package manager should own.
 
 # Installed to ~/.claude/ (user) or .claude/ (project) per --install-level.
 # Default: user. Use --install-level project for a self-contained repo install.
@@ -67,8 +66,22 @@ templates:
 # installer FLAGS it for manual merge instead of silently overwriting (files:)
 # or silently skipping (templates:) — so register fixes propagate with awareness.
 # Source resolves to files/registry.yaml (installer uses files_dir / basename).
+# `--verify` asks the right question per kind of ownership. For a file the repo OWNS,
+# byte-equality is meaningless (session-log.md diverges after one session; the register
+# has per-repo locators). What must hold is the CONTRACT: every role's locator still
+# resolves against its target file. Write roles gate — the handoff would fail. Read-only
+# roles are advisory — resume prints its fallback. See T-82.
+verify_locators:
+  register: .claude/handoff/registry.yaml
+
 manual_if_exists:
   - .claude/handoff/registry.yaml
+  # resume.yaml is the step list `st-resume` renders (v11, R-D1/R-D2). Pure per-repo
+  # config with no code beside it: a repo reorders/retitles/filters its own sections
+  # here rather than patching resume.sh. Same category as the register — copy once,
+  # then flag rather than clobber. Safe to add now that T-54 makes the flag discriminate
+  # (an identical file records SAME, not TODO).
+  - .claude/resume.yaml
 
 # Section injected into CLAUDE.md using overlay markers.
 merge_sections:
