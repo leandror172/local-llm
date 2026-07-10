@@ -19,21 +19,24 @@ concepts live in `KNOWLEDGE.md`, chronology in `git log -- overlays/`.*
   `_reset_is_provable_noop` in `lib/actions.py`.
 - **session-tracking is a PACKAGE (v11, R-D9):** code ships via
   `uv tool install --editable overlays/session-tracking` (entry point `st-handoff`);
-  the overlay installs config + docs only. `always_user_files:` removed. Consumers still
-  run the legacy `~/.claude/tools/handoff/` copy until migration.
+  the overlay installs config + docs only. `always_user_files:` removed. The shim resolves
+  `st-handoff` first, so all repos run the package; the legacy `~/.claude/tools/handoff/`
+  copy is a dormant fallback and can be deleted.
 - **`--verify` (T-82):** three questions, one per ownership — overlay-owned files byte-diff
   (gates); merge_sections version marker (gates); user-managed files record non-gating
   `EXPECTED` and are protected by the **locator contract** (`verify_locators:`): every
   register role must resolve, write roles gate (`BROKEN`), read-only advise (`ABSENT`).
   Exits 0 on all five repos. It found the starter templates did not satisfy their own
   register — a fresh install's first handoff would have failed on four roles.
-- **Tests: 270 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
-  `test-session-tracking` (pytest, 214) + `test-installer` (pytest, 47+: `test_verify.py` +
+- **Tests: 287 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
+  `test-session-tracking` (pytest, 214) + `test-installer` (pytest, 64: `test_verify.py` +
   `test_customizable.py` + `test_signals.py`). Bare `make` prints help; `ARGS='-k x'` filters
   one suite. Not a test: `test-merge-plan.py` (manual Ollama diagnostic, network).
 - **ref-indexing overlay:** v4 — hermetic overlay-shipped suite at `files/tests/`.
   PR **#63** (`feat/t42-ref-lookup-paths`) not yet merged into umbrella `batch/session-97-base` (#57).
-- **session-tracking overlay:** v10. Open PR **#70**. Consumers still on v9 — see T-79.
+- **session-tracking overlay:** v11 (packaging flip + config-driven resume), installed and
+  committed in all five repos. `--verify` exit 0 everywhere. Branch
+  `feature/resume-config-steps`.
 - **Deferred:** T-76 shared model-registry library (triggers: first non-Ollama provider in LTG,
   first external adopter, or a third internal consumer). Until then: when evolving
   `ai-backends.yaml`, check LTG's `config.yaml` vocabulary first — no gratuitous divergence.
