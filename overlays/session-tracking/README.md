@@ -66,18 +66,30 @@ the same file in one run is fully supported.
 ## Usage
 
 ```bash
-# Install with shim + skill at user level (default)
+# 0. Once per machine — the engine is a package, not overlay-installed files
+uv tool install --editable <llm-repo>/overlays/session-tracking
+
+# Install config + docs, with shim + skill at user level (default)
 ./overlays/install-overlay.py session-tracking --target /path/to/repo
 
-# Install shim + skill per-repo (self-contained repo; pipeline .py files still go to ~/.claude/)
+# Install shim + skill per-repo (self-contained repo)
 ./overlays/install-overlay.py session-tracking --target /path/to/repo --install-level project
-
-# AI-assisted CLAUDE.md merge
-./overlays/install-overlay.py session-tracking --target /path/to/repo --mode ai --yes
 
 # Dry run
 ./overlays/install-overlay.py session-tracking --target /path/to/repo --dry-run
+
+# Check an installed repo: overlay-owned drift, version marker, and the locator contract
+./overlays/install-overlay.py session-tracking --target /path/to/repo --verify
+
+# AI-assisted CLAUDE.md merge — see the caveat below before using
+./overlays/install-overlay.py session-tracking --target /path/to/repo --mode ai --yes
 ```
+
+> **`--mode ai` caveat (T-81):** `--dry-run` does **not** call the model — it only reports that
+> it would. There is currently no way to preview an AI merge before it rewrites `CLAUDE.md`,
+> and on a large file it may not finish. Prefer a hand-merge per `APPLY.md`; you can check it
+> afterwards, because a correct hand-merge makes `--dry-run` report
+> `[SKIP] CLAUDE.md — already installed vN`.
 
 ## resume.sh is configuration, not code (v11, R-D5)
 
@@ -122,7 +134,16 @@ The `### Next` section in `session-log.md` entries should end with a `---` separ
 
 ## After install
 
-1. Edit `.claude/session-context.md` — populate `ref:current-status`, `ref:quick-pointers`, `ref:active-decisions`, and `ref:user-prefs` blocks
-2. Edit `.claude/tasks.md` — replace placeholder phases with actual project phases
-3. Edit `.claude/session-log.md` — add a `### Next` subsection to the first entry
-4. Run `.claude/tools/resume.sh` to verify all sections output correctly
+1. Edit `.claude/session-context.md` — populate the `ref:current-status`, `ref:quick-pointers`,
+   `ref:session-reading-guide`, `ref:active-decisions`, and `ref:user-prefs` blocks
+2. Edit `.claude/tasks.md` — replace the placeholder phases; keep the `ref:deferred-infra` block,
+   which is where the handoff appends newly-discovered tasks
+3. Edit `.claude/session-log.md` — add a `### Next` subsection to the first entry. Keep the
+   `**Current Session:**` / `**Current Layer:**` header fields; the pipeline bumps them via
+   `field` locators
+4. Tailor `.claude/resume.yaml` — the step list `resume.sh` renders. If this repo keeps a
+   `ref:` block somewhere unusual, repoint the role in `.claude/handoff/registry.yaml` rather
+   than editing `resume.sh`
+5. Run `.claude/tools/resume.sh` to check the output
+6. Run `--verify` — it asserts every register role still resolves. `BROKEN` means the handoff
+   will fail; `ABSENT` means a read-only block is missing and resume prints its fallback
