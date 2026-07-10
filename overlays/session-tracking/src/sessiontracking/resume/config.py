@@ -70,6 +70,10 @@ class Step:
 @dataclass(frozen=True)
 class ResumeConfig:
     steps: List[Step] = field(default_factory=list)
+    #: Optional repo-relative path to the register. Lets a repo whose register is not at
+    #: the default `.claude/handoff/registry.yaml` say so in its own CONFIG, instead of
+    #: the overlay-owned shim carrying repo-specific paths. `--registry` still wins.
+    registry: Optional[str] = None
 
 
 def _require_supported_schema(data: Dict[str, Any], path: Path) -> None:
@@ -143,7 +147,7 @@ def load_resume_config(path: str | Path) -> ResumeConfig:
     path = Path(path)
     data = _load_yaml_mapping(path)
     _require_supported_schema(data, path)
-    return ResumeConfig(steps=_build_steps(data, path))
+    return ResumeConfig(steps=_build_steps(data, path), registry=data.get("registry"))
 
 
 def _load_yaml_mapping(path: Path) -> Dict[str, Any]:

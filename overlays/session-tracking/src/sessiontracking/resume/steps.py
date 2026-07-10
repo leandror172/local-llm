@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
-from sessiontracking.register import locate
+from sessiontracking.register import LocatorError, locate
 
 from .config import Step
 
@@ -81,19 +81,45 @@ def _produce_region(step: Step, ctx: "Context") -> str:
     A role goes through the SAME `locate()` the handoff writes with, so read and write
     can never disagree about where the region begins.
     """
-    if step.role:
-        role = ctx.register.get(step.role)
-        if role is None:
-            raise StepError(
-                f"resume step names register role {step.role!r}, which this repo's "
-                f"register does not define. Add it to registry.yaml (write_mode: nomodel, "
-                f"used_by: [read]) or use `ref_key:` instead."
-            )
-        target = ctx.repo_root / role["file"]
-        if not target.exists():
-            raise StepError(f"role {step.role!r} points at missing file: {target}")
+    if not step.role:
+        return ctx.ref_lookup(step.ref_key)
+
+    role = _require_role(ctx, step.role)
+    target = ctx.repo_root / role["file"]
+    if not target.exists():
+        raise StepError(f"role {step.role!r} points at missing file: {target}")
+    return _region_interior(role, target)
+
+
+def _require_role(ctx: "Context", name: str) -> Dict[str, Any]:
+    """A step naming a role this repo's register lacks is a CONFIG error — say so loudly,
+    with the fix. (An absent *block* inside a present file is not; see _region_interior.)"""
+    role = ctx.register.get(name)
+    if role is None:
+        raise StepError(
+            f"resume step names register role {name!r}, which this repo's register does "
+            f"not define. Either add it to .claude/handoff/registry.yaml:\n"
+            f"  {name}:\n"
+            f"    file: <path-to-the-file-holding-the-block>\n"
+            f"    locator: {{type: ref_block, key: {name}}}\n"
+            f"    write_mode: nomodel\n"
+            f"    used_by: [read]\n"
+            f"...or drop the step from .claude/resume.yaml if this repo has no such block."
+        )
+    return role
+
+
+def _region_interior(role: Dict[str, Any], target: Path) -> str:
+    """The block's interior, or "" when the block is absent.
+
+    An absent block is not an error: the old bash `ref-lookup.sh … || true` printed the
+    step's fallback, and a repo may simply not have written that block yet. A missing
+    *file* is different — that is a wrong path in the register.
+    """
+    try:
         return locate(role, target.read_text()).interior
-    return ctx.ref_lookup(step.ref_key)
+    except LocatorError:
+        return ""
 
 
 def _produce_log_next(step: Step, ctx: "Context") -> str:

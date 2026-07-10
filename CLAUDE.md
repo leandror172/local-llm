@@ -66,7 +66,8 @@ unrelated pre-existing untracked files into the commit. Stage explicit paths
 
 ## Resuming Multi-Session Work
 
-**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~80-100 lines.
+**On session start:** run `.claude/tools/resume.sh` — outputs current status, last session's Next, the pre-session reading guide, key files, active decisions, and recent commits in ~80-100 lines.
+`resume.sh` is a thin shim over the `st-resume` entry point; **what it prints is config**, not code — edit `.claude/resume.yaml` to reorder, retitle, filter, or add sections. `region:` steps resolve through the handoff register (`overlays/session-tracking/files/registry.yaml`), so renaming a `ref:KEY` updates read and write in one edit.
 For deeper context: `ref-lookup.sh layer4-status` | `ref-lookup.sh bash-wrappers`
 **Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
 **Sensitive data:** `.claude/local/` (gitignored).

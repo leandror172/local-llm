@@ -31,13 +31,18 @@ def _parse_args(argv):
     return parser.parse_args(argv)
 
 
-def _resolve_paths(args) -> tuple[Path, Path, Path]:
+def _resolve_paths(args) -> tuple[Path, Path]:
     repo_root = Path(args.repo_root or _default_repo_root())
-    return (
-        repo_root,
-        Path(args.registry or repo_root / ".claude" / "handoff" / "registry.yaml"),
-        Path(args.config or repo_root / ".claude" / "resume.yaml"),
-    )
+    return repo_root, Path(args.config or repo_root / ".claude" / "resume.yaml")
+
+
+def _resolve_registry(args, repo_root: Path, config) -> Path:
+    """Precedence: --registry > resume.yaml's `registry:` > the default location."""
+    if args.registry:
+        return Path(args.registry)
+    if config.registry:
+        return repo_root / config.registry
+    return repo_root / ".claude" / "handoff" / "registry.yaml"
 
 
 def _build_context(args, repo_root: Path, registry_path: Path) -> Context:
@@ -54,10 +59,11 @@ def _render_all(config, ctx: Context) -> str:
 
 def main(argv=None) -> int:
     args = _parse_args(argv)
-    repo_root, registry_path, config_path = _resolve_paths(args)
+    repo_root, config_path = _resolve_paths(args)
     try:
-        ctx = _build_context(args, repo_root, registry_path)
         config = load_resume_config(config_path)
+        registry_path = _resolve_registry(args, repo_root, config)
+        ctx = _build_context(args, repo_root, registry_path)
         print(_render_all(config, ctx))
     except (RegistryError, ResumeConfigError, StepError) as e:
         print(f"st-resume: {e}", file=sys.stderr)

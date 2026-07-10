@@ -33,15 +33,12 @@ description: >
 files:
   rotate-session-log.sh: .claude/tools/rotate-session-log.sh
   handoff-harvest.sh: .claude/tools/handoff-harvest.sh
-
-# Overlay-owned EXCEPT named overlay-keep:<name> regions, which are repo-owned:
-# seeded on first install, preserved on every update (never overwritten). The
-# reading-guide region carries the section title + output filter a consumer may
-# tailor. See docs/plans/overlay-customizable-regions.md.
-customizable:
-  .claude/tools/resume.sh:
-    keep_regions:
-      - reading-guide
+  # v11 (R-D5): resume.sh is a thin shim again — overlay-owned, no keep-region. What it
+  # prints is per-repo CONFIG in .claude/resume.yaml, so a repo customizes data, not code.
+  # The `customizable:` CATEGORY stays in the installer (T-61) — it is the general escape
+  # hatch for files with no config layer. This was its only consumer; zero call-sites is
+  # the healthy steady state for an escape hatch.
+  resume.sh: .claude/tools/resume.sh
 
 # NOTE (v11, R-D9): `always_user_files:` is GONE. It copied ten .py modules into
 # ~/.claude/tools/handoff/ — a hand-rolled package manager. The engine is now the

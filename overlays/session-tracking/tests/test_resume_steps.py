@@ -229,3 +229,33 @@ def test_shipped_default_config_parses():
     roles = {s.role for s in cfg.steps if s.kind == "region"}
     assert roles == {"current-status", "reading-guide", "quick-pointers",
                      "active-decisions", "user-prefs"}
+
+
+# ── register precedence + absent-block tolerance (migration behaviors) ────────
+
+
+def test_absent_block_in_a_present_file_yields_the_fallback(tmp_path):
+    """A repo may simply not have written that block yet — the old bash
+    `ref-lookup.sh … || true` printed the fallback. A missing FILE is different."""
+    (tmp_path / "notes.md").write_text("no markers here\n")
+    step = Step(kind="region", role="r", fallback="(no block)")
+    assert render(step, _ctx(tmp_path, {"r": REGION_ROLE})) == ["(no block)"]
+
+
+def test_missing_role_error_shows_the_yaml_to_add(tmp_path):
+    step = Step(kind="region", role="quick-pointers")
+    with pytest.raises(StepError) as exc:
+        render(step, _ctx(tmp_path, {}))
+    msg = str(exc.value)
+    assert "write_mode: nomodel" in msg and "used_by: [read]" in msg
+    assert "drop the step" in msg
+
+
+def test_config_registry_key_is_parsed(tmp_path):
+    p = _write_cfg(tmp_path, "registry: overlays/x/registry.yaml\nsteps: []\n")
+    assert load_resume_config(p).registry == "overlays/x/registry.yaml"
+
+
+def test_config_registry_defaults_to_none(tmp_path):
+    p = _write_cfg(tmp_path, "steps: []\n")
+    assert load_resume_config(p).registry is None
