@@ -67,6 +67,7 @@ Local AI infrastructure on RTX 3060 12GB: multiple specialized models, benchmark
 - **Qwen3 thinking:** Use API `think: false` (default off; `/no_think` doesn't work) [ref:thinking-mode]
 - **Structured output:** Always use `format` param for JSON — 100% reliable, no speed penalty [ref:structured-output]
 - **Benchmarks:** Always invoke via bash wrappers (`lib/run-*.sh`), never `python3` directly [ref:bash-wrappers]
+- **LTG post-commit hook (`check` mode):** after each commit, if the `ltg/` topic index lags the working tree, git prints one line `LTG: index stale — N changed, M added, K removed (…)`. It is **non-destructive** — check mode only reports; it never auto-refreshes and never fails a commit. Converge manually with `cd ltg && ./run-refresh.sh --repo-root ..`. Behaviour is set by `ltg/config.yaml` `triggers.on_commit` (`off`|`check`|`refresh`, re-read each commit); manage the hook with `uv run ltg-hooks status|install|uninstall` from `ltg/`.
 
 ## Documentation Rules (HARD REQUIREMENTS)
 
