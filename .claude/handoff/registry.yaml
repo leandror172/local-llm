@@ -128,7 +128,11 @@ roles:
 
   quick-pointers:
     description: Key file locations shown at session start.
-    file: .claude/index.md      # NOT session-context.md — this block lives in the index
+    # session-context.md is the tracking file the register owns. Keep handoff-owned
+    # regions here, not in content files like .claude/index.md — the header's safety
+    # boundary says every OTHER ref:KEY is content the pipeline must not touch. A repo
+    # that genuinely keeps it elsewhere repoints this file (registry.yaml is per-repo).
+    file: .claude/session-context.md
     locator:
       type: ref_block
       key: quick-pointers

@@ -19,18 +19,11 @@ Keep blocks narrow enough that `ref-lookup.sh KEY` returns only what's needed fo
 
 ---
 
-<!-- ref:quick-pointers -->
 ## Quick Pointers (Active Work)
 
-| What | Where |
-|------|-------|
-| Current layer tasks & progress | `.claude/tasks.md` |
-| Active execution plan | `.claude/plan-v2.md` |
-| Session log (current) | `.claude/session-log.md` |
-| Agent preferences & resume checklist | `.claude/session-context.md` |
-| Project rules & constraints | `CLAUDE.md` (repo root) |
-| Cross-session memory | `~/.claude/projects/.../memory/MEMORY.md` |
-<!-- /ref:quick-pointers -->
+Moved to `.claude/session-context.md` (`ref:quick-pointers`). It is a handoff-owned
+register region, and every other such region lives in `session-context.md`; this file
+is content the pipeline must not touch. See `docs/plans/resume-config-steps.md`.
 
 ---
 

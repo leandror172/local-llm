@@ -319,6 +319,26 @@ Remove the `customizable:` entry for `resume.sh` from `manifest.yaml`; the
 `overlay-keep:reading-guide` markers disappear from all five repos; career-search's variant
 migrates to two lines of its `resume.yaml`. Keep the category.
 
+### R-D10 — `quick-pointers` belongs in `session-context.md` (session 111)
+
+Discovered while migrating: llm kept its `ref:quick-pointers` block in `.claude/index.md`,
+and its register carried a comment defending that — `# NOT session-context.md`. Every other
+register-read role (`user-prefs`, `current-status`, `active-decisions`,
+`session-reading-guide`) lives in `session-context.md`, and so does the starter template's
+copy.
+
+Consistency is the weak argument. The strong one is `registry.yaml`'s own header: *"this
+register enumerates the handoff-owned regions. Every OTHER `ref:KEY` in the repo is content
+/ an LTG anchor the pipeline MUST NOT touch."* `.claude/index.md` is content — it is the
+knowledge map and an LTG anchor source. A register role pointing into it puts handoff-owned
+regions and must-not-touch content in one file, blurring the boundary the register exists to
+draw. `session-context.md` is the tracking file the register owns.
+
+Moved. `index.md` keeps a navigation pointer. llm's register is now byte-identical to the
+overlay source (`--verify`: `SAME`, `10/10 register locators resolve`), and `resume.sh`
+output is unchanged. This removes the last of llm's "home repo is special" residue, after
+the CLAUDE.md markers and the register copy.
+
 ### R-D6 — Migration gate
 
 Behavior must be byte-identical before and after for llm's own output, or a regression is

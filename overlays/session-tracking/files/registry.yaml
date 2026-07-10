@@ -128,9 +128,10 @@ roles:
 
   quick-pointers:
     description: Key file locations shown at session start.
-    # The starter template puts this block in session-context.md. A repo that keeps it
-    # elsewhere (llm: .claude/index.md) points its own register at that file — this is
-    # per-repo config, which is why registry.yaml ships via manual_if_exists.
+    # session-context.md is the tracking file the register owns. Keep handoff-owned
+    # regions here, not in content files like .claude/index.md — the header's safety
+    # boundary says every OTHER ref:KEY is content the pipeline must not touch. A repo
+    # that genuinely keeps it elsewhere repoints this file (registry.yaml is per-repo).
     file: .claude/session-context.md
     locator:
       type: ref_block

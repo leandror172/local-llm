@@ -109,6 +109,21 @@ Or manually:
 
 ---
 
+<!-- ref:quick-pointers -->
+## Quick Pointers (Active Work)
+
+| What | Where |
+|------|-------|
+| Current layer tasks & progress | `.claude/tasks.md` |
+| Active execution plan | `.claude/plan-v2.md` |
+| Session log (current) | `.claude/session-log.md` |
+| Agent preferences & resume checklist | `.claude/session-context.md` |
+| Project rules & constraints | `CLAUDE.md` (repo root) |
+| Cross-session memory | `~/.claude/projects/.../memory/MEMORY.md` |
+<!-- /ref:quick-pointers -->
+
+---
+
 <!-- ref:active-decisions -->
 
 ### Cross-cutting principles
