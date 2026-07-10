@@ -66,6 +66,14 @@ templates:
 # installer FLAGS it for manual merge instead of silently overwriting (files:)
 # or silently skipping (templates:) — so register fixes propagate with awareness.
 # Source resolves to files/registry.yaml (installer uses files_dir / basename).
+# `--verify` asks the right question per kind of ownership. For a file the repo OWNS,
+# byte-equality is meaningless (session-log.md diverges after one session; the register
+# has per-repo locators). What must hold is the CONTRACT: every role's locator still
+# resolves against its target file. Write roles gate — the handoff would fail. Read-only
+# roles are advisory — resume prints its fallback. See T-82.
+verify_locators:
+  register: .claude/handoff/registry.yaml
+
 manual_if_exists:
   - .claude/handoff/registry.yaml
   # resume.yaml is the step list `st-resume` renders (v11, R-D1/R-D2). Pure per-repo

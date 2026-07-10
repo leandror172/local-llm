@@ -128,7 +128,10 @@ roles:
 
   quick-pointers:
     description: Key file locations shown at session start.
-    file: .claude/index.md      # NOT session-context.md — this block lives in the index
+    # The starter template puts this block in session-context.md. A repo that keeps it
+    # elsewhere (llm: .claude/index.md) points its own register at that file — this is
+    # per-repo config, which is why registry.yaml ships via manual_if_exists.
+    file: .claude/session-context.md
     locator:
       type: ref_block
       key: quick-pointers
