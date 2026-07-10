@@ -7,35 +7,43 @@
 
 - **Version:** v11 — **R-D9 packaging flip.** Code ships as the `session-tracking` Python
   package; the overlay installs config + docs only. `always_user_files:` is gone.
-- **Engine:** `uv tool install --editable overlays/session-tracking` → console entry point
-  `st-handoff`. The shim resolves `st-handoff` → source tree → **legacy**
-  `~/.claude/tools/handoff/` (transitional; delete once every repo is migrated).
+  Installed + committed in **all five repos**; `--verify` exit 0 everywhere.
+- **Engine:** `uv tool install --editable overlays/session-tracking` → entry points
+  `st-handoff` / `st-resume`. Shim order: `st-handoff` → source tree → legacy
+  `~/.claude/tools/handoff/` (dormant fallback; deletable once PR #71 lands).
+  ⚠️ The editable install points at llm's **working tree** — `src/` exists only on
+  `feature/resume-config-steps` (PR **#71**). Checking out master breaks `st-resume` in
+  four repos until it merges.
 - **Layout:** `src/sessiontracking/{register,handoff,resume}`. `register/` = `registry_io`
   + `locator` — the primitive both products import; products never import each other.
-  `pyproject.toml` at the overlay root; tests moved to `tests/`.
+  `pyproject.toml` at the overlay root; tests in `tests/`.
 - **resume is config-driven (R-D1/R-D2):** `files/resume.yaml` (ships via
   `manual_if_exists`) lists steps — `text` / `region` / `log_next` / `git_log` /
   `git_status` / `run`. `region:` names a **register role**, resolved through the SAME
-  `locate()` the handoff writes with. Entry point `st-resume`. A step earns a fixed kind
-  when the overlay owns the invariant it depends on; `run:` is the escape hatch.
-- **Register read-side wired:** `quick-pointers` added as a `used_by: [read]`,
-  `write_mode: nomodel` role (the applier refuses nomodel → read-only by construction).
+  `locate()` the handoff writes with. A step earns a fixed kind when the overlay owns the
+  invariant it depends on; `run:` is the escape hatch. `resume.sh` is a thin shim.
+- **Every repo invokes the handoff identically** — no `--registry`. The engine resolves
+  `<repo-root>/.claude/handoff/registry.yaml`. The home repo is not special; it holds a
+  register copy like any consumer. `--registry` survives for a register living elsewhere.
 - **Schema guard:** `load_register` refuses an unrecognised `registry.yaml: version:`
   (exit 2); an absent version means schema 1. Three version facts, never conflate: package
   `--version` (machine-global) ≠ `registry.yaml: version:` (per-file contract) ≠ CLAUDE.md
   `<!-- overlay:session-tracking vN -->` (per-repo config generation).
-- **Tests:** 236 across the overlay suite (`make test`); 183 in the package.
-- **Installed:** consumer repos still execute the **legacy** flat-module engine and read
-  CLAUDE.md v10. Migrating them to the package rides with the `resume.yaml` work.
+- **Tests:** 287 across the overlay suite (`make -C overlays test`); 214 in the package.
 - **Key files:** `pyproject.toml`, `src/sessiontracking/`, `tests/`, `manifest.yaml`,
-  `files/handoff/run-handoff.sh` (shim), `files/registry.yaml`, `files/resume.sh`,
-  `files/rotate-session-log.sh`,
+  `files/handoff/run-handoff.sh` (shim), `files/registry.yaml`, `files/resume.yaml`,
+  `files/resume.sh` (shim), `files/rotate-session-log.sh`,
   `files/handoff-harvest.sh` (boundary `^chore(session-handoff): session `),
   `files/session-handoff/SKILL.md`.
 - **Gotcha (recurring):** never run the installer to "just refresh the engine" without
   `--dry-run` + diff-review — it also reconciles project-level files.
-- **Deferred:** local-model Placer (E1–E2) fills the existing value-only payload schema;
-  Increment-4 separate-window synthesis (documented only); pip-editable distribution.
+- **Gotcha (SKILL shadow):** `SKILL.md` installs via `user_files` = skip-if-present, so a
+  **project-level copy shadows the global and silently stops updating**. llm's was three
+  versions stale (documented a `stage_failed` status the CLI never emits). Removed session
+  111. Do not create one unless the repo genuinely needs a different skill.
+- **Deferred:** local-model Placer (E1–E2) fills the value-only payload schema;
+  Increment-4 separate-window synthesis (documented only); **T-83** install-time baseline
+  (`docs/plans/overlay-install-baseline.md`).
 
 ## Deeper Memory → KNOWLEDGE.md
 

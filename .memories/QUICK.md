@@ -35,6 +35,9 @@ and write share one `locate()`. `--verify` was permanently red since T-58 and no
 question per ownership, plus a **locator contract** that found the starter templates never satisfied
 their own register. Installed + committed in all five repos; `--verify` exit 0 everywhere.
 Plan: `docs/plans/resume-config-steps.md`. Report: `docs/reports/session-111-report.md`.
+**PR #71 must merge before llm leaves `feature/resume-config-steps`** — the editable install
+points at llm's working tree and `overlays/session-tracking/src/` does not exist on master,
+so `st-resume` would break in four consumer repos.
 Session 98 (2026-06-30): **`my-go-qcoder` HTTP 500 = host-RAM ENOMEM, NOT VRAM.** 30B partial-offload reads ~10–15 GiB of weights into RAM > old WSL2 15.5 GiB. **Fix = WSL `.wslconfig` memory=24GB (load-bearing).** T-67 ext4 store move EXECUTED (`/mnt/ollama-store/models`, ext4 vhdx on I:) but did NOT free RAM — Ollama keeps mmap off for partially-offloaded models on any fs; payoff was cold load 33s→15.6s + clean store. Health: `make -C ~/workspaces ollama-store-check`. See KNOWLEDGE.md "Host-RAM budget". **T-68 DONE (session, 2026-07-01):** reboot-persistence self-heals (udev `SYSTEMD_WANTS` recover service + attach-only logon task — device matched by UUID, survived a real reboot cold PASS incl. sde→sdd letter change); old 162 GB on I: reclaimed (394 GB free).
 
 ## Repo Structure
