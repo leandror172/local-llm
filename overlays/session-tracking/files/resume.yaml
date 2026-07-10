@@ -105,8 +105,10 @@ steps:
   # its deferred tasks live.
   - kind: run
     command: |
-      n=$(.claude/tools/ref-lookup.sh deferred-infra 2>/dev/null | grep -c '^- \[ \]' || echo 0)
-      echo "  $n items pending — see ref:deferred-infra"
+      # grep -c prints 0 AND exits 1 when nothing matches, so `|| echo 0`
+      # would print a SECOND zero. `|| true` keeps grep's own count.
+      n=$(.claude/tools/ref-lookup.sh deferred-infra 2>/dev/null | grep -c '^- \[ \]' || true)
+      echo "  ${n:-0} items pending — see ref:deferred-infra"
 
   - kind: run
     command: |

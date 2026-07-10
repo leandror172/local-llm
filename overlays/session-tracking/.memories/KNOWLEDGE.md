@@ -313,10 +313,13 @@ Source / more detail: `manifest.yaml`; `docs/plans/overlay-customizable-regions.
   you reconciled" from "this file legitimately differs" (expenses/career-search registers
   flag on *every* install, correctly but uselessly), and `customizable:` cannot locate a
   region in an unmarked file. A recorded source hash — or a package manager — closes both.
-- **`--verify` gating semantics.** `CUSTOMIZED` (sanctioned use of the seam) is
-  **non-gating**; `DIFF` (out-of-region drift) **gates**. A repo that hasn't installed v10
-  yet shows the customizable entry as `MISSING`/`DIFF` — so if wiring into CI, verify
-  *after* install, not before.
+- **`--verify` is permanently red (T-82, found session 111).** `CUSTOMIZED` is non-gating,
+  but `DIFF` gates *even on entries labelled `(USER-MANAGED)`* — and `templates:`
+  (`session-log.md`, `tasks.md`, `session-context.md`) diverge from their starter template
+  after one session, while `manual_if_exists:` registers diverge by design. So `--verify`
+  exits 1 on all five repos, llm included. **Do not treat a nonzero `--verify` as drift**
+  until T-82 lands; read the per-file lines instead. Session 110's "`--verify` exit 0
+  everywhere" note is wrong.
 - **Only the marked regions are repo-owned.** Divergence in a `customizable:` file
   *outside* a keep-region will be overwritten, by design. Decide per case whether it
   should have been a keep-region (widen the manifest) or is stale (let it go).
