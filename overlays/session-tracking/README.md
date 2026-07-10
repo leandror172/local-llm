@@ -6,12 +6,12 @@ Packages the session continuity system for any Claude Code project.
 
 | Action | Target | Condition |
 |--------|--------|-----------|
-| CUSTOMIZABLE | `.claude/tools/resume.sh` | Overlay-owned **except** its `overlay-keep:reading-guide` region, which a repo may tailor (seeded once, preserved on every update — v10, T-61) |
+| COPY | `.claude/tools/resume.sh` | Thin shim over `st-resume` (v11) |
 | COPY | `.claude/tools/rotate-session-log.sh` | Always (backup if differs) |
 | COPY | `.claude/tools/handoff-harvest.sh` | Always (backup if differs) |
-| COPY | `~/.claude/tools/handoff/*.py` (10 runtime modules) | **Always user-level** — shared across all repos regardless of `--install-level` |
-| COPY | `~/.claude/tools/handoff/run-handoff.sh` | User-level by default; `--install-level project` installs per-repo as `.claude/tools/handoff/run-handoff.sh` |
+| COPY | `~/.claude/tools/handoff/run-handoff.sh` | Thin shim over `st-handoff`. User-level by default; `--install-level project` installs per-repo |
 | MANUAL | `.claude/handoff/registry.yaml` | Copied if missing; **flagged for manual merge if present** (per-repo register — `manual_if_exists`) |
+| MANUAL | `.claude/resume.yaml` | Copied if missing; flagged if present. The step list `st-resume` renders (v11) |
 | COPY | `~/.claude/skills/session-handoff/SKILL.md` | User-level by default; `--install-level project` installs per-repo |
 | CREATE | `.claude/session-log.md` | Only if missing |
 | CREATE | `.claude/session-context.md` | Only if missing |
@@ -21,7 +21,16 @@ Packages the session continuity system for any Claude Code project.
 ## Prerequisites
 
 - `ref-indexing` overlay recommended (provides `ref-lookup.sh` used by `resume.sh` **and** by the handoff skill to fetch replace-mode interiors)
-- **PyYAML** required by the handoff pipeline (`pip install pyyaml`) — only `registry_io.py` imports it; the F1–F6 safety core is stdlib-only
+- **The `session-tracking` package** — since v11 the overlay does NOT install Python code. Install it once per machine:
+
+  ```
+  uv tool install --editable <llm-repo>/overlays/session-tracking
+  ```
+
+  This puts `st-handoff` and `st-resume` on `PATH`. The bash shims exec them, so existing repo
+  paths, hooks, and docs keep working. **Code ships as a package; config ships as an overlay.**
+- **PyYAML** is a package dependency — only `register/registry_io.py` imports it; the safety core
+  (`register/locator.py`, `handoff/applier.py`, `handoff/verifier.py`) is stdlib-only
 
 ## Deterministic handoff pipeline
 
@@ -70,22 +79,24 @@ the same file in one run is fully supported.
 ./overlays/install-overlay.py session-tracking --target /path/to/repo --dry-run
 ```
 
-## Customizable resume.sh region (v10, T-61)
+## resume.sh is configuration, not code (v11, R-D5)
 
-`resume.sh` installs via the `customizable:` manifest category, not `files:`. The overlay owns the
-whole script **except** the `overlay-keep:reading-guide` region (its §2b "Pre-session reading guide"
-title + output filter). On install:
+`resume.sh` used to hold six hardcoded bash sections, which is why it needed an
+`overlay-keep:reading-guide` region a repo could tailor. It doesn't any more. It is a thin shim,
+and **what it prints lives in `.claude/resume.yaml`** — a step list rendered by `st-resume`.
 
-- **first time** — the region is seeded from the overlay's default;
-- **every update after** — the region's *installed* content is preserved verbatim while the rest of
-  `resume.sh` is updated from the overlay. The overlay never overwrites the region again.
+Customize by editing that file: reorder, retitle, filter, drop steps, or add your own. Step kinds
+are a fixed vocabulary (`text`, `region`, `log_next`, `git_log`, `git_status`) plus a `run:` escape
+hatch for anything the overlay does not model. A step earns a fixed kind when the overlay owns the
+invariant it depends on — `log_next` parses `session-log.md`'s structure; `git_log` pins plain
+`git` because `rtk git log` drops merge commits.
 
-This lets a repo tailor that section (e.g. career-search's "What to read first" variant) without its
-edit being clobbered on the next overlay update, and without freezing the rest of the file. To
-customize: edit only the lines between the `# overlay-keep:reading-guide` and
-`# /overlay-keep:reading-guide` markers. `--verify` reports a tailored region as `CUSTOMIZED`
-(non-gating); drift *outside* the markers reports `DIFF` (gating). Full design:
-`docs/plans/overlay-customizable-regions.md`.
+A `region:` step names a **role in the register**, so it resolves through the same `locate()` the
+handoff writes with. Rename or move a `ref:KEY` and both read and write follow, from one edit.
+
+The installer's `customizable:` category still exists — it is the general escape hatch for overlay
+files that have no config layer — but nothing uses it. That is the healthy steady state for an
+escape hatch. Design: `docs/plans/resume-config-steps.md`.
 
 ## resume.sh output sections
 
@@ -95,9 +106,14 @@ customize: edit only the lines between the `# overlay-keep:reading-guide` and
 |---|---------|--------|
 | 1 | Current status | `ref:current-status` in `session-context.md` (head -30) |
 | 2 | Last session "Next" pointer | Parsed from top entry in `session-log.md` under `### Next` |
+| 2b | Pre-session reading guide | `ref:session-reading-guide` in `session-context.md` |
 | 3 | Key file locations | `ref:quick-pointers` in `session-context.md` (full) |
 | 4 | Active decisions | `ref:active-decisions` in `session-context.md` (head -12) |
-| 5 | Recent git commits + uncommitted changes | `git log` / `git status` |
+| 5 | Recent git commits + uncommitted changes | `git log` / `git status` (the dirt section vanishes when clean) |
+| 6 | Footer: user prefs, open-task count, ref-key count | `ref:user-prefs` + two `run:` steps |
+
+Section order and content are **not** fixed by this table — it describes the shipped default
+`resume.yaml`. Your repo's copy is the source of truth.
 | 6 | Footer: user preferences + ref key count | `ref:user-prefs` in `session-context.md` |
 
 All ref blocks are optional — missing blocks print a `(no ref:X block found)` notice rather than failing.

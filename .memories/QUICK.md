@@ -26,8 +26,15 @@ Session 84 (2026-06-04): handoff pipeline **B2 safety core** — F1/F3/F4, 31 te
 Session 85 (2026-06-05): handoff pipeline **B3 milestone complete** — F5 Mechanics / F6 Orchestrator+git adapter / per-run logging in `overlays/session-tracking/files/handoff/`, 53 tests green. Scope A spine functionally complete; next = B4 (F7 schema + SKILL rewrite).
 Sessions 86–87 (2026-06-05/06): handoff pipeline **B4 complete — Scope A fully done, dog-food-validated.** F7 payload schema + `handoff.py`/`registry_io.py` entrypoint + `run-handoff.sh`; manifest install layout (register via `manual_if_exists` = Option C, propagate-with-flag); `SKILL.md` rewritten (decide content → one payload → one `run-handoff.sh` call). Clone dog-food found+fixed a real append/replace **newline-glue bug** F4 was blind to (`_normalize_block` at the `_collect_edits` seam); **77 tests green.**
 Session 86 (2026-06-09): **flexible task ID checkoff** — checkbox-first locator (enumerates `- [ ]` lines, filters by word-boundary ID within first 40 chars); ID validation broadened `^T-\d+$` → `^[A-Za-z\d][A-Za-z\d.\-]*$`. Validated against tasks.md formats across 3 repos. **88 tests green.** Overlay bumped to v3. Synced to expenses, career-search, web-research. Distribution options analysis (9 options A–I) at `ref:overlay-distribution-options`.
-Handoff is now **pipeline-driven in this repo** (project-level `.claude/skills/session-handoff/SKILL.md`): decide content → author an F7 payload → run `overlays/session-tracking/files/handoff/run-handoff.sh --registry overlays/session-tracking/files/registry.yaml` (home-repo runs from the overlay `files/` path; code is NOT installed under `.claude/tools/`). **PR #50** open (stacked on `feature/ltg-phase3-anchors`; retarget to master after the LTG PR merges).
-Active branch: `feature/session-handoff-pipeline` (stacked on `feature/ltg-phase3-anchors`).
+Session 111 (2026-07-09): **session-tracking v11 — code ships as a package, config ships as an overlay.**
+`overlays/session-tracking` is now a Python package (`src/sessiontracking/{register,handoff,resume}`,
+entry points `st-handoff` / `st-resume`, `uv tool install --editable`). `register/` = `registry_io` +
+`locator`, a primitive both products import; neither imports the other. `resume.sh` is a thin shim and
+its sections are a step list in `.claude/resume.yaml`; `region:` steps name a **register role**, so read
+and write share one `locate()`. `--verify` was permanently red since T-58 and now asks a different
+question per ownership, plus a **locator contract** that found the starter templates never satisfied
+their own register. Installed + committed in all five repos; `--verify` exit 0 everywhere.
+Plan: `docs/plans/resume-config-steps.md`. Report: `docs/reports/session-111-report.md`.
 Session 98 (2026-06-30): **`my-go-qcoder` HTTP 500 = host-RAM ENOMEM, NOT VRAM.** 30B partial-offload reads ~10–15 GiB of weights into RAM > old WSL2 15.5 GiB. **Fix = WSL `.wslconfig` memory=24GB (load-bearing).** T-67 ext4 store move EXECUTED (`/mnt/ollama-store/models`, ext4 vhdx on I:) but did NOT free RAM — Ollama keeps mmap off for partially-offloaded models on any fs; payoff was cold load 33s→15.6s + clean store. Health: `make -C ~/workspaces ollama-store-check`. See KNOWLEDGE.md "Host-RAM budget". **T-68 DONE (session, 2026-07-01):** reboot-persistence self-heals (udev `SYSTEMD_WANTS` recover service + attach-only logon task — device matched by UUID, survived a real reboot cold PASS incl. sde→sdd letter change); old 162 GB on I: reclaimed (394 GB free).
 
 ## Repo Structure

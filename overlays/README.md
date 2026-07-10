@@ -26,9 +26,22 @@ Options:
 
 ## Verify an installed overlay (--verify)
 
-`--verify` is a **read-only** flag that compares every overlay-managed file at its
-installed destination against the overlay source. It never writes, backs up, or
-creates anything — safe to run at any time.
+`--verify` is a **read-only** check. It never writes, backs up, or creates anything —
+safe to run at any time.
+
+It asks a **different question per kind of ownership**, because byte-equality is the
+wrong question for a file the repo owns (T-82):
+
+| Ownership | Question | Gates? |
+|---|---|---|
+| Overlay-owned (`files`, `user_files`) | Are the bytes what we shipped? | yes — real drift |
+| `merge_sections` | Is the version marker current? | yes — behind |
+| User-managed (`templates`, `manual_if_exists`) | Do the register's locators resolve? | see below |
+
+A session log diverges from its starter template the moment a repo holds one session, and
+a per-repo register diverges by design. Gating on those made `--verify` exit 1 on every
+repo, always — so nobody read it. Those categories now record a non-gating `EXPECTED`.
+What protects them is the **locator contract**.
 
 ```bash
 # Check whether the installed session-tracking files are in sync with the overlay:
@@ -44,16 +57,33 @@ creates anything — safe to run at any time.
 | Label | Meaning |
 |-------|---------|
 | `SAME` | Installed file matches overlay source (EOL-normalized) |
-| `DIFF` | Installed file differs from overlay source |
-| `MISSING` | Dest file absent, or merge-section marker not in dest file |
-| `SRC-MISSING` | Overlay source file not found (overlay may be corrupt) |
+| `DIFF` | Overlay-owned file differs from source — **drift, gates** |
+| `EXPECTED` | User-managed file differs — by design, **does not gate** |
+| `CUSTOMIZED` | Sanctioned `overlay-keep` region edit — **does not gate** |
+| `BROKEN` | A **write** role's locator does not resolve — the handoff will fail. **Gates** |
+| `ABSENT` | A **read-only** role's block is missing — resume prints its fallback. Advisory |
+| `MISSING` | Dest file absent, or merge-section marker not in dest file — **gates** |
+| `SRC-MISSING` | Overlay source file not found (overlay may be corrupt) — **gates** |
 
-**Exit codes:** `0` = all files SAME; `1` = any DIFF / MISSING / SRC-MISSING.
+**Exit codes:** `0` = nothing gating; `1` = any DIFF / BROKEN / MISSING / SRC-MISSING.
 
-**All categories gate the exit (decision T-58):** `files`, `always_user_files`,
-`user_files`, `templates`, `manual_if_exists`, and `merge_sections` all contribute
-to the tally. `templates` and `manual_if_exists` carry a `USER-MANAGED` label in the
-report (for readability) but still gate the exit if they differ.
+### The locator contract (`verify_locators:`)
+
+A manifest may declare a register. `--verify` then loads it and asserts every role's
+locator still resolves against its target file. Gating follows `used_by`, because the
+consequence does:
+
+- **write role, unresolvable → `BROKEN`.** The handoff *will* fail to locate its region.
+- **read-only role, unresolvable → `ABSENT`.** `resume` prints its fallback. Advisory.
+
+Checklist locators need a `task_id` from a payload, so they are checked for file
+existence only.
+
+This is the question byte-comparison cannot ask. A user-managed file may differ from its
+template in every byte and still be correct — or be byte-identical and *broken*, because
+a `ref:KEY` was renamed. On its first run this check found that the overlay's own starter
+templates did not satisfy the register shipping beside them: a fresh install's first
+handoff would have failed on four roles.
 
 **EOL caveat:** SAME uses EOL-normalized comparison (CRLF = LF, trailing-newline
 differences = SAME). This intentionally decouples verify from the installer's
@@ -61,8 +91,9 @@ byte-exact `sha256` skip — a file can be verify-SAME yet the installer would s
 re-copy it (open task T-29 for proper EOL handling).
 
 **Typical use:** run after propagating an overlay update to confirm every target repo
-received the new files. Catches the class of bug where a commit claims a file was
-updated but the overlay installer was never run (or was run against a stale source).
+received the new files, and that its register still describes reality. Catches two classes
+of bug: a commit claiming a file was updated when the installer never ran, and a register
+that declares ownership of a region which does not exist.
 
 ## Testing the overlays
 
