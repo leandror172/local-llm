@@ -4,18 +4,17 @@
 
 meta:
   generated_from: ltg/corpus.yaml
-  commit: a2f9f346d15387b984ed662f1c4cf6f355b57679
-  file_count: 131
-  total_bytes: 949199
+  commit: ca30f9d1f711b8518ef1800491ca67dc6d49ca6c
+  file_count: 133
+  total_bytes: 978644
   group_counts:
-    archive: 74
-    claude-meta: 7
+    archive: 77
+    claude-meta: 6
     docs-ideas: 13
     docs-research: 21
     memories: 16
   missing_on_disk: []
-  dirty_corpus_files:
-  - docs/ideas/ltg-model-registry-design.md
+  dirty_corpus_files: []
 files:
 - path: .claude/archive/decisions-layers-1-3.md
   group: archive
@@ -309,34 +308,42 @@ files:
   group: archive
   sha256: 3a29094341a3ed41458fa13592fd453007058e45a1a0a0a940de6a3b58637dc6
   bytes: 3401
+- path: .claude/archive/session-log-2026-07-08-s109-t-61-general-customization-seam-built-cu.md
+  group: archive
+  sha256: 09f19d5915635150757832751bd3a7cd99447d79ee28ed13342953f0e10660db
+  bytes: 2999
+- path: .claude/archive/session-log-2026-07-08-s110-t-79-overlay-v10-propagated-to-all-4-con.md
+  group: archive
+  sha256: 7d0525678ea68f8c7e5a052870752059ec587999567195c7a2652554e3f861a7
+  bytes: 4928
 - path: .claude/archive/session-log-layer0.md
   group: archive
   sha256: 500baa8e091a420aaea0088337bd5051efd7eb6eb9e19ba08dfc5774fbdfbdb1
   bytes: 36500
+- path: .claude/archive/session-tracking-handoff-history.md
+  group: archive
+  sha256: b3bf69f45d67204c831ab3706e3d1ee630261291d90a049da9b8aaa73fa4fe89
+  bytes: 15617
 - path: .claude/index.md
   group: claude-meta
-  sha256: 64c91562cbf1b0fb89b2d2f6c8534bd5e6d6e11479c6db81da8b59cdb8e78518
-  bytes: 31586
+  sha256: 0162ad68adebf40564e1d1e560c2a5e0a728d9d309debcc0051d324f1f9182e6
+  bytes: 35313
 - path: .claude/plan-v2.md
   group: claude-meta
   sha256: a7fd2cf477890cf8eb3a6188e5c50bc772cbd4a8290cb89e509f4f21235a26ea
   bytes: 20946
 - path: .claude/session-context.md
   group: claude-meta
-  sha256: d85800b225c9f8139629f226b652c379f834ea4002297b4abe2a4000db224c13
-  bytes: 22134
+  sha256: c3340b439acbe822a177467b505bef2edbbc986359730a93b7a2eb08df50e69d
+  bytes: 23672
 - path: .claude/skills/create-persona/SKILL.md
   group: claude-meta
   sha256: 551638e18748f29ec656701fe3cf2de4329d9433bc03e58dc5b4169624472fd5
   bytes: 2160
-- path: .claude/skills/session-handoff/SKILL.md
-  group: claude-meta
-  sha256: d3dff7b0ec23168fdf8f50d49647a9740abd7df6e863f8d1beaff5a2ea4a012e
-  bytes: 12236
 - path: .claude/tasks.md
   group: claude-meta
-  sha256: 2f4826edc2b1b858c082c6525a9fc2c81fc94fa8c2be200f9193065a86751a3a
-  bytes: 44477
+  sha256: 3c48c723db2a5d7cb8b653584ae6b8a2a9287f42f71fdcbf06f641bd6e937139
+  bytes: 54295
 - path: .claude/tools/OLLAMA-ANALYSIS-README.md
   group: claude-meta
   sha256: f341e5c1d778b5187eda0c6f7ce2aab3f6db0feb10c0226efa443189ef18846f
@@ -347,8 +354,8 @@ files:
   bytes: 24072
 - path: .memories/QUICK.md
   group: memories
-  sha256: e9f6458f1d87ba6677b4f73c4fa0e3b3765fafdfedef662e470d3c21918c4768
-  bytes: 7704
+  sha256: b4a7fe2211511382f52aa23becb7158c7a1c463e987cebd6eab4442f237cdb06
+  bytes: 8282
 - path: benchmarks/.memories/KNOWLEDGE.md
   group: memories
   sha256: 25d9068617cfa96d9d6551958f39a8b4ed501d1b0c989914efe661a1941935bd
@@ -519,20 +526,20 @@ files:
   bytes: 2756
 - path: overlays/.memories/KNOWLEDGE.md
   group: memories
-  sha256: 490d782de8dad53f4a01e25fb0ec117fd72cd97b9584c90fe75caad3972d4b00
-  bytes: 14809
+  sha256: 26325ad65a7f912bd089f9f603ceb070d4df6a23d9cae46e4b86d761a164ffca
+  bytes: 15958
 - path: overlays/.memories/QUICK.md
   group: memories
-  sha256: 4b491eec523c952a5f760c9148c04105e7331ef0271d754878ce29928521cd5b
-  bytes: 4893
+  sha256: 4d3d10331ccfea955986aff7f5a74d5afcb9b1ffc6a1d26466ff41b4f7c9edc2
+  bytes: 4417
 - path: overlays/session-tracking/.memories/KNOWLEDGE.md
   group: memories
-  sha256: baf096297cd4101bffd3bb52752fa6070186ebc500bf66fac76dd5d9b6423e14
-  bytes: 19066
+  sha256: 2a899ad227a7dd2ab0648bae7cf277073685b6424f25a413e4bb715f863e49cf
+  bytes: 20200
 - path: overlays/session-tracking/.memories/QUICK.md
   group: memories
-  sha256: 709c794cb7f0b03ed21d9c68a150b0a2517a835baa3bee13df86953769d31dd8
-  bytes: 3033
+  sha256: ab1a4b5f0484ad22f0cee29700cdf383b09dbcad41d95623eed999a269257029
+  bytes: 3702
 - path: personas/.memories/KNOWLEDGE.md
   group: memories
   sha256: 25711f4a3b58f705f6696b1a619257c0f99ed0ce2e82ac864254b0a8a322c807
