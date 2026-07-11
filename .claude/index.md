@@ -326,8 +326,8 @@ and the concept + smart-rag lineage (`docs/research/`, dual-cited copies in both
 
 ## Coding-Delegate Vision (2026-07-11) — async local coding-subagent
 
-**Grand vision (name pending, V-D1):** ollama-bridge `generate_code`/`ask_ollama` evolve into an
-async **deliverable-run** system — submit → `run_id` → detached worker loops coder model against
+**Grand vision (system name: oficina — V-D1 decided 2026-07-11):** ollama-bridge
+`generate_code`/`ask_ollama` evolve into an async **deliverable-run** system — submit → `run_id` → detached worker loops coder model against
 the Layer-4 evaluator → Claude reviews each deliverable.
 **Folder-local index (authoritative map):** `docs/vision/coding-delegate/index.md` — files by
 recontextualization intent, all 27 `ref:delegate-*` keys, supporting research artifacts

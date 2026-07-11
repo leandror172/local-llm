@@ -70,10 +70,12 @@ Freeze each in the phase plan that first needs it; every deferral carries a name
 (the guessed-trigger corollary: a deferral whose trigger is guessed fires on a different
 trigger).
 
-- **V-D1 — Name.** Full discussion in `naming.md`: criteria C1–C7, 13-candidate register
-  (`ref:delegate-naming`, `ref:delegate-naming-candidates`). Shortlist after the 2026-07-11
-  round: oficina / aprendiz / apprentice / delegate-as-fallback. Decide before P1 ships CLI
-  entry points (renames get expensive after).
+- **V-D1 — Name. DECIDED 2026-07-11: `oficina`** (runner-up aprendiz). Decision record +
+  metaphor boundary rule in `naming.md` (`ref:delegate-naming`). Deciding correction: the
+  identity is the delegation harness; the flywheel is a property, not the objective.
+  Guild-roles composition demoted (no `my-aprendiz-*` personas — the existing per-language
+  persona matrix stays the loop's model slot); `journeyman` reserved for H2. Folder +
+  `delegate-*` ref keys keep the working label; the brand carries package/CLI/narrative.
 - **V-D2 — Planner arm (H2): does a small planner model add value over Claude-authored
   briefs?** Literature is thin — nothing tests two cooperating small models in this split.
   Validate against H1 run logs (which context shapes correlate with verdict-2?). Decide at

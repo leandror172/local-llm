@@ -1,6 +1,7 @@
 # coding-delegate — Quick Memory
 
-*Working memory for the coding-delegate vision project (name pending). Keep under 30 lines.*
+*Working memory for the **oficina** vision project (folder keeps the coding-delegate working
+label). Keep under 30 lines.*
 
 ## Status
 
@@ -10,8 +11,10 @@
 - **No phase plans yet.** Next concrete step: **P1 plan doc** (async substrate) — freezes V-D4
   (residency/packaging), V-D9 (retention/TTL), V-D10 (ask_ollama profile), V-D11
   (orchestration-lib re-check) + ledger event names. First client candidate: **T-81**.
-- **Name UNDECIDED (V-D1)** — criteria + 13-candidate register in `naming.md`; shortlist:
-  oficina / aprendiz / apprentice / delegate. Decide before P1 ships CLI entry points.
+- 2026-07-11: **Name DECIDED (V-D1): `oficina`** (runner-up aprendiz). Identity = the
+  delegation harness; the flywheel is a property, not the objective (user correction).
+  Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary
+  rule: metaphor in prose only, never in code/schema/CLI verbs. Record: `naming.md`.
 
 ## What this is
 

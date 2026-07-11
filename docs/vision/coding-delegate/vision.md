@@ -93,9 +93,9 @@ the evaluator as the gatekeeper; the ledger as the memory.**
   interaction with its code).
 <!-- /ref:delegate-non-goals -->
 
-## Naming (open — V-D1)
+## Naming (V-D1 — DECIDED: oficina)
 
-Split to its own file when the discussion deepened: **`naming.md`** — status/criteria/leans
-under `ref:delegate-naming`, the full 13-candidate register under
-`ref:delegate-naming-candidates`. Shortlist after the 2026-07-11 round: oficina / aprendiz /
-apprentice / delegate-as-fallback. Decide before P1 ships CLI entry points.
+Decided 2026-07-11: **oficina** (runner-up aprendiz). Full record in **`naming.md`** —
+criteria, 13-candidate register, decision rationale (harness is the objective; the flywheel
+is a property), and the metaphor boundary rule (no guild names in code/schema/CLI verbs).
+Folder + `delegate-*` ref keys keep the working label; the brand carries package/CLI/narrative.

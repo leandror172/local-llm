@@ -1,6 +1,7 @@
 # coding-delegate — Folder Index
 
-*Authoritative local index for the coding-delegate vision (name pending, V-D1). The root
+*Authoritative local index for the coding-delegate vision (system name: **oficina**, decided
+2026-07-11 — V-D1). The root
 `.claude/index.md` holds only a pointer here; new files or ref keys in this folder get
 indexed HERE, not there.*
 
@@ -9,7 +10,7 @@ indexed HERE, not there.*
 | You need to recontextualize… | Read | Ref keys |
 |---|---|---|
 | *What is this? End state? What is it NOT?* | `vision.md` | `delegate-vision`, `delegate-first-principles`, `delegate-non-goals` |
-| *What should it be named?* | `naming.md` | `delegate-naming` (status/criteria/leans), `delegate-naming-candidates` (13-name register) |
+| *What is it named, and why?* | `naming.md` | `delegate-naming` (DECIDED: oficina — record + boundary rule), `delegate-naming-candidates` (13-name register) |
 | *How is the system shaped?* | `architecture.md` | 10 keys — see inventory |
 | *What's settled (and why), what's open?* | `decisions.md` | `delegate-stances` (S1–S21), `delegate-open-decisions` (V-D1–V-D13) |
 | *What do we know? Evidence per stance?* | `evidence.md` | `delegate-evidence-*` (6 keys) |
