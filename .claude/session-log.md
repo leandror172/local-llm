@@ -1,50 +1,44 @@
 # Session Log
 
-**Current Layer:** Layer 5 — Expense Classifier
-**Current Session:** 2026-07-09 — Session 111: session-tracking v11 — resume.sh becomes config, the pipeline becomes a package (PR #71)
+**Current Layer:** Layer 5 — Expense Classifier (side-track: coding-delegate vision → P1 next)
+**Current Session:** 2026-07-11 — Session 112: Coding-delegate grand vision — async deliverable runs for local models (PR #72)
 
 ---
-## 2026-07-09 - Session 111: session-tracking v11 — resume.sh becomes config, the pipeline becomes a package (PR #71)
+## 2026-07-11 - Session 112: Coding-delegate grand vision — async deliverable runs for local models (PR #72)
 
 ### Context
 
-Opened on T-80 (make the `customizable:` reset warning discriminate). The user reframed it — "what resume.sh brings up could be configurable" — which dissolved half of T-80 and exposed a chain of defects beneath it. Everything below descends from that reframe.
+Started by verifying the session-111 handoff's acceptance (PR #71 merged, master updated), then pivoted to the user's grand-vision proposal: evolving ollama-bridge's generate_code/ask_ollama into an async coding-subagent. Full-session architectural exploration — research, stress-testing, course-corrections — ending with the vision authored as a folder.
 
 ### What Was Done
 
-- **Discriminating signals (T-80a):** `manual_if_exists` records `SAME` when byte-identical; `handle_customizable` records `INFO … no-op` vs `WARN-CLOBBER`. The T-80 spec was unimplementable as written (decision-3 fires when there are NO markers, so there is no installed interior to compare) — the answerable question is whether the overlay default is present verbatim. Polarity is deliberate: silence only on proof of safety.
-- **Packaging flip (R-D7 + R-D9):** ten loose `.py` files → `src/sessiontracking/{register,handoff,resume}` with entry points `st-handoff` / `st-resume`. `register/` is a layer-0 primitive both products import; neither imports the other. `always_user_files:` removed. Distribution option D ADOPTED.
-- **`resume.yaml` step interpreter (R-D1/2/3):** six hardcoded bash sections → a step list. Fixed vocabulary (`text`/`region`/`log_next`/`git_log`/`git_status`) + a `run:` escape hatch. `region:` steps name a **register role**, resolved through the same `locate()` the handoff writes with — wiring the read side the register has asked for since session 83.
-- **Schema validation:** `registry.yaml`'s `version:` key was read and ignored in five repos; `load_register` now refuses an unsupported schema (exit 2).
-- **`--verify` rebuilt (T-82):** three questions, one per kind of ownership, plus a new **locator contract** (`verify_locators:`) asserting every register role resolves. It found four real bugs on its first run.
-- **Migrated all five repos to v11** and committed in each; `--verify` exit 0 everywhere. career-search's "What to read first" variant survived, as two lines of its own `resume.yaml`.
-- **Bookkeeping:** T-43 closed (absorbed), T-80 closed (a done, b cancelled), T-82 closed, T-58/T-60 annotated, `tasks.md` line-40 open decision answered. T-81 and T-83 filed.
-- **#7 done:** every repo now invokes the handoff identically — no `--registry`. Also removed llm's project-level `SKILL.md` shadow, three overlay versions stale.
-- **Report:** `docs/reports/session-111-report.md`. **Plans:** `docs/plans/resume-config-steps.md` (R-D1–R-D10), `docs/plans/overlay-install-baseline.md` (T-83, B-D1–B-D8, unfrozen).
+- **v11 acceptance PASSED** — first post-handoff `resume.sh` on master: 7/7 reading-guide checks; `install-overlay --verify` exit 0, `10/10 register locators resolve`.
+- **Coding-delegate grand vision authored** (`docs/vision/coding-delegate/`, PR #72): 8 docs + folder-local `index.md` + `.memories/QUICK.md`; 27 `ref:delegate-*` keys; stances S1–S21 (evidence-cited); open decisions V-D1–V-D13 (leans + named triggers); phases P1–P6. Root `.claude/index.md` slimmed to a pointer — the index split starts here.
+- **Two-agent prior-art comparison run** (frontier web tools vs web-research MCP, same questions) → `docs/research/coding-subagent-prior-art{,-webresearch}.md`; **clones survey** via subagent → `docs/research/coding-subagent-clones-survey.md` (claude-code patterns-only; open-multi-agent MIT).
+- **Verdict-data mining** (`ollama-stats.py`/`ollama-verdicts.py`): 10.7% verdict coverage; ~1/3 of "improved" verdicts compile-class, ~1/2 of rejections typo/runtime-class — the loop's first target; one cold-start timeout hand-recorded as verdict 0 (protocol slips → mechanize).
+- **web-research field report shipped cross-repo** (`~/workspaces/web-research/docs/reports/2026-07-11-field-report-llm-prior-art-run.md`): defects D1–D5 + proposed fixes + triage order (D2 first — non-discriminating auditor verdict).
+- **naming.md split out** with criteria C1–C7 (C4 = cross-language catchability, from user signal) and a 13-candidate register; shortlist oficina/aprendiz/apprentice/delegate.
 
 ### Decisions Made
 
-- **Code ships as a package; config ships as an overlay.** The installer's remaining job is `registry.yaml`, `resume.yaml`, templates, `CLAUDE.md`, `SKILL.md` — files no package manager should own.
-- **R-D7 and R-D9 are one decision.** Extracting the `register/` primitive looked expensive only because the flat directory had no package semantics. Packaging is what makes the extraction cheap.
-- **Three version facts, never conflate:** package `--version` (machine-global) ≠ `registry.yaml: version:` (per-file schema contract) ≠ CLAUDE.md `<!-- overlay:session-tracking vN -->` (per-repo config generation). The marker disentangles; it does not dissolve.
-- **A step earns a fixed kind when the overlay owns the invariant it depends on.** `log_next` parses session-log structure; `git_log` pins plain `git`. `run:` is for what only the repo knows — executable config at Makefile trust level, adopted knowingly.
-- **`--verify` asks a different question per ownership.** Byte-equality is meaningless for a file the repo owns; what must hold is the locator contract. Write roles gate (`BROKEN`), read-only advise (`ABSENT`).
-- **T-80(b) CANCELLED** — it repaired a workaround R-D5 deleted. `customizable:` keeps zero call-sites; that is the healthy steady state for an escape hatch, and the category stays.
-- **T-54 is NOT done.** It asks for a `--force-manual` override, still unbuilt. Three commits this session mislabel the identical-file fix as T-54; corrected in `tasks.md` and both QUICK memories. Sequence T-54 after T-83 — with a baseline it likely shrinks to `--theirs`.
-- **llm is a normal consumer of its own overlay.** CLAUDE.md markers, a real register copy, `quick-pointers` moved out of `index.md`. Three "home repo is special" behaviours fell; none was defended on its merits.
+- **H1 = one call, one deliverable; Claude gates every deliverable** (user course-correction) — a test run precedes its implementation run; autonomy (planner model, plan runs) is H2 behind the V-D2 "graduation" gate (planner/coder small-model split has the thinnest literature — treat as hypothesis).
+- **Bespoke run_id + offset-delta polling** — measured: Claude Code's MCP client is blocking-only and ignores progress notifications (#31893); MCP Tasks primitive moves to an extension in the 2026-07-28 RC; MCP sampling deprecated. Adopt Tasks *state names* only.
+- **Event-sourced JSONL ledger, no KurrentDB** — the pattern without the daemon; upgrade trigger named (multi-worker/multi-machine or subscription fan-out). Queue at application level; Ollama's queue is the collision absorber.
+- **No orchestration framework for the spine** (S19); **own thin loop, adapters as experiment arms** (S18 — Aider embeds via subprocess only; mini-swe-agent is the vendorable reference).
+- **Judge gates every DPO chosen label** (S17) — the cheap per-iteration test signal is the most gameable; `auto_verdict` ≠ `curated_verdict`.
+- **Vision-folder KNOWLEDGE.md deferred** — `decisions.md`+`evidence.md` play the role; trigger: first phase built. QUICK.md created.
+- **AutoCodeRover excluded** — Sonar source-available license forbids AI ingestion/interaction.
 
 ### Next
 
-- **MERGE PR #71 before llm leaves `feature/resume-config-steps`.** The editable install resolves through llm's working tree, and `overlays/session-tracking/src/` does not exist on master — `git checkout master` would break `st-resume` in four consumer repos.
-- **Verify the next `resume.sh` run** (see the reading-guide row) — this handoff writes regions that `st-resume` reads through the same register, so the first post-handoff resume is the real acceptance test for both.
-- Then: **T-83** (freeze B-D1–B-D8, half a session; build + propagate, one session). **T-53** preflight is now mostly a working `--verify`. **T-81** `--mode ai` plan-then-apply. **T-54** re-scoped after T-83.
-- LTG Phase 6 MCP server (L-01) continues in the sibling `latent-topic-graph` repo.
+- **Merge PR #72** (docs-only: vision folder + research + index split).
+- **Settle the name (V-D1)** — `naming.md` shortlist oficina/aprendiz/apprentice/delegate — BEFORE P1 ships CLI entry points.
+- **T-84 — author the coding-delegate P1 plan** (async substrate; freezes V-D4/V-D9/V-D10/V-D11 + ledger event names; first client candidate T-81).
+- Side options: T-83 (freeze B-D1–B-D8), T-56, classifier benchmark (M-P1b/P2 — now has a product consumer), persona hygiene (T-27/T-49). LTG Phase 6 in the sibling repo.
 
 ### Gotchas
 
-- **`--mode ai` cannot be previewed.** `--dry-run` never calls the model — it only reports that it would. Two real attempts on llm's 12.4 KB CLAUDE.md: 9-minute timeout, then ~20 minutes and zero bytes. That is a `TIMEOUT`, not a verdict 0. Hand-merge per `APPLY.md` instead; a correct hand-merge makes `--dry-run` report `[SKIP] CLAUDE.md — already installed vN`, which is a stronger check than reading a plan.
-- **`SKILL.md` installs via `user_files` = skip-if-present**, so a project-level copy shadows the global one and silently stops updating. llm's was three versions stale. Do not create one unless the repo genuinely needs a different skill.
-- **`grep -c` prints `0` AND exits 1** when nothing matches, so `|| echo 0` prints a second zero. Bit the `run:` count step; `|| true` keeps grep's own count.
-- **Three tests this session encoded the bug as the contract** (`test_11` asserting the non-discriminating `WARN`, `test_template_diff_gates_exit` asserting T-58's decision, and my own `_extract_next_section` expectation). Only the byte-identity diff and the locator contract caught them — both compare against something the implementation did not author.
-- **The old bash footer hardcoded `ref:deferred-infra` in every repo**, including the three whose block is `ref:deferred`. It had been pointing at a nonexistent key.
-- Three consumers were still running a **v8-era `handoff-harvest.sh`**; the v11 install finally delivered T-59. Residue of session 108's overclaimed "v9 synced cross-repo".
+- **Claude Code's MCP client has no async primitives at all** — every tool call blocks, progress notifications ignored (issue #31893 closed not-planned). Poll responses must carry the narrative; nothing can push.
+- **web-research defects found under load:** `search_topic` fails to hard zero on narrow queries; its auditor verdict is internally inconsistent (reports "0 results" alongside 3–5 good pages — non-discriminating signal, same class as T-54/T-80a/T-82); `query_knowledge` is substring-based and misses verbatim-matching cached content; `research_url` has no bot-wall detection and no arXiv version resolution. Field report in their repo.
+- **Small-model repair decays fast** — 76–95% of gains in rounds 1–2, exponential decay after (Phi-4 14B); HumanEval-scale numbers do NOT transfer to repo-scale (~21% at 8B on SWE-bench); 14B is the floor for a coder-in-loop.
+- **rtk compacts commit/push output to one line** (`ok N files changed…`) — fine, but read counts carefully; the vision commit's "3 deletions" was correct only because the whole section was new since HEAD.
