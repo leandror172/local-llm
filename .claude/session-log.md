@@ -1,44 +1,40 @@
 # Session Log
 
-**Current Layer:** Layer 5 — Expense Classifier (side-track: coding-delegate vision → P1 next)
-**Current Session:** 2026-07-11 — Session 112: Coding-delegate grand vision — async deliverable runs for local models (PR #72)
+**Current Layer:** Layer 5 — Expense Classifier (side-track: oficina P1 — plan frozen, build next)
+**Current Session:** 2026-07-11 — Session 113: oficina — V-D1 name decided, P1 async-substrate plan frozen (PR #73)
 
 ---
-## 2026-07-11 - Session 112: Coding-delegate grand vision — async deliverable runs for local models (PR #72)
+## 2026-07-11 - Session 113: oficina — V-D1 name decided, P1 async-substrate plan frozen (PR #73)
 
 ### Context
 
-Started by verifying the session-111 handoff's acceptance (PR #71 merged, master updated), then pivoted to the user's grand-vision proposal: evolving ollama-bridge's generate_code/ask_ollama into an async coding-subagent. Full-session architectural exploration — research, stress-testing, course-corrections — ending with the vision authored as a folder.
+Continuation of session 112's Next list: merge PR #72, settle the coding-delegate name (V-D1), author the P1 plan (T-84 first half).
 
 ### What Was Done
 
-- **v11 acceptance PASSED** — first post-handoff `resume.sh` on master: 7/7 reading-guide checks; `install-overlay --verify` exit 0, `10/10 register locators resolve`.
-- **Coding-delegate grand vision authored** (`docs/vision/coding-delegate/`, PR #72): 8 docs + folder-local `index.md` + `.memories/QUICK.md`; 27 `ref:delegate-*` keys; stances S1–S21 (evidence-cited); open decisions V-D1–V-D13 (leans + named triggers); phases P1–P6. Root `.claude/index.md` slimmed to a pointer — the index split starts here.
-- **Two-agent prior-art comparison run** (frontier web tools vs web-research MCP, same questions) → `docs/research/coding-subagent-prior-art{,-webresearch}.md`; **clones survey** via subagent → `docs/research/coding-subagent-clones-survey.md` (claude-code patterns-only; open-multi-agent MIT).
-- **Verdict-data mining** (`ollama-stats.py`/`ollama-verdicts.py`): 10.7% verdict coverage; ~1/3 of "improved" verdicts compile-class, ~1/2 of rejections typo/runtime-class — the loop's first target; one cold-start timeout hand-recorded as verdict 0 (protocol slips → mechanize).
-- **web-research field report shipped cross-repo** (`~/workspaces/web-research/docs/reports/2026-07-11-field-report-llm-prior-art-run.md`): defects D1–D5 + proposed fixes + triage order (D2 first — non-discriminating auditor verdict).
-- **naming.md split out** with criteria C1–C7 (C4 = cross-language catchability, from user signal) and a 13-candidate register; shortlist oficina/aprendiz/apprentice/delegate.
+- PR #72 merged (coding-delegate vision; the V-D1 decision commit rode in on the branch)
+- docs(vision): V-D1 decided — system name **oficina**; guild-roles composition demoted to narrative; decision record + metaphor boundary rule in `naming.md`; all seven "name pending" pointers updated
+- docs(delegate): event model artifact `docs/vision/coding-delegate/event-model.md` (`ref:delegate-event-model`) — Mermaid-native `eventmodeling` slices, envelope + freeze ladder, run-ledger vs worker-ledger split, medium-decision record
+- docs(plans): oficina P1 plan authored, concurrency-model section added after user review, then FROZEN — `docs/plans/oficina-p1-async-substrate.md` (P1-D1–D11, run-spec subset, module tree, TDD T1–T10, 6-point acceptance)
+- docs(delegate): folder QUICK synced; `ref:delegate-p1-concurrency` anchor added; 5 new ref keys verified resolving
+- PR #73 opened (`feature/oficina-p1-plan`, 5 commits, docs-only)
+- Three Sonnet research passes (not in commits): orchestration-lib survey (V-D11 — plain Python confirmed; DBOS-with-SQLite the one zero-infra contender, rejected as replace-not-underlie), event-modeling tooling (Mermaid `eventmodeling` picked; Miro rejected — board-not-a-file + corroborated billing complaints; EventCatalog/evml watch-items), Axon Framework 5 re-check (user request — trimmable but not right-sized; record in `decisions.md`)
+- `calls.jsonl` readers (`ollama-stats.py`/`ollama-verdicts.py`) verified additive-safe for the new `run_id` field (all access via `dict.get`)
 
 ### Decisions Made
 
-- **H1 = one call, one deliverable; Claude gates every deliverable** (user course-correction) — a test run precedes its implementation run; autonomy (planner model, plan runs) is H2 behind the V-D2 "graduation" gate (planner/coder small-model split has the thinnest literature — treat as hypothesis).
-- **Bespoke run_id + offset-delta polling** — measured: Claude Code's MCP client is blocking-only and ignores progress notifications (#31893); MCP Tasks primitive moves to an extension in the 2026-07-28 RC; MCP sampling deprecated. Adopt Tasks *state names* only.
-- **Event-sourced JSONL ledger, no KurrentDB** — the pattern without the daemon; upgrade trigger named (multi-worker/multi-machine or subscription fan-out). Queue at application level; Ollama's queue is the collision absorber.
-- **No orchestration framework for the spine** (S19); **own thin loop, adapters as experiment arms** (S18 — Aider embeds via subprocess only; mini-swe-agent is the vendorable reference).
-- **Judge gates every DPO chosen label** (S17) — the cheap per-iteration test signal is the most gameable; `auto_verdict` ≠ `curated_verdict`.
-- **Vision-folder KNOWLEDGE.md deferred** — `decisions.md`+`evidence.md` play the role; trigger: first phase built. QUICK.md created.
-- **AutoCodeRover excluded** — Sonar source-available license forbids AI ingestion/interaction.
+- **V-D1 = oficina** (runner-up aprendiz). Deciding correction (user): identity = the delegation harness; the flywheel is a *property*, not the objective — fine-tuning is the least certain part of the design. No `my-aprendiz-*` personas (would duplicate or flatten the per-language persona matrix); `journeyman` reserved for H2. Metaphor boundary rule: prose only — never code/schema/event/CLI-verb names. Folder + `delegate-*` ref keys keep the working label.
+- **P1-D1–D11 frozen** — highlights: single-writer ledger with queue-push happens-before handoff (cancel = flag file; command→event gap visible by design); machine-global storage `~/.local/share/oficina/` (calls.jsonl precedent); event `offset` = line index; lazy-daemon worker (exit-when-empty, O_EXCL pidfile storing PID+start-timestamp against PID reuse); CLI `oficina submit|status|result|cancel|watch|runs|prune`; retention = config section + `RetentionPruned` event + `prune --dry-run`.
+- **IntakeAccepted stays silent** (acceptance visible as `GenerationStarted`); revisit trigger: a fold consumer needing to distinguish "accepted, waiting for GPU" from "queued".
+- Event vocabulary: freeze-at-P1 subset binding; P2–P6 names modeled as draft in the event-model artifact (churn happens there, not on the wire); folds must tolerate unknown event names.
 
 ### Next
 
-- **Merge PR #72** (docs-only: vision folder + research + index split).
-- **Settle the name (V-D1)** — `naming.md` shortlist oficina/aprendiz/apprentice/delegate — BEFORE P1 ships CLI entry points.
-- **T-84 — author the coding-delegate P1 plan** (async substrate; freezes V-D4/V-D9/V-D10/V-D11 + ledger event names; first client candidate T-81).
-- Side options: T-83 (freeze B-D1–B-D8), T-56, classifier benchmark (M-P1b/P2 — now has a product consumer), persona hygiene (T-27/T-49). LTG Phase 6 in the sibling repo.
+- **Merge PR #73** (docs-only: plan + event model + naming aftermath).
+- **BUILD oficina P1 (T-84 second half):** T1–T10 from the frozen plan, fresh session reading the plan cold (doubles as the plan-completeness test). Suggested split: T1–T5 (ledger/ids+store/intake/fifo/workerproc), then T6–T10 (worker/MCP wiring/CLI/retention/live acceptance).
 
 ### Gotchas
 
-- **Claude Code's MCP client has no async primitives at all** — every tool call blocks, progress notifications ignored (issue #31893 closed not-planned). Poll responses must carry the narrative; nothing can push.
-- **web-research defects found under load:** `search_topic` fails to hard zero on narrow queries; its auditor verdict is internally inconsistent (reports "0 results" alongside 3–5 good pages — non-discriminating signal, same class as T-54/T-80a/T-82); `query_knowledge` is substring-based and misses verbatim-matching cached content; `research_url` has no bot-wall detection and no arXiv version resolution. Field report in their repo.
-- **Small-model repair decays fast** — 76–95% of gains in rounds 1–2, exponential decay after (Phi-4 14B); HumanEval-scale numbers do NOT transfer to repo-scale (~21% at 8B on SWE-bench); 14B is the floor for a coder-in-loop.
-- **rtk compacts commit/push output to one line** (`ok N files changed…`) — fine, but read counts carefully; the vision commit's "3 deletions" was correct only because the whole section was new since HEAD.
+- Mermaid's `eventmodeling` diagram needs v11.15+; VS Code's bundled renderer is 11.12 — the markdown source is the artifact, render SVG via `npx -y @mermaid-js/mermaid-cli` when it stabilizes. Relations are INFERRED from timeframe sequence (explicit `->>` only for multi-source); swimlanes come from `Namespace.Entity` — the subagent's sketch had explicit arrow lines, the official syntax page corrected it.
+- `gh pr merge` is blocked by the permission classifier even when the user approved via an earlier option choice — the user merges themselves (`! gh pr merge …`) or re-approves with an explicit fresh instruction.
+- Axon 5 (5.1.0+) split OSS Axon Framework from commercial Axoniq Framework — the "event architecture for AI" push lives on the commercial/Axon Server side; the embedded OSS path excludes exactly that layer.
