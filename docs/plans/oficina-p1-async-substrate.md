@@ -1,6 +1,6 @@
 # oficina P1 — Async substrate (plan)
 
-**Status: DRAFT** (authored 2026-07-11; freeze after review). Task: **T-84**.
+**Status: FROZEN 2026-07-11** (P1-D1–D11 all reviewed; open items resolved below). Task: **T-84**.
 Vision: `docs/vision/coding-delegate/` (folder index there; system name **oficina**, V-D1).
 Event vocabulary: `ref:delegate-event-model`. Phase contract: `ref:delegate-phasing` § P1.
 
@@ -204,12 +204,14 @@ not `ledger.append("GenerationStarted", ...)` at call sites.
    (plus `run_id` field) — the existing DPO pipeline sees no regression.
 <!-- /ref:delegate-p1-acceptance -->
 
-## Open items at freeze time
+## Open items — RESOLVED at freeze (2026-07-11)
 
-- **`IntakeAccepted`: emit or stay silent?** Event model currently says silent (acceptance
-  visible as `GenerationStarted`); an explicit event costs one line per run and simplifies
-  the fold. Decide at review, update `ref:delegate-event-model` to match.
-- **`calls.jsonl` `run_id` field:** confirm additive-only change to the existing log schema
-  (readers are `ollama-stats.py` / `ollama-verdicts.py` — verify they tolerate new fields).
-- **Worker idle behavior** (P1-D9 lean: exit-when-empty): alternative is linger with
-  `keep_alive`-style timeout. Lean stands unless spawn latency proves annoying.
+- **`IntakeAccepted`: SILENT** (user decision, "for now") — acceptance stays visible as
+  `GenerationStarted`; `ref:delegate-event-model` already matches. Revisit trigger: a fold
+  consumer that genuinely needs to distinguish "accepted, waiting for GPU" from "queued"
+  (P2's loop or a UI would be the first candidates).
+- **`calls.jsonl` `run_id` field: CONFIRMED additive-safe** — both readers
+  (`ollama-stats.py`, `ollama-verdicts.py`) access fields only via `dict.get()` on parsed
+  lines; unknown fields are ignored by construction.
+- **Worker idle behavior: exit-when-empty stands** (P1-D9 agreed). Revisit trigger: spawn
+  latency felt in practice.

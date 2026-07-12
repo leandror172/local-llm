@@ -16,7 +16,7 @@ indexed HERE, not there.*
 | *What do we know? Evidence per stance?* | `evidence.md` | `delegate-evidence-*` (6 keys) |
 | *What gets built, in what order?* | `phasing.md` | `delegate-phasing` (P1–P6) |
 | *What events exist? What's frozen vs draft?* | `event-model.md` | `delegate-event-model` (vocabulary + freeze ladder; Mermaid `eventmodeling` slices; medium-decision record) |
-| *How is P1 built?* | `../../plans/oficina-p1-async-substrate.md` (DRAFT) | `delegate-p1-goal`, `delegate-p1-decisions` (P1-D1–D11), `delegate-p1-acceptance` |
+| *How is P1 built?* | `../../plans/oficina-p1-async-substrate.md` (FROZEN 2026-07-11) | `delegate-p1-goal`, `delegate-p1-decisions` (P1-D1–D11), `delegate-p1-acceptance` |
 | *What does it touch in the estate?* | `integration.md` | `delegate-conventions-mapping`, `delegate-estate-map`, `delegate-cross-repo` |
 | *Human intro + provenance* | `README.md` | — |
 | *Current project state (~30 lines)* | `.memories/QUICK.md` | — |
