@@ -61,7 +61,7 @@ to this plan (P1-D5…P1-D11, flagged **NEW** — not yet user-discussed unless 
   `WorkerStarted, WorkerStopped, RetentionPruned`. Folds MUST tolerate unknown event names
   (forward compatibility for draft-PN events). **NEW sub-decision:** `offset` = 0-based
   event index (line number), not byte offset — `since_offset` slices a list, and partial
-  lines from a crashed writer are detectable by JSON parse failure on the last line.
+  lines from a crashed writer are detectable by JSON parse failure on the last line. *(Agreed 2026-07-11.)*
 - **P1-D6 — Single-writer ledger discipline.** **NEW.** Exactly one writer per ledger file
   at a time: the MCP surface writes only `RunSubmitted` (at run-dir creation, before the run
   is queued — the worker cannot own a file that doesn't exist yet); from queue-pop onward,
@@ -83,6 +83,7 @@ to this plan (P1-D5…P1-D11, flagged **NEW** — not yet user-discussed unless 
   (`setsid`, stdio → `worker.log`) if dead; pidfile created with `O_CREAT|O_EXCL` to close
   the double-spawn race (claude-code lockfile pattern, `ref:delegate-evidence-clones`).
   Worker exits when queue is empty (lazy daemon — nothing to babysit); next submit respawns.
+  *(Agreed 2026-07-11; pidfile stores PID + start-timestamp per the concurrency review.)*
 - **P1-D10 — Watch path: CLI-first.** **NEW.** `oficina watch <run_id>` blocks (poll/tail)
   until state change or terminal event, printing new events; `watch-run.sh` is the 3-line
   bash wrapper per `patterns-script-conventions` (whitelisting seam). `submit_run`'s
@@ -91,7 +92,7 @@ to this plan (P1-D5…P1-D11, flagged **NEW** — not yet user-discussed unless 
 - **P1-D11 — CLI surface (v1): `oficina submit|status|result|cancel|watch|runs|prune`.**
   **NEW.** Single entry point + plain literal verbs (naming boundary rule); `submit` exists
   on the CLI too (shell parity — any script can submit without MCP). MCP tools and CLI verbs
-  share one implementation layer.
+  share one implementation layer. *(Agreed 2026-07-11.)*
 <!-- /ref:delegate-p1-decisions -->
 
 ## Run spec (P1 subset of `ref:delegate-run-spec`)
@@ -129,6 +130,29 @@ the rule in `IntakeRejected.payload` (where/whose/what: stage=intake, fault=payl
 - `cancel_run(run_id) → {state}` — writes the flag file (P1-D6); returns current state
   immediately (the `Cancelled` event lands when the worker next checks).
 
+## Concurrency model (P1-D6 × P1-D7 — reviewed with user 2026-07-11)
+
+Claude Code spawns one MCP server process per session; the CLI is another process; all of
+them plus the worker share the machine-global store (P1-D7). The invariant is **per-file
+ownership with an ordered handoff**, never a lock:
+
+| File | Writers | Why it's safe |
+|---|---|---|
+| `runs/<id>/events.jsonl` | MCP surface (only `RunSubmitted`, pre-queue) → worker (everything after) | The surface appends `RunSubmitted` **then** pushes the queue marker; the worker can only discover a run through the queue → happens-before handoff, never two appenders |
+| `runs/<id>/spec.json` | MCP surface, write-once | Immutable after creation |
+| `runs/<id>/cancel` | Any MCP surface / CLI | Idempotent flag; never touches the ledger |
+| `queue/` | Many pushers, one popper | Distinct names (`<epoch-ms>-<run_id>`, unique by construction), atomic renames |
+| `worker.pid` | Arbitrated | `O_CREAT\|O_EXCL`; loser liveness-checks; stores PID **+ start-timestamp** (PID-reuse guard); stale file removed + retry |
+| `worker-events.jsonl` | Worker only | Single process by pidfile arbitration |
+
+Consequences: concurrent submits (same or different sessions) never conflict — each run has
+its own dir, and runs serialize only at the worker's FIFO (the GPU is the scarce resource,
+not the API). Reads are lock-free against append-only files (torn-last-line rule, P1-D5).
+**Cross-session access to a run is by design** ("consult later, from a different session"):
+status/result are reads; cancel is the flag file. Possession of the unguessable run ID is
+the authorization (bearer-handle framing, `ref:delegate-evidence-mcp`) — acceptable for
+single-user infra; revisit only if the store ever becomes multi-user.
+
 ## Module tree & task breakdown (TDD; local-first per `ref:local-model-conventions`)
 
 ```
@@ -151,7 +175,7 @@ mcp-server/src/ollama_mcp/oficina/
 | T2 | `ids.py` + `store.py` | run-dir creation; spec round-trip; unknown-id errors |
 | T3 | `intake.py` | every rejection rule, both profiles; unknown-key fail-loud; accepted specs pass through unchanged |
 | T4 | `fifo.py` | FIFO order; atomicity under concurrent push; pop on empty |
-| T5 | `workerproc.py` | pidfile exclusivity; stale-pid recovery; detached spawn survives parent exit (integration) |
+| T5 | `workerproc.py` | pidfile exclusivity; stale-pid recovery incl. PID-reuse (start-timestamp mismatch); detached spawn survives parent exit (integration) |
 | T6 | `worker.py` | pop→generate→deliver happy path (Ollama client mocked); Failed with where/whose/what on stage error; cancel-flag honored between stages; cold-start grace |
 | T7 | MCP tools in `server.py` | submit/status/result/cancel wiring; result error discrimination |
 | T8 | `cli.py` | verb parity with MCP tools; `runs`/`prune --dry-run` output |
