@@ -98,10 +98,48 @@ trigger).
   lifetime. Decide at P1 plan (cheap), revisit at P6 (DPO harvest wants history).
 - **V-D10 — `ask_ollama` async profile details.** Same substrate, no loop — decide the spec
   subset at P1 plan.
-- **V-D11 — Orchestration library final check.** Re-verify LangGraph/alternatives at P1 plan
-  time against the actual state-machine size. Lean: plain Python (S19).
+- **V-D11 — Orchestration library final check. RE-CHECKED 2026-07-11 (two Sonnet research
+  passes): plain Python CONFIRMED.** Full record below (§ V-D11 re-check record — paste into
+  the P1 plan's register). Survey 1 (general): LangGraph, FSM libs, Temporal/DBOS/Hatchet/
+  Inngest/Restate, Celery/Huey/RQ/arq, `eventsourcing` — all rejected; **DBOS-with-SQLite**
+  noted as the one genuinely zero-infra contender, rejected because it would *replace* the
+  FIFO+ledger design with a library-owned replay model (reconsider only for a from-scratch
+  project). Survey 2 (Axon 5, user request): trimmable but not right-sized — see addendum.
+  Formal freeze still lands in the P1 plan.
 - **V-D12 — Hook-based monitor injection.** Optional polish after watch-run.sh proves the
   flow; adjacent to T-14. Decide when P1 ergonomics are felt in practice.
 - **V-D13 — Interactive-priority yield.** Cooperative pause between iterations for
   interactive GPU use. Trigger: felt contention in real usage; T-21 is the horizon solution.
 <!-- /ref:delegate-open-decisions -->
+
+## V-D11 re-check record (2026-07-11 — paste-ready for the P1 plan's decision register)
+
+> V-D11 — re-checked 2026-07-11: Plain Python remains the right call. Surveyed LangGraph,
+> lightweight FSM libraries, durable-execution frameworks (Temporal, DBOS, Hatchet, Inngest,
+> Restate), and task queues (Celery/Huey/RQ/arq/APScheduler) against the actual shape of
+> oficina (one detached worker, one disk FIFO, a ~7-state machine, an append-only JSONL
+> ledger already doing event-sourced state-by-fold). Nothing clears the bar of "buys more
+> than it costs" for a single-user, single-machine, single-worker tool. The closest
+> contender, DBOS-with-SQLite, is genuinely zero-infra and worth knowing about, but its
+> decorator/replay execution model would replace the already-designed FIFO-consumer-plus-
+> ledger architecture rather than sit underneath it, trading an auditable ~200-line worker
+> for a library-managed schema and workflow-determinism constraints — a worse trade at this
+> scale. The closest generic match (the `eventsourcing` library) brings DDD-aggregate
+> machinery this problem doesn't have. Verdict unchanged: no orchestration framework;
+> libraries only at the edges (pydantic, maybe watchdog/inotify). No new evidence to
+> reverse S19.
+
+> **V-D11 addendum — Axon re-check 2026-07-11 (user request; he used Axon 4 heavily,
+> dismissed it months ago as too heavy):** Axon Framework 5 (GA ~early 2026, currently
+> 5.2.0) did get genuinely lighter — Dynamic Consistency Boundary replaces rigid aggregates,
+> `EmbeddedEventStore` + in-memory/JPA storage engines are first-class, plain-Java non-Spring
+> config is supported, and Axon Server is truly optional (exclude the connector). But as of
+> 5.1.0 AxonIQ split OSS **Axon Framework** (messaging/event-sourcing core, Apache-2.0) from
+> commercial **Axoniq Framework** — and the "event architecture for AI" push (structured
+> memory, MCP integration, "glass-box AI") is built on Axon Server + the commercial layer,
+> exactly the part the trimmed path excludes. Trimmable ≠ right-sized: even embedded, it is
+> a CQRS/distributed-consistency framework whose selling points (command bus, DCB, projection
+> fan-out) address problems oficina doesn't have, at the cost of a JVM/build toolchain inside
+> an all-Python/uv estate. Verdict: still rejected for oficina; the re-check is on file
+> because the OSS/commercial split and the improved embeddability are new facts since the
+> original dismissal — they just don't change the answer.

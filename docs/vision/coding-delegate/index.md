@@ -15,6 +15,7 @@ indexed HERE, not there.*
 | *What's settled (and why), what's open?* | `decisions.md` | `delegate-stances` (S1–S21), `delegate-open-decisions` (V-D1–V-D13) |
 | *What do we know? Evidence per stance?* | `evidence.md` | `delegate-evidence-*` (6 keys) |
 | *What gets built, in what order?* | `phasing.md` | `delegate-phasing` (P1–P6) |
+| *What events exist? What's frozen vs draft?* | `event-model.md` | `delegate-event-model` (vocabulary + freeze ladder; Mermaid `eventmodeling` slices; medium-decision record) |
 | *What does it touch in the estate?* | `integration.md` | `delegate-conventions-mapping`, `delegate-estate-map`, `delegate-cross-repo` |
 | *Human intro + provenance* | `README.md` | — |
 | *Current project state (~30 lines)* | `.memories/QUICK.md` | — |
@@ -22,7 +23,7 @@ indexed HERE, not there.*
 Cold-start order: `vision.md` → `phasing.md` → `architecture.md`; pull `evidence.md` sections
 on demand via `.claude/tools/ref-lookup.sh KEY`.
 
-## Ref key inventory (27 — all resolve via `ref-lookup.sh`)
+## Ref key inventory (28 — all resolve via `ref-lookup.sh`)
 
 | Key | One-liner |
 |---|---|
@@ -50,6 +51,7 @@ on demand via `.claude/tools/ref-lookup.sh KEY`.
 | `delegate-evidence-dpo` | Target-DPO, token-level diff masking, reward hacking, judge-gate rule, Layer-7 math |
 | `delegate-evidence-clones` | claude-code patterns (Task.ts store, lockfile, offset polling) + OMA LoopDetector; provenance rules |
 | `delegate-phasing` | P1 substrate → P2 loop → P3 assembly → P4 judge/report → P5 questions → P6 flywheel + H2 pilot |
+| `delegate-event-model` | Event vocabulary + freeze ladder (envelope + P1 freeze candidates vs draft-PN); run-ledger vs worker-ledger split |
 | `delegate-conventions-mapping` | `local-model-conventions` rule → component table (the design's core justification) |
 | `delegate-estate-map` | Consumed assets; tasks fed (T-81/T-77/T-76/T-55/T-21/T-14/M-P1b); plan-v2 refs; inherited constraints |
 | `delegate-cross-repo` | web-research field report; LTG dependency direction; clones verdicts |
