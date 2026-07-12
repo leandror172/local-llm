@@ -97,7 +97,7 @@ mirroring LTG's L-08): every section is `ref:`-keyed and ends with "Source / mor
 Per-round narrative was evicted to `.claude/archive/session-tracking-handoff-history.md`.
 Write protocol: update sections in place; never append a dated block.
 | LTG instance | `ltg/.memories/QUICK.md` | `ltg/.memories/KNOWLEDGE.md` (corpus-specific: calibration values, scope rules, retrieval gaps; engine memories live in the `latent-topic-graph` repo) |
-| Coding-delegate vision | `docs/vision/coding-delegate/.memories/QUICK.md` | *deferred* — `decisions.md` + `evidence.md` there play the role (ref-keyed decisions + rationale); create on first implementation phase |
+| Coding-delegate (oficina) | `docs/vision/coding-delegate/.memories/QUICK.md` | `docs/vision/coding-delegate/.memories/KNOWLEDGE.md` (implementation invariants from the P1 build: ledger repair-on-append, single-writer topology, PID-reuse guard, intake rule model, FIFO details; created 2026-07-12) — `decisions.md` + `evidence.md` keep vision-level decisions |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
 <!-- /ref:memory-files -->
@@ -176,6 +176,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `mcp-server/run-server.sh` | Launch Ollama MCP server (stdio transport) | Claude Code MCP config, testing |
+| `mcp-server/watch-run.sh` | Tail an oficina run to terminal state (`watch-run.sh <run_id>`) — 3-line wrapper over `oficina watch` (P1-D10 whitelisting seam) | Backgrounding a watch on a submitted oficina run |
 
 ### Setup & Infrastructure Scripts
 | Script | Purpose | When to Use |

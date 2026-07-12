@@ -23,7 +23,8 @@ Both share `qwen2.5-coder:14b` base — no warm_model call needed when switching
 
 ask_ollama, generate_code, summarize, classify_text, translate,
 list_models, warm_model, query_personas, detect_persona, build_persona,
-ref_lookup, patch_file
+ref_lookup, patch_file, submit_run, run_status, run_result, cancel_run
+(last 4 = oficina async runs; CLI parity via `oficina` entry point + `watch-run.sh`)
 
 ## Key Patterns
 
@@ -35,6 +36,18 @@ ref_lookup, patch_file
 - **Call logging** — every call → JSONL (prompt, response, model, latency, tokens)
 - **Cold-start management** — warm_model pre-loads into VRAM, in-flight tracking prevents mid-request eviction
 - **Debug logging** — opt-in structured JSONL at `/tmp/ollama-bridge.jsonl`, gated by `OLLAMA_BRIDGE_LOG_LEVEL` env var (DEBUG/INFO/WARNING/ERROR); per-process `client_id` so multiple bridges can share one log file; `scripts/which-bridge.sh` lists live bridges with banner info
+
+## oficina/ submodule (P1 async substrate)
+
+`src/ollama_mcp/oficina/` — detached local-model run substrate (vision:
+`docs/vision/coding-delegate/`). Primitives done (T1–T5): `ledger` (event-sourced JSONL,
+offset=line-index, repair-on-append), `ids`+`store` (run-dir layout under an injected
+root; default `~/.local/share/oficina/` wired later), `intake` (pydantic schema + named
+rejection rules), `fifo` (disk queue `queue/<epoch-ms>-<run_id>`), `workerproc` (pidfile
+arbitration + detached spawn), `worker` (lazy-daemon loop), `service` (ONE impl layer
+under both the 4 MCP tools and the CLI), `retention`, `cli`, `config` (`OFICINA_ROOT`
+override; default `~/.local/share/oficina/`). Tests: `tests/oficina/`. **P1 complete —
+live acceptance 6/6 (2026-07-12).** pydantic is now an explicit dep.
 
 ## Deeper Memory -> KNOWLEDGE.md
 

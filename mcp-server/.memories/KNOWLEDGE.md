@@ -134,6 +134,29 @@ Full research: `docs/findings/ollama-kv-prefix-cache-findings.md`
 (`ref:ollama-kv-prefix-cache`, `ref:ollama-explicit-cache-api`)
 <!-- /ref:mcp-keep-alive -->
 
+## oficina Atomic-Write Conventions (2026-07-12, P1 T1–T5)
+
+Two write disciplines coexist in `src/ollama_mcp/oficina/`, chosen per file role:
+- **Append-only ledger (`events.jsonl`):** raw `"a"`-mode single-line writes — NOT
+  tmp+replace. Torn-tail tolerance depends on partial lines being detectable in place;
+  `_append` repairs the tail (byte truncate to last valid line) before every write.
+- **Write-once files (`spec.json`) and queue markers:** tmp + `os.replace`/`os.rename`
+  (the established `_write_output_file` pattern).
+
+**Rationale:** a replace-based ledger write would lose the whole file on a crash between
+tmp-write and replace of a large append; raw append bounds the damage to one torn line,
+which the read/repair path already handles.
+**Implication:** pydantic became an explicit `pyproject.toml` dep when T8 added the
+`oficina` console entry point (2026-07-12).
+
+## oficina run_id in calls.jsonl (2026-07-12, T6)
+
+`OllamaClient.chat(run_id=...)` threads an additive, `dict.get()`-safe `run_id` field
+into `_log_call` — present only for oficina runs, so the existing DPO readers
+(`ollama-stats.py`, `ollama-verdicts.py`) ignore it. This is the ONE deliberate
+`client.py` seam the substrate required (acceptance #6, verdict-protocol continuity);
+revert = remove the param from both signatures + the 3-line conditional.
+
 ## Debug Logging — Structured JSONL (2026-05, session 65)
 
 The server can emit a structured JSONL log to disk for hang diagnosis and

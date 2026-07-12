@@ -135,6 +135,7 @@ class OllamaClient:
         format: dict | None = None,  # JSON schema for structured output
         keep_alive: str = "15m",
         timeout: int = DEFAULT_TIMEOUT,
+        run_id: str | None = None,  # oficina: tags the call-log record (acceptance #6)
     ) -> ChatResponse:
         """Send a chat completion request to Ollama.
 
@@ -254,7 +255,7 @@ class OllamaClient:
         )
 
         # Log the call for distillation / training data collection.
-        self._log_call(prompt, system, model, temperature, think, format is not None, result)
+        self._log_call(prompt, system, model, temperature, think, format is not None, result, run_id)
 
         return result
 
@@ -267,6 +268,7 @@ class OllamaClient:
         think: bool,
         had_format: bool,
         response: "ChatResponse",
+        run_id: str | None = None,
     ) -> None:
         """Append a JSONL record for this call to CALL_LOG_PATH.
 
@@ -319,6 +321,10 @@ class OllamaClient:
                 "think": think,
                 "had_format": had_format,
             }
+            # oficina: additive, dict.get()-safe field (plan open-items note);
+            # only present for runs, so the existing DPO readers ignore it.
+            if run_id is not None:
+                entry["run_id"] = run_id
 
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")

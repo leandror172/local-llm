@@ -28,6 +28,9 @@ from ollama_mcp.client import OllamaClient, OllamaConnectionError, OllamaModelNo
 from ollama_mcp.config import DEFAULT_MODEL, MODELS, REGISTRY_PATH, REPO_ROOT, TEMPS
 from ollama_mcp import debug_log
 from ollama_mcp import registry
+from ollama_mcp.oficina import config as oficina_config
+from ollama_mcp.oficina import service as oficina_service
+from ollama_mcp.oficina.store import UnknownRunError
 
 # ---------------------------------------------------------------------------
 # context_files support
@@ -1503,3 +1506,88 @@ async def patch_file(
     except OSError as e:
         _done(False, reason="oserror", error=str(e))
         return f"Error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# oficina — async local-model deliverable runs (P1)
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def submit_run(spec: dict) -> str:
+    """Submit an async local-model deliverable run.
+
+    Returns immediately (never blocks on the GPU) — a detached worker runs the
+    generation. Poll with run_status, fetch the outcome with run_result.
+
+    Args:
+        spec: The run spec — deliverable {kind: file|answer, target?}, objective,
+              optional context {files, refs}, model, timeout_s, workspace.
+
+    Returns:
+        JSON {run_id, watch_cmd, queue_position}, or an "Error: ..." string.
+    """
+    try:
+        result = oficina_service.submit(oficina_config.default_root(), spec)
+        return json.dumps(result)
+    except oficina_service.SpecShapeError as e:
+        return f"Error: invalid spec — {e}"
+
+
+@mcp.tool()
+async def run_status(run_id: str, since_offset: int = 0) -> str:
+    """Poll a run's state/phase and the events at or after since_offset (0-based).
+
+    Args:
+        run_id: The run to inspect.
+        since_offset: Return only events with offset >= this (for incremental polling).
+
+    Returns:
+        JSON {state, phase, events, next_offset}, or an "Error: ..." string.
+    """
+    try:
+        result = oficina_service.status(oficina_config.default_root(), run_id, since_offset)
+        return json.dumps(result)
+    except UnknownRunError:
+        return f"Error: unknown run_id {run_id!r}"
+
+
+@mcp.tool()
+async def run_result(run_id: str) -> str:
+    """Fetch a terminal run's report + deliverable location.
+
+    Distinguishes unknown run_id, not-terminal-yet, and artifacts-pruned (the
+    report is still returned when the workspace has been pruned).
+
+    Args:
+        run_id: The run whose result to fetch.
+
+    Returns:
+        JSON {state, report, deliverable, artifacts_pruned}, or an "Error: ..." string.
+    """
+    try:
+        result = oficina_service.result(oficina_config.default_root(), run_id)
+        return json.dumps(result)
+    except UnknownRunError:
+        return f"Error: unknown run_id {run_id!r}"
+    except oficina_service.RunNotTerminalError as e:
+        return f"Error: run not terminal yet — {e}"
+
+
+@mcp.tool()
+async def cancel_run(run_id: str) -> str:
+    """Request cooperative cancellation of a run.
+
+    Writes the cancel flag and returns the current state immediately — the
+    Cancelled event lands when the worker next checks between stages.
+
+    Args:
+        run_id: The run to cancel.
+
+    Returns:
+        JSON {state}, or an "Error: ..." string.
+    """
+    try:
+        result = oficina_service.cancel(oficina_config.default_root(), run_id)
+        return json.dumps(result)
+    except UnknownRunError:
+        return f"Error: unknown run_id {run_id!r}"
