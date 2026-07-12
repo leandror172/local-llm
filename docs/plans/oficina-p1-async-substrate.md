@@ -130,6 +130,7 @@ the rule in `IntakeRejected.payload` (where/whose/what: stage=intake, fault=payl
 - `cancel_run(run_id) → {state}` — writes the flag file (P1-D6); returns current state
   immediately (the `Cancelled` event lands when the worker next checks).
 
+<!-- ref:delegate-p1-concurrency -->
 ## Concurrency model (P1-D6 × P1-D7 — reviewed with user 2026-07-11)
 
 Claude Code spawns one MCP server process per session; the CLI is another process; all of
@@ -152,6 +153,7 @@ not the API). Reads are lock-free against append-only files (torn-last-line rule
 status/result are reads; cancel is the flag file. Possession of the unguessable run ID is
 the authorization (bearer-handle framing, `ref:delegate-evidence-mcp`) — acceptable for
 single-user infra; revisit only if the store ever becomes multi-user.
+<!-- /ref:delegate-p1-concurrency -->
 
 ## Module tree & task breakdown (TDD; local-first per `ref:local-model-conventions`)
 
