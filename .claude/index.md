@@ -333,7 +333,8 @@ the Layer-4 evaluator → Claude reviews each deliverable.
 recontextualization intent, all 27 `ref:delegate-*` keys, supporting research artifacts
 (2 prior-art surveys, clones survey, cross-repo web-research field report), memory files.
 Start here: `docs/vision/coding-delegate/README.md` · working memory:
-`docs/vision/coding-delegate/.memories/QUICK.md` · phase plans: none yet (P1 = async substrate, next).
+`docs/vision/coding-delegate/.memories/QUICK.md` · phase plans: **P1 (async substrate) DRAFT
+at `docs/plans/oficina-p1-async-substrate.md`** (P1-D1–P1-D11; freeze on review).
 
 ## Web Research Tool (Session 44+)
 
