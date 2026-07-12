@@ -36,6 +36,16 @@ ref_lookup, patch_file
 - **Cold-start management** — warm_model pre-loads into VRAM, in-flight tracking prevents mid-request eviction
 - **Debug logging** — opt-in structured JSONL at `/tmp/ollama-bridge.jsonl`, gated by `OLLAMA_BRIDGE_LOG_LEVEL` env var (DEBUG/INFO/WARNING/ERROR); per-process `client_id` so multiple bridges can share one log file; `scripts/which-bridge.sh` lists live bridges with banner info
 
+## oficina/ submodule (P1 async substrate)
+
+`src/ollama_mcp/oficina/` — detached local-model run substrate (vision:
+`docs/vision/coding-delegate/`). Primitives done (T1–T5): `ledger` (event-sourced JSONL,
+offset=line-index, repair-on-append), `ids`+`store` (run-dir layout under an injected
+root; default `~/.local/share/oficina/` wired later), `intake` (pydantic schema + named
+rejection rules), `fifo` (disk queue `queue/<epoch-ms>-<run_id>`), `workerproc` (pidfile
+arbitration + detached spawn). Tests: `tests/oficina/`. Remaining: T6 worker.py, T7 MCP
+tools, T8 cli.py + entry point, T9 retention.py, T10 live acceptance.
+
 ## Deeper Memory -> KNOWLEDGE.md
 
 - **Transport Choice** — stdio over HTTP, rationale

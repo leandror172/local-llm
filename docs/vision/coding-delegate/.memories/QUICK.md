@@ -14,8 +14,13 @@ label). Keep under 30 lines.*
   (`ref:delegate-event-model`, Mermaid `eventmodeling`; envelope + freeze ladder;
   IntakeAccepted stays silent). V-D11 re-checked twice (general + Axon 5) — plain Python
   confirmed; record in `decisions.md`. Branch `feature/oficina-p1-plan`.
-- **Next: BUILD T1–T10** (~2 sessions, TDD, module tree in the plan). First client
-  candidate: **T-81**.
+- 2026-07-12: **P1 BUILD T1–T5 DONE** — substrate primitives in
+  `mcp-server/src/ollama_mcp/oficina/` (`ledger`, `ids`, `store`, `intake`, `fifo`,
+  `workerproc`); 68 tests, full mcp-server suite 99 green. Ledger gained
+  **repair-on-append** (review finding: append-onto-torn-tail was a latent corrupter).
+  Opus subagent + local-model delegation (10 calls, all 1/2, ~18K tokens saved).
+- **Next: T6–T10** (worker loop, MCP tools, cli, retention, live acceptance). Branch
+  `feature/oficina-p1-build`. First client candidate: **T-81**.
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary
@@ -37,5 +42,5 @@ runs) only if H1 run logs validate the planner hypothesis (V-D2 — "graduation"
 
 ## Deeper memory
 
-`decisions.md` (S1–S21, V-D1–V-D13) + `evidence.md` serve as this folder's KNOWLEDGE.md.
-Create a real one when implementation knowledge accretes (trigger: first phase built).
+`KNOWLEDGE.md` (implementation invariants — created 2026-07-12 at first build) +
+`decisions.md` (S1–S21, V-D1–V-D13) + `evidence.md`.

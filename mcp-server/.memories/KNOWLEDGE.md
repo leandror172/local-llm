@@ -134,6 +134,21 @@ Full research: `docs/findings/ollama-kv-prefix-cache-findings.md`
 (`ref:ollama-kv-prefix-cache`, `ref:ollama-explicit-cache-api`)
 <!-- /ref:mcp-keep-alive -->
 
+## oficina Atomic-Write Conventions (2026-07-12, P1 T1–T5)
+
+Two write disciplines coexist in `src/ollama_mcp/oficina/`, chosen per file role:
+- **Append-only ledger (`events.jsonl`):** raw `"a"`-mode single-line writes — NOT
+  tmp+replace. Torn-tail tolerance depends on partial lines being detectable in place;
+  `_append` repairs the tail (byte truncate to last valid line) before every write.
+- **Write-once files (`spec.json`) and queue markers:** tmp + `os.replace`/`os.rename`
+  (the established `_write_output_file` pattern).
+
+**Rationale:** a replace-based ledger write would lose the whole file on a crash between
+tmp-write and replace of a large append; raw append bounds the damage to one torn line,
+which the read/repair path already handles.
+**Implication:** pydantic (run-spec schema) is currently a transitive dep via `mcp` —
+make it explicit in `pyproject.toml` when T8 adds the `oficina` console entry point.
+
 ## Debug Logging — Structured JSONL (2026-05, session 65)
 
 The server can emit a structured JSONL log to disk for hang diagnosis and
