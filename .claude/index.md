@@ -97,6 +97,7 @@ mirroring LTG's L-08): every section is `ref:`-keyed and ends with "Source / mor
 Per-round narrative was evicted to `.claude/archive/session-tracking-handoff-history.md`.
 Write protocol: update sections in place; never append a dated block.
 | LTG instance | `ltg/.memories/QUICK.md` | `ltg/.memories/KNOWLEDGE.md` (corpus-specific: calibration values, scope rules, retrieval gaps; engine memories live in the `latent-topic-graph` repo) |
+| Coding-delegate vision | `docs/vision/coding-delegate/.memories/QUICK.md` | *deferred* — `decisions.md` + `evidence.md` there play the role (ref-keyed decisions + rationale); create on first implementation phase |
 
 QUICK.md = always-injected working memory (~30 lines). KNOWLEDGE.md = on-demand semantic memory (decisions + rationale). Convention from `memory-architecture-design.md`.
 <!-- /ref:memory-files -->
@@ -322,6 +323,17 @@ in the sibling repo `/mnt/i/workspaces/latent-topic-graph/` and its `ref-lookup.
 llm keeps: the instance (`ltg/`), the split record (`docs/plans/ltg-repo-split*.md`,
 `ref:ltg-split-frozen-decisions`), the registry decision (`docs/ideas/ltg-model-registry-design.md`),
 and the concept + smart-rag lineage (`docs/research/`, dual-cited copies in both repos).
+
+## Coding-Delegate Vision (2026-07-11) — async local coding-subagent
+
+**Grand vision (system name: oficina — V-D1 decided 2026-07-11):** ollama-bridge
+`generate_code`/`ask_ollama` evolve into an async **deliverable-run** system — submit → `run_id` → detached worker loops coder model against
+the Layer-4 evaluator → Claude reviews each deliverable.
+**Folder-local index (authoritative map):** `docs/vision/coding-delegate/index.md` — files by
+recontextualization intent, all 27 `ref:delegate-*` keys, supporting research artifacts
+(2 prior-art surveys, clones survey, cross-repo web-research field report), memory files.
+Start here: `docs/vision/coding-delegate/README.md` · working memory:
+`docs/vision/coding-delegate/.memories/QUICK.md` · phase plans: none yet (P1 = async substrate, next).
 
 ## Web Research Tool (Session 44+)
 
