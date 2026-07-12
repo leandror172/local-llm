@@ -56,6 +56,30 @@ Translates text with auto-detected source language. Default model: `my-translato
 ### `list_models()`
 Lists all models available in Ollama with sizes. Useful for checking what's pulled before calling other tools.
 
+### oficina — async deliverable runs (`submit_run`, `run_status`, `run_result`, `cancel_run`)
+
+The async substrate around `generate_code`/`ask_ollama` semantics (P1 of the
+coding-delegate vision — `docs/vision/coding-delegate/`). A run outlives the MCP call
+*and the Claude session that created it*: a detached worker drains a disk FIFO, every
+state change is an event in the run's ledger, and any session holding the `run_id` can
+poll, cancel, or collect.
+
+- `submit_run(spec)` → `{run_id, watch_cmd, queue_position}` — returns in <1s, never
+  blocks on the GPU. Spec: `deliverable.kind: file|answer` (+ `target` for `file`),
+  `objective`, optional `context.files`/`refs`, `model`, `timeout_s`. Malformed specs
+  are rejected deterministically with a named rule (unknown keys fail loud).
+- `run_status(run_id, since_offset?)` → state/phase folds + the event narrative since
+  your last poll.
+- `run_result(run_id)` → report + deliverable; errors discriminate unknown-id /
+  not-terminal-yet / artifacts-pruned. The report survives retention pruning.
+- `cancel_run(run_id)` — cooperative flag; the worker emits `Cancelled` at its next
+  checkpoint (the command→event gap is visible in the ledger, by design).
+
+Shell parity via the `oficina` CLI (`submit|status|result|cancel|watch|runs|prune`,
+console entry point) and `./watch-run.sh <run_id>` to tail a run to terminal state.
+Storage: `~/.local/share/oficina/` (override: `OFICINA_ROOT`). Every generation still
+logs to `calls.jsonl` (plus a `run_id` field) — the verdict/DPO pipeline is unaffected.
+
 ## When to Delegate vs. Do Directly
 
 **Good for delegation** (local model handles well):
@@ -219,7 +243,7 @@ The bash wrapper uses `uv run` to manage the virtual environment and dependencie
 
 3. **Quality ceiling.** Local 7-8B models fail at complex spatial reasoning, multi-step logic chains, and tasks requiring broad world knowledge. These should stay on Claude.
 
-4. **Cold starts.** First request after Ollama has been idle may take 30-60s as the model loads into VRAM. `MCP_TIMEOUT=120000` accommodates this, but the calling Claude session will appear to hang during loading.
+4. **Cold starts.** First request after Ollama has been idle may take 30-60s as the model loads into VRAM. `MCP_TIMEOUT=120000` accommodates this, but the calling Claude session will appear to hang during loading. **For long generations, this whole class is gone: use `submit_run` instead** — the MCP call returns in <1s, the worker retries once on a cold-start timeout, and `timeout_s` in the run spec (default 1800s) replaces the 120s MCP ceiling.
 
 5. **No streaming.** Responses are returned in full (`stream: false`). Long generations may feel slow even though they're running at 51-67 tok/s.
 
@@ -230,7 +254,8 @@ The bash wrapper uses `uv run` to manage the virtual environment and dependencie
 ```
 mcp-server/
 ├── run-server.sh                    # Bash wrapper (project convention)
-├── pyproject.toml                   # uv project config
+├── watch-run.sh                     # Tail an oficina run to terminal state
+├── pyproject.toml                   # uv project config (+ `oficina` entry point)
 ├── scripts/
 │   └── which-bridge.sh              # List live bridge processes with banner info
 └── src/ollama_mcp/
@@ -238,7 +263,15 @@ mcp-server/
     ├── config.py                    # Defaults + env var overrides
     ├── client.py                    # Async Ollama HTTP client
     ├── debug_log.py                 # Optional structured JSONL logging
-    └── server.py                    # FastMCP server + all tool definitions
+    ├── server.py                    # FastMCP server + all tool definitions
+    └── oficina/                     # Async deliverable-run substrate (P1)
+        ├── service.py               # One impl layer under MCP tools + CLI
+        ├── worker.py                # Detached lazy-daemon run loop
+        ├── ledger.py                # Event-sourced JSONL run ledger
+        ├── intake.py                # Deterministic spec validation
+        ├── fifo.py / workerproc.py  # Disk queue / pidfile + detached spawn
+        ├── store.py / ids.py        # Run-dir layout / run-ID minting
+        └── retention.py / cli.py / config.py
 ```
 
 ## Troubleshooting
