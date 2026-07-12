@@ -1,40 +1,40 @@
 # Session Log
 
-**Current Layer:** Layer 5 — Expense Classifier (side-track: oficina P1 — plan frozen, build next)
-**Current Session:** 2026-07-11 — Session 113: oficina — V-D1 name decided, P1 async-substrate plan frozen (PR #73)
+**Current Layer:** Layer 5 — Expense Classifier (side-track: oficina P1 BUILT — first client T-81 next)
+**Current Session:** 2026-07-12 — Session 114: oficina P1 BUILT — T1–T10, live acceptance 6/6, PR #74
 
 ---
-## 2026-07-11 - Session 113: oficina — V-D1 name decided, P1 async-substrate plan frozen (PR #73)
+## 2026-07-12 - Session 114: oficina P1 BUILT — T1–T10, live acceptance 6/6, PR #74
 
 ### Context
 
-Continuation of session 112's Next list: merge PR #72, settle the coding-delegate name (V-D1), author the P1 plan (T-84 first half).
+Fresh session reading the frozen P1 plan cold (the plan-completeness test by design). Build delegated to one Opus subagent across two dispatches, with main-session review between and after.
 
 ### What Was Done
 
-- PR #72 merged (coding-delegate vision; the V-D1 decision commit rode in on the branch)
-- docs(vision): V-D1 decided — system name **oficina**; guild-roles composition demoted to narrative; decision record + metaphor boundary rule in `naming.md`; all seven "name pending" pointers updated
-- docs(delegate): event model artifact `docs/vision/coding-delegate/event-model.md` (`ref:delegate-event-model`) — Mermaid-native `eventmodeling` slices, envelope + freeze ladder, run-ledger vs worker-ledger split, medium-decision record
-- docs(plans): oficina P1 plan authored, concurrency-model section added after user review, then FROZEN — `docs/plans/oficina-p1-async-substrate.md` (P1-D1–D11, run-spec subset, module tree, TDD T1–T10, 6-point acceptance)
-- docs(delegate): folder QUICK synced; `ref:delegate-p1-concurrency` anchor added; 5 new ref keys verified resolving
-- PR #73 opened (`feature/oficina-p1-plan`, 5 commits, docs-only)
-- Three Sonnet research passes (not in commits): orchestration-lib survey (V-D11 — plain Python confirmed; DBOS-with-SQLite the one zero-infra contender, rejected as replace-not-underlie), event-modeling tooling (Mermaid `eventmodeling` picked; Miro rejected — board-not-a-file + corroborated billing complaints; EventCatalog/evml watch-items), Axon Framework 5 re-check (user request — trimmable but not right-sized; record in `decisions.md`)
-- `calls.jsonl` readers (`ollama-stats.py`/`ollama-verdicts.py`) verified additive-safe for the new `run_id` field (all access via `dict.get`)
+- feat(oficina): P1 async substrate T1-T5 — ledger, ids+store, intake, fifo, workerproc (T-84) — commit `26cd5a6`; 68 tests
+- feat(oficina): P1 T6-T10 — worker, MCP tools, CLI, retention; live acceptance 6/6 (T-84 DONE) — commit `2049519`; 149 tests total
+- docs(oficina): README — async-run tools, timeout demotion note, project structure
+- docs(mcp-server): README — backfill 6 undocumented tools (pre-existing drift)
+- Review fix-loop between the halves: re-derivation caught append-onto-torn-tail silently corrupting the ledger (test was green while encoding the bug) → repair-on-append moved INTO `Ledger._append` (rejected the subagent's defer-to-T6 proposal)
+- Live acceptance 6/6 incl. #2 detach/reattach replayed from the main session (`OFICINA_ROOT=... oficina status <id>`) and #6 calls.jsonl `run_id` continuity
+- Folder KNOWLEDGE.md created (`docs/vision/coding-delegate/.memories/KNOWLEDGE.md`) — implementation invariants + P2 parking; both QUICKs updated in place; mcp-server memories updated
+- PR #74 opened, stacked on `feature/oficina-p1-plan` (PR #73 still unmerged) — retarget to master after #73 merges
 
 ### Decisions Made
 
-- **V-D1 = oficina** (runner-up aprendiz). Deciding correction (user): identity = the delegation harness; the flywheel is a *property*, not the objective — fine-tuning is the least certain part of the design. No `my-aprendiz-*` personas (would duplicate or flatten the per-language persona matrix); `journeyman` reserved for H2. Metaphor boundary rule: prose only — never code/schema/event/CLI-verb names. Folder + `delegate-*` ref keys keep the working label.
-- **P1-D1–D11 frozen** — highlights: single-writer ledger with queue-push happens-before handoff (cancel = flag file; command→event gap visible by design); machine-global storage `~/.local/share/oficina/` (calls.jsonl precedent); event `offset` = line index; lazy-daemon worker (exit-when-empty, O_EXCL pidfile storing PID+start-timestamp against PID reuse); CLI `oficina submit|status|result|cancel|watch|runs|prune`; retention = config section + `RetentionPruned` event + `prune --dry-run`.
-- **IntakeAccepted stays silent** (acceptance visible as `GenerationStarted`); revisit trigger: a fold consumer needing to distinguish "accepted, waiting for GPU" from "queued".
-- Event vocabulary: freeze-at-P1 subset binding; P2–P6 names modeled as draft in the event-model artifact (churn happens there, not on the wire); folds must tolerate unknown event names.
+- Repair-on-append lives in the ledger, not in T6 worker-resume: requiring future writers to remember tail-repair is special-case knowledge far from the artifact; single-writer discipline makes truncation race-free
+- One deliberate `client.py` seam accepted (additive `dict.get()`-safe `run_id` in calls.jsonl): the only faithful way to meet acceptance #6 without re-implementing the DPO log schema; revert path documented in mcp-server KNOWLEDGE.md
+- Delivery report lives in the `Delivered` event payload (ledger, `ledger: forever`) — what keeps `run_result` answerable after retention prunes artifacts
+- No warm_model this session (GPU shared with other processes); lenient timeouts — a timeout is never a 0 verdict
 
 ### Next
 
-- **Merge PR #73** (docs-only: plan + event model + naming aftermath).
-- **BUILD oficina P1 (T-84 second half):** T1–T10 from the frozen plan, fresh session reading the plan cold (doubles as the plan-completeness test). Suggested split: T1–T5 (ledger/ids+store/intake/fifo/workerproc), then T6–T10 (worker/MCP wiring/CLI/retention/live acceptance).
+- User merges PR #73, then retarget PR #74 to master and merge
+- Restart the MCP bridge (or start a fresh session) to expose the 4 new tools (`submit_run`/`run_status`/`run_result`/`cancel_run`)
+- T-81 as oficina's first client (submit→review→apply for `install-overlay --mode ai`), or T-83 freeze (B-D1–B-D8, fresh head)
 
 ### Gotchas
 
-- Mermaid's `eventmodeling` diagram needs v11.15+; VS Code's bundled renderer is 11.12 — the markdown source is the artifact, render SVG via `npx -y @mermaid-js/mermaid-cli` when it stabilizes. Relations are INFERRED from timeframe sequence (explicit `->>` only for multi-source); swimlanes come from `Namespace.Entity` — the subagent's sketch had explicit arrow lines, the official syntax page corrected it.
-- `gh pr merge` is blocked by the permission classifier even when the user approved via an earlier option choice — the user merges themselves (`! gh pr merge …`) or re-approves with an explicit fresh instruction.
-- Axon 5 (5.1.0+) split OSS Axon Framework from commercial Axoniq Framework — the "event architecture for AI" push lives on the commercial/Axon Server side; the embedded OSS path excludes exactly that layer.
+- P1 `in_place` runs never populate `artifacts/`, so retention is an observable no-op on real runs until P2 worktrees or deliverable-copying — parked in the folder KNOWLEDGE.md with the other P2 gaps (refs unsupported in worker default generate; Failed triad keys `where/whose/what` vs intake `stage/fault/detail`; `_default_generate` reuses server.py privates)
+- The plan-completeness experiment worked: two cold reads produced 14 explicit gap reports, zero silent improvisations; the biggest defect was caught by review re-derivation, not by the builder — evidence for keeping the H1 gate
