@@ -56,6 +56,24 @@ Translates text with auto-detected source language. Default model: `my-translato
 ### `list_models()`
 Lists all models available in Ollama with sizes. Useful for checking what's pulled before calling other tools.
 
+### `warm_model(model, force?)`
+Pre-loads a model into VRAM to avoid a cold-start timeout on the next call. Refuses to evict a model with an in-flight request unless `force=True`. Skip when switching between same-base personas (they share weights).
+
+### `query_personas(language?, domain?, tier?, name?)`
+Queries the persona registry (`personas/registry.yaml`) by any filter combination. The offline complement to `list_models`: registry metadata (role, base model, status) rather than what's currently pulled.
+
+### `detect_persona(path)`
+Analyzes a codebase directory and returns ranked persona matches for working in it (language/framework detection against registry roles).
+
+### `build_persona(description, codebase_path?)`
+Proposes a new persona spec from a natural-language description (optionally informed by a codebase scan). Proposal only — creation goes through the persona-creator flow.
+
+### `ref_lookup(key, path?)`
+Looks up a named `<!-- ref:KEY -->` documentation block. Same resolution as the `refs` parameter, but returns the block to Claude instead of injecting it into an Ollama prompt.
+
+### `patch_file(path, old_string, new_string, replace_all?)`
+Exact-string file edit without reading the file into Claude's context — Edit-tool semantics (uniqueness check, atomic tmp+rename). For files the local model just generated; not a substitute for reading files you should understand.
+
 ### oficina — async deliverable runs (`submit_run`, `run_status`, `run_result`, `cancel_run`)
 
 The async substrate around `generate_code`/`ask_ollama` semantics (P1 of the
