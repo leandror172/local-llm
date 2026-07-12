@@ -176,6 +176,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `mcp-server/run-server.sh` | Launch Ollama MCP server (stdio transport) | Claude Code MCP config, testing |
+| `mcp-server/watch-run.sh` | Tail an oficina run to terminal state (`watch-run.sh <run_id>`) — 3-line wrapper over `oficina watch` (P1-D10 whitelisting seam) | Backgrounding a watch on a submitted oficina run |
 
 ### Setup & Infrastructure Scripts
 | Script | Purpose | When to Use |

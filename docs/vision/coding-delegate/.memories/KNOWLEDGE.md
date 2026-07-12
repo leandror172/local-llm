@@ -38,9 +38,34 @@ start-time match (parsed after the LAST `)` — comm may contain spaces/parens).
 start-time reader is injectable, so PID-reuse is testable by feeding a wrong start-time
 against a live PID; two smoke tests exercise the real `/proc` reader.
 
-**T6 contract:** `ensure_worker` spawns WITHOUT claiming the pidfile — the worker must
-claim as its FIRST act and exit if it loses. Until a worker claims, concurrent submits
-may briefly double-spawn; the pidfile race decides the survivor.
+**Implemented in T6:** `ensure_worker` spawns WITHOUT claiming the pidfile — the worker
+claims as its FIRST act (`Worker.run()`) and exits immediately if it loses. Until a
+worker claims, concurrent submits may briefly double-spawn; the pidfile race decides
+the survivor.
+
+## Worker invariants (T6) — 2026-07-12
+
+Generation is an **injectable seam** (`generate: GenerateFn`, mirrors T5's
+`start_time_reader`); the default runs today's `generate_code`/`ask_ollama` semantics
+per `deliverable.kind` and tags every call in `calls.jsonl` with `run_id` (the one
+deliberate `client.py` seam — additive, `dict.get()`-safe, DPO readers unaffected).
+Cold-start grace = one retry on `OllamaTimeoutError`. Cancel is cooperative between
+stages (checkpoints: intake / pre_generation / pre_packaging) — never interrupts an
+in-flight model call. `Failed` payload triad uses keys `where/whose/what`; intake uses
+`stage/fault/detail` — same triad, two spellings, unify in P2.
+
+**Report location:** the delivery report lives in the `Delivered` event payload
+(`events.jsonl`, `ledger: forever`) — NOT in `artifacts/`. This is what keeps
+`run_result` answerable after retention prunes the workspace.
+
+**`OFICINA_ROOT`** env var overrides the storage root (default
+`~/.local/share/oficina/`); tests and acceptance point it at temp dirs.
+
+**Open P2 gaps:** P1 `in_place` runs leave `artifacts/` empty (deliverables go to
+`target`), so retention is an observable no-op on real runs until worktrees (P2) or
+deliverable-copying; worker's `_default_generate` supports `context.files` but not
+`refs`; `_default_generate` reuses `server.py` private helpers (`_build_context_block`,
+`_strip_code_fences`) — promote to a shared module when P2 touches them.
 
 ## Intake rule model (P1-D3) — 2026-07-12, T3
 

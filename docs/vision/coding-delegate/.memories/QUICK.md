@@ -14,13 +14,15 @@ label). Keep under 30 lines.*
   (`ref:delegate-event-model`, Mermaid `eventmodeling`; envelope + freeze ladder;
   IntakeAccepted stays silent). V-D11 re-checked twice (general + Axon 5) — plain Python
   confirmed; record in `decisions.md`. Branch `feature/oficina-p1-plan`.
-- 2026-07-12: **P1 BUILD T1–T5 DONE** — substrate primitives in
-  `mcp-server/src/ollama_mcp/oficina/` (`ledger`, `ids`, `store`, `intake`, `fifo`,
-  `workerproc`); 68 tests, full mcp-server suite 99 green. Ledger gained
-  **repair-on-append** (review finding: append-onto-torn-tail was a latent corrupter).
-  Opus subagent + local-model delegation (10 calls, all 1/2, ~18K tokens saved).
-- **Next: T6–T10** (worker loop, MCP tools, cli, retention, live acceptance). Branch
-  `feature/oficina-p1-build`. First client candidate: **T-81**.
+- 2026-07-12: **P1 BUILD COMPLETE (T1–T10)** — full substrate in
+  `mcp-server/src/ollama_mcp/oficina/` (ledger, ids, store, intake, fifo, workerproc,
+  worker, service, retention, cli, config) + 4 MCP tools in server.py + `oficina` CLI +
+  `watch-run.sh`. 149 mcp-server tests green. **Live acceptance 6/6 PASSED** (real
+  Ollama; #2 detach/reattach verified from a foreign session). Ledger gained
+  repair-on-append in review. Opus subagent + local delegation (15 calls, all 1/2).
+- **Next: merge** (branch `feature/oficina-p1-build`, stacked on PR #73); then first
+  client **T-81**; P2 gaps parked in KNOWLEDGE.md (artifacts/ no-op, refs in worker,
+  triad key unification).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

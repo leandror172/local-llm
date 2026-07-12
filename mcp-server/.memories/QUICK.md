@@ -23,7 +23,8 @@ Both share `qwen2.5-coder:14b` base — no warm_model call needed when switching
 
 ask_ollama, generate_code, summarize, classify_text, translate,
 list_models, warm_model, query_personas, detect_persona, build_persona,
-ref_lookup, patch_file
+ref_lookup, patch_file, submit_run, run_status, run_result, cancel_run
+(last 4 = oficina async runs; CLI parity via `oficina` entry point + `watch-run.sh`)
 
 ## Key Patterns
 
@@ -43,8 +44,10 @@ ref_lookup, patch_file
 offset=line-index, repair-on-append), `ids`+`store` (run-dir layout under an injected
 root; default `~/.local/share/oficina/` wired later), `intake` (pydantic schema + named
 rejection rules), `fifo` (disk queue `queue/<epoch-ms>-<run_id>`), `workerproc` (pidfile
-arbitration + detached spawn). Tests: `tests/oficina/`. Remaining: T6 worker.py, T7 MCP
-tools, T8 cli.py + entry point, T9 retention.py, T10 live acceptance.
+arbitration + detached spawn), `worker` (lazy-daemon loop), `service` (ONE impl layer
+under both the 4 MCP tools and the CLI), `retention`, `cli`, `config` (`OFICINA_ROOT`
+override; default `~/.local/share/oficina/`). Tests: `tests/oficina/`. **P1 complete —
+live acceptance 6/6 (2026-07-12).** pydantic is now an explicit dep.
 
 ## Deeper Memory -> KNOWLEDGE.md
 

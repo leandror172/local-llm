@@ -146,8 +146,16 @@ Two write disciplines coexist in `src/ollama_mcp/oficina/`, chosen per file role
 **Rationale:** a replace-based ledger write would lose the whole file on a crash between
 tmp-write and replace of a large append; raw append bounds the damage to one torn line,
 which the read/repair path already handles.
-**Implication:** pydantic (run-spec schema) is currently a transitive dep via `mcp` —
-make it explicit in `pyproject.toml` when T8 adds the `oficina` console entry point.
+**Implication:** pydantic became an explicit `pyproject.toml` dep when T8 added the
+`oficina` console entry point (2026-07-12).
+
+## oficina run_id in calls.jsonl (2026-07-12, T6)
+
+`OllamaClient.chat(run_id=...)` threads an additive, `dict.get()`-safe `run_id` field
+into `_log_call` — present only for oficina runs, so the existing DPO readers
+(`ollama-stats.py`, `ollama-verdicts.py`) ignore it. This is the ONE deliberate
+`client.py` seam the substrate required (acceptance #6, verdict-protocol continuity);
+revert = remove the param from both signatures + the 3-line conditional.
 
 ## Debug Logging — Structured JSONL (2026-05, session 65)
 
