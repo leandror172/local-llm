@@ -528,3 +528,12 @@ my-mcp-deepcoder-vanilla:
   tier: full
   status: benchmark
   note: 'Vanilla variant: temp=0.6, top_p=0.95, no SYSTEM per model docs.'
+
+my-go-q3-14b:
+  modelfile: modelfiles/go-q3-14b-qwen3-14b.Modelfile
+  base_model: qwen3:14b
+  role: Go 1.22+ backend developer following Effective Go and standard project layout.
+  temperature: 0.3
+  num_ctx: 32768
+  tier: full
+  status: active
