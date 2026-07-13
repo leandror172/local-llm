@@ -20,8 +20,15 @@ label). Keep under 30 lines.*
   `watch-run.sh`. 149 mcp-server tests green. **Live acceptance 6/6 PASSED** (real
   Ollama; #2 detach/reattach verified from a foreign session). Ledger gained
   repair-on-append in review. Opus subagent + local delegation (15 calls, all 1/2).
-- **Next: merge** (branch `feature/oficina-p1-build`, stacked on PR #73); then first
-  client **T-81**; P2 gaps parked in KNOWLEDGE.md (artifacts/ no-op, refs in worker,
+- 2026-07-12: **P1 MERGED** (PR #73/#74 to master) + **`oficina` CLI installed**
+  (`uv tool install --editable ./mcp-server` → `~/.local/bin/oficina`; MCP tools already
+  user-level). Live-smoke OK (pong run). **T-81 first client BUILT — but WITHOUT oficina**
+  (a one-shot CLI gains nothing from async; solved via preview stage/apply + num_ctx/think
+  fixes). **Lesson: oficina's real first client must be an AGENT that parallelizes**, not a
+  batch CLI — see KNOWLEDGE.md "T-81 outcome" + "Distribution" sections.
+- **Next:** T-86 (decide oficina distribution model + new-machine provisioning runbook;
+  discuss next session), then a genuine agent-driven first client / **P2** (evaluated
+  deliverable loop). P2 gaps parked in KNOWLEDGE.md (artifacts/ no-op, refs in worker,
   triad key unification).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).

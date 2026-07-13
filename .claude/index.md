@@ -338,8 +338,10 @@ the Layer-4 evaluator → Claude reviews each deliverable.
 recontextualization intent, all 27 `ref:delegate-*` keys, supporting research artifacts
 (2 prior-art surveys, clones survey, cross-repo web-research field report), memory files.
 Start here: `docs/vision/coding-delegate/README.md` · working memory:
-`docs/vision/coding-delegate/.memories/QUICK.md` · phase plans: **P1 (async substrate) FROZEN
-at `docs/plans/oficina-p1-async-substrate.md`** (P1-D1–D11 + concurrency model; build next, T1–T10).
+`docs/vision/coding-delegate/.memories/QUICK.md` · phase plans: **P1 (async substrate) BUILT +
+MERGED** (`docs/plans/oficina-p1-async-substrate.md`; sessions 114–115; `oficina` CLI installed
+machine-wide + 4 MCP tools live). oficina is a **machine-global service, not an overlay**
+(distribution model + new-machine enablement in the folder KNOWLEDGE.md; decision T-86). Next: P2.
 
 ## Web Research Tool (Session 44+)
 
