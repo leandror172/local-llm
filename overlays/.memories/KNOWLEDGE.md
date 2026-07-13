@@ -64,8 +64,33 @@ would break across repos. AI reads the target file and decides the right locatio
 **Implication:** AI merge is optional — manual mode always works. AI mode saves time
 on initial install but manual review is still recommended.
 
+**Stage → apply split (T-81 Part 1, 2026-07-12).** `--mode ai` on an unmarked target
+is now two explicit verbs (mirrors the handoff pipeline's stage/promote):
+- `--stage` (early-branch, requires `--mode ai`): calls the model, prints a unified
+  diff, writes a durable plan-handle under `<target>/.claude/local/overlay-merge-plans/`
+  (gitignored), and does **not** touch the target.
+- `--apply-plan <handle>` (early-branch): re-reads the handle, applies deterministically,
+  backs up, writes.
+- `--dry-run` stays **pure**: records `"would AI-merge … run --stage"` — no model call,
+  no write. (Chosen over overloading `--dry-run` to be the stage: that would fire a
+  multi-minute GPU call + write a file as a side effect of an ordinary full-sequence
+  preview — a special-case bolted onto a general mechanism.)
+
+**Staleness invariant (the one new safety property).** A plan's `insert_after_line` /
+`delete_ranges` are line numbers valid ONLY against the exact pre-image they were
+computed from. The handle stores `target_pre_sha256 = sha256(LF-normalized pre-image)`
+plus the overlay-range-CORRECTED plan. `apply_staged_plan` aborts — records `STALE`,
+writes nothing, exits 1 — unless `sha256(current) == target_pre_sha256` (checked BEFORE
+any write, `planner.py:330`). Hashing is LF-normalized both ends, so a pure CRLF↔LF
+change is not STALE and `_write_text_eol` preserves the target's EOL.
+
+Handle schema `overlay-merge-plan/v1`; seam in `lib/planner.py` (`stage_merge` /
+`apply_staged_plan` / `_compute_merge_plan` / `stage_all_sections`). Tests:
+`overlays/test_merge_stage_apply.py` (13). Completion/latency (num_ctx, arm) is T-81 Part 2.
+
 Source / more detail: `overlays/test-merge-plan.py` (a manual model-comparison
-diagnostic, deliberately excluded from `make test`).
+diagnostic, deliberately excluded from `make test`);
+`docs/plans/t81-part1-merge-preview-stage-apply.md`.
 <!-- /ref:overlay-ai-merge-mode -->
 
 ---

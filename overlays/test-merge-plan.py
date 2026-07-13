@@ -11,11 +11,14 @@ Does NOT write anything to disk.
 
 import argparse
 import json
+import sys
 import time
 import urllib.request
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from lib.backends import fit_num_ctx  # noqa: E402  (sys.path set above)
 # Append +think to a model name to enable Qwen3 thinking mode (e.g. qwen3:14b+think).
 # deepseek-r1 always thinks; think param is ignored for it.
 DEFAULT_MODELS = [
@@ -39,7 +42,9 @@ def call_ollama(model: str, prompt: str, schema: dict) -> tuple[dict | None, flo
         "messages": [{"role": "user", "content": prompt}],
         "stream": True,
         "format": schema,
-        "options": {"num_ctx": 4096},
+        # Size ctx to the INPUT prompt (matches production fit_num_ctx) — the old
+        # hardcoded 4096 truncated ~12 KB targets and understated the real need.
+        "options": {"num_ctx": fit_num_ctx(len(prompt))},
     }
     # think param is Qwen3-specific; deepseek-r1 ignores it (always thinks)
     if not actual_model.startswith("deepseek"):

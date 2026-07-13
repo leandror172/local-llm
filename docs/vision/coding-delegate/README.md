@@ -1,11 +1,17 @@
 # Coding-Delegate — Grand Vision (working name)
 
-**Status:** Vision v1, authored 2026-07-11 after a full-session architectural exploration with
-the user (stress-tested, course-corrected, research-backed). **No phase plans authored yet** —
-each phase gets its own `docs/plans/` doc before execution, per house style.
-**Name:** UNDECIDED — see `naming.md` (`ref:delegate-naming` + candidate register).
-"coding-delegate" is a neutral working label; the folder/refs survive a rename (ref keys are
-location-agnostic).
+**Status:** Vision v1 authored 2026-07-11 (stress-tested, course-corrected, research-backed).
+**P1 (async substrate) BUILT + MERGED to master** (2026-07-12; `docs/plans/oficina-p1-async-substrate.md`,
+149 tests, live acceptance 6/6). **`oficina` CLI installed machine-wide** + 4 MCP tools live.
+Each remaining phase gets its own `docs/plans/` doc before execution (P2 next). Current state:
+`.memories/QUICK.md`; implementation invariants + distribution model: `.memories/KNOWLEDGE.md`.
+**Name:** **`oficina`** (DECIDED, V-D1 2026-07-11 — `naming.md`). The `coding-delegate` folder
+label survives; ref keys are location-agnostic.
+
+**Note:** oficina is a **machine-global service** (CLI + user-level MCP tools + shared store),
+NOT a per-repo overlay — you don't `install-overlay` it; new-machine enablement is 3 steps
+(uv-tool install `mcp-server` + user-level MCP registration + Ollama). See KNOWLEDGE.md
+"Distribution" + task T-86.
 
 ## Elevator
 

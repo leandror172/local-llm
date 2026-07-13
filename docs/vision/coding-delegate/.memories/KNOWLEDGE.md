@@ -83,3 +83,40 @@ Run-ID recovery splits on the FIRST dash — `token_urlsafe` IDs may contain `-`
 Push is tmp+`os.rename` (atomic, same dir); markers are distinct by construction.
 Pop is not concurrent-pop-safe — safe only because pidfile arbitration guarantees a
 single popper.
+
+## Distribution: oficina is machine-global, NOT an overlay — 2026-07-12 (session 115)
+
+oficina is a **machine-global capability**, not per-repo files. The three channels that
+enable it are all machine-level and independent of any repo's overlays:
+1. **CLI** — `~/.local/bin/oficina` (`uv tool install --editable <repo>/mcp-server`; entry
+   point `ollama_mcp.oficina.cli:main`).
+2. **MCP tools** — `submit_run`/`run_status`/`run_result`/`cancel_run` come from
+   `ollama-bridge` registered **user-level** in `~/.claude.json`, so they're live in EVERY
+   Claude Code session (any repo).
+3. **Store** — `~/.local/share/oficina/` (shared; runs carry absolute target paths, P1-D7),
+   plus Ollama running.
+
+**Overlays vs oficina (the mental model):** overlays (`install-overlay.py` → `session-tracking`
+/ `ref-indexing` / `ollama-scaffolding`) copy **text/config into a repo** — the *recipe card*.
+oficina is **executable code + a registered service** — the *kitchen*. Installing an overlay on
+a new machine gives you conventions docs, NOT the oficina capability. **`ollama-scaffolding` has
+zero reference to oficina** (grep-confirmed) — it teaches only the synchronous
+`generate_code`/`ask_ollama` path; it is NOT the way oficina is distributed and does not "point"
+to it. **New-machine enablement = the 3 steps above, never an overlay install.**
+
+Open (T-86): whether `ollama-scaffolding` should eventually teach async-vs-sync (P2-era, not
+now — sync is right for small calls), a provisioning runbook for the 3 steps, and when oficina
+crosses P1-D1's "split to a published package" trigger (installable without the mcp-server
+checkout).
+
+## T-81 outcome — install-overlay was the WRONG first client for oficina — 2026-07-12 (session 115)
+
+T-81 (`install-overlay --mode ai` preview) was the plan's candidate first client. Building it
+proved it does **not** benefit from oficina: install-overlay is a **one-shot CLI with nothing to
+do while the GPU works**, so oficina's headline win (Claude-works-while-GPU-works parallelism) is
+worthless to it. Its two real defects were solved WITHOUT async — a preview/stage-apply split
+(client-side) and a `num_ctx`-fit + `think:false` latency fix (`docs/plans/t81-part1-*` /
+`t81-part2-*`, `ref:overlay-ai-merge-mode`). **Lesson for picking oficina's real first client:
+the value lands only when the client is an AGENT that can parallelize** (submit → do other work →
+collect), not a batch CLI. Revisit which consumer that is (a long Claude-driven multi-deliverable
+flow, or T-81 Part 2's own big merges *if* driven from an agent loop).

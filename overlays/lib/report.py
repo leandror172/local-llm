@@ -17,6 +17,11 @@ def record(action: str, target: str, reason: str = "", details: str = ""):
         print(f"               {details}")
 
 
+def any_action(*names: str) -> bool:
+    """True if any recorded action matches one of `names` (for exit-code gating)."""
+    return any(a["action"] in names for a in _actions)
+
+
 def print_report(report_format: str, report_file: str | None):
     counts: dict[str, int] = {}
     for a in _actions:

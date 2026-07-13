@@ -8,7 +8,9 @@ backends:
     type: ollama_api
     address: http://localhost:11434/api/chat
     model: qwen3:14b
-    think: true                # Qwen3-specific; ignored by non-Qwen3 models
+    think: false               # merge placement is mechanical; thinking added 5.1x
+                               # wall time (86.9s→17.0s) AND worsened placement on the
+                               # 12 KB CLAUDE.md probe (T-81 Part 2, 2026-07-12 findings)
     schema_mode: format_param  # JSON schema passed as 'format' API field (100% reliable)
     priority: 1
 

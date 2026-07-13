@@ -5,9 +5,32 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
+
+# Context-size buckets, ascending. 32768 = probed 14B ceiling w/ q8_0 KV
+# (ref:model-selection); never exceed it (VRAM).
+_CTX_BUCKETS = (4096, 8192, 16384, 32768)
+
+# Defaults for the Ollama merge call, overridable per-backend in ai-backends.yaml.
+_DEFAULT_READ_TIMEOUT_S = 120   # per-socket-read timeout (cold load + think bursts)
+_DEFAULT_MERGE_TIMEOUT_S = 600  # overall wall-clock deadline; on exceed → None
+
+
+def fit_num_ctx(prompt_chars: int, output_headroom_tokens: int = 1024) -> int:
+    """Smallest ctx bucket that holds the INPUT prompt, plus output headroom.
+
+    The context window must fit the *input* prompt (~chars/4 tokens, this repo's
+    diagnostic heuristic), NOT the small JSON output — sizing to the output was
+    the RC1 bug that truncated full-file merges. Capped at the 14B VRAM ceiling.
+    """
+    need = (prompt_chars // 4) + output_headroom_tokens
+    for bucket in _CTX_BUCKETS:
+        if bucket >= need:
+            return bucket
+    return _CTX_BUCKETS[-1]
 
 try:
     import yaml
@@ -72,9 +95,9 @@ class OllamaApiBackend(Backend):
         # think: from config, overridden if +think suffix was used on CLI
         think = think_override if model_override else self.config.get("think")
 
-        # Planner output is small JSON — 4096 ctx is sufficient.
-        # Full-file merges need 8192 minimum.
-        num_ctx = 4096 if fmt is not None else 8192
+        # Size the context window to the INPUT prompt (full-file merges overflow
+        # a fixed constant); output is small JSON, covered by fit_num_ctx headroom.
+        num_ctx = fit_num_ctx(len(prompt))
         payload: dict = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
@@ -87,6 +110,11 @@ class OllamaApiBackend(Backend):
         if fmt is not None:
             payload["format"] = fmt
 
+        # Per-read socket timeout tolerates cold model load + silent think bursts;
+        # the overall wall-clock deadline bounds the whole call. Both config-driven.
+        read_timeout = self.config.get("read_timeout_s", _DEFAULT_READ_TIMEOUT_S)
+        merge_timeout = self.config.get("merge_timeout_s", _DEFAULT_MERGE_TIMEOUT_S)
+
         try:
             req = urllib.request.Request(
                 self.config["address"],
@@ -94,8 +122,17 @@ class OllamaApiBackend(Backend):
                 headers={"Content-Type": "application/json"},
             )
             chunks = []
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            deadline_start = time.monotonic()
+            with urllib.request.urlopen(req, timeout=read_timeout) as resp:
                 for line in resp:
+                    if merge_timeout is not None and \
+                            time.monotonic() - deadline_start > merge_timeout:
+                        # A timeout is not a quality failure — caller treats None
+                        # as "add manually"; there is no DPO triple to record.
+                        print(f"  WARNING: Ollama merge exceeded {merge_timeout}s "
+                              f"wall-clock deadline — TIMEOUT (add manually)",
+                              file=sys.stderr)
+                        return None
                     if not line.strip():
                         continue
                     chunk = json.loads(line)
