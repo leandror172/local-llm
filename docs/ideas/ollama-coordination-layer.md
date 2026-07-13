@@ -1,6 +1,9 @@
 # Ollama Coordination Layer
 
 **Status:** Design only (session 42, 2026-03-14). Not yet implemented.
+**SUPERSEDED IN SCOPE (session 116, 2026-07-13):** `docs/ideas/model-call-gate.md` (T-88)
+names the full scheduler this busy-check contract was a seed of. This doc's mechanism +
+empirical findings remain inputs to the gate's G-D5 mechanism decision.
 **Updated:** session 43 (2026-03-15) — threat model revised after empirical testing.
 **Related:** warm-up MCP tool (bundled Option 1 built first), deferred-infra tasks.
 **Findings:** `docs/findings/ollama-eviction-concurrency-findings.md`
