@@ -14,7 +14,21 @@ Options:
     --backup / --no-backup     Backup files before overwriting (default: on)
     --report FILE              Write summary report to file (default: stdout)
     --report-format text|json  Report format (default: text)
-    --dry-run                  Show what would be done without making changes
+    --dry-run                  Show what would be done without making changes.
+                               PURE preview: for an unmarked --mode ai target it
+                               records "would AI-merge … run --stage" — it makes NO
+                               model call and writes nothing. Use --stage to preview.
+    --stage                    (--mode ai) Call the model, print a unified diff, and
+                               write a durable plan-handle under
+                               <target>/.claude/local/overlay-merge-plans/ WITHOUT
+                               touching the target. Preview before you apply.
+    --apply-plan PATH          Apply a previously staged plan-handle. Verifies the
+                               target is byte-for-byte the pre-image the plan was
+                               computed from (STALE + abort otherwise), then merges
+                               and backs up. Needs only the handle — no model call.
+    --plan-file PATH           Override where --stage writes the handle (default: the
+                               gitignored .claude/local path). Stage-only; --apply-plan
+                               takes the handle path as its own argument.
     --verify                   Read-only check: compare installed files against overlay
                                source. Prints SAME/DIFF/MISSING/SRC-MISSING per file.
                                Exits 1 if any DIFF/MISSING/SRC-MISSING; 0 if all match.
@@ -42,7 +56,8 @@ from lib.actions import (
     handle_merge_sections, handle_manual_if_exists, handle_customizable,
     verify_overlay,
 )
-from lib.report import print_report
+from lib.planner import stage_all_sections, apply_staged_plan
+from lib.report import print_report, any_action
 
 
 def main():
@@ -74,7 +89,13 @@ def main():
         help="Install shim/hooks/skill to ~/.claude/ (user) or .claude/ (project) (default: user)",
     )
     parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done without making changes")
+                        help="Show what would be done without making changes (pure — no model call)")
+    parser.add_argument("--stage", action="store_true",
+                        help="(--mode ai) Preview: model-call + diff + write plan handle; no target write")
+    parser.add_argument("--apply-plan", metavar="PATH", default=None,
+                        help="Apply a staged plan handle (verifies pre-image, then merges + backs up)")
+    parser.add_argument("--plan-file", metavar="PATH", default=None,
+                        help="Override plan-handle location for --stage / --apply-plan")
     parser.add_argument("--verify", action="store_true",
                         help=(
                             "Read-only check: compare installed files against overlay source. "
@@ -124,6 +145,22 @@ def main():
         )
         print_report(args.report_format, args.report)
         sys.exit(1 if (n_diff or n_missing or n_src_missing) else 0)
+
+    # ── stage / apply early-branches (T-81), symmetric with --verify above ──────
+    if args.stage:
+        if args.mode != "ai":
+            parser.error("--stage requires --mode ai")
+        stage_all_sections(
+            manifest, overlay_dir, target_root, prompts_dir,
+            args.backend, args.model, backends, args.plan_file, args.debug,
+        )
+        print_report(args.report_format, args.report)
+        sys.exit(1 if any_action("ERROR", "TODO") else 0)
+
+    if args.apply_plan:
+        apply_staged_plan(Path(args.apply_plan), args.backup)
+        print_report(args.report_format, args.report)
+        sys.exit(1 if any_action("ERROR", "STALE") else 0)
 
     # customizable: before files: — a path is owned by exactly one category.
     handle_customizable(manifest, overlay_dir, target_root, args.dry_run, args.backup)

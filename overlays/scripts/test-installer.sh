@@ -8,4 +8,4 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE/.."
-exec python3 -m pytest test_verify.py test_customizable.py test_signals.py -q "$@"
+exec python3 -m pytest test_verify.py test_customizable.py test_signals.py test_merge_stage_apply.py test_backends.py -q "$@"
