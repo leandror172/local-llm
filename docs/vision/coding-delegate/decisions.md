@@ -106,8 +106,13 @@ trigger).
   FIFO+ledger design with a library-owned replay model (reconsider only for a from-scratch
   project). Survey 2 (Axon 5, user request): trimmable but not right-sized — see addendum.
   Formal freeze still lands in the P1 plan.
-- **V-D12 — Hook-based monitor injection.** Optional polish after watch-run.sh proves the
-  flow; adjacent to T-14. Decide when P1 ergonomics are felt in practice.
+- **V-D12 — Hook-based monitor injection. FIRED 2026-07-14 (session 117) → T-89.** Trigger
+  fired via the migration-shape discussion, not felt usage friction (guessed-trigger
+  corollary). Scope sharpened: PostToolUse hook mechanizes the watch on submit; hooks cannot
+  register harness-tracked background tasks, so one model-issued background Bash call remains
+  the floor (harness re-invokes on watcher exit — the delivery report rides the `Delivered`
+  payload). Cross-session half = T-14-adjacent store-scan injection at session start.
+  Record: `docs/plans/oficina-async-ergonomics.md`; implementation tracked in T-89.
 - **V-D13 — Interactive-priority yield.** Cooperative pause between iterations for
   interactive GPU use. Trigger: felt contention in real usage; T-21 is the horizon solution.
 <!-- /ref:delegate-open-decisions -->
