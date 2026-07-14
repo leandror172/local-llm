@@ -80,6 +80,41 @@ session. So the flow decomposes into two halves along the two available channels
    P2 freezes first** — no double-build.
 <!-- /ref:oficina-async-ergonomics-scope -->
 
+## Build record (session 117, 2026-07-14) — items 1–3 BUILT, item 4 deferred
+
+Decisions taken at build time:
+- **D1 — hook config residency: repo-level first** (llm `.claude/settings.json`);
+  user-level promotion is a T-86 runbook line.
+- **D2 — scan scope: option 2, global + origin-annotated, never filtered.**
+  `service.submit` records `submitted_from: os.getcwd()` in the `RunSubmitted` payload
+  (additive; folds tolerate it). **Named possible-next: option 3 (repo-filtered)** — if
+  notification volume ever annoys, filtering is a presentation-only change in the scan
+  (the origin data is already recorded from day one).
+- **Marker semantics:** per-run `surfaced` flag file (cancel-flag pattern — non-workers
+  never touch ledgers).
+
+What shipped:
+- **(1) V-D12 hook:** `.claude/hooks/oficina-watch-hook.py` + PostToolUse matcher on
+  `mcp__ollama-bridge__submit_run` in `.claude/settings.json`. Instructs backgrounding
+  with an **absolute** watcher path (`$CLAUDE_PROJECT_DIR`) — a relative path bit during
+  this very session when the shell cwd had drifted.
+- **(2) Result-in-notification: VERIFIED, no build.** The `Delivered` payload carries the
+  answer text / file target; `oficina watch` prints full events; live run confirmed the
+  answer arriving in the harness notification. No `--result` flag needed.
+- **(3) Store-scan:** `.claude/hooks/oficina-runs-scan.py` + SessionStart wiring.
+  Stdlib-only events.jsonl parse (hooks run outside the uv env; the JSONL envelope is a
+  frozen P1 contract), torn-tail tolerant, fail-open. Live smoke surfaced the session's
+  five real runs.
+- **Tests:** `.claude/hooks/tests/` — 11 subprocess-level tests (5 watch-hook, 6 scan),
+  runner `run-tests.sh`. mcp-server suite 150 green (149 + origin-annotation test).
+- **(4) `refs` parity: NOT built** — stays on the P2 gap list per the sequencing rule.
+
+Build method note: tests and both scripts were local-model generated (tests-first;
+scripts via `submit_run` itself — the watch flow validated its own build). Verdicts:
+one 2, three 1s, one 0 + retry; the sync test-file attempts truncated twice while the
+async run path produced complete files — consistent with the T-81 Part 2 finding that
+completion behavior differs across invocation paths.
+
 ## Relations
 
 - **T-86(a)** — owns the convention *teaching* (whether/when `ollama-scaffolding` gains

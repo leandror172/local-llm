@@ -3,6 +3,8 @@
 Synchronous tests (plain ``def``), not async.
 """
 
+import os
+
 import pytest
 
 from ollama_mcp.oficina import service
@@ -42,6 +44,16 @@ def test_submit_creates_dir_spec_and_runsubmitted_before_queue(tmp_path):
     assert (store.run_dir(run_id) / "spec.json").exists()
     events = Ledger(store.events_path(run_id)).read()
     assert events[0]["event"] == "RunSubmitted"
+
+
+def test_submit_records_origin_cwd_in_runsubmitted_payload(tmp_path):
+    """RunSubmitted carries submitted_from = the submitter's cwd (T-89 D2: annotate, never filter)."""
+    fn, calls = _spy_ensure()
+    res = service.submit(tmp_path, _valid_spec(), ensure_worker=fn)
+    events = Ledger(Store(tmp_path).events_path(res["run_id"])).read()
+    payload = events[0]["payload"]
+    assert payload["submitted_from"] == os.getcwd()
+    assert payload["queue_position"] == 1
 
 
 def test_submit_pushes_queue_marker(tmp_path):

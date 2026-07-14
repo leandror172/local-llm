@@ -15,6 +15,7 @@ process spawns).
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -101,7 +102,10 @@ def submit(
     store, fifo = Store(root), Fifo(root)
     run_id = store.create_run(spec)
     queue_position = len(fifo._markers()) + 1
-    Ledger(store.events_path(run_id)).run_submitted({"queue_position": queue_position})
+    # submitted_from: origin annotation (T-89 D2) — display-only, never a filter key.
+    Ledger(store.events_path(run_id)).run_submitted(
+        {"queue_position": queue_position, "submitted_from": os.getcwd()}
+    )
     fifo.push(run_id, now_ms)
     (ensure_worker or _default_ensure_worker)(root)
     return {"run_id": run_id, "watch_cmd": watch_cmd(run_id), "queue_position": queue_position}
