@@ -1,39 +1,38 @@
 # Session Log
 
-**Current Layer:** "Layer 5 — Expense Classifier (side-track: T-89 async ergonomics built + routing convention live; next: T-86 distribution runbook + oficina P2/first-client, G-D4 priority open)"
-**Current Session:** 2026-07-14 — Session 117: 2026-07-14 — Session 117: T-89 async ergonomics built (watch hook, session-start scan, origin annotation) + migration shape decided
+**Current Layer:** "Layer 5 — Expense Classifier (side-track: T-89 hooks verified live; T-90 resolved — 14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift; next: T-86 distribution runbook + oficina P2/first-client, G-D4 priority open)"
+**Current Session:** 2026-07-15 — Session 118: T-89 hooks verified live + T-90 resolved (14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift) + gpu-vram-windows helper
 
 ---
-## 2026-07-14 - Session 117: 2026-07-14 — Session 117: T-89 async ergonomics built (watch hook, session-start scan, origin annotation) + migration shape decided
+## 2026-07-15 - Session 118: T-89 hooks verified live + T-90 resolved (14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift) + gpu-vram-windows helper
 
 ### Context
 
-Started from resume + a next-steps discussion; the user's challenge "isn't using ollama for coding a client in itself?" unwound a mis-framing of oficina's founding purpose, led to reading the full oficina corpus, produced the migration-shape decision record (T-89 filed), and then built T-89 in the same session.
+Session opened on "discuss next steps" (ref-lookup `--paths` + `resume.sh`). User picked the two quick items from session 117's Next: verify the T-89 hooks fire, and diagnose T-90 (the KV-quant/offload anomaly).
 
 ### What Was Done
 
-- docs(oficina): async-ergonomics decision record — migration shape + V-D12 fired (T-89) (`docs/plans/oficina-async-ergonomics.md`, `ref:oficina-async-migration-shape` + `ref:oficina-async-ergonomics-scope`)
-- feat(oficina): T-89 BUILT same session — PostToolUse watch hook (`.claude/hooks/oficina-watch-hook.py`) + SessionStart store-scan (`.claude/hooks/oficina-runs-scan.py`, `surfaced` markers, origin-annotated) + `submitted_from` in `RunSubmitted` (`service.submit`); 11 hook tests (`.claude/hooks/tests/run-tests.sh`) + mcp-server 150 green
-- Item (b) VERIFIED live, no build: the `Delivered` payload carries the result (answer/target) into the backgrounded watcher's harness notification
-- chore(tasks): T-90 filed (KV-quant/offload anomaly) + T-86(d) hook re-wiring runbook line
-- Non-commit: hook wiring added to gitignored `.claude/settings.json` (machine-local); routing-convention memory written (`project_oficina_async_routing.md`); both scripts generated via `submit_run` itself — the dogfooding caught a real relative-path bug (cwd drift) no test would have found
+- Verified T-89 hooks (session 117's #1 Next item): both wired in `.claude/settings.json` (SessionStart → `oficina-runs-scan.py`; PostToolUse `mcp__ollama-bridge__submit_run` → `oficina-watch-hook.py`); hermetic suite 11/11; the SessionStart scan fires and correctly stays silent on already-marked runs (the cozempic sibling in the same array proves the array executes). Verified done — no change needed.
+- Resolved T-90: reproduced the 15 GB / 42%-58% CPU-GPU split at 32K, but the runner load log proves KV quant `q8_0` + Flash Attention are ACTIVE (KV cache 3.26 GB; f16 would be 6.5). Root cause = VRAM contention: the RTX 3060 also drives the Windows desktop, leaving only ~9 GB free (NVIDIA overlay/nvcontainer ~1 GB, Chrome ~0.8 GB, dwm ~0.6 GB). Not a config regression — no fix needed.
+- Found what holds host VRAM via `nvidia-smi.exe` + PowerShell `GPU Process Memory` perf counters (Linux `nvidia-smi` can't attribute host VRAM under WDDM — shows `[Not Found]`).
+- Built + tested `~/workspaces/scripts/gpu-vram-windows.sh` (machine-local): names each PID, sums over engines, drops the pid-0 shared pool, prints reclaim tips.
+- Wrote finding `docs/findings/kv-quant-vram-contention-2026-07-15.md` (`ref:kv-quant-vram-contention`) incl. the NVIDIA-overlay service CLI-control note (`Stop-Service NvContainerLocalSystem`, elevated; do NOT touch `NVDisplay.ContainerLocalSystem`); corrected CLAUDE.md's 32K fact to host-VRAM-dependent; indexed finding + helper. Commit `1622b9f`.
+- Split the still-unexplained sync-truncation asymmetry into new task **T-91**. (T-90 checkoff + T-91 append were both materialized directly in `tasks.md` this session, so neither is in this payload.)
 
 ### Decisions Made
 
-- **Migration shape: NO sync facade, NO cutover.** Sync directness IS the v1 interactive-priority mechanism (sync bypasses the run FIFO; the gate's rule 2 presumes sync survives). Routing is a per-call convention, effective immediately: deliverable-shaped/long/parallelizable → `submit_run` + background watch; small-and-waiting-anyway → sync. Timeout-redirect hint rejected (model-mediated recovery, pays twice).
-- **D1** hook config repo-level first (user-level promotion is a T-86 runbook line); **D2** scan is global + origin-annotated, never filtered (option 3 repo-filter = presentation-only change later, data recorded from day one); **D3** refs parity deferred to P2; marker = per-run `surfaced` flag file (cancel-flag pattern).
-- **V-D12 FIRED** via design discussion, not felt usage friction (guessed-trigger corollary again) — updated in place in `decisions.md`.
+- T-90's "KV-quant drift" hypothesis disproven — closed as resolved, not fixed. The durable correction was the CLAUDE.md assumption (32K "always fits" held only on a near-empty card), not any config change.
+- The sync-truncation asymmetry is NOT explained by offload (offload slows generation, it does not truncate) → spun out as T-91 rather than folded under a "solved" T-90.
 
 ### Next
 
-- **Verify both hooks fire on next session start** (settings.json doesn't hot-reload — this next session IS the first live firing; the scan should stay silent since today's 5 runs are marked).
-- **T-86** distribution runbook — now includes (d): re-adding the two hook entries on fresh clones/machines (settings.json is gitignored).
-- **oficina P2 / first-client** + the **G-D4** gate-vs-P2 priority decision (unchanged from session 116).
-- **T-90** when convenient: KV-quant anomaly (q25c14 loaded 15.2GB total / 8.8GB VRAM → partial offload → sync timeouts); then recheck the sync-truncation asymmetry.
+- oficina P2 / first-client + the **G-D4** gate-vs-P2 priority decision (unchanged from 116). T-90 showed *contention*, not *thrash*, so the gate's "observed thrash" trigger is NOT yet met — mild evidence for gate-after-P2.
+- **T-86** oficina distribution runbook (incl. (d): re-adding the two T-89 hook entries on fresh clones — settings.json is gitignored).
+- **T-91** when convenient: diff the request options the sync `generate_code` sends vs the oficina worker's `_default_generate` — check for a `num_predict` cap on the sync path.
 
 ### Gotchas
 
-- `.claude/settings.json` is **gitignored** — hook wiring is machine-local; fresh clones need the two entries re-added (T-86(d)).
-- `my-python-q25c14` loaded with a 15.2GB/8.8GB total/VRAM split — the f16-KV signature at 32K ctx; `OLLAMA_KV_CACHE_TYPE=q8_0` may not be active (T-90).
-- Sync `generate_code` truncated twice mid-code (EOS at eval 490/755) where `submit_run` runs produced complete files every time — unexplained asymmetry, recorded in the T-89 build record.
-- The session-start scan surfaced and MARKED today's 5 runs — a silent scan next session is correct behavior, not a failure.
+- `powershell.exe -Command -` executes a single stdin line but silently drops a multi-line heredoc — stage a `.ps1` and use `-File "$(wslpath -w …)"`.
+- PowerShell `'{0:N0}'` formats with the pt-BR locale (`.` as thousands separator) — the source of the "1.039 MB" confusion; emit a plain `[int]` and format in awk.
+- Linux `nvidia-smi` inside WSL2 shows host GPU processes as `[Not Found]`/`[N/A]` (WDDM) — use `nvidia-smi.exe` + the PowerShell `GPU Process Memory` counter for per-process VRAM.
+- ~2.8–3 GB VRAM is held by the Windows desktop even idle; the `dwm` compositor (~0.6–0.9 GB) is irreducible, so ~11 GB free is the practical ceiling on this box.
