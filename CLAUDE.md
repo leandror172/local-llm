@@ -57,7 +57,7 @@ Local AI infrastructure on RTX 3060 12GB: multiple specialized models, benchmark
 
 ## Key Technical Facts
 
-- **12GB VRAM** — 8B models: 32K ctx; 14B models: **32K ctx** (probed 2026-05-30 with `q8_0` KV; deepseek-coder-v2:16b at 24K); `OLLAMA_KV_CACHE_TYPE=q8_0` enabled in systemd override [ref:model-selection]
+- **12GB VRAM** — 8B models: 32K ctx; 14B models: **32K ctx** (probed 2026-05-30 with `q8_0` KV; deepseek-coder-v2:16b at 24K); `OLLAMA_KV_CACHE_TYPE=q8_0` enabled in systemd override [ref:model-selection]. **Host-VRAM-dependent, not absolute (T-90, session 118):** the RTX 3060 also drives the Windows desktop — ~2.8–3 GB is held by host apps (NVIDIA overlay ~1 GB, Chrome, `dwm`), so realistic free VRAM is **~9 GB, not 12 GB**. A 14B at 32K needs nearly the whole card, so it partially offloads to CPU RAM when the desktop is busy — this is contention, NOT KV-quant drift (q8_0 verified active). Levers: route long work to `submit_run` (async), disable NVIDIA overlay/ShadowPlay (~1 GB), or drop interactive `num_ctx` to 16–24K. [ref:kv-quant-vram-contention]
 - **Never install Linux NVIDIA drivers in WSL2** — uses Windows driver's `libcuda.so`
 - **Flash Attention** enabled (`OLLAMA_FLASH_ATTENTION=1`)
 - **Models (VRAM-only):** Qwen2.5-Coder-7B (4.7GB), Qwen3-4B-q8 (4.4GB), Qwen3-8B (5.2GB), Qwen3-8B-q8 (8.5GB), Qwen2.5-Coder-14B (9.0GB), Qwen3-14B (9.3GB), DeepSeek-R1-14B (9.0GB), DeepSeek-Coder-V2-16B (8.9GB) [ref:personas]
