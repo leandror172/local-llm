@@ -50,7 +50,7 @@ class EvaluationError(Exception):
 # --- delta-scoped attribution (P2-D12) --------------------------------------
 
 
-def attribute(
+def attributable_failures(
     current: List[ParsedFailure],
     baseline: List[ParsedFailure],
     target_files: "list[str] | set[str]",

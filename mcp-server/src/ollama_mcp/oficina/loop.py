@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from .evaluator import attribute, diff_touches_test_files
+from .evaluator import attributable_failures, diff_touches_test_files
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace
@@ -112,6 +112,35 @@ class EvaluatedLoop:
         if self.model == "auto":
             self.model = DEFAULT_CODER_MODEL
 
+    def _stable_prompt_parts(self, assembly) -> Dict[str, str]:
+        """The run-constant prompt parts (P2-D2): system + constraints + the assembled parts, with
+        any pre-resolved refs block prepended to the context (docs/diagrams before file context)."""
+        parts = {"system": _SYSTEM, "constraints": _CONSTRAINTS, **assembly.stable_parts}
+        if self.refs_block:
+            parts["context"] = "\n\n".join(
+                p for p in (self.refs_block, parts.get("context", "")) if p
+            )
+        return parts
+
+    def _record_cheat_and_feedback(self, k: int, gen: GenerationResult, cheated: List[str]) -> Dict[str, str]:
+        """Record the iteration rejected-as-cheat (it edited a test_file, P2-D13) and return the
+        repair ``variable`` that steers the next attempt back onto the target only."""
+        self.ledger.iteration_evaluated(
+            {
+                "iteration": k,
+                "passed": False,
+                "stage_failed": "anti_cheat",
+                "failure_class": "structural",
+                "error_keys": [],
+                "auto_verdict": 0,
+                "cheat_touched": cheated,
+            }
+        )
+        return {
+            "repair_feedback": f"You edited the tests ({', '.join(cheated)}). Never modify the tests; implement the target only.",
+            "previous_attempt": gen.content,
+        }
+
     def run(self) -> LoopResult:
         """Assemble, then iterate generate→evaluate→classify→repair/fresh-start until terminal."""
         assembly = self.workspace.assemble(emit=self.ledger.assembly_done)
@@ -126,12 +155,7 @@ class EvaluatedLoop:
         test_files = (self.spec.get("acceptance") or {}).get("test_files") or []
         baseline = assembly.baseline_failures
 
-        stable = {"system": _SYSTEM, "constraints": _CONSTRAINTS, **assembly.stable_parts}
-        if self.refs_block:
-            # refs are context: prepend them so docs/diagrams come before file context (P2-D2).
-            stable["context"] = "\n\n".join(
-                p for p in (self.refs_block, stable.get("context", "")) if p
-            )
+        stable = self._stable_prompt_parts(assembly)
         variable: Dict[str, str] = {}
         signatures_seen: set = set()
         fresh_used = 0
@@ -198,25 +222,11 @@ class EvaluatedLoop:
             cheated = diff_touches_test_files(worktree, prev_sha, snapshot, test_files)
             prev_sha = snapshot
             if cheated:
-                self.ledger.iteration_evaluated(
-                    {
-                        "iteration": k,
-                        "passed": False,
-                        "stage_failed": "anti_cheat",
-                        "failure_class": "structural",
-                        "error_keys": [],
-                        "auto_verdict": 0,
-                        "cheat_touched": cheated,
-                    }
-                )
-                variable = {
-                    "repair_feedback": f"You edited the tests ({', '.join(cheated)}). Never modify the tests; implement the target only.",
-                    "previous_attempt": gen.content,
-                }
+                variable = self._record_cheat_and_feedback(k, gen, cheated)
                 continue
 
             current = self.evaluate(worktree, base_repo, self.spec)
-            attributable = attribute(current, baseline, target_files, test_files)
+            attributable = attributable_failures(current, baseline, target_files, test_files)
             passed = not attributable
 
             self.ledger.iteration_evaluated(
@@ -242,7 +252,9 @@ class EvaluatedLoop:
                     best_snapshot=snapshot,
                 )
 
-            if best_failures is None or len(attributable) < best_failures:
+            # Keep the attempt with the FEWEST attributable failures — attached on exhaustion (S11).
+            is_best_so_far = best_failures is None or len(attributable) < best_failures
+            if is_best_so_far:
                 best, best_failures, best_snapshot = gen, len(attributable), snapshot
 
             signature = _signature(attributable)

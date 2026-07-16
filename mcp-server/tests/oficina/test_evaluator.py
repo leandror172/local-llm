@@ -1,13 +1,13 @@
 """Tests for oficina.evaluator — evaluation + delta-scoped attribution (T5, P2-D8/D12/D13).
 
-The pure `attribute` tests (the P2-D12 masking-hole guard, acceptance criterion 3 both
+The pure `attributable_failures` tests (the P2-D12 masking-hole guard, acceptance criterion 3 both
 directions) have model-generated bodies. The anti-cheat (git diff) and `evaluate` (real
 validator/pytest subprocess) tests are hand-written — subprocess/git is not delegated.
 
 Not converted to the executable-spec DSL (`ref:test-executable-spec`): mixed file — the pure
-`attribute()` family is convertible, but the `evaluate`/anti-cheat half asserts on real
+`attributable_failures()` family is convertible, but the `evaluate`/anti-cheat half asserts on real
 subprocess/git outcomes (a distinct assertion kind, rule 3), so a partial conversion would split
-the file for little gain. Revisit if the `attribute()` family grows.
+the file for little gain. Revisit if the `attributable_failures()` family grows.
 """
 
 import subprocess
@@ -17,7 +17,7 @@ import pytest
 
 from ollama_mcp.oficina.evaluator import (
     EvaluationError,
-    attribute,
+    attributable_failures,
     diff_touches_test_files,
     evaluate,
 )
@@ -32,7 +32,7 @@ def _pf(file, key, stage=STAGE_TEST):
     return ParsedFailure(stage, file, (key, "d"), f"raw:{key}")
 
 
-# --- attribute: delta-scoping (P2-D12) — model-generated bodies -------------
+# --- attributable_failures: delta-scoping (P2-D12) — model-generated bodies -------------
 
 
 def test_out_of_scope_wart_in_baseline_is_subtracted():
@@ -40,14 +40,14 @@ def test_out_of_scope_wart_in_baseline_is_subtracted():
     the baseline is a pre-existing wart — it is NOT attributable to this iteration."""
     baseline = [_pf("other.py", "w")]
     current = [_pf("other.py", "w")]
-    assert attribute(current, baseline, TARGET_FILES, TEST_FILES) == []
+    assert attributable_failures(current, baseline, TARGET_FILES, TEST_FILES) == []
 
 
 def test_new_out_of_scope_failure_not_in_baseline_stays():
     """An out-of-scope failure that is NOT in the baseline is new signal — it stays attributable."""
     baseline = []
     current = [_pf("other.py", "w")]
-    result = attribute(current, baseline, TARGET_FILES, TEST_FILES)
+    result = attributable_failures(current, baseline, TARGET_FILES, TEST_FILES)
     assert result == current
 
 
@@ -56,7 +56,7 @@ def test_target_file_failure_never_subtracted():
     the baseline — this is the masking-hole guard: a misnamed/absent target must stay live."""
     baseline = [_pf("area.py", "undef")]
     current = [_pf("area.py", "undef")]
-    result = attribute(current, baseline, TARGET_FILES, TEST_FILES)
+    result = attributable_failures(current, baseline, TARGET_FILES, TEST_FILES)
     assert result == current
 
 
@@ -65,18 +65,18 @@ def test_test_file_failure_never_subtracted():
     never subtracted even if its key is in the baseline — the masking inverse (criterion 3b)."""
     baseline = [_pf("test_area.py", "importerror")]
     current = [_pf("test_area.py", "importerror")]
-    result = attribute(current, baseline, TARGET_FILES, TEST_FILES)
+    result = attributable_failures(current, baseline, TARGET_FILES, TEST_FILES)
     assert result == current
 
 
 def test_mixed_keeps_in_scope_drops_out_of_scope_wart():
-    """Given both an out-of-scope wart (in baseline) and a target failure, attribute keeps only
+    """Given both an out-of-scope wart (in baseline) and a target failure, attributable_failures keeps only
     the target failure."""
     wart = _pf("other.py", "w")
     tgt = _pf("area.py", "u")
     baseline = [wart, tgt]
     current = [wart, tgt]
-    result = attribute(current, baseline, TARGET_FILES, TEST_FILES)
+    result = attributable_failures(current, baseline, TARGET_FILES, TEST_FILES)
     assert result == [tgt]
 
 
