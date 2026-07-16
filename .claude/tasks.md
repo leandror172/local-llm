@@ -158,6 +158,8 @@ Completed items → `.claude/archive/deferred-completed.md`
   as an intentional local divergence (overlay `--verify` shows DIFF there;
   reinstall would clobber it) — T-93 execution = merge the draft into the
   overlay source + reinstall to consumers, restoring parity.
+
+- [ ] (T-94) **Fix handoff pre-flight — it reports DIRTY on a CLEAN tree under the RTK hook.** `SKILL.md` Step 1 tells the agent to run `test -z "$(git status --porcelain -- …)"` and STOP if it prints DIRTY. The RTK hook rewrites `git status` → `rtk git status`, whose filter emits a compact `ok` instead of passing porcelain through — so `test -z` sees a non-empty string and takes the DIRTY branch **exactly when the tree is clean**. The check is inverted, not just noisy: it misfires on the common good path, and an agent obeying the skill has no reason to doubt it (caught in career-search session 94 only because the follow-up `git diff` came back empty). **Fix at the overlay source** `overlays/session-tracking/files/session-handoff/SKILL.md:55`, then re-propagate to consumers (llm, expenses/code, web-research, career-search). Preferred fix: exit-code plumbing (`git diff --quiet …` + `git diff --cached --quiet …`) which no stdout-rewriting filter can fool and which carries no RTK dependency; better still, move the pre-flight into `run-handoff.sh --preflight` since the pipeline already aborts on a dirty tracking tree and this is pipeline mechanics leaked into model instructions. Full analysis + repro: `.claude/handoff/preflight-rtk-porcelain-bug-report.md`.
 <!-- /ref:deferred-infra -->
 
 ---
