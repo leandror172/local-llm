@@ -48,6 +48,10 @@ arbitration + detached spawn), `worker` (lazy-daemon loop), `service` (ONE impl 
 under both the 4 MCP tools and the CLI), `retention`, `cli`, `config` (`OFICINA_ROOT`
 override; default `~/.local/share/oficina/`). Tests: `tests/oficina/`. **P1 complete —
 live acceptance 6/6 (2026-07-12).** pydantic is now an explicit dep.
+**P2 evaluated loop (session 120, PR #76):** `parser`/`prompt`/`workspace`/`evaluator`/`loop`
+modules for `kind:function`. **Reviewed + hardened session 121** (10 correctness fixes, suite 235;
+invariants + deferred T-95–T-99 in the coding-delegate KNOWLEDGE.md + `ref:oficina-p2-review-deferred`).
+Loop tests use the executable-spec DSL (`ref:test-executable-spec`).
 
 ## Deeper Memory -> KNOWLEDGE.md
 

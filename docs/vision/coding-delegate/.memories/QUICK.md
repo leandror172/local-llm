@@ -61,12 +61,17 @@ label). Keep under 30 lines.*
   `prompt_eval_duration` (`ref:oficina-p2-cache-measurement`). T-91 resolved. New modules:
   `parser.py`/`prompt.py`/`workspace.py`/`evaluator.py`/`loop.py` + intake/ledger/client/worker
   extensions. Full suite 223 (was 150). ~64 new tests.
-- **Next:** post-slice widening (per P2-D1): more kinds/validators, the escalation ladder (P2-D9),
-  the tiny-model classifier (P2-D4, must batch outside the coder loop). **T-93** mermaid-as-context:
-  refs seam is LIVE (a run spec's `context.refs` injects a diagram) but no measured verdict yet — the
-  P2 code was architectural/hand-written, so no local-model delegation used a diagram. Distribution
-  (T-86): the evaluator's `validate-code.py` path is repo-relative (`parents[4]`); the machine-global
-  install needs `OFICINA_VALIDATE_CODE` — the P3 distribution fix.
+- 2026-07-16 (session 121): **P2 first slice REVIEWED (PR #76) + hardened.** 10 confirmed correctness
+  bugs fixed w/ regression tests (false-Delivered exit-code guard, eval subprocess + wall-clock
+  timeouts, symlink path canonicalization, kind-scoped intake, Exhausted surfaced in result/phase/hook,
+  budgets `num_predict`); 5 deferred w/ tasks **T-95–T-99** (`docs/findings/oficina-p2-review-deferred-2026-07-16.md`,
+  `ref:oficina-p2-review-deferred`). Test-authoring DSL piloted (`ref:test-executable-spec`, T-100).
+  Loop readability refactors landed (0622c26). Suite 235. Commits d0a90df/9b1c5bc/0622c26/961c1e9.
+- **Next:** (1) **`/simplify`** the PR diff — orientation `docs/plans/oficina-p2-simplify-orientation-2026-07-16.md`
+  (continues the 0622c26 readability thread across the rest of the diff). (2) **T-99** decide
+  `auto_verdict`→`calls.jsonl`. (3) post-slice widening (P2-D1: kinds/validators, escalation ladder
+  P2-D9, tiny-model classifier P2-D4). T-93 refs-diagram verdict still unmeasured; T-86 distribution
+  (`OFICINA_VALIDATE_CODE`). Then push/merge PR #76.
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

@@ -365,6 +365,8 @@ budgets unknown-key + `num_predict`, service Exhausted terminal + phase map, hoo
 235 tests green). Five items deferred with tasks T-95–T-99 (loop/GenerateFn seam unification, refs
 `LLM_REPO_ROOT` drop, retention worktree-prune, basename-only path scoping, `auto_verdict`→`calls.jsonl`
 plan overclaim): `docs/findings/oficina-p2-review-deferred-2026-07-16.md` (`ref:oficina-p2-review-deferred`).
+Loop readability refactors landed (commit 0622c26). **Next-session `/simplify` briefing** (mechanical
+dedup targets + what's out of scope): `docs/plans/oficina-p2-simplify-orientation-2026-07-16.md`.
 
 ## Web Research Tool (Session 44+)
 

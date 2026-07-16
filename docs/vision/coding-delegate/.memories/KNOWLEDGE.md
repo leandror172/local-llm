@@ -131,6 +131,34 @@ AssemblyDone carries `baseline_failure_count`, IterationEvaluated carries `auto_
 tests fully specify behavior — observed live (a ValueError edge case the terse objective omitted was
 satisfied because the test was in the stable prefix).
 
+## P2 review hardening (PR #76, session 121) — invariants a green suite hid
+
+The T8 suite was green but encoded the same assumptions as several bugs (the "re-derive invariants,
+not trust green tests" rule paid off). Load-bearing fixes now in place — treat these as invariants:
+- **Evaluation NEVER reports a false pass.** `evaluator._run_test_stage` reads the exit code: a
+  non-zero exit with no parseable pytest short-summary failure **raises** (tooling failure), it does
+  not return `[]`. The parser scans only the `short test summary info` block, so application `ERROR`
+  log lines are not phantom failures. A tooling failure must never flow through delta-scoping.
+- **Every eval subprocess is time-bounded** (`_STAGE_TIMEOUT_S`, and the loop's `budgets.wall_clock_s`
+  guard emitting `Exhausted(limit_hit="timeout")`) — a generated infinite loop can't wedge the worker.
+- **Paths are canonicalized** (`os.path.realpath` both sides before `relpath`) — a symlink-spelled
+  target (this host's `~/workspaces` → `/mnt/i/workspaces`) no longer escapes the worktree.
+- **Intake is kind-scoped:** `worktree`/`acceptance.test_cmd` are rejected on non-loop kinds (a
+  `kind:file`+acceptance spec was silently single-shot in place); budgets keys are fail-loud;
+  `budgets.num_predict` is a real field threaded to the coder.
+- **`Exhausted` is a first-class terminal:** surfaced by `service.result()` (best-attempt branch/commit,
+  S11), the phase map, and the runs-scan hook — it was invisible to all three.
+
+**Deferred (need frozen-code reshape / a decision), tasks T-95–T-99:** the loop is a parallel
+`_run_loop` beside the `GenerateFn` seam (share the per-call wrapper: cold-start grace / Generation
+events / `timeout_s`); `context.refs` dropped when the worker lacks `LLM_REPO_ROOT`; retention doesn't
+`git worktree prune`; `scope_of`/anti-cheat compare by basename only; `auto_verdict` never reaches
+`calls.jsonl` (plan overclaim — decide implement vs correct-the-plan). Full analysis:
+`docs/findings/oficina-p2-review-deferred-2026-07-16.md` (`ref:oficina-p2-review-deferred`).
+
+**Tests use the executable-spec DSL** (`ref:test-executable-spec`): `test_loop`/`test_intake`/
+`test_worker_loop` converted; the `given`/`when` split is the triage rule for which tests to convert.
+
 ## P2 evaluation + delta-scoped attribution (P2-T5; P2-D8/D12/D13) — 2026-07-15
 
 `oficina/evaluator.py`. `evaluate(worktree, base_repo, spec)` is the real `EvaluateFn`: stages run
