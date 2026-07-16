@@ -413,6 +413,31 @@ test-first. Escalation (P2-D9), more validators/kinds, and the tiny-model classi
 - **T8 — Live acceptance.** Run against a real repo + a seeded compile-defect fixture; verify all
   six acceptance criteria; capture timings for criterion 5 (cache).
 
+## Build kickoff — where things live (mechanics, not decisions)
+
+Concrete anchors so a cold session starts T1 without rediscovery (added session 119):
+
+- **New code lives in** `mcp-server/src/ollama_mcp/oficina/` (P1's 11 modules are there). P2 adds
+  new modules alongside — suggested: `loop.py` (the `GenerateFn` loop), `evaluator.py` (validator
+  invocation + delta-scope), `parser.py` (`parse_validator_output`), `prompt.py` (`SEGMENTS` +
+  `build_prompt`), `workspace.py` (worktree lifecycle).
+- **The seam T6 fills:** `worker.py:43` — `GenerateFn = Callable[[Dict[str, Any], str],
+  GenerationResult]`; the worker takes `Optional[GenerateFn] = None` (`worker.py:112`) and defaults
+  to `_default_generate`. P2's loop is a new `GenerateFn` passed in; the single-shot default stays
+  for `kind: answer`.
+- **Phase-1 validator = `benchmarks/lib/validate-code.py`.** ⚠️ Its header docstring says "Go +
+  Shell only" — **that is STALE.** The DISPATCH map (`validate-code.py:612`) routes
+  `.go/.sh/.py/.java` → `validate_go/validate_shell/validate_python/validate_java`; Python **is**
+  supported (fixtures in `benchmarks/test-fixtures/python/`). **Output contract T1's parser wraps**
+  (per file): `{file, path, status: 'pass'|'fail', errors: [{type, text, line}], warnings,
+  error_count, warning_count}`; exit 0=pass / 1=errors / 2=tool error.
+- **Do NOT conflate** `benchmarks/lib/validate-code.py` (Phase-1 validators — what P2 uses) with
+  `evaluator/lib/evaluate.py` + `evaluator/rubrics/` (the Phase-2 rubric judge — that is **P4**, not
+  P2).
+- **Run tests:** `cd mcp-server && uv run pytest` (`pyproject.toml` → `testpaths=["tests"]`,
+  `pytest-asyncio`); P1 left 150 green. No bash wrapper here — invoke `uv` directly.
+- **Branch:** follow P1's convention — a `feature/oficina-p2-*` branch off master.
+
 ## Documentation lifecycle (draft → final)
 
 This plan is the **draft** carrier of the P2 diagrams + event freeze candidates. The process

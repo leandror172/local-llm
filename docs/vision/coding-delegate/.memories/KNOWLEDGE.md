@@ -67,6 +67,11 @@ deliverable-copying; worker's `_default_generate` supports `context.files` but n
 `refs`; `_default_generate` reuses `server.py` private helpers (`_build_context_block`,
 `_strip_code_fences`) — promote to a shared module when P2 touches them.
 
+**Now planned (T-92 P2 plan, session 119, `docs/plans/oficina-p2-evaluated-loop.md`):** the
+worktree workspace (P2-D5) fixes the `artifacts/` retention no-op; `refs` in the worker + triad-key
+unification are the plan's explicit carried-from-P1 items; the `server.py` private-helper promotion
+lands in build step T7. See the plan's "Build kickoff" section for module/seam/test/validator anchors.
+
 ## Intake rule model (P1-D3) — 2026-07-12, T3
 
 Pydantic models (`extra="forbid"`) are the schema of record; the allowed-key sets for

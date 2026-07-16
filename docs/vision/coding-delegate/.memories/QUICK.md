@@ -26,10 +26,16 @@ label). Keep under 30 lines.*
   (a one-shot CLI gains nothing from async; solved via preview stage/apply + num_ctx/think
   fixes). **Lesson: oficina's real first client must be an AGENT that parallelizes**, not a
   batch CLI — see KNOWLEDGE.md "T-81 outcome" + "Distribution" sections.
-- **Next:** T-86 (decide oficina distribution model + new-machine provisioning runbook;
-  discuss next session), then a genuine agent-driven first client / **P2** (evaluated
-  deliverable loop). P2 gaps parked in KNOWLEDGE.md (artifacts/ no-op, refs in worker,
-  triad key unification).
+- 2026-07-15: **P2 plan FROZEN (T-92, session 119)** — `docs/plans/oficina-p2-evaluated-loop.md`
+  (P2-D1–D13; caching-first: monotonic-prefix prompt layout, rule-based in-loop classifier,
+  per-run worktree, delta-scope baseline + free anti-cheat; first slice = function-against-tests,
+  Python, 3-iter, no escalation). Advisor caught + fixed a delta-scope masking hole (blanket
+  baseline-subtraction would mask an absent target). Diagrams individually ref-anchored. **See the
+  plan's "Build kickoff" section** for where code / tests / the validator live.
+- **Next:** **build P2 (T-92)** — start at **T1** (`parse_validator_output`; the plan's
+  Build-kickoff map pins module/seam/test/validator anchors). **T-91 is a prerequisite**
+  (num_predict floor/cap on the loop generator). T-86 distribution runbook still pending; G-D4
+  gate-vs-P2 priority open (mild lean gate-after-P2).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary
