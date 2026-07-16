@@ -88,6 +88,29 @@ where undefined-name/import defects only surface at the test stage. `error_key` 
 volatile coordinates stripped by `_normalize` (paths→basename, line/col removed, hex addrs removed,
 slugified) so a defect keys identically across line shifts. 20 tests; test bodies + impl local-model-generated.
 
+## P2 evaluated loop (P2-T6; P2-D1/D2/D4/D7/D10) — 2026-07-15
+
+`oficina/loop.py` `EvaluatedLoop.run()` — collaborators (coder, evaluate, workspace, ledger) are
+INJECTED so the loop is unit-testable with fakes (no GPU/git in the pure path; the worker wires
+real ones at T7). Flow per iteration: `IterationStarted` → `build_prompt({**stable, **variable})`
+→ coder → write output to the target in the worktree → `snapshot` → **anti-cheat** (`diff_touches_
+test_files` vs the previous snapshot; a hit short-circuits eval and rejects the iteration) →
+`evaluate` (injected `EvaluateFn`) → `attribute` (delta-scope) → `IterationEvaluated{passed,
+stage_failed, failure_class, error_keys, auto_verdict}` → pass ⇒ return `delivered`; else classify
+(rule-based `category_for`, P2-D4 — NO model call) + `_signature` (sorted error_key set, P2-D7):
+repeated signature within budget ⇒ `FreshStart` (drop the variable tail, keep the stable prefix);
+else append repair feedback. Budget out ⇒ `Exhausted` (best attempt = fewest attributable failures,
+never silently empty — S11). **The loop emits iteration events + `Exhausted` but NOT `Delivered`** —
+terminal `Delivered`/packaging stays the worker's job (T7). Model is a single persona (P2-D1, no
+escalation ladder yet). `category_for` is **fail-loud** — a test-stage failure must carry a
+`pytest-error:`/`pytest-failed:` key (which the real T1 parser guarantees).
+
+**T-91 RESOLVED (P2 prereq):** `client.chat` gained `num_predict`; the loop's `default_coder` floors
+it (never truncate a function) and caps it (bound runaway) via `NUM_PREDICT=2048`. Root cause
+confirmed live this session: the sync `generate_code` path inherited the model default and truncated
+functions mid-body 4× during T1/T2/T5 test-body delegation. The async worker path was unaffected,
+which is why the plan routes the loop through the worker seam, not the sync tool.
+
 ## P2 evaluation + delta-scoped attribution (P2-T5; P2-D8/D12/D13) — 2026-07-15
 
 `oficina/evaluator.py`. `evaluate(worktree, base_repo, spec)` is the real `EvaluateFn`: stages run

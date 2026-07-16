@@ -47,12 +47,16 @@ label). Keep under 30 lines.*
   + pytest, T1-parsed), `attribute` (P2-D12 masking-hole guard), `diff_touches_test_files` (anti-cheat).
   9 tests incl. 2 real-subprocess evaluate integration tests. `EvaluateFn` refined to (worktree,
   base_repo, spec). Full suite 209.
-- **Next:** **T6** the loop (`loop.py`, the `GenerateFn`): generate → evaluate (delta-scoped) →
-  classify → signature/fresh-start → budget → package | Exhausted; emit iteration events; auto_verdict
-  into calls.jsonl; wire refs. **Inject `ref:delegate-p2-loop-diagram` as refs to the local model
-  (T-93 field-test).** **T-91 IS A HARD PREREQ** (P2-D10 num_predict floor/cap on the loop generator) —
-  observed live 4× as sync `generate_code` truncation; the loop generator must set num_predict
-  deliberately. Then T7 (wire into worker), T8 (live acceptance).
+  **T6 DONE + T-91 RESOLVED.** `loop.py` `EvaluatedLoop` (injected coder/evaluate/workspace/ledger;
+  generate→snapshot→anti-cheat→evaluate→attribute→classify→signature/fresh-start→budget; emits
+  iteration events + Exhausted, NOT Delivered). `client.chat` gained `num_predict` (T-91 fix);
+  `default_coder` floors/caps at 2048. Ledger gained 5 loop events. 8 loop tests; full suite 217.
+- **Next:** **T7** wire the loop as the worker's generator for code kinds (`function`→loop,
+  `answer`→single-shot); worker emits terminal Delivered on loop `delivered`, maps `exhausted`→Failed;
+  teardown workspace; resolve `context.refs` into the loop's stable `context` part (carried-from-P1).
+  Then **T8** live acceptance (all 6 criteria). NOTE for T7/postmortem: the T-93 mermaid-as-context
+  field test hasn't fired — P2's remaining code is architectural (hand-written per conventions); the
+  diagram refs are wired + available, so a future loop-adjacent delegation can use them.
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

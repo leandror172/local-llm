@@ -136,6 +136,7 @@ class OllamaClient:
         keep_alive: str = "15m",
         timeout: int = DEFAULT_TIMEOUT,
         run_id: str | None = None,  # oficina: tags the call-log record (acceptance #6)
+        num_predict: int | None = None,  # oficina/T-91: bound generation (floor + cap)
     ) -> ChatResponse:
         """Send a chat completion request to Ollama.
 
@@ -178,6 +179,10 @@ class OllamaClient:
         }
         if temperature is not None:
             payload["options"]["temperature"] = temperature
+        if num_predict is not None:
+            # T-91: without this the sync path inherited the model default and
+            # truncated functions mid-body. The loop floors/caps this deliberately.
+            payload["options"]["num_predict"] = num_predict
         if format is not None:
             payload["format"] = format
 

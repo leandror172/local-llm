@@ -29,6 +29,11 @@ RUN_EVENTS: frozenset[str] = frozenset(
         "GenerationStarted",
         "GenerationFinished",
         "AssemblyDone",  # P2-T4 (P2-D13): worktree + C0 baseline built
+        "IterationStarted",  # P2-T6: loop events
+        "IterationEvaluated",
+        "FreshStart",
+        "ModelEscalated",
+        "Exhausted",
         "Delivered",
         "Failed",
         "Cancelled",
@@ -45,6 +50,11 @@ _STATE_BY_EVENT: dict[str, str] = {
     "GenerationStarted": "working",
     "GenerationFinished": "working",
     "AssemblyDone": "working",
+    "IterationStarted": "working",
+    "IterationEvaluated": "working",
+    "FreshStart": "working",
+    "ModelEscalated": "working",
+    "Exhausted": "failed",
     "Delivered": "completed",
     "Failed": "failed",
     "Cancelled": "cancelled",
@@ -168,6 +178,21 @@ class Ledger:
 
     def assembly_done(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("AssemblyDone", payload)
+
+    def iteration_started(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("IterationStarted", payload)
+
+    def iteration_evaluated(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("IterationEvaluated", payload)
+
+    def fresh_start(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("FreshStart", payload)
+
+    def model_escalated(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("ModelEscalated", payload)
+
+    def exhausted(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("Exhausted", payload)
 
     def delivered(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("Delivered", payload)
