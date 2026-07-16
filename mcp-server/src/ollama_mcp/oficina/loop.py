@@ -20,6 +20,7 @@ runaway).
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -38,8 +39,9 @@ DEFAULT_CODER_MODEL = "my-python-q25c14"
 NUM_PREDICT = 2048  # floored so a function is never truncated; capped to bound runaway
 
 _SYSTEM = "You are a precise Python engineer. Implement the objective so every provided test passes."
+# No leading "CONSTRAINTS:" label here — prompt.SEGMENTS already prepends that header for the
+# 'constraints' segment; embedding it again doubled the header in every prompt.
 _CONSTRAINTS = (
-    "CONSTRAINTS:\n"
     "- Implement ONLY the objective; do not modify the tests.\n"
     "- One responsibility per function; name functions after what they return or do.\n"
     "- Return the complete file content, no markdown fences."
@@ -103,6 +105,9 @@ class EvaluatedLoop:
         budgets = spec.get("budgets") or {}
         self.max_iterations = budgets.get("iterations", 3)
         self.max_fresh_starts = budgets.get("fresh_starts", 1)
+        # Whole-run wall-clock safety net (P2-D10). 0/None disables. Checked between
+        # iterations; the per-stage subprocess timeout (evaluator) bounds a single hung run.
+        self.max_wall_clock_s = budgets.get("wall_clock_s", 900)
         self.model = spec.get("model") or "auto"
         if self.model == "auto":
             self.model = DEFAULT_CODER_MODEL
@@ -113,7 +118,10 @@ class EvaluatedLoop:
         worktree = assembly.worktree_path
         base_repo = assembly.base_repo
         target = self.spec["deliverable"]["target"]
-        target_rel = os.path.relpath(target, base_repo)
+        # realpath both sides: base_repo is git's physical top-level, so a symlink-spelled
+        # target (e.g. ~/workspaces → /mnt/i/workspaces on this host) would otherwise relpath
+        # to a '../..'-escaping path and write the deliverable OUTSIDE the worktree.
+        target_rel = os.path.relpath(os.path.realpath(target), os.path.realpath(base_repo))
         target_files = [os.path.basename(target_rel)]
         test_files = (self.spec.get("acceptance") or {}).get("test_files") or []
         baseline = assembly.baseline_failures
@@ -131,8 +139,31 @@ class EvaluatedLoop:
         best: Optional[GenerationResult] = None
         best_failures = None
         best_snapshot = prev_sha
+        started_at = time.monotonic()
 
         for k in range(1, self.max_iterations + 1):
+            if self.max_wall_clock_s and time.monotonic() - started_at > self.max_wall_clock_s:
+                spent = {"iterations": k - 1, "fresh_starts": fresh_used}
+                self.ledger.exhausted(
+                    {
+                        "spent": spent,
+                        "limit_hit": "timeout",
+                        "best_attempt_ref": best_snapshot,
+                        "branch": assembly.branch,
+                    }
+                )
+                return LoopResult(
+                    outcome="exhausted",
+                    content=best.content if best else "",
+                    model=best.model if best else self.model,
+                    eval_count=best.eval_count if best else 0,
+                    duration_ms=best.duration_ms if best else 0.0,
+                    iterations_used=k - 1,
+                    branch=assembly.branch,
+                    best_snapshot=best_snapshot,
+                    limit_hit="timeout",
+                    spent=spent,
+                )
             if self.is_cancelled():
                 self.ledger.cancelled({"stage": "looping", "iteration": k})
                 return LoopResult(
@@ -231,7 +262,12 @@ class EvaluatedLoop:
 
         spent = {"iterations": self.max_iterations, "fresh_starts": fresh_used}
         self.ledger.exhausted(
-            {"spent": spent, "limit_hit": "exhausted", "best_attempt_ref": best_snapshot}
+            {
+                "spent": spent,
+                "limit_hit": "exhausted",
+                "best_attempt_ref": best_snapshot,
+                "branch": assembly.branch,
+            }
         )
         return LoopResult(
             outcome="exhausted",
@@ -257,7 +293,7 @@ def default_coder(num_predict: int = NUM_PREDICT, timeout: int = 1800) -> CoderF
         import asyncio
 
         from ollama_mcp import server as srv
-        from ollama_mcp.client import OllamaClient
+        from ollama_mcp.client import OllamaClient, OllamaTimeoutError
 
         async def _call() -> Any:
             client = OllamaClient()
@@ -273,7 +309,12 @@ def default_coder(num_predict: int = NUM_PREDICT, timeout: int = 1800) -> CoderF
             finally:
                 await client.close()
 
-        resp = asyncio.run(_call())
+        try:
+            resp = asyncio.run(_call())
+        except OllamaTimeoutError:
+            # Cold-start grace (parity with the single-shot path): a first-call timeout is
+            # usually the model loading into VRAM — retry once before failing the whole run.
+            resp = asyncio.run(_call())
         content = srv._strip_code_fences(resp.content)
         return GenerationResult(
             content=content,

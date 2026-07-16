@@ -111,31 +111,61 @@ def _validate_code_script() -> str:
     return str(repo_root / "benchmarks" / "lib" / "run-validate-code.sh")
 
 
-def _run_compile_stage(target_in_worktree: Path) -> List[ParsedFailure]:
+# A single evaluation subprocess (compile or one test run) may never outlast this many
+# seconds — a generated ``while True`` executed by pytest, or a wedged validator, must not
+# hang the worker (and the FIFO behind it) forever. Bounded here, per-invocation; the loop's
+# whole-run ``budgets.wall_clock_s`` is the coarser envelope. On expiry the stage raises
+# EvaluationError (a system/loop failure, NOT a code defect that flows through delta-scoping).
+_STAGE_TIMEOUT_S = 900
+
+
+def _run_compile_stage(target_in_worktree: Path, timeout_s: int) -> List[ParsedFailure]:
     """Run the compile validator on the target and parse its JSON (T1)."""
     script = _validate_code_script()
-    result = subprocess.run(
-        [script, "--quiet", str(target_in_worktree)],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [script, "--quiet", str(target_in_worktree)],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        raise EvaluationError("compile", f"compile validator exceeded {timeout_s}s")
     if result.returncode == 2:
         raise EvaluationError("compile", f"validator tool error: {result.stderr.strip()}")
     payload = json.loads(result.stdout)
     return parse_validator_output(STAGE_COMPILE, payload)
 
 
-def _run_test_stage(worktree: Path, test_cmd: str) -> List[ParsedFailure]:
-    """Run test_cmd in the worktree and parse the pytest short summary (T1)."""
-    result = subprocess.run(
-        test_cmd,
-        shell=True,
-        cwd=str(worktree),
-        capture_output=True,
-        text=True,
-    )
+def _run_test_stage(worktree: Path, test_cmd: str, timeout_s: int) -> List[ParsedFailure]:
+    """Run test_cmd in the worktree and parse the pytest short summary (T1).
+
+    Distinguishes "tests ran and some failed" from "the test command could not run":
+    a non-zero exit with NO parseable short-summary failures (pytest missing → rc 127,
+    a usage/collection error printed as ``ERROR: ...`` outside the summary block, a crash)
+    is a tooling failure and raises EvaluationError. Without this, an un-parseable failure
+    reads as zero failures → the loop would declare success on code whose tests never ran.
+    """
+    try:
+        result = subprocess.run(
+            test_cmd,
+            shell=True,
+            cwd=str(worktree),
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        raise EvaluationError("test", f"test command exceeded {timeout_s}s: {test_cmd!r}")
     combined = f"{result.stdout}\n{result.stderr}"
-    return parse_validator_output(STAGE_TEST, combined)
+    failures = parse_validator_output(STAGE_TEST, combined)
+    if not failures and result.returncode != 0:
+        tail = (result.stderr or result.stdout or "").strip()[-300:]
+        raise EvaluationError(
+            "test",
+            f"test command produced no parseable result (rc={result.returncode}): {tail}",
+        )
+    return failures
 
 
 def evaluate(worktree: Path, base_repo: Path, spec: Dict[str, Any]) -> List[ParsedFailure]:
@@ -146,16 +176,17 @@ def evaluate(worktree: Path, base_repo: Path, spec: Dict[str, Any]) -> List[Pars
     """
     target = (spec.get("deliverable") or {}).get("target")
     acceptance = spec.get("acceptance") or {}
+    timeout_s = (spec.get("budgets") or {}).get("wall_clock_s") or _STAGE_TIMEOUT_S
 
     if target:
-        rel = os.path.relpath(target, base_repo)
+        rel = os.path.relpath(os.path.realpath(target), os.path.realpath(base_repo))
         target_in_worktree = Path(worktree) / rel
         if target_in_worktree.exists():
-            compile_failures = _run_compile_stage(target_in_worktree)
+            compile_failures = _run_compile_stage(target_in_worktree, timeout_s)
             if compile_failures:
                 return compile_failures
 
     test_cmd = acceptance.get("test_cmd")
     if not test_cmd:
         return []
-    return _run_test_stage(Path(worktree), test_cmd)
+    return _run_test_stage(Path(worktree), test_cmd, timeout_s)

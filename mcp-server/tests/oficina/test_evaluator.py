@@ -3,12 +3,20 @@
 The pure `attribute` tests (the P2-D12 masking-hole guard, acceptance criterion 3 both
 directions) have model-generated bodies. The anti-cheat (git diff) and `evaluate` (real
 validator/pytest subprocess) tests are hand-written — subprocess/git is not delegated.
+
+Not converted to the executable-spec DSL (`ref:test-executable-spec`): mixed file — the pure
+`attribute()` family is convertible, but the `evaluate`/anti-cheat half asserts on real
+subprocess/git outcomes (a distinct assertion kind, rule 3), so a partial conversion would split
+the file for little gain. Revisit if the `attribute()` family grows.
 """
 
 import subprocess
 import sys
 
+import pytest
+
 from ollama_mcp.oficina.evaluator import (
+    EvaluationError,
     attribute,
     diff_touches_test_files,
     evaluate,
@@ -149,3 +157,28 @@ def test_evaluate_clean_target_and_passing_test_yields_no_failures(tmp_path):
         },
     }
     assert evaluate(tmp_path, tmp_path, spec) == []
+
+
+def test_evaluate_raises_when_test_command_cannot_run(tmp_path):
+    """A test_cmd that exits non-zero with no parseable summary (here: a missing binary) RAISES
+    rather than returning [] — otherwise 'tests never ran' would read as 'passed' (false Delivered)."""
+    (tmp_path / "area.py").write_text("def area(w, h):\n    return w * h\n")
+    spec = {
+        "deliverable": {"kind": "function", "target": str(tmp_path / "area.py")},
+        "acceptance": {"test_cmd": "this-binary-does-not-exist-xyz", "test_files": []},
+    }
+    with pytest.raises(EvaluationError):
+        evaluate(tmp_path, tmp_path, spec)
+
+
+def test_evaluate_times_out_a_hanging_test_command(tmp_path):
+    """A hanging test_cmd is bounded by budgets.wall_clock_s and raises rather than blocking the
+    worker forever (the infinite-loop-in-generated-code hazard)."""
+    (tmp_path / "area.py").write_text("def area(w, h):\n    return w * h\n")
+    spec = {
+        "deliverable": {"kind": "function", "target": str(tmp_path / "area.py")},
+        "acceptance": {"test_cmd": "sleep 30", "test_files": []},
+        "budgets": {"wall_clock_s": 1},
+    }
+    with pytest.raises(EvaluationError):
+        evaluate(tmp_path, tmp_path, spec)

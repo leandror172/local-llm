@@ -51,13 +51,14 @@ class Acceptance(BaseModel):
 
 
 class Budgets(BaseModel):
-    """Loop budgets (P2-D10). Iterations steers; the rest are safety nets (enforced in T6)."""
+    """Loop budgets (P2-D10). Iterations steers; the rest are safety nets (enforced in the loop)."""
 
     model_config = ConfigDict(extra="forbid")
     iterations: int = 3
     fresh_starts: int = 1
     wall_clock_s: int = 900
     tokens: Optional[int] = None
+    num_predict: Optional[int] = None  # T-91: floored/capped generation length; None → loop default
 
 
 class RunSpec(BaseModel):
@@ -77,6 +78,7 @@ TOP_KEYS = set(RunSpec.model_fields)
 DELIVERABLE_KEYS = set(Deliverable.model_fields)
 CONTEXT_KEYS = set(Context.model_fields)
 ACCEPTANCE_KEYS = set(Acceptance.model_fields)
+BUDGETS_KEYS = set(Budgets.model_fields)
 
 VALID_KINDS = {"file", "answer", "function"}
 KINDS_REQUIRING_TARGET = {"file", "function"}
@@ -98,6 +100,8 @@ RULE_CONTEXT_FILE_MISSING = "context_file_missing"
 RULE_ACCEPTANCE_REQUIRED = "acceptance_required"
 RULE_WORKTREE_REQUIRED = "worktree_required"
 RULE_TARGET_NOT_GIT_REPO = "target_not_git_repo"
+RULE_ACCEPTANCE_NOT_SUPPORTED = "acceptance_not_supported"
+RULE_WORKTREE_NOT_SUPPORTED = "worktree_not_supported"
 
 
 @dataclass
@@ -178,6 +182,20 @@ def _check_acceptance_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
     return None
 
 
+def _check_budgets_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """Reject any unknown key inside budgets (fail loud on typos like 'iteration').
+
+    check_intake never instantiates the pydantic models, so Budgets' extra='forbid'
+    does not run on this path — this check is what keeps a mistyped budget key from
+    silently falling back to the loop's default instead of the value the user meant.
+    """
+    budgets = spec.get("budgets") or {}
+    unknown = set(budgets) - BUDGETS_KEYS
+    if unknown:
+        return Rejection(RULE_UNKNOWN_KEY, f"unknown budgets key(s): {', '.join(sorted(unknown))}")
+    return None
+
+
 def _check_objective(spec: Dict[str, Any]) -> Optional[Rejection]:
     """Reject a missing or empty objective."""
     if not spec.get("objective"):
@@ -203,6 +221,40 @@ def _check_workspace(spec: Dict[str, Any]) -> Optional[Rejection]:
     workspace = spec.get("workspace", DEFAULT_WORKSPACE)
     if workspace not in SUPPORTED_WORKSPACES:
         return Rejection(RULE_WORKSPACE_UNSUPPORTED, f"unsupported workspace: {workspace!r}")
+    return None
+
+
+def _check_acceptance_supported(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """acceptance.test_cmd is only wired for loop kinds; reject it on file/answer.
+
+    Without this a ``kind: file`` spec carrying a test_cmd passes intake but takes the P1
+    single-shot path, which writes the target in place and never runs the declared tests —
+    the acceptance gate is silently ignored. Widen when a non-function kind gains the loop.
+    """
+    kind = (spec.get("deliverable") or {}).get("kind")
+    acceptance = spec.get("acceptance") or {}
+    if acceptance.get("test_cmd") and kind not in LOOP_KINDS:
+        return Rejection(
+            RULE_ACCEPTANCE_NOT_SUPPORTED,
+            f"acceptance.test_cmd is only supported for loop kinds {sorted(LOOP_KINDS)}, not {kind!r}",
+        )
+    return None
+
+
+def _check_worktree_supported(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """workspace 'worktree' is only wired for loop kinds; reject it on file/answer.
+
+    The single-shot path ignores ``workspace`` and writes in place, so accepting worktree
+    for a non-loop kind silently denies the isolation the caller asked for. (Also removes the
+    answer+worktree case whose git-repo check falls back to the worker's nondeterministic cwd.)
+    """
+    kind = (spec.get("deliverable") or {}).get("kind")
+    workspace = spec.get("workspace", DEFAULT_WORKSPACE)
+    if workspace == WORKTREE_WORKSPACE and kind not in LOOP_KINDS:
+        return Rejection(
+            RULE_WORKTREE_NOT_SUPPORTED,
+            f"workspace 'worktree' is only supported for loop kinds {sorted(LOOP_KINDS)}, not {kind!r}",
+        )
     return None
 
 
@@ -265,9 +317,12 @@ _CHECKS = (
     _check_deliverable_unknown_keys,
     _check_context_unknown_keys,
     _check_acceptance_unknown_keys,
+    _check_budgets_unknown_keys,
     _check_objective,
     _check_kind_and_target,
     _check_workspace,
+    _check_acceptance_supported,
+    _check_worktree_supported,
     _check_acceptance_required,
     _check_worktree_required,
     _check_target_git_repo,

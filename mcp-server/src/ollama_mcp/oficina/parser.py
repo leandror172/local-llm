@@ -118,15 +118,51 @@ def _parse_compile(payload: list) -> list[ParsedFailure]:
     return failures
 
 
+_SUMMARY_HEADER = "short test summary info"
+
+
+def _summary_section(payload: str) -> Optional[list[str]]:
+    """The lines of pytest's 'short test summary info' block, or None if absent.
+
+    The block opens at the ``=== short test summary info ===`` banner and closes
+    at the next ``=``-ruled banner (the final ``=== N failed, M passed ===`` line).
+    Restricting the FAILED/ERROR scan to this block is what keeps *application*
+    output — a test that logs ``ERROR ...`` under ``log_cli``/``-s``, or any stderr
+    line beginning ``ERROR ``/``FAILED `` — from being misread as a test failure
+    (the phantom-failure hole). ``None`` means pytest emitted no summary at all,
+    which the caller distinguishes from "summary present, zero failures".
+    """
+    lines = payload.splitlines()
+    start = None
+    for index, raw in enumerate(lines):
+        if _SUMMARY_HEADER in raw and raw.lstrip().startswith("="):
+            start = index + 1
+            break
+    if start is None:
+        return None
+    section: list[str] = []
+    for raw in lines[start:]:
+        if raw.startswith("="):  # the trailing summary banner closes the block
+            break
+        section.append(raw)
+    return section
+
+
 def _parse_pytest(payload: str) -> list[ParsedFailure]:
     """Scan the pytest short-summary FAILED/ERROR lines into failures.
 
     ERROR (collection/import) keys under ``pytest-error:`` (mechanical), FAILED
     (assertion) under ``pytest-failed:`` (structural) — so the category split
     survives into the repetition signature. The ``- <reason>`` tail is optional.
+    Only the short-summary block is scanned (``_summary_section``); no summary
+    block → no parsed failures (the caller reads the exit code to tell "passed"
+    from "the test command never ran").
     """
+    section = _summary_section(payload)
+    if section is None:
+        return []
     failures: list[ParsedFailure] = []
-    for raw_line in payload.splitlines():
+    for raw_line in section:
         line = raw_line.strip()
         if line.startswith("FAILED "):
             keyword, prefix = "FAILED ", "pytest-failed:"

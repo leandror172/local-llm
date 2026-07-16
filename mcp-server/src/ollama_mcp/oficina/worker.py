@@ -196,7 +196,10 @@ class Worker:
         from .loop import EvaluatedLoop, default_coder
         from .workspace import AssemblyError, Workspace
 
-        coder = self._loop_coder or default_coder()
+        num_predict = (spec.get("budgets") or {}).get("num_predict")
+        coder = self._loop_coder or (
+            default_coder(num_predict=num_predict) if num_predict else default_coder()
+        )
         evaluate = self._loop_evaluate or default_evaluate
         run_dir = self.store.run_dir(run_id) / "workspace"
         workspace = Workspace(spec, run_id, run_dir, evaluate)
