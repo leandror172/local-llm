@@ -1,38 +1,38 @@
 # Session Log
 
-**Current Layer:** "Layer 5 — Expense Classifier (side-track: T-89 hooks verified live; T-90 resolved — 14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift; next: T-86 distribution runbook + oficina P2/first-client, G-D4 priority open)"
-**Current Session:** 2026-07-15 — Session 118: T-89 hooks verified live + T-90 resolved (14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift) + gpu-vram-windows helper
+**Current Layer:** Layer 5 — Expense Classifier (side-track: oficina P2 evaluated-loop plan FROZEN (T-92, `docs/plans/oficina-p2-evaluated-loop.md`) — build next at T1 (`parse_validator_output`); T-91 is a P2 prereq; T-93 diagrams-as-model-context draft-ready via LTG session 18)
+**Current Session:** 2026-07-15 — Session 119: oficina P2 evaluated-loop plan FROZEN (T-92) — caching-first design, advisor-reviewed; T-93 filed
 
 ---
-## 2026-07-15 - Session 118: T-89 hooks verified live + T-90 resolved (14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift) + gpu-vram-windows helper
+## 2026-07-15 - Session 119: oficina P2 evaluated-loop plan FROZEN (T-92) — caching-first design, advisor-reviewed; T-93 filed
 
 ### Context
 
-Session opened on "discuss next steps" (ref-lookup `--paths` + `resume.sh`). User picked the two quick items from session 117's Next: verify the T-89 hooks fire, and diagnose T-90 (the KV-quant/offload anomaly).
+Session opened on "discuss next steps" after resume. Chose **oficina P2** (the evaluated deliverable loop) as the next work, then whiteboarded and froze its plan rather than starting to build.
 
 ### What Was Done
 
-- Verified T-89 hooks (session 117's #1 Next item): both wired in `.claude/settings.json` (SessionStart → `oficina-runs-scan.py`; PostToolUse `mcp__ollama-bridge__submit_run` → `oficina-watch-hook.py`); hermetic suite 11/11; the SessionStart scan fires and correctly stays silent on already-marked runs (the cozempic sibling in the same array proves the array executes). Verified done — no change needed.
-- Resolved T-90: reproduced the 15 GB / 42%-58% CPU-GPU split at 32K, but the runner load log proves KV quant `q8_0` + Flash Attention are ACTIVE (KV cache 3.26 GB; f16 would be 6.5). Root cause = VRAM contention: the RTX 3060 also drives the Windows desktop, leaving only ~9 GB free (NVIDIA overlay/nvcontainer ~1 GB, Chrome ~0.8 GB, dwm ~0.6 GB). Not a config regression — no fix needed.
-- Found what holds host VRAM via `nvidia-smi.exe` + PowerShell `GPU Process Memory` perf counters (Linux `nvidia-smi` can't attribute host VRAM under WDDM — shows `[Not Found]`).
-- Built + tested `~/workspaces/scripts/gpu-vram-windows.sh` (machine-local): names each PID, sums over engines, drops the pid-0 shared pool, prints reclaim tips.
-- Wrote finding `docs/findings/kv-quant-vram-contention-2026-07-15.md` (`ref:kv-quant-vram-contention`) incl. the NVIDIA-overlay service CLI-control note (`Stop-Service NvContainerLocalSystem`, elevated; do NOT touch `NVDisplay.ContainerLocalSystem`); corrected CLAUDE.md's 32K fact to host-VRAM-dependent; indexed finding + helper. Commit `1622b9f`.
-- Split the still-unexplained sync-truncation asymmetry into new task **T-91**. (T-90 checkoff + T-91 append were both materialized directly in `tasks.md` this session, so neither is in this payload.)
+- **Froze the oficina P2 plan** `docs/plans/oficina-p2-evaluated-loop.md` (P2-D1–D13 + run spec + individually-anchored state/loop Mermaid diagrams + 6-event promotion + acceptance + T1–T8 build steps); filed **T-92**; committed `c24281c`.
+- **T-93 filed** (Mermaid diagrams as local-model coding context) + committed the cross-session **draft-ready** note (`eee21ca`) — an LTG session had already authored the section (parked at `overlays/ollama-scaffolding/drafts/diagrams-as-behavior-specs.md`) with measured evidence.
+- Ran a freeze-review pass (fixed 3 consistency defects) and a post-freeze **advisor pass** (fixed 1 blocking correctness hole + 2 first-slice gaps); verified ref-anchoring clean (6 balanced blocks, matches the P1 precedent).
 
 ### Decisions Made
 
-- T-90's "KV-quant drift" hypothesis disproven — closed as resolved, not fixed. The durable correction was the CLAUDE.md assumption (32K "always fits" held only on a near-empty card), not any config change.
-- The sync-truncation asymmetry is NOT explained by offload (offload slows generation, it does not truncate) → spun out as T-91 rather than folded under a "solved" T-90.
+- **Caching drove the whole design.** Ollama exposes *implicit prefix reuse only* (no cache API, `ref:ollama-explicit-cache-api`) → monotonic stable-prefix prompt layout (P2-D2) in one swappable `SEGMENTS` tuple + ordering-guard test (P2-D3); in-loop classifier stays **rule-based** because a per-iteration model swap would evict the coder KV (P2-D4, reinforces S10); per-run reused worktree serves toolchain caches **and** S16 delta-scope (P2-D5).
+- **First slice = `function`-against-pre-authored-tests**, Python validator only, 3-iter, no escalation (P2-D1). Layer-4 `validate-code.py` IS the Phase-1 evaluator; rubric judge is P4.
+- **Failure category = which eval stage failed** via one shared `parse_validator_output → ParsedFailure{stage, file, error_key, raw}` (P2-D8); repetition signature = sorted normalized `error_key` set over the delta-scoped failure (P2-D7); diversity-not-size escalation, swap-once-at-exhaustion (P2-D9); `input_required` declared-but-unreachable in P2 (P2-D11).
+- **Diagrams get their own ref anchors** (`ref:delegate-p2-state-diagram`/`-loop-diagram`) so `context.refs` can inject one diagram → the mechanism behind T-93.
+- **Documentation lifecycle:** post-impl the diagrams/events go FINAL in the vision folder; the plan then reports the implementation result and points to them.
 
 ### Next
 
-- oficina P2 / first-client + the **G-D4** gate-vs-P2 priority decision (unchanged from 116). T-90 showed *contention*, not *thrash*, so the gate's "observed thrash" trigger is NOT yet met — mild evidence for gate-after-P2.
-- **T-86** oficina distribution runbook (incl. (d): re-adding the two T-89 hook entries on fresh clones — settings.json is gitignored).
-- **T-91** when convenient: diff the request options the sync `generate_code` sends vs the oficina worker's `_default_generate` — check for a `num_predict` cap on the sync path.
+- **Build oficina P2 (T-92)** starting at **T1** (`parse_validator_output` — three readers depend on it), then T2–T8. **T-91 is a prerequisite** (P2-D10 needs `num_predict` floored/capped on the loop generator).
+- **G-D4** gate-vs-P2 priority still open (T-90 showed contention not thrash → mild lean to gate-after-P2).
+- Side options unchanged: T-86 distribution runbook, T-83 freeze, T-56, classifier benchmark, persona hygiene.
 
 ### Gotchas
 
-- `powershell.exe -Command -` executes a single stdin line but silently drops a multi-line heredoc — stage a `.ps1` and use `-File "$(wslpath -w …)"`.
-- PowerShell `'{0:N0}'` formats with the pt-BR locale (`.` as thousands separator) — the source of the "1.039 MB" confusion; emit a plain `[int]` and format in awk.
-- Linux `nvidia-smi` inside WSL2 shows host GPU processes as `[Not Found]`/`[N/A]` (WDDM) — use `nvidia-smi.exe` + the PowerShell `GPU Process Memory` counter for per-process VRAM.
-- ~2.8–3 GB VRAM is held by the Windows desktop even idle; the `dwm` compositor (~0.6–0.9 GB) is irreducible, so ~11 GB free is the practical ceiling on this box.
+- **Advisor caught a silent correctness hole:** blanket delta-scope `current − baseline` would subtract the target-absent `error_key` (`C0` lacks the target symbol) — the exact signature a misnamed/absent target produces → loop declares success on broken code. Fixed to subtract **only out-of-scope** failures; `ParsedFailure` gained `.file` (P2-D12). Acceptance criterion 3 now tests the masking inverse.
+- Python `py_compile` catches only *syntax*; undefined-name/import defects surface at the test stage → read pytest ERROR(→mechanical)/FAILED(→structural) inside the test stage (P2-D8).
+- Worktree teardown must `git worktree prune` the target on BOTH normal teardown and TTL retention, else dangling `.git/worktrees/<id>` entries accumulate.
+- The repo's ref-integrity checker reports vision/plan blocks as "orphaned" — that is the intended reference-on-demand state (looked up via `ref-lookup.sh`, not inline `[ref:KEY]`); the P1 blocks show identically.
