@@ -87,6 +87,8 @@ class EvaluatedLoop:
         evaluate,
         coder: CoderFn,
         ledger,
+        is_cancelled: Optional[Callable[[], bool]] = None,
+        refs_block: str = "",
     ) -> None:
         self.spec = spec
         self.run_id = run_id
@@ -94,6 +96,10 @@ class EvaluatedLoop:
         self.evaluate = evaluate
         self.coder = coder
         self.ledger = ledger
+        self.is_cancelled = is_cancelled or (lambda: False)
+        # Pre-resolved <refs> block (P2 carried-from-P1). Stable → part of the KV prefix.
+        # A run spec's context.refs (e.g. a mermaid diagram anchor, T-93) lands here.
+        self.refs_block = refs_block
         budgets = spec.get("budgets") or {}
         self.max_iterations = budgets.get("iterations", 3)
         self.max_fresh_starts = budgets.get("fresh_starts", 1)
@@ -113,6 +119,11 @@ class EvaluatedLoop:
         baseline = assembly.baseline_failures
 
         stable = {"system": _SYSTEM, "constraints": _CONSTRAINTS, **assembly.stable_parts}
+        if self.refs_block:
+            # refs are context: prepend them so docs/diagrams come before file context (P2-D2).
+            stable["context"] = "\n\n".join(
+                p for p in (self.refs_block, stable.get("context", "")) if p
+            )
         variable: Dict[str, str] = {}
         signatures_seen: set = set()
         fresh_used = 0
@@ -122,6 +133,19 @@ class EvaluatedLoop:
         best_snapshot = prev_sha
 
         for k in range(1, self.max_iterations + 1):
+            if self.is_cancelled():
+                self.ledger.cancelled({"stage": "looping", "iteration": k})
+                return LoopResult(
+                    outcome="cancelled",
+                    content=best.content if best else "",
+                    model=best.model if best else self.model,
+                    eval_count=best.eval_count if best else 0,
+                    duration_ms=best.duration_ms if best else 0.0,
+                    iterations_used=k - 1,
+                    branch=assembly.branch,
+                    best_snapshot=best_snapshot,
+                )
+
             self.ledger.iteration_started(
                 {
                     "iteration": k,

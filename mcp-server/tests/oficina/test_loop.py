@@ -169,6 +169,25 @@ def test_repeated_signature_triggers_fresh_start(tmp_path):
     assert coder.prompts[2] == coder.prompts[0]
 
 
+# --- refs injection (carried-from-P1; the T-93 diagram seam) ----------------
+
+
+def test_refs_block_is_injected_into_the_stable_prompt(tmp_path):
+    """A pre-resolved refs block (e.g. an injected mermaid diagram) appears in the prompt."""
+    repo = _repo(tmp_path)
+    spec = _spec(repo)
+    ev = FakeEvaluate([[], []])
+    coder = FakeCoder(["def area(w, h):\n    return w * h\n"])
+    workspace = Workspace(spec, "rid1", tmp_path / "run", ev)
+    ledger = Ledger(tmp_path / "events.jsonl")
+    loop = EvaluatedLoop(
+        spec, "rid1", workspace, ev, coder, ledger,
+        refs_block="<refs>\nSTATE DIAGRAM: queued -> working -> completed\n</refs>",
+    )
+    loop.run()
+    assert "STATE DIAGRAM" in coder.prompts[0]
+
+
 # --- anti-cheat (P2-D13) ----------------------------------------------------
 
 

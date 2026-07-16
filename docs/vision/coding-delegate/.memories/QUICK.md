@@ -51,12 +51,18 @@ label). Keep under 30 lines.*
   generate→snapshot→anti-cheat→evaluate→attribute→classify→signature/fresh-start→budget; emits
   iteration events + Exhausted, NOT Delivered). `client.chat` gained `num_predict` (T-91 fix);
   `default_coder` floors/caps at 2048. Ledger gained 5 loop events. 8 loop tests; full suite 217.
-- **Next:** **T7** wire the loop as the worker's generator for code kinds (`function`→loop,
-  `answer`→single-shot); worker emits terminal Delivered on loop `delivered`, maps `exhausted`→Failed;
-  teardown workspace; resolve `context.refs` into the loop's stable `context` part (carried-from-P1).
-  Then **T8** live acceptance (all 6 criteria). NOTE for T7/postmortem: the T-93 mermaid-as-context
-  field test hasn't fired — P2's remaining code is architectural (hand-written per conventions); the
-  diagram refs are wired + available, so a future loop-adjacent delegation can use them.
+  **T7 DONE.** `worker.process_run` branches on kind (`function`→`_run_loop`, else single-shot);
+  worker owns terminal Delivered (deliverable = run branch + commit); workspace torn down in finally;
+  `context.refs` resolved via `server._build_refs_block` into the loop's stable prefix (closes the
+  carried-from-P1 refs gap; the T-93 diagram seam is now LIVE — a run spec's `context.refs` injects a
+  mermaid anchor). Loop cancel via injected `is_cancelled`. 5 worker-loop tests; full suite 223.
+- **Next / ONLY REMAINING:** **T8 live acceptance** — real Ollama, real git repo, seeded
+  compile-defect fixture; verify all 6 criteria (`ref:delegate-p2-acceptance`), capture iter-2 cache
+  timing (criterion 5) from calls.jsonl. Then [close session]: post-impl promote diagrams/events to
+  FINAL in the vision folder (`ref:delegate-state-machine`/`-event-model`), plan gets a result report,
+  memories/READMEs/postmortem, PR, handoff. T-93 note: refs seam wired but the mermaid-as-context
+  verdict evidence still wants a real loop run injecting `ref:delegate-p2-loop-diagram` (do at T8 if a
+  live coder call happens).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

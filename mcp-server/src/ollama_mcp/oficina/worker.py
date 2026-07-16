@@ -23,7 +23,7 @@ from ollama_mcp.client import OllamaTimeoutError
 
 from .config import default_root, load_retention_config
 from .fifo import Fifo
-from .intake import check_intake
+from .intake import LOOP_KINDS, check_intake
 from .ledger import Ledger
 from .retention import sweep
 from .store import Store
@@ -111,6 +111,8 @@ class Worker:
         root: str | os.PathLike,
         generate: Optional[GenerateFn] = None,
         proc: Optional[WorkerProc] = None,
+        loop_coder=None,
+        loop_evaluate=None,
     ) -> None:
         self.root = Path(root)
         self.store = Store(root)
@@ -118,6 +120,9 @@ class Worker:
         self.proc = proc or WorkerProc(root)
         self.worker_ledger = Ledger(self.root / "worker-events.jsonl")
         self._generate = generate or _default_generate
+        # P2 loop seams (injected for tests); resolved to the real ones lazily in _run_loop.
+        self._loop_coder = loop_coder
+        self._loop_evaluate = loop_evaluate
 
     def _run_ledger(self, run_id: str) -> Ledger:
         """The ledger for one run (the worker owns it post-queue-pop, P1-D6)."""
@@ -160,8 +165,77 @@ class Worker:
         report = {"model": gen.model, "eval_count": gen.eval_count, "chars": len(gen.content)}
         ledger.delivered({"report": report, "deliverable": deliverable})
 
+    def _resolve_refs_block(self, spec: Dict[str, Any]) -> str:
+        """Resolve context.refs into a <refs> block (P2 carried-from-P1). Fail-open.
+
+        This is the seam a run spec uses to inject docs — including a mermaid diagram anchor
+        (T-93) — into the loop's stable prompt prefix at zero token cost.
+        """
+        refs = (spec.get("context") or {}).get("refs") or []
+        if not refs:
+            return ""
+        import asyncio
+
+        from ollama_mcp.server import _build_refs_block
+
+        try:
+            block = asyncio.run(_build_refs_block(refs, None))
+        except Exception:  # noqa: BLE001 — refs are best-effort context, never fatal
+            return ""
+        return "" if block.startswith("Error:") else block
+
+    def _run_loop(self, ledger: Ledger, run_id: str, spec: Dict[str, Any]) -> None:
+        """Run the evaluated loop (P2) for a code kind; emit terminal Delivered on success.
+
+        The loop itself emits AssemblyDone / iteration events / Exhausted / Cancelled; the
+        worker owns only the terminal Delivered (packaging) — the deliverable is the run branch,
+        so packaging references it rather than writing the target. The workspace is always torn
+        down (remove worktree + prune), keeping the branch.
+        """
+        from .evaluator import evaluate as default_evaluate
+        from .loop import EvaluatedLoop, default_coder
+        from .workspace import AssemblyError, Workspace
+
+        coder = self._loop_coder or default_coder()
+        evaluate = self._loop_evaluate or default_evaluate
+        run_dir = self.store.run_dir(run_id) / "workspace"
+        workspace = Workspace(spec, run_id, run_dir, evaluate)
+        loop = EvaluatedLoop(
+            spec, run_id, workspace, evaluate, coder, ledger,
+            is_cancelled=lambda: self._is_cancelled(run_id),
+            refs_block=self._resolve_refs_block(spec),
+        )
+        try:
+            result = loop.run()
+        except Exception as exc:  # noqa: BLE001 — any stage error becomes a Failed event
+            triad = exc.triad if isinstance(exc, AssemblyError) else _failure_triad("loop", exc)
+            ledger.failed(triad)
+            return
+        finally:
+            workspace.teardown()
+
+        if result.outcome == "delivered":
+            report = {
+                "model": result.model,
+                "iterations": result.iterations_used,
+                "branch": result.branch,
+                "commit": result.best_snapshot,
+            }
+            ledger.delivered(
+                {
+                    "report": report,
+                    "deliverable": {
+                        "kind": spec["deliverable"]["kind"],
+                        "target": spec["deliverable"]["target"],
+                        "branch": result.branch,
+                        "commit": result.best_snapshot,
+                    },
+                }
+            )
+        # exhausted → Exhausted already emitted (folds to failed); cancelled → Cancelled emitted.
+
     def process_run(self, run_id: str) -> None:
-        """Drive one run through intake → generate → package, honoring cancel."""
+        """Drive one run through intake → generate/loop → package, honoring cancel."""
         ledger = self._run_ledger(run_id)
         spec = self.store.load_spec(run_id)
         if self._is_cancelled(run_id):
@@ -173,6 +247,9 @@ class Worker:
             return
         if self._is_cancelled(run_id):
             ledger.cancelled({"stage": "pre_generation"})
+            return
+        if spec["deliverable"]["kind"] in LOOP_KINDS:
+            self._run_loop(ledger, run_id, spec)
             return
         gen = self._run_generation(ledger, run_id, spec)
         if gen is None:

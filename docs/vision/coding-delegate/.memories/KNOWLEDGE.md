@@ -63,11 +63,17 @@ name rides alongside for intake).
 **`OFICINA_ROOT`** env var overrides the storage root (default
 `~/.local/share/oficina/`); tests and acceptance point it at temp dirs.
 
-**Open P2 gaps:** P1 `in_place` runs leave `artifacts/` empty (deliverables go to
-`target`), so retention is an observable no-op on real runs until worktrees (P2) or
-deliverable-copying; worker's `_default_generate` supports `context.files` but not
-`refs`; `_default_generate` reuses `server.py` private helpers (`_build_context_block`,
-`_strip_code_fences`) — promote to a shared module when P2 touches them.
+**P2 wiring (T7):** `process_run` branches on `deliverable.kind` — `LOOP_KINDS` (`function`)
+route to `_run_loop` (the P2 evaluated loop); `answer`/`file` keep the P1 single-shot
+(GenerationStarted→Finished→Delivered). `_run_loop` constructs the Workspace + EvaluatedLoop
+(coder/evaluate are injected seams, default to `loop.default_coder()`/`evaluator.evaluate`),
+runs it, and **owns only the terminal `Delivered`** — the deliverable payload references the run
+branch + commit (the branch IS the deliverable), not a written target. The loop emits everything
+else (AssemblyDone/iteration events/Exhausted/Cancelled). Workspace is always torn down (finally).
+`context.refs` is resolved via `server._build_refs_block` (`_resolve_refs_block`, fail-open) into
+the loop's stable prompt prefix — closing the carried-from-P1 refs gap AND making a run spec's
+`context.refs: ["<diagram-anchor>"]` the live T-93 mechanism. Loop mid-iteration cancel via an
+injected `is_cancelled`. The P1 `artifacts/` retention no-op is closed by the worktree branch model.
 
 **Now planned (T-92 P2 plan, session 119, `docs/plans/oficina-p2-evaluated-loop.md`):** the
 worktree workspace (P2-D5) fixes the `artifacts/` retention no-op; `refs` in the worker + triad-key
