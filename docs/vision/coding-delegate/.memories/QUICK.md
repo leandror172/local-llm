@@ -32,10 +32,14 @@ label). Keep under 30 lines.*
   Python, 3-iter, no escalation). Advisor caught + fixed a delta-scope masking hole (blanket
   baseline-subtraction would mask an absent target). Diagrams individually ref-anchored. **See the
   plan's "Build kickoff" section** for where code / tests / the validator live.
-- **Next:** **build P2 (T-92)** — start at **T1** (`parse_validator_output`; the plan's
-  Build-kickoff map pins module/seam/test/validator anchors). **T-91 is a prerequisite**
-  (num_predict floor/cap on the loop generator). T-86 distribution runbook still pending; G-D4
-  gate-vs-P2 priority open (mild lean gate-after-P2).
+- 2026-07-15: **P2 BUILD STARTED (branch `feature/oficina-p2-loop`).** **T1 DONE** —
+  `oficina/parser.py` (`parse_validator_output → ParsedFailure{stage,file,error_key,raw}`;
+  `category_for`/`scope_of`; Python normalizer). 20 tests green, full suite 170. Test bodies +
+  impl local-model-generated (`my-python-q25c14`). KNOWLEDGE has the parser contract.
+- **Next:** **T2** (`SEGMENTS` + `build_prompt` + ordering-guard test, P2-D2/D3), then T3–T8.
+  **T-91 is a prerequisite for T6** (num_predict floor/cap on the loop generator) — already
+  observed live as sync-truncation during T1 delegation. T-86 distribution runbook still pending;
+  G-D4 gate-vs-P2 priority open (mild lean gate-after-P2).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

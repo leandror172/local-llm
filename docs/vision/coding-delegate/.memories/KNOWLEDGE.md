@@ -72,6 +72,20 @@ worktree workspace (P2-D5) fixes the `artifacts/` retention no-op; `refs` in the
 unification are the plan's explicit carried-from-P1 items; the `server.py` private-helper promotion
 lands in build step T7. See the plan's "Build kickoff" section for module/seam/test/validator anchors.
 
+## P2 evaluated loop — validator-output parser contract (P2-T1) — 2026-07-15
+
+`oficina/parser.py` is the ONE place validator/evaluation output is parsed. `parse_validator_output(stage, payload)`
+folds two unrelated raw shapes — the compile stage's `validate-code.py` JSON array (`{file, status,
+errors:[{type,text,line}]}`) and the test stage's raw pytest short-summary text — into a list of
+`ParsedFailure{stage, file, error_key, raw}`. **Stage is passed in, never sniffed** (the caller always
+knows which stage it just ran). Three readers consume the one shape and never re-parse: `category_for`
+reads `.stage` (P2-D8), the repetition signature reads `.error_key` (P2-D7), `scope_of` reads `.file`
+(P2-D12). **Category is not a pure function of `.stage`** — the test stage splits by `error_key[0]`
+prefix (`pytest-error:`→mechanical, `pytest-failed:`→structural), the Python `py_compile`-only caveat
+where undefined-name/import defects only surface at the test stage. `error_key` = `(kind, detail)` with
+volatile coordinates stripped by `_normalize` (paths→basename, line/col removed, hex addrs removed,
+slugified) so a defect keys identically across line shifts. 20 tests; test bodies + impl local-model-generated.
+
 ## Intake rule model (P1-D3) — 2026-07-12, T3
 
 Pydantic models (`extra="forbid"`) are the schema of record; the allowed-key sets for
