@@ -28,8 +28,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .parser import ParsedFailure
 
-# (worktree_path, spec) -> failures observed in the current worktree state.
-EvaluateFn = Callable[[Path, Dict[str, Any]], List[ParsedFailure]]
+# (worktree_path, base_repo, spec) -> failures observed in the current worktree state.
+# base_repo is needed to map the target's repo-relative path into the worktree.
+EvaluateFn = Callable[[Path, Path, Dict[str, Any]], List[ParsedFailure]]
 
 # Commit identity for oficina's own snapshots — never depends on the host's git config
 # (tests and CI may have none).
@@ -99,7 +100,7 @@ class Workspace:
         self._add_worktree(base_repo)
         materialized = self._materialize_test_files()
         c0_sha = self._commit(f"oficina C0 baseline ({self.run_id})")
-        baseline_failures = self._evaluate(self.worktree_path, self.spec)
+        baseline_failures = self._evaluate(self.worktree_path, base_repo, self.spec)
         stable_parts = self._build_stable_parts()
 
         assembly = Assembly(

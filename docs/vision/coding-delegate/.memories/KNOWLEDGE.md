@@ -88,6 +88,23 @@ where undefined-name/import defects only surface at the test stage. `error_key` 
 volatile coordinates stripped by `_normalize` (paths→basename, line/col removed, hex addrs removed,
 slugified) so a defect keys identically across line shifts. 20 tests; test bodies + impl local-model-generated.
 
+## P2 evaluation + delta-scoped attribution (P2-T5; P2-D8/D12/D13) — 2026-07-15
+
+`oficina/evaluator.py`. `evaluate(worktree, base_repo, spec)` is the real `EvaluateFn`: stages run
+IN ORDER, first failing stage wins (P2-D8). Compile runs only if the target exists in the worktree
+(so C0 — deliverable absent — goes straight to the test stage, surfacing the import/undefined
+failure); it shells `benchmarks/lib/run-validate-code.sh` (resolved via `OFICINA_VALIDATE_CODE` env
+or repo-relative `parents[4]` — the machine-global-install path fix is deferred to T-86) and parses
+its JSON with T1. Test stage runs `test_cmd` (`shell=True`, `cwd=worktree`) and parses pytest via T1.
+**`attribute(current, baseline, target_files, test_files)` is the P2-D12 correctness core** (the
+advisor's masking hole): a current failure is subtracted **only if out-of-scope AND its error_key is
+in the out-of-scope baseline** — target-file failures and ALL test outcomes are never subtracted, so
+a misnamed/absent target (whose `undefined foo` shares C0's baseline key but lands in target/test
+scope) stays live and the loop can't declare success on broken code. `diff_touches_test_files(worktree,
+from, to, test_files)` is the free anti-cheat (P2-D13): non-empty ⇒ the iteration edited the acceptance
+criteria ⇒ reject it. `EvaluateFn` seam is now `(worktree, base_repo, spec)` (refined from T4's
+2-arg — evaluation needs the repo→worktree target mapping).
+
 ## P2 worktree workspace lifecycle (P2-T4; P2-D5/D13) — 2026-07-15
 
 `oficina/workspace.py` `Workspace` owns one git worktree per run, reused across iterations.

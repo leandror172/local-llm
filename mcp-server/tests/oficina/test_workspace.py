@@ -41,11 +41,11 @@ def _spec(repo):
     }
 
 
-def _no_failures(_worktree, _spec):
+def _no_failures(_worktree, _base_repo, _spec):
     return []
 
 
-def _one_failure(_worktree, _spec):
+def _one_failure(_worktree, _base_repo, _spec):
     return [ParsedFailure(STAGE_COMPILE, "area.py", ("py-x", "y"), "boom")]
 
 

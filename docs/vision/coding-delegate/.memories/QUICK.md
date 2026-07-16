@@ -43,11 +43,16 @@ label). Keep under 30 lines.*
   **T4 DONE** — `workspace.py` `Workspace` (assemble → worktree add + C0 baseline + injected
   EvaluateFn seam + stable parts + AssemblyDone; snapshot; teardown remove+prune, keeps run branch).
   11 git-integration tests; ledger gained `assembly_done`/`AssemblyDone`→working. Full suite 200.
-- **Next:** **T5** (delta-scoping: `attributable = current − out-of-scope baseline` via `scope_of`;
-  per-iteration snapshot diff; anti-cheat = deliverable diff must not touch test_files, P2-D12/D13) —
-  builds `evaluator.py` (the real EvaluateFn: run validate-code.py compile stage + test_cmd, parse
-  via T1). Then **T6** the loop (inject `ref:delegate-p2-loop-diagram` as refs — T-93 field-test).
-  **T-91 is a prerequisite for T6** (num_predict floor/cap) — observed live 3× as sync-truncation.
+  **T5 DONE** — `evaluator.py`: real `evaluate` (stage-ordered compile→test via run-validate-code.sh
+  + pytest, T1-parsed), `attribute` (P2-D12 masking-hole guard), `diff_touches_test_files` (anti-cheat).
+  9 tests incl. 2 real-subprocess evaluate integration tests. `EvaluateFn` refined to (worktree,
+  base_repo, spec). Full suite 209.
+- **Next:** **T6** the loop (`loop.py`, the `GenerateFn`): generate → evaluate (delta-scoped) →
+  classify → signature/fresh-start → budget → package | Exhausted; emit iteration events; auto_verdict
+  into calls.jsonl; wire refs. **Inject `ref:delegate-p2-loop-diagram` as refs to the local model
+  (T-93 field-test).** **T-91 IS A HARD PREREQ** (P2-D10 num_predict floor/cap on the loop generator) —
+  observed live 4× as sync `generate_code` truncation; the loop generator must set num_predict
+  deliberately. Then T7 (wire into worker), T8 (live acceptance).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary
