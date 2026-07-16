@@ -88,6 +88,24 @@ where undefined-name/import defects only surface at the test stage. `error_key` 
 volatile coordinates stripped by `_normalize` (paths→basename, line/col removed, hex addrs removed,
 slugified) so a defect keys identically across line shifts. 20 tests; test bodies + impl local-model-generated.
 
+## P2 worktree workspace lifecycle (P2-T4; P2-D5/D13) — 2026-07-15
+
+`oficina/workspace.py` `Workspace` owns one git worktree per run, reused across iterations.
+`assemble()` runs the P2-D13 sequence: resolve the base repo (git top-level above the target) →
+`git worktree add -b oficina-run-<id> <run_dir>/worktree HEAD` → verify every declared `test_file`
+is present in the checkout (first slice: tests are committed; a declared-but-absent test_file is an
+`AssemblyError` — no content source in v1 schema) → commit **C0** (`--allow-empty`, oficina identity
+via `-c` flags so host git-config is irrelevant) → evaluate C0 via the **injected `EvaluateFn` seam**
+(mirrors P1's `start_time_reader`/`generate`; the worker passes the real evaluator, T5) → build the
+run-constant stable prompt parts (objective + tests-read-from-worktree + context files; system/
+constraints/refs layered in T6) → return `Assembly`, and if given an `emit` callback, fire
+`AssemblyDone{worktree_path, base_commit, test_files_materialized, baseline_failure_count}`.
+`snapshot(msg)` commits per iteration (powers the T5 delta diff + forensics). `teardown()` is
+`git worktree remove --force` + **`git worktree prune`** (both, per the P2-D5 advisor note — retention's
+`rm -rf` alone leaves a dangling `.git/worktrees/<id>`) and is idempotent; it **keeps the run branch**
+(the branch IS the deliverable, S15). Ledger gained the `assembly_done` emitter + `AssemblyDone`→working
+fold. This closes the P1 `artifacts/` retention no-op.
+
 ## Intake rule model (P1-D3) — 2026-07-12, T3
 
 Pydantic models (`extra="forbid"`) are the schema of record; the allowed-key sets for

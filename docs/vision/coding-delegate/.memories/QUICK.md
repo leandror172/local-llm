@@ -40,11 +40,14 @@ label). Keep under 30 lines.*
   **T3 DONE** — `intake.py` gained `Acceptance`/`Budgets` models, `function` kind, 3 loop rejections
   (acceptance/worktree/git-repo required), and **triad unified on where/whose/what** (retired
   intake's stage/fault/detail). 28 intake tests (17 P1 + 11 new); full suite 189.
-- **Next:** **T4** (worktree lifecycle / assembling: worktree add → materialize test_files+context →
-  commit C0 → evaluate C0 → build prefix → AssemblyDone; teardown remove+prune, P2-D5/D13). Inject
-  the **state diagram** `ref:delegate-p2-state-diagram` as `refs` for the local model (T-93 field-test).
-  **T-91 is a prerequisite for T6** (num_predict floor/cap) — observed live as sync `generate_code`
-  truncation 3× during T1/T2 delegation. T-86 distribution runbook pending; G-D4 open.
+  **T4 DONE** — `workspace.py` `Workspace` (assemble → worktree add + C0 baseline + injected
+  EvaluateFn seam + stable parts + AssemblyDone; snapshot; teardown remove+prune, keeps run branch).
+  11 git-integration tests; ledger gained `assembly_done`/`AssemblyDone`→working. Full suite 200.
+- **Next:** **T5** (delta-scoping: `attributable = current − out-of-scope baseline` via `scope_of`;
+  per-iteration snapshot diff; anti-cheat = deliverable diff must not touch test_files, P2-D12/D13) —
+  builds `evaluator.py` (the real EvaluateFn: run validate-code.py compile stage + test_cmd, parse
+  via T1). Then **T6** the loop (inject `ref:delegate-p2-loop-diagram` as refs — T-93 field-test).
+  **T-91 is a prerequisite for T6** (num_predict floor/cap) — observed live 3× as sync-truncation.
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

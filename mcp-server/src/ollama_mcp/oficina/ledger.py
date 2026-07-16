@@ -28,6 +28,7 @@ RUN_EVENTS: frozenset[str] = frozenset(
         "IntakeRejected",
         "GenerationStarted",
         "GenerationFinished",
+        "AssemblyDone",  # P2-T4 (P2-D13): worktree + C0 baseline built
         "Delivered",
         "Failed",
         "Cancelled",
@@ -43,6 +44,7 @@ _STATE_BY_EVENT: dict[str, str] = {
     "IntakeRejected": "failed",
     "GenerationStarted": "working",
     "GenerationFinished": "working",
+    "AssemblyDone": "working",
     "Delivered": "completed",
     "Failed": "failed",
     "Cancelled": "cancelled",
@@ -163,6 +165,9 @@ class Ledger:
 
     def generation_finished(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("GenerationFinished", payload)
+
+    def assembly_done(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("AssemblyDone", payload)
 
     def delivered(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("Delivered", payload)
