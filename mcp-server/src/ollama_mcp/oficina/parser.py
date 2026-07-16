@@ -245,8 +245,8 @@ def scope_of(
     if file is None:
         return SCOPE_OUT
     name = _basename(file)
-    if name in {_basename(f) for f in target_files}:
+    if any(_basename(f) == name for f in target_files):
         return SCOPE_TARGET
-    if name in {_basename(f) for f in test_files}:
+    if any(_basename(f) == name for f in test_files):
         return SCOPE_TEST
     return SCOPE_OUT

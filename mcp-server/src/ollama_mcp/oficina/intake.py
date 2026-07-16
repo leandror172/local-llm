@@ -56,7 +56,7 @@ class Budgets(BaseModel):
     model_config = ConfigDict(extra="forbid")
     iterations: int = 3
     fresh_starts: int = 1
-    wall_clock_s: int = 900
+    wall_clock_s: Optional[int] = 900  # 0/None disables the whole-run wall-clock net
     tokens: Optional[int] = None
     num_predict: Optional[int] = None  # T-91: floored/capped generation length; None → loop default
 
@@ -147,52 +147,32 @@ def _git_root(start: Path) -> Optional[Path]:
     return None
 
 
+# Every schema level the unknown-key rule covers: (section key, allowed keys, label);
+# None = the spec's top level. A new nested model gets one row here — the single checker
+# below then covers it, so a section cannot be added without typo protection.
+_KEYED_SECTIONS = (
+    (None, TOP_KEYS, "top-level"),
+    ("deliverable", DELIVERABLE_KEYS, "deliverable"),
+    ("context", CONTEXT_KEYS, "context"),
+    ("acceptance", ACCEPTANCE_KEYS, "acceptance"),
+    ("budgets", BUDGETS_KEYS, "budgets"),
+)
+
+
 def _check_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
-    """Reject any unknown top-level key (fail loud on typos)."""
-    unknown = set(spec) - TOP_KEYS
-    if unknown:
-        return Rejection(RULE_UNKNOWN_KEY, f"unknown top-level key(s): {', '.join(sorted(unknown))}")
-    return None
+    """Reject any unknown key at any schema level (fail loud on typos like 'iteration').
 
-
-def _check_deliverable_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
-    """Reject any unknown key inside deliverable."""
-    deliverable = spec.get("deliverable") or {}
-    unknown = set(deliverable) - DELIVERABLE_KEYS
-    if unknown:
-        return Rejection(RULE_UNKNOWN_KEY, f"unknown deliverable key(s): {', '.join(sorted(unknown))}")
-    return None
-
-
-def _check_context_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
-    """Reject any unknown key inside context."""
-    context = spec.get("context") or {}
-    unknown = set(context) - CONTEXT_KEYS
-    if unknown:
-        return Rejection(RULE_UNKNOWN_KEY, f"unknown context key(s): {', '.join(sorted(unknown))}")
-    return None
-
-
-def _check_acceptance_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
-    """Reject any unknown key inside acceptance."""
-    acceptance = spec.get("acceptance") or {}
-    unknown = set(acceptance) - ACCEPTANCE_KEYS
-    if unknown:
-        return Rejection(RULE_UNKNOWN_KEY, f"unknown acceptance key(s): {', '.join(sorted(unknown))}")
-    return None
-
-
-def _check_budgets_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
-    """Reject any unknown key inside budgets (fail loud on typos like 'iteration').
-
-    check_intake never instantiates the pydantic models, so Budgets' extra='forbid'
-    does not run on this path — this check is what keeps a mistyped budget key from
-    silently falling back to the loop's default instead of the value the user meant.
+    check_intake never instantiates the pydantic models, so their ``extra='forbid'``
+    does not run on this path — this check is what keeps a mistyped key from silently
+    falling back to a default instead of the value the user meant.
     """
-    budgets = spec.get("budgets") or {}
-    unknown = set(budgets) - BUDGETS_KEYS
-    if unknown:
-        return Rejection(RULE_UNKNOWN_KEY, f"unknown budgets key(s): {', '.join(sorted(unknown))}")
+    for section, allowed, label in _KEYED_SECTIONS:
+        data = spec if section is None else (spec.get(section) or {})
+        unknown = set(data) - allowed
+        if unknown:
+            return Rejection(
+                RULE_UNKNOWN_KEY, f"unknown {label} key(s): {', '.join(sorted(unknown))}"
+            )
     return None
 
 
@@ -314,10 +294,6 @@ def _check_context_files(spec: Dict[str, Any]) -> Optional[Rejection]:
 
 _CHECKS = (
     _check_unknown_keys,
-    _check_deliverable_unknown_keys,
-    _check_context_unknown_keys,
-    _check_acceptance_unknown_keys,
-    _check_budgets_unknown_keys,
     _check_objective,
     _check_kind_and_target,
     _check_workspace,

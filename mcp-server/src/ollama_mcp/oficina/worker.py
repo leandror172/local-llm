@@ -192,14 +192,13 @@ class Worker:
         so packaging references it rather than writing the target. The workspace is always torn
         down (remove worktree + prune), keeping the branch.
         """
+        from .errors import TriadError
         from .evaluator import evaluate as default_evaluate
         from .loop import EvaluatedLoop, default_coder
-        from .workspace import AssemblyError, Workspace
+        from .workspace import Workspace
 
         num_predict = (spec.get("budgets") or {}).get("num_predict")
-        coder = self._loop_coder or (
-            default_coder(num_predict=num_predict) if num_predict else default_coder()
-        )
+        coder = self._loop_coder or default_coder(num_predict=num_predict)
         evaluate = self._loop_evaluate or default_evaluate
         run_dir = self.store.run_dir(run_id) / "workspace"
         workspace = Workspace(spec, run_id, run_dir, evaluate)
@@ -211,7 +210,8 @@ class Worker:
         try:
             result = loop.run()
         except Exception as exc:  # noqa: BLE001 — any stage error becomes a Failed event
-            triad = exc.triad if isinstance(exc, AssemblyError) else _failure_triad("loop", exc)
+            # A TriadError (assembly OR evaluation) carries its own precise attribution.
+            triad = exc.triad if isinstance(exc, TriadError) else _failure_triad("loop", exc)
             ledger.failed(triad)
             return
         finally:

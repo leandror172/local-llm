@@ -21,11 +21,13 @@ evaluator (T5) in.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from .errors import TriadError
 from .parser import ParsedFailure
 
 # (worktree_path, base_repo, spec) -> failures observed in the current worktree state.
@@ -37,12 +39,11 @@ EvaluateFn = Callable[[Path, Path, Dict[str, Any]], List[ParsedFailure]]
 _GIT_IDENTITY = ["-c", "user.email=oficina@localhost", "-c", "user.name=oficina"]
 
 
-class AssemblyError(Exception):
-    """An assembling failure carrying the where/whose/what triad for a Failed event."""
+class AssemblyError(TriadError):
+    """An assembling failure; ``whose`` defaults to the payload (a bad spec, not the system)."""
 
     def __init__(self, where: str, what: str, whose: str = "payload") -> None:
-        super().__init__(what)
-        self.triad = {"where": where, "whose": whose, "what": what}
+        super().__init__(where, what, whose)
 
 
 @dataclass
@@ -56,6 +57,17 @@ class Assembly:
     baseline_failures: List[ParsedFailure]
     stable_parts: Dict[str, str]
     test_files_materialized: List[str] = field(default_factory=list)
+
+
+def target_relpath(target: str, base_repo: "Path | str") -> str:
+    """The target's path relative to the repo top-level, canonicalizing BOTH sides.
+
+    base_repo is git's PHYSICAL top-level, so a symlink-spelled target (e.g. ~/workspaces →
+    /mnt/i/workspaces on this host) would otherwise relpath to a '../..'-escaping path.
+    The loop's write side and the evaluator's compile side both use this ONE mapping so
+    they can never disagree about which worktree file is the target.
+    """
+    return os.path.relpath(os.path.realpath(target), os.path.realpath(str(base_repo)))
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -204,7 +216,10 @@ class Workspace:
 
         System/constraints/refs are layered on in T6; this fills the parts that come from
         the assembled worktree. Tests are read from the worktree (dual role: on disk for
-        test_cmd, in the prompt as acceptance context — P2-D13).
+        test_cmd, in the prompt as acceptance context — P2-D13); ``_materialize_test_files``
+        has already guaranteed each declared test exists. Context files render through the
+        server's ``_build_context_block`` — the same block the single-shot path feeds the
+        model, so the two paths cannot drift on context formatting.
         """
         parts: Dict[str, str] = {"objective": self.spec.get("objective", "") or ""}
 
@@ -212,18 +227,16 @@ class Workspace:
         test_blocks = [
             f"# {rel}\n{(self.worktree_path / rel).read_text(encoding='utf-8')}"
             for rel in test_files
-            if (self.worktree_path / rel).exists()
         ]
         if test_blocks:
             parts["tests"] = "\n\n".join(test_blocks)
 
         context_files = ((self.spec.get("context") or {}).get("files")) or []
-        ctx_blocks = [
-            f"# {path}\n{Path(path).read_text(encoding='utf-8')}"
-            for path in context_files
-            if Path(path).exists()
-        ]
-        if ctx_blocks:
-            parts["context"] = "\n\n".join(ctx_blocks)
+        if context_files:
+            from ollama_mcp import server as srv  # lazy, mirrors worker._build_prompt
+
+            parts["context"] = srv._build_context_block(
+                [srv.ContextFile(path=str(Path(f).resolve())) for f in context_files]
+            )
 
         return parts

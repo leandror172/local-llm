@@ -20,37 +20,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-# Frozen-at-P1 event names (ref:delegate-event-model). One source of truth for
-# both the named emitters and the state fold.
-RUN_EVENTS: frozenset[str] = frozenset(
-    {
-        "RunSubmitted",
-        "IntakeRejected",
-        "GenerationStarted",
-        "GenerationFinished",
-        "AssemblyDone",  # P2-T4 (P2-D13): worktree + C0 baseline built
-        "IterationStarted",  # P2-T6: loop events
-        "IterationEvaluated",
-        "FreshStart",
-        "ModelEscalated",
-        "Exhausted",
-        "Delivered",
-        "Failed",
-        "Cancelled",
-    }
-)
-WORKER_EVENTS: frozenset[str] = frozenset(
-    {"WorkerStarted", "WorkerStopped", "RetentionPruned"}
-)
-
-# Public-state fold mapping (event model § "Public state fold").
+# Public-state fold mapping (event model § "Public state fold"). Its keys ARE the
+# frozen run-event registry (ref:delegate-event-model) — RUN_EVENTS derives from it
+# below so the two can never drift.
 _STATE_BY_EVENT: dict[str, str] = {
     "RunSubmitted": "queued",
     "IntakeRejected": "failed",
     "GenerationStarted": "working",
     "GenerationFinished": "working",
-    "AssemblyDone": "working",
-    "IterationStarted": "working",
+    "AssemblyDone": "working",  # P2-T4 (P2-D13): worktree + C0 baseline built
+    "IterationStarted": "working",  # P2-T6: loop events
     "IterationEvaluated": "working",
     "FreshStart": "working",
     "ModelEscalated": "working",
@@ -59,6 +38,11 @@ _STATE_BY_EVENT: dict[str, str] = {
     "Failed": "failed",
     "Cancelled": "cancelled",
 }
+
+RUN_EVENTS: frozenset[str] = frozenset(_STATE_BY_EVENT)
+WORKER_EVENTS: frozenset[str] = frozenset(
+    {"WorkerStarted", "WorkerStopped", "RetentionPruned"}
+)
 
 
 class LedgerCorruptionError(Exception):

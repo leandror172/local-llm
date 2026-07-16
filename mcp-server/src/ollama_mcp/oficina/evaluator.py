@@ -29,6 +29,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List
 
+from .errors import TriadError
 from .parser import (
     SCOPE_OUT,
     STAGE_COMPILE,
@@ -37,14 +38,11 @@ from .parser import (
     parse_validator_output,
     scope_of,
 )
+from .workspace import target_relpath
 
 
-class EvaluationError(Exception):
-    """An evaluation failure carrying the where/whose/what triad for a Failed event."""
-
-    def __init__(self, where: str, what: str, whose: str = "system") -> None:
-        super().__init__(what)
-        self.triad = {"where": where, "whose": whose, "what": what}
+class EvaluationError(TriadError):
+    """An evaluation failure (validator tooling / hung stage); ``whose`` defaults to system."""
 
 
 # --- delta-scoped attribution (P2-D12) --------------------------------------
@@ -89,6 +87,8 @@ def diff_touches_test_files(
     must reject that iteration rather than accept a test-run it rigged. Comparison is by
     basename so path spellings agree.
     """
+    if not test_files:
+        return []  # nothing declared → nothing to diff; skip the subprocess entirely
     result = subprocess.run(
         ["git", "-C", str(worktree), "diff", "--name-only", from_ref, to_ref],
         capture_output=True,
@@ -179,7 +179,7 @@ def evaluate(worktree: Path, base_repo: Path, spec: Dict[str, Any]) -> List[Pars
     timeout_s = (spec.get("budgets") or {}).get("wall_clock_s") or _STAGE_TIMEOUT_S
 
     if target:
-        rel = os.path.relpath(os.path.realpath(target), os.path.realpath(base_repo))
+        rel = target_relpath(target, base_repo)
         target_in_worktree = Path(worktree) / rel
         if target_in_worktree.exists():
             compile_failures = _run_compile_stage(target_in_worktree, timeout_s)
