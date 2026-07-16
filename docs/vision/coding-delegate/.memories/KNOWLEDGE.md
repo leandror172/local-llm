@@ -117,6 +117,20 @@ confirmed live this session: the sync `generate_code` path inherited the model d
 functions mid-body 4× during T1/T2/T5 test-body delegation. The async worker path was unaffected,
 which is why the plan routes the loop through the worker seam, not the sync tool.
 
+## P2 T8 live acceptance — all 6 criteria met — 2026-07-15
+
+Verified live (real Ollama, real git repo) + by the 223-test suite. (1) **Headline:** a seeded
+compile defect (iter1, mechanical/verdict-0) was repaired by the real model on iter2 → Delivered,
+zero Claude edits. (2) exhaustion attaches best attempt (suite). (3) delta-scope both directions incl.
+the masking inverse (suite). (4) anti-cheat rejects a test-editing iteration (suite). (5) **cache**
+confirmed on `prompt_eval_duration` — 477 tok @ 156 ms vs cold 409 tok @ 443 ms (prefix reused);
+NOT on `prompt_eval_count` (Ollama reports full tokens) — `calls.jsonl` now logs
+`prompt_eval_duration_ms` (`ref:oficina-p2-cache-measurement`). (6) ledger folds correctly;
+AssemblyDone carries `baseline_failure_count`, IterationEvaluated carries `auto_verdict`.
+**Product note:** tests-as-context (P2-D13) makes the coder converge on iter1 when the pre-authored
+tests fully specify behavior — observed live (a ValueError edge case the terse objective omitted was
+satisfied because the test was in the stable prefix).
+
 ## P2 evaluation + delta-scoped attribution (P2-T5; P2-D8/D12/D13) — 2026-07-15
 
 `oficina/evaluator.py`. `evaluate(worktree, base_repo, spec)` is the real `EvaluateFn`: stages run

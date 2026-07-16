@@ -52,6 +52,10 @@ class ChatResponse:
     eval_count: int
     eval_duration_ms: float
     total_duration_ms: float
+    # Time spent evaluating the input prompt (ms). Implicit prefix-cache reuse shows up
+    # here: a longer prompt sharing a cached prefix costs LESS prompt-eval time than a
+    # shorter cold one (oficina P2-D2 cache proof; Ollama reports full token COUNT anyway).
+    prompt_eval_duration_ms: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +261,7 @@ class OllamaClient:
             eval_count=data.get("eval_count", 0),
             eval_duration_ms=data.get("eval_duration", 0) / 1_000_000,
             total_duration_ms=data.get("total_duration", 0) / 1_000_000,
+            prompt_eval_duration_ms=data.get("prompt_eval_duration", 0) / 1_000_000,
         )
 
         # Log the call for distillation / training data collection.
@@ -318,6 +323,7 @@ class OllamaClient:
                 "prompt_chars": len(prompt),
                 "response_chars": len(response.content),
                 "prompt_eval_count": response.prompt_eval_count,
+                "prompt_eval_duration_ms": round(response.prompt_eval_duration_ms),
                 "eval_count": response.eval_count,
                 "eval_duration_ms": round(response.eval_duration_ms),
                 "total_duration_ms": round(response.total_duration_ms),

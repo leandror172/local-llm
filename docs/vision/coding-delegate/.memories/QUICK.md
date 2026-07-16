@@ -56,13 +56,17 @@ label). Keep under 30 lines.*
   `context.refs` resolved via `server._build_refs_block` into the loop's stable prefix (closes the
   carried-from-P1 refs gap; the T-93 diagram seam is now LIVE — a run spec's `context.refs` injects a
   mermaid anchor). Loop cancel via injected `is_cancelled`. 5 worker-loop tests; full suite 223.
-- **Next / ONLY REMAINING:** **T8 live acceptance** — real Ollama, real git repo, seeded
-  compile-defect fixture; verify all 6 criteria (`ref:delegate-p2-acceptance`), capture iter-2 cache
-  timing (criterion 5) from calls.jsonl. Then [close session]: post-impl promote diagrams/events to
-  FINAL in the vision folder (`ref:delegate-state-machine`/`-event-model`), plan gets a result report,
-  memories/READMEs/postmortem, PR, handoff. T-93 note: refs seam wired but the mermaid-as-context
-  verdict evidence still wants a real loop run injecting `ref:delegate-p2-loop-diagram` (do at T8 if a
-  live coder call happens).
+- 2026-07-15 (session 120): **P2 FIRST SLICE COMPLETE (T1–T8), branch `feature/oficina-p2-loop`.**
+  All 6 acceptance criteria met (`ref:delegate-p2-acceptance`); criterion 5 cache confirmed on
+  `prompt_eval_duration` (`ref:oficina-p2-cache-measurement`). T-91 resolved. New modules:
+  `parser.py`/`prompt.py`/`workspace.py`/`evaluator.py`/`loop.py` + intake/ledger/client/worker
+  extensions. Full suite 223 (was 150). ~64 new tests.
+- **Next:** post-slice widening (per P2-D1): more kinds/validators, the escalation ladder (P2-D9),
+  the tiny-model classifier (P2-D4, must batch outside the coder loop). **T-93** mermaid-as-context:
+  refs seam is LIVE (a run spec's `context.refs` injects a diagram) but no measured verdict yet — the
+  P2 code was architectural/hand-written, so no local-model delegation used a diagram. Distribution
+  (T-86): the evaluator's `validate-code.py` path is repo-relative (`parents[4]`); the machine-global
+  install needs `OFICINA_VALIDATE_CODE` — the P3 distribution fix.
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary
