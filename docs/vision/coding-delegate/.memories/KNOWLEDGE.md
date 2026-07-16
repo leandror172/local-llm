@@ -51,8 +51,10 @@ per `deliverable.kind` and tags every call in `calls.jsonl` with `run_id` (the o
 deliberate `client.py` seam — additive, `dict.get()`-safe, DPO readers unaffected).
 Cold-start grace = one retry on `OllamaTimeoutError`. Cancel is cooperative between
 stages (checkpoints: intake / pre_generation / pre_packaging) — never interrupts an
-in-flight model call. `Failed` payload triad uses keys `where/whose/what`; intake uses
-`stage/fault/detail` — same triad, two spellings, unify in P2.
+in-flight model call. **Triad UNIFIED (P2-T3):** both `Failed` and `IntakeRejected`
+payloads now emit `where/whose/what` (intake's old `stage/fault/detail` retired; the
+`Rejection` dataclass fields are `where/whose/what`, `what` carrying the detail; a `rule`
+name rides alongside for intake).
 
 **Report location:** the delivery report lives in the `Delivered` event payload
 (`events.jsonl`, `ledger: forever`) — NOT in `artifacts/`. This is what keeps
@@ -94,6 +96,15 @@ cannot drift. Every rejection is a named rule constant + where/whose/what triad
 (`stage=intake, fault=payload`). Accepted specs pass through as the same object — no
 normalization. Intake returns its verdict; it never raises (the worker turns a rejection
 into `IntakeRejected` whose payload IS the rejection).
+
+**P2-T3 additions (P2-D13):** new schema models `Acceptance` (`test_cmd`/`test_files`/`validators`/
+`structural`; `rubric` deliberately absent → `extra="forbid"` rejects it, keeping P4 scope out) and
+`Budgets` (iterations/fresh_starts/wall_clock_s/tokens; enforced later in T6). New kind `function`
+(the loop deliverable) requires a `target` (like `file`) AND `acceptance.test_cmd`. Three new
+rejections: `acceptance_required` (function without a test_cmd gate), `worktree_required`
+(`test_cmd` with a non-worktree workspace — tests need isolation, P2-D5), `target_not_git_repo`
+(worktree workspace whose target isn't inside a git repo — checked by `_git_root` walking up for a
+`.git` entry, subprocess-free). `SUPPORTED_WORKSPACES` now = {in_place, worktree}.
 
 ## FIFO details that would be easy to break — 2026-07-12, T4
 

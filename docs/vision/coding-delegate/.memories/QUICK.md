@@ -37,10 +37,14 @@ label). Keep under 30 lines.*
   `category_for`/`scope_of`; Python normalizer; 20 tests). T2 `oficina/prompt.py` (`SEGMENTS`
   tuple + `build_prompt` fold + ordering-guard test, P2-D2/D3 cache contract; 8 tests). Full
   suite 178. Test bodies + impl local-model-generated (`my-python-q25c14`).
-- **Next:** **T3** (Pydantic `acceptance` schema + 3 intake rejections + triad-key unification,
-  P2-D13), then T4–T8. **T-91 is a prerequisite for T6** (num_predict floor/cap) — already
-  observed live as sync `generate_code` truncation 3× during T1/T2 delegation. T-86 distribution
-  runbook pending; G-D4 gate-vs-P2 priority open (mild lean gate-after-P2).
+  **T3 DONE** — `intake.py` gained `Acceptance`/`Budgets` models, `function` kind, 3 loop rejections
+  (acceptance/worktree/git-repo required), and **triad unified on where/whose/what** (retired
+  intake's stage/fault/detail). 28 intake tests (17 P1 + 11 new); full suite 189.
+- **Next:** **T4** (worktree lifecycle / assembling: worktree add → materialize test_files+context →
+  commit C0 → evaluate C0 → build prefix → AssemblyDone; teardown remove+prune, P2-D5/D13). Inject
+  the **state diagram** `ref:delegate-p2-state-diagram` as `refs` for the local model (T-93 field-test).
+  **T-91 is a prerequisite for T6** (num_predict floor/cap) — observed live as sync `generate_code`
+  truncation 3× during T1/T2 delegation. T-86 distribution runbook pending; G-D4 open.
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

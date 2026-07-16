@@ -1,17 +1,19 @@
-"""Deterministic spec intake — validation + per-profile rejection rules (P1-D3).
+"""Deterministic spec intake — validation + per-profile rejection rules (P1-D3, P2-D13).
 
-Two profiles share ONE schema and differ only in intake rules:
-- ``kind: file``   — requires ``deliverable.target`` (today's output_file semantics)
-- ``kind: answer`` — forbids ``target`` (budget implicitly 1, workspace in_place)
+Profiles share ONE schema and differ only in intake rules:
+- ``kind: file``     — requires ``deliverable.target`` (today's output_file semantics)
+- ``kind: function`` — P2 loop deliverable: requires ``target`` AND an ``acceptance``
+  spec (``test_cmd`` is the every-iteration gate), tests run in an isolated ``worktree``
+- ``kind: answer``   — forbids ``target`` (budget implicitly 1, workspace in_place)
 
-Every rejection names its rule and carries the where/whose/what triad
-(stage=intake, fault=payload). Intake RETURNS its verdict (accepted spec passed
-through unchanged, or a named rejection) — it never raises; the worker turns a
-rejection into an ``IntakeRejected`` event whose payload IS the rejection.
+Every rejection names its rule and carries the **where/whose/what** triad — the single
+spelling shared with the ``Failed`` event payload (P2 unified the P1 ``stage/fault/detail``
+divergence). Intake RETURNS its verdict (accepted spec passed through unchanged, or a named
+rejection) — it never raises; the worker turns a rejection into an ``IntakeRejected`` event
+whose payload IS the rejection.
 
-Pydantic models below are the schema of record (P1-D4); the set of allowed keys
-at each level is derived from them so the fail-loud unknown-key check and the
-schema can never drift apart.
+Pydantic models below are the schema of record (P1-D4); the set of allowed keys at each
+level is derived from them so the fail-loud unknown-key check and the schema can never drift.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# --- Schema of record (P1-D4) -----------------------------------------------
+# --- Schema of record (P1-D4, extended in P2-D13) ---------------------------
 
 
 class Deliverable(BaseModel):
@@ -35,6 +37,27 @@ class Context(BaseModel):
     model_config = ConfigDict(extra="forbid")
     files: List[str] = Field(default_factory=list)
     refs: List[str] = Field(default_factory=list)
+    callers: List[str] = Field(default_factory=list)
+
+
+class Acceptance(BaseModel):
+    """The evaluated-loop acceptance spec (P2). ``rubric`` (Phase-2 judge) is P4, not here."""
+
+    model_config = ConfigDict(extra="forbid")
+    test_cmd: Optional[str] = None
+    test_files: List[str] = Field(default_factory=list)
+    validators: List[str] = Field(default_factory=list)
+    structural: Optional[str] = None
+
+
+class Budgets(BaseModel):
+    """Loop budgets (P2-D10). Iterations steers; the rest are safety nets (enforced in T6)."""
+
+    model_config = ConfigDict(extra="forbid")
+    iterations: int = 3
+    fresh_starts: int = 1
+    wall_clock_s: int = 900
+    tokens: Optional[int] = None
 
 
 class RunSpec(BaseModel):
@@ -42,6 +65,8 @@ class RunSpec(BaseModel):
     deliverable: Deliverable
     objective: Optional[str] = None
     context: Context = Field(default_factory=Context)
+    acceptance: Optional[Acceptance] = None
+    budgets: Budgets = Field(default_factory=Budgets)
     workspace: str = "in_place"
     model: str = "auto"
     timeout_s: int = 1800
@@ -51,9 +76,14 @@ class RunSpec(BaseModel):
 TOP_KEYS = set(RunSpec.model_fields)
 DELIVERABLE_KEYS = set(Deliverable.model_fields)
 CONTEXT_KEYS = set(Context.model_fields)
+ACCEPTANCE_KEYS = set(Acceptance.model_fields)
 
-VALID_KINDS = {"file", "answer"}
-SUPPORTED_WORKSPACE = "in_place"
+VALID_KINDS = {"file", "answer", "function"}
+KINDS_REQUIRING_TARGET = {"file", "function"}
+LOOP_KINDS = {"function"}  # kinds that run through the evaluated loop (need acceptance)
+DEFAULT_WORKSPACE = "in_place"
+WORKTREE_WORKSPACE = "worktree"
+SUPPORTED_WORKSPACES = {"in_place", "worktree"}
 
 # --- Rule identifiers (stable; tests assert on these) -----------------------
 
@@ -64,25 +94,34 @@ RULE_FILE_WITHOUT_TARGET = "file_without_target"
 RULE_ANSWER_WITH_TARGET = "answer_with_target"
 RULE_WORKSPACE_UNSUPPORTED = "workspace_unsupported"
 RULE_CONTEXT_FILE_MISSING = "context_file_missing"
+# P2 additions (P2-D13)
+RULE_ACCEPTANCE_REQUIRED = "acceptance_required"
+RULE_WORKTREE_REQUIRED = "worktree_required"
+RULE_TARGET_NOT_GIT_REPO = "target_not_git_repo"
 
 
 @dataclass
 class Rejection:
-    """A named intake rejection carrying the where/whose/what triad."""
+    """A named intake rejection carrying the where/whose/what triad.
+
+    ``what`` is the human-readable detail; ``where``/``whose`` default to the intake
+    stage and a payload-fault attribution. These three keys are the SAME triad the
+    ``Failed`` event emits (unified in P2).
+    """
 
     rule: str
-    detail: str
-    stage: str = "intake"  # where
-    fault: str = "payload"  # whose
+    what: str
+    where: str = "intake"
+    whose: str = "payload"
 
     @property
     def payload(self) -> Dict[str, Any]:
         """The dict that becomes ``IntakeRejected.payload``."""
         return {
             "rule": self.rule,
-            "stage": self.stage,
-            "fault": self.fault,
-            "detail": self.detail,
+            "where": self.where,
+            "whose": self.whose,
+            "what": self.what,
         }
 
 
@@ -93,6 +132,15 @@ class IntakeResult:
     accepted: bool
     spec: Optional[Dict[str, Any]] = None
     rejection: Optional[Rejection] = None
+
+
+def _git_root(start: Path) -> Optional[Path]:
+    """Walk up from ``start`` returning the first dir containing a ``.git`` entry, or None."""
+    resolved = start.resolve()
+    for directory in (resolved, *resolved.parents):
+        if (directory / ".git").exists():
+            return directory
+    return None
 
 
 def _check_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
@@ -121,6 +169,15 @@ def _check_context_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
     return None
 
 
+def _check_acceptance_unknown_keys(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """Reject any unknown key inside acceptance."""
+    acceptance = spec.get("acceptance") or {}
+    unknown = set(acceptance) - ACCEPTANCE_KEYS
+    if unknown:
+        return Rejection(RULE_UNKNOWN_KEY, f"unknown acceptance key(s): {', '.join(sorted(unknown))}")
+    return None
+
+
 def _check_objective(spec: Dict[str, Any]) -> Optional[Rejection]:
     """Reject a missing or empty objective."""
     if not spec.get("objective"):
@@ -134,18 +191,63 @@ def _check_kind_and_target(spec: Dict[str, Any]) -> Optional[Rejection]:
     kind = deliverable.get("kind")
     if kind not in VALID_KINDS:
         return Rejection(RULE_UNKNOWN_KIND, f"unknown deliverable.kind: {kind!r}")
-    if kind == "file" and not deliverable.get("target"):
-        return Rejection(RULE_FILE_WITHOUT_TARGET, "kind 'file' requires deliverable.target")
+    if kind in KINDS_REQUIRING_TARGET and not deliverable.get("target"):
+        return Rejection(RULE_FILE_WITHOUT_TARGET, f"kind {kind!r} requires deliverable.target")
     if kind == "answer" and deliverable.get("target"):
         return Rejection(RULE_ANSWER_WITH_TARGET, "kind 'answer' forbids deliverable.target")
     return None
 
 
 def _check_workspace(spec: Dict[str, Any]) -> Optional[Rejection]:
-    """Reject any workspace other than the P1-supported in_place."""
-    workspace = spec.get("workspace", SUPPORTED_WORKSPACE)
-    if workspace != SUPPORTED_WORKSPACE:
+    """Reject any workspace value outside the supported set."""
+    workspace = spec.get("workspace", DEFAULT_WORKSPACE)
+    if workspace not in SUPPORTED_WORKSPACES:
         return Rejection(RULE_WORKSPACE_UNSUPPORTED, f"unsupported workspace: {workspace!r}")
+    return None
+
+
+def _check_acceptance_required(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """A loop kind (function) needs an acceptance.test_cmd — the every-iteration gate (P2-D13)."""
+    kind = (spec.get("deliverable") or {}).get("kind")
+    if kind not in LOOP_KINDS:
+        return None
+    acceptance = spec.get("acceptance") or {}
+    if not acceptance.get("test_cmd"):
+        return Rejection(
+            RULE_ACCEPTANCE_REQUIRED,
+            f"kind {kind!r} requires acceptance.test_cmd (the loop's every-iteration gate)",
+        )
+    return None
+
+
+def _check_worktree_required(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """A spec with a test_cmd must run in a worktree — tests need isolation (P2-D5)."""
+    acceptance = spec.get("acceptance") or {}
+    workspace = spec.get("workspace", DEFAULT_WORKSPACE)
+    if acceptance.get("test_cmd") and workspace != WORKTREE_WORKSPACE:
+        return Rejection(
+            RULE_WORKTREE_REQUIRED,
+            "acceptance.test_cmd requires workspace 'worktree' (tests need isolation)",
+        )
+    return None
+
+
+def _check_target_git_repo(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """A worktree workspace requires the target to live in a git repo (P2-D13).
+
+    The worktree is a linked working tree of the target's repository; without a repo
+    there is nothing to ``git worktree add``.
+    """
+    workspace = spec.get("workspace", DEFAULT_WORKSPACE)
+    if workspace != WORKTREE_WORKSPACE:
+        return None
+    target = (spec.get("deliverable") or {}).get("target")
+    base = Path(target).parent if target else Path.cwd()
+    if _git_root(base) is None:
+        return Rejection(
+            RULE_TARGET_NOT_GIT_REPO,
+            f"workspace 'worktree' requires the target to live in a git repo: {target!r}",
+        )
     return None
 
 
@@ -162,9 +264,13 @@ _CHECKS = (
     _check_unknown_keys,
     _check_deliverable_unknown_keys,
     _check_context_unknown_keys,
+    _check_acceptance_unknown_keys,
     _check_objective,
     _check_kind_and_target,
     _check_workspace,
+    _check_acceptance_required,
+    _check_worktree_required,
+    _check_target_git_repo,
     _check_context_files,
 )
 
