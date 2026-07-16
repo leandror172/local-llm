@@ -49,6 +49,7 @@ is content the pipeline must not touch. See `docs/plans/resume-config-steps.md`.
 | **Cache-warmed subagent fan-out pattern** | `docs/patterns/cache-warmed-subagent-fanout.md` | Manual (Agent + SendMessage) fan-out that caches one large shared context per model tier via turn-boundary breakpoints; deferred task injection (copy-to-unique + `copied` ack); planner(Opus)→implementer(Sonnet/worktree) tiers; when this beats a workflow. Ready-to-use shared prompts. `ref:cache-warmed-fanout`. |
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | **Code design conventions** | `docs/patterns/code-design-conventions.md` | Structural patterns: named semantic methods over role strings. Self-indexed via `ref:patterns-code-design-index` |
+| **Test authoring — executable-spec (DSL) style** | `docs/patterns/test-authoring-executable-spec.md` | given/when/then bodies + named combinators as a test DSL; 4 rules (intent-distinct constants, hide fixture conventions, accretion stopping rule, given/when taxonomy). Piloted in `test_loop.py` (session 121). `ref:test-executable-spec`; promotion tracked by T-100. |
 | **LTG ENGINE — MOVED to sibling repo `latent-topic-graph`** | `/mnt/i/workspaces/latent-topic-graph/` | T-33 split (session 107): engine code (`src/ltg/` package), tests, ALL phase plans (master plan + phases 2/2.5/3/4/5 + extractor retrofit), `DECISIONS.md`, `probes/`, spike results, Phase 4 dataflow diagram — moved with full git history. llm keeps the **instance** at `ltg/` (corpus.yaml, config.yaml, index/, wrappers). Split record stays here: `docs/plans/ltg-repo-split.md`. |
 | **Session-handoff pipeline design** | `docs/plans/session-handoff-pipeline-design.md` | **Scope A (deterministic spine, NO model):** replace the all-in-Claude handoff with a register-driven pipeline — reuse existing handoff `ref:` blocks as write-slots (no new markers), deterministic locate/apply/verify/commit, git rollback, per-run `input.md`+`report.md` logging. Register shared with `resume.sh`; lives in `session-tracking` overlay. `ref:handoff-pipeline-design`. Frozen, not built (session 83). |
 | **Session-handoff Placer enhancement** | `docs/plans/session-handoff-placer-enhancement.md` | **[FUTURE]** the deferred local-model layer on top of Scope A: model expands *terse intent* → prose (saves authoring tokens). Placer altitude, F4 trust boundary, L0/L1 layered verdict, deferred-labeling (a), input↔report vs report↔reality deltas, DPO `calls.jsonl`, model pick, E1–E6 build steps. `ref:handoff-placer-enhancement`. |
@@ -358,6 +359,12 @@ delta-scope `attribute` + anti-cheat), `loop.py` (`EvaluatedLoop`); intake/ledge
 extended (T-91 `num_predict` fix). Plan + result report: `docs/plans/oficina-p2-evaluated-loop.md`.
 Cache measurement gotcha (criterion 5): `docs/findings/oficina-p2-cache-measurement-2026-07-15.md`
 (`ref:oficina-p2-cache-measurement`). Next: post-slice widening (kinds/validators, escalation ladder).
+**PR #76 review (session 121):** confirmed correctness bugs fixed (parser exit-code/short-summary,
+subprocess+wall-clock timeouts, symlink path canonicalization, intake kind-scoped rejections +
+budgets unknown-key + `num_predict`, service Exhausted terminal + phase map, hook Exhausted case;
+235 tests green). Five items deferred with tasks T-95–T-99 (loop/GenerateFn seam unification, refs
+`LLM_REPO_ROOT` drop, retention worktree-prune, basename-only path scoping, `auto_verdict`→`calls.jsonl`
+plan overclaim): `docs/findings/oficina-p2-review-deferred-2026-07-16.md` (`ref:oficina-p2-review-deferred`).
 
 ## Web Research Tool (Session 44+)
 

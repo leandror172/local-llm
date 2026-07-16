@@ -3,6 +3,9 @@
 These are git-integration tests (real ``git`` subprocess against a temp repo), so the
 bodies are hand-written rather than model-generated — subprocess/worktree assertions are
 the "multi-file reasoning" class the local-model conventions exclude from delegation.
+
+Not converted to the executable-spec DSL (`ref:test-executable-spec`): assertions are on real
+worktree filesystem + git state — rule 3's 4th-kind boundary — so these stay imperative.
 """
 
 import subprocess
