@@ -33,8 +33,9 @@ to "nobody fixes it."
 **P2 delivers (full phase):** acceptance spec in the run spec (`test_cmd`/`test_files` +
 validators + structural); the loop with budgets (~3 iter + 1 fresh start); repetition-signature
 fresh-start trigger; delta-scoped evaluation (S16); worktree workspace + deliverable-as-branch
-(S15); `auto_verdict` into `calls.jsonl`; model-escalation ladder (tier 1 → tier 2); rule-based
-failure classification (mechanical/structural/conceptual).
+(S15); `auto_verdict` on the ledger's `IterationEvaluated` *(originally "into `calls.jsonl`" —
+corrected by T-99 decision (b), see the event-table note)*; model-escalation ladder (tier 1 →
+tier 2); rule-based failure classification (mechanical/structural/conceptual).
 
 **Explicitly NOT in P2** (hold the line): no rubric/judge gate (**P4**), no approval gate
 (**P4**, S14), no `answer_run`/question channel (**P5**), no planner model (**P6/V-D2**), no
@@ -349,10 +350,16 @@ finalized here. Folds still tolerate unknown event names (forward-compat with dr
 | `ModelEscalated` | draft-P2 | Worker (loop) | `{from_tier, to_tier, from_persona, to_persona, reason:"exhausted"}` — P2-D9 |
 | `Exhausted` | draft-P2 | Worker (loop) | `{spent:{iterations, fresh_starts, tokens, wall_clock_s}, limit_hit, best_attempt_ref}` — maps to public `failed` (reason = `limit_hit`), best attempt attached; NOT `Delivered` |
 
-Notes: `auto_verdict` on `IterationEvaluated` is the `calls.jsonl` auto-verdict (S17 — kept
-separate from `curated_verdict`), tagged with `run_id`. **P2 has no judge (Phase-2 = P4), so these
-`auto_verdict`s are recorded but NOT yet DPO-chosen-eligible** — the S17 judge-gate can't run until
-P4; nothing in P2 promotes an auto_verdict to a chosen label (advisor). `Exhausted` maps to public `failed`
+Notes: `auto_verdict` on `IterationEvaluated` is the S17 auto-verdict (kept separate from
+`curated_verdict`). **T-99 decision (b) (2026-07-16, session 122): it lives in the LEDGER only** —
+`calls.jsonl` records stay verdict-free, and the P4 DPO pass joins ledger↔calls on `run_id` (both
+carry it). The plan originally said "written into `calls.jsonl`"; that was never built, and the
+back-write it implies (the call record is appended at generation time, before the verdict exists)
+was judged not worth doing for a consumer that only arrives at P4. **Revisit at P4** with the real
+pipeline in hand — note a `run_id` join is per-run, so per-iteration call matching is order-based
+(anti-cheat iterations record a verdict without an evaluation). **P2 has no judge (Phase-2 = P4),
+so these `auto_verdict`s are recorded but NOT yet DPO-chosen-eligible** — the S17 judge-gate can't
+run until P4; nothing in P2 promotes an auto_verdict to a chosen label (advisor). `Exhausted` maps to public `failed`
 with reason `exhausted`/`timeout`/`token_cap` (P2-D10). `Delivered` (frozen at P1) is unchanged;
 the loop reaches it via `packaging` when acceptance is met.
 <!-- /ref:delegate-p2-events -->
@@ -406,7 +413,8 @@ test-first. Escalation (P2-D9), more validators/kinds, and the tiny-model classi
   report; anti-cheat check (deliverable diff must not touch `test_files`) — P2-D12/D13.
 - **T6 — The loop (`GenerateFn`).** generate → evaluate (delta-scoped) → classify → signature /
   fresh-start → budget → package | `Exhausted`; emit `IterationStarted` / `IterationEvaluated` /
-  `FreshStart` / `Exhausted`; write `auto_verdict` into `calls.jsonl` with `run_id`; wire `refs`
+  `FreshStart` / `Exhausted`; record `auto_verdict` *(on `IterationEvaluated` — the "into
+  `calls.jsonl`" phrasing was corrected by T-99(b), see the event-table note)*; wire `refs`
   into generation (carried-from-P1) — P2-D1/D4/D7/D10.
 - **T7 — Wire the loop as the worker's generator for code kinds** (single-shot stays for the
   `answer` kind); config plumbing for budgets/validators.
@@ -482,6 +490,10 @@ events are now **frozen-P2** in `ref:delegate-event-model`; this section is the 
 - **Anti-cheat is defensive in the first slice:** the loop writes only the target, so a test file
   cannot change unless the target IS a test file. The branch is covered; realistic firing needs
   multi-file deliverables (post-slice).
+- **`auto_verdict` never reached `calls.jsonl` (T-99, session 121 review).** DECIDED (b),
+  session 122: the ledger is the auto-verdict's single home; the P4 DPO pass joins ledger↔calls
+  on `run_id` instead of a call-record back-write. Plan text corrected in place (Goal, T6, event
+  note). Revisit the join mechanics at P4.
 
 **Not built (held per P2-D1):** escalation ladder (P2-D9), tiny-model classifier (P2-D4), more kinds/
 validators. Distribution: `validate-code.py` is resolved repo-relative; the machine-global install

@@ -150,6 +150,13 @@ iteration's `auto_verdict` into the `calls.jsonl` record the coder call already 
 lives in the ledger, and let the P4 DPO pass join ledger↔calls on `run_id`. Pick per the intended DPO
 data path; do not silently choose.
 
+**DECIDED: (b)** (2026-07-16, session 122, user call). The ledger is the auto-verdict's single home;
+`calls.jsonl` stays verdict-free (the call record is appended at generation time, before the verdict
+exists — the coupling would mean back-writing an append-only log for a consumer that only arrives at
+P4). Plan + KNOWLEDGE corrected in place. **Note for P4:** revisit the join mechanics then — `run_id`
+joins per-run, so per-iteration call matching is order-based, and anti-cheat iterations record a
+verdict without an evaluation call.
+
 ## Minor items (no dedicated task — fold into T-92 widening / T-86)
 - **Plan run-spec example `base: HEAD` is rejected by intake** (`RunSpec` forbids unknown keys, has no
   `base` field; the worktree hardcodes `HEAD`). Drop `base:` from the example in

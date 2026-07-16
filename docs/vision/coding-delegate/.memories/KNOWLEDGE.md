@@ -152,8 +152,10 @@ not trust green tests" rule paid off). Load-bearing fixes now in place — treat
 **Deferred (need frozen-code reshape / a decision), tasks T-95–T-99:** the loop is a parallel
 `_run_loop` beside the `GenerateFn` seam (share the per-call wrapper: cold-start grace / Generation
 events / `timeout_s`); `context.refs` dropped when the worker lacks `LLM_REPO_ROOT`; retention doesn't
-`git worktree prune`; `scope_of`/anti-cheat compare by basename only; `auto_verdict` never reaches
-`calls.jsonl` (plan overclaim — decide implement vs correct-the-plan). Full analysis:
+`git worktree prune`; `scope_of`/anti-cheat compare by basename only; ~~`auto_verdict` never reaches
+`calls.jsonl`~~ **T-99 DECIDED (b), session 122: ledger-only** — the P4 DPO pass joins ledger↔calls
+on `run_id` (no call-record back-write); plan corrected in place; revisit join mechanics at P4.
+Full analysis:
 `docs/findings/oficina-p2-review-deferred-2026-07-16.md` (`ref:oficina-p2-review-deferred`).
 
 **Tests use the executable-spec DSL** (`ref:test-executable-spec`): `test_loop`/`test_intake`/
