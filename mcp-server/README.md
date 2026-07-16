@@ -98,6 +98,18 @@ console entry point) and `./watch-run.sh <run_id>` to tail a run to terminal sta
 Storage: `~/.local/share/oficina/` (override: `OFICINA_ROOT`). Every generation still
 logs to `calls.jsonl` (plus a `run_id` field) — the verdict/DPO pipeline is unaffected.
 
+**P2 — the evaluated loop (session 120):** a new `deliverable.kind: function` routes to the
+coder⇄evaluator loop instead of a single shot. It assembles a per-run git worktree, commits a
+`C0` baseline (tests present, deliverable absent), then iterates: generate → evaluate against
+`acceptance.test_cmd` + compile validators → delta-scope the failures (subtract only pre-existing
+out-of-scope warts) → classify → repair or fresh-start (on a repeated failure signature) → budget
+out. The deliverable is a `oficina-run-<id>` branch. Spec adds `acceptance` (`test_cmd`,
+`test_files`, `validators`) and `budgets` (`iterations`, `fresh_starts`, `wall_clock_s`);
+`workspace: worktree` is required with `test_cmd` and the target must be a git repo. The prompt is
+laid out stable-prefix-first so Ollama's implicit KV cache reuses it across iterations. Design +
+decisions: `docs/plans/oficina-p2-evaluated-loop.md` (P2-D1–D13). Single-shot stays for
+`kind: answer|file`.
+
 ## When to Delegate vs. Do Directly
 
 **Good for delegation** (local model handles well):

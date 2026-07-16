@@ -41,12 +41,12 @@ breaking P1 clients).
 | `Delivered` | freeze-at-P1 | Worker (packaging) | Terminal; payload points at report + deliverable location |
 | `Failed` | freeze-at-P1 | Worker (any stage) | Terminal; payload = where/whose/what triad |
 | `Cancelled` | freeze-at-P1 | Worker (cooperative) | Terminal; checked between model calls |
-| `AssemblyDone` | draft-P3 | Worker (assembly) | Prompt/context compile finished; P1 has trivial assembly and does NOT emit it |
-| `IterationStarted` | draft-P2 | Worker (loop) | Payload: iteration k, budget remaining |
-| `IterationEvaluated` | draft-P2 | Worker (loop) | Payload: validator results, failure class (mechanical/structural/conceptual), auto_verdict |
-| `FreshStart` | draft-P2 | Worker (loop) | Repetition-signature trigger; payload: signature that fired |
-| `ModelEscalated` | draft-P2 | Worker (loop) | Tier 1 → tier 2 ladder step |
-| `Exhausted` | draft-P2 | Worker (loop) | Terminal-ish: budgets spent, best attempt attached (delivers degraded) |
+| `AssemblyDone` | **frozen-P2** (T6, session 120) | Worker (assembly) | `{worktree_path, base_commit, test_files_materialized, baseline_failure_count}` — repurposed for P2's non-trivial worktree assembly (P2-D13) |
+| `IterationStarted` | **frozen-P2** (T6, session 120) | Worker (loop) | `{iteration, tier, budget_remaining:{iterations, fresh_starts}}` |
+| `IterationEvaluated` | **frozen-P2** (T6, session 120) | Worker (loop) | `{iteration, passed, stage_failed, failure_class, error_keys, auto_verdict}` — folds to `working` |
+| `FreshStart` | **frozen-P2** (T6, session 120) | Worker (loop) | `{iteration, signature, reason:"repetition"}` — P2-D7 |
+| `ModelEscalated` | frozen-P2 vocab (emitter exists; **not emitted in the first slice**, P2-D1 no ladder) | Worker (loop) | `{from_tier, to_tier, from_persona, to_persona, reason}` |
+| `Exhausted` | **frozen-P2** (T6, session 120) | Worker (loop) | `{spent, limit_hit, best_attempt_ref}` — maps to public `failed`, best attempt attached (NOT Delivered) |
 | `JudgePassed` / `JudgeFailed` | draft-P4 | Worker (packaging) | Phase-2 rubric judge at packaging (cadence per V-D7) |
 | `ApprovalRequested` | draft-P4 | Worker (post-assembly) | The approval gate (S14) → public state `input_required` |
 | `QuestionRaised` | draft-P5 | Worker (any model stage) | Model `blocked` escape → `input_required` |

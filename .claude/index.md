@@ -349,7 +349,15 @@ Start here: `docs/vision/coding-delegate/README.md` · working memory:
 `docs/vision/coding-delegate/.memories/QUICK.md` · phase plans: **P1 (async substrate) BUILT +
 MERGED** (`docs/plans/oficina-p1-async-substrate.md`; sessions 114–115; `oficina` CLI installed
 machine-wide + 4 MCP tools live). oficina is a **machine-global service, not an overlay**
-(distribution model + new-machine enablement in the folder KNOWLEDGE.md; decision T-86). Next: P2.
+(distribution model + new-machine enablement in the folder KNOWLEDGE.md; decision T-86).
+**P2 FIRST SLICE BUILT (session 120, T-92, branch `feature/oficina-p2-loop`):** the evaluated
+coder⇄evaluator loop for `kind: function`. New modules in `mcp-server/src/ollama_mcp/oficina/`:
+`parser.py` (validator-output→`ParsedFailure`), `prompt.py` (`SEGMENTS`+`build_prompt` cache
+contract), `workspace.py` (per-run git worktree), `evaluator.py` (stage-ordered evaluate +
+delta-scope `attribute` + anti-cheat), `loop.py` (`EvaluatedLoop`); intake/ledger/worker/client
+extended (T-91 `num_predict` fix). Plan + result report: `docs/plans/oficina-p2-evaluated-loop.md`.
+Cache measurement gotcha (criterion 5): `docs/findings/oficina-p2-cache-measurement-2026-07-15.md`
+(`ref:oficina-p2-cache-measurement`). Next: post-slice widening (kinds/validators, escalation ladder).
 
 ## Web Research Tool (Session 44+)
 

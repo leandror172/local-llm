@@ -452,3 +452,37 @@ This plan is the **draft** carrier of the P2 diagrams + event freeze candidates.
 4. **Plan closes the loop:** this doc is updated with an **implementation-result report** (what
    shipped, deltas from plan, test/acceptance outcome) that **points to** the now-final canonical
    artifacts — mirroring how P1's plan and `session-111-report.md` closed out.
+
+---
+
+## Implementation-result report (session 120, 2026-07-15) — FIRST SLICE SHIPPED
+
+Built T1–T8 on branch `feature/oficina-p2-loop`; suite 150→223 (~64 new tests). All 6 acceptance
+criteria met (`ref:delegate-p2-acceptance`). Per the documentation-lifecycle rule, the six loop
+events are now **frozen-P2** in `ref:delegate-event-model`; this section is the plan closing the loop.
+
+**What shipped (modules in `mcp-server/src/ollama_mcp/oficina/`):**
+- `parser.py` (T1) — `parse_validator_output → ParsedFailure{stage,file,error_key,raw}`, `category_for`, `scope_of`; one shape, three readers (P2-D7/D8/D12).
+- `prompt.py` (T2) — `SEGMENTS` + `build_prompt` fold + ordering-guard test (P2-D2/D3).
+- `intake.py` ext (T3) — `Acceptance`/`Budgets` models, `function` kind, 3 loop rejections, **triad unified on where/whose/what**.
+- `workspace.py` (T4) — `Workspace` worktree lifecycle (assemble/snapshot/teardown), injected `EvaluateFn` seam, `AssemblyDone`.
+- `evaluator.py` (T5) — real stage-ordered `evaluate`, `attribute` (P2-D12 masking-hole guard), `diff_touches_test_files` anti-cheat.
+- `loop.py` (T6) — `EvaluatedLoop` + `default_coder`; the loop emits iteration events + `Exhausted`.
+- `worker.py` ext (T7) — `process_run` branches `function`→`_run_loop`; worker owns terminal `Delivered`; `context.refs` resolved into the stable prefix.
+- `client.py` — **T-91 fix**: `num_predict` on `chat` (+ `prompt_eval_duration_ms` for the cache proof).
+
+**Deltas from plan:**
+- `EvaluateFn` seam gained `base_repo` (T4→T5): evaluation needs the repo→worktree target mapping.
+- **Criterion 5 method changed:** `prompt_eval_count` reports full tokens in this Ollama build; the
+  cache is only observable on `prompt_eval_duration` — now logged. `ref:oficina-p2-cache-measurement`.
+- **T-93 not field-tested:** P2's remaining code was architectural (hand-written per the local-model
+  conventions), so no local-model delegation consumed a mermaid diagram. The `context.refs` seam is
+  wired + live (a run spec can inject `ref:delegate-p2-loop-diagram`), but the mermaid-as-context
+  verdict evidence still awaits a real loop delegation.
+- **Anti-cheat is defensive in the first slice:** the loop writes only the target, so a test file
+  cannot change unless the target IS a test file. The branch is covered; realistic firing needs
+  multi-file deliverables (post-slice).
+
+**Not built (held per P2-D1):** escalation ladder (P2-D9), tiny-model classifier (P2-D4), more kinds/
+validators. Distribution: `validate-code.py` is resolved repo-relative; the machine-global install
+needs `OFICINA_VALIDATE_CODE` (T-86).
