@@ -1,6 +1,10 @@
 """Tests for oficina.service — submit handoff, status fold, result discrimination, cancel.
 
 Synchronous tests (plain ``def``), not async.
+
+Not converted to the executable-spec DSL (`ref:test-executable-spec`): mixed verb surface
+(submit / status / result / cancel), not one homogeneous behavioral family — no single
+given/when/then shape fits. Revisit only if a homogeneous sub-family emerges.
 """
 
 import os
@@ -165,3 +169,45 @@ def test_cancel_unknown_run_raises(tmp_path):
     """cancel on an unknown run_id raises UnknownRunError."""
     with pytest.raises(UnknownRunError):
         service.cancel(tmp_path, "nope")
+
+
+# --- P2 loop terminal/phase surfacing ---------------------------------------
+
+
+def test_result_exhausted_run_surfaces_best_attempt(tmp_path):
+    """An exhausted loop run is terminal 'failed' whose result carries the Exhausted payload AND
+    a deliverable pointing at the best-attempt branch/commit (S11: never a silent empty result)."""
+    fn, _ = _spy_ensure()
+    store = Store(tmp_path)
+    run_id = service.submit(tmp_path, _valid_spec(), ensure_worker=fn)["run_id"]
+    Ledger(store.events_path(run_id)).exhausted(
+        {
+            "spent": {"iterations": 3, "fresh_starts": 1},
+            "limit_hit": "exhausted",
+            "best_attempt_ref": "abc123",
+            "branch": "oficina-run-x",
+        }
+    )
+    out = service.result(tmp_path, run_id)
+    assert out["state"] == "failed"
+    assert out["report"]["limit_hit"] == "exhausted"
+    assert out["deliverable"]["branch"] == "oficina-run-x"
+    assert out["deliverable"]["commit"] == "abc123"
+
+
+def test_status_phase_reflects_loop_events(tmp_path):
+    """A run that is assembling/iterating reports a loop phase, not the stale 'queued' — the
+    phase map must know the P2 events or a working loop run looks like it was never picked up."""
+    fn, _ = _spy_ensure()
+    store = Store(tmp_path)
+    run_id = service.submit(tmp_path, _valid_spec(), ensure_worker=fn)["run_id"]
+    led = Ledger(store.events_path(run_id))
+    led.assembly_done(
+        {"worktree_path": "w", "base_commit": "c", "test_files_materialized": [], "baseline_failure_count": 1}
+    )
+    led.iteration_started(
+        {"iteration": 1, "tier": 1, "budget_remaining": {"iterations": 2, "fresh_starts": 1}}
+    )
+    out = service.status(tmp_path, run_id)
+    assert out["state"] == "working"
+    assert out["phase"] == "looping"

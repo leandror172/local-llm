@@ -20,33 +20,29 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-# Frozen-at-P1 event names (ref:delegate-event-model). One source of truth for
-# both the named emitters and the state fold.
-RUN_EVENTS: frozenset[str] = frozenset(
-    {
-        "RunSubmitted",
-        "IntakeRejected",
-        "GenerationStarted",
-        "GenerationFinished",
-        "Delivered",
-        "Failed",
-        "Cancelled",
-    }
-)
-WORKER_EVENTS: frozenset[str] = frozenset(
-    {"WorkerStarted", "WorkerStopped", "RetentionPruned"}
-)
-
-# Public-state fold mapping (event model § "Public state fold").
+# Public-state fold mapping (event model § "Public state fold"). Its keys ARE the
+# frozen run-event registry (ref:delegate-event-model) — RUN_EVENTS derives from it
+# below so the two can never drift.
 _STATE_BY_EVENT: dict[str, str] = {
     "RunSubmitted": "queued",
     "IntakeRejected": "failed",
     "GenerationStarted": "working",
     "GenerationFinished": "working",
+    "AssemblyDone": "working",  # P2-T4 (P2-D13): worktree + C0 baseline built
+    "IterationStarted": "working",  # P2-T6: loop events
+    "IterationEvaluated": "working",
+    "FreshStart": "working",
+    "ModelEscalated": "working",
+    "Exhausted": "failed",
     "Delivered": "completed",
     "Failed": "failed",
     "Cancelled": "cancelled",
 }
+
+RUN_EVENTS: frozenset[str] = frozenset(_STATE_BY_EVENT)
+WORKER_EVENTS: frozenset[str] = frozenset(
+    {"WorkerStarted", "WorkerStopped", "RetentionPruned"}
+)
 
 
 class LedgerCorruptionError(Exception):
@@ -163,6 +159,24 @@ class Ledger:
 
     def generation_finished(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("GenerationFinished", payload)
+
+    def assembly_done(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("AssemblyDone", payload)
+
+    def iteration_started(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("IterationStarted", payload)
+
+    def iteration_evaluated(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("IterationEvaluated", payload)
+
+    def fresh_start(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("FreshStart", payload)
+
+    def model_escalated(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("ModelEscalated", payload)
+
+    def exhausted(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("Exhausted", payload)
 
     def delivered(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("Delivered", payload)

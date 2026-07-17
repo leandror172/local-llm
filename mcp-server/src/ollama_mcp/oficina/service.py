@@ -31,6 +31,14 @@ _PHASE_BY_EVENT = {
     "IntakeRejected": "intake",
     "GenerationStarted": "generating",
     "GenerationFinished": "packaging",
+    # P2 loop phases (folded under the public 'working' state) — without these a
+    # function run reports phase='queued' for its whole life while it is iterating.
+    "AssemblyDone": "assembling",
+    "IterationStarted": "looping",
+    "IterationEvaluated": "looping",
+    "FreshStart": "looping",
+    "ModelEscalated": "looping",
+    "Exhausted": "failed",
     "Delivered": "delivered",
     "Failed": "failed",
     "Cancelled": "cancelled",
@@ -144,11 +152,24 @@ def result(root: str | Path, run_id: str) -> Dict[str, Any]:
             "deliverable": delivered.get("deliverable"),
             "artifacts_pruned": artifacts_pruned,
         }
-    terminal = _last_event(events, "Failed") or _last_event(events, "IntakeRejected") or _last_event(events, "Cancelled")
+    terminal = (
+        _last_event(events, "Failed")
+        or _last_event(events, "IntakeRejected")
+        or _last_event(events, "Cancelled")
+        or _last_event(events, "Exhausted")
+    )
+    report = terminal["payload"] if terminal else {}
+    # Exhausted is a terminal 'failed' with a best attempt attached (S11) — surface the
+    # branch/commit as the deliverable so `run_result` is not an empty, pointerless failure.
+    deliverable = None
+    if terminal and terminal["event"] == "Exhausted":
+        branch, commit = report.get("branch"), report.get("best_attempt_ref")
+        if branch or commit:
+            deliverable = {"best_attempt": True, "branch": branch, "commit": commit}
     return {
         "state": state,
-        "report": terminal["payload"] if terminal else {},
-        "deliverable": None,
+        "report": report,
+        "deliverable": deliverable,
         "artifacts_pruned": artifacts_pruned,
     }
 

@@ -1,38 +1,37 @@
 # Session Log
 
-**Current Layer:** "Layer 5 — Expense Classifier (side-track: T-89 hooks verified live; T-90 resolved — 14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift; next: T-86 distribution runbook + oficina P2/first-client, G-D4 priority open)"
-**Current Session:** 2026-07-15 — Session 118: T-89 hooks verified live + T-90 resolved (14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift) + gpu-vram-windows helper
+**Current Layer:** "Layer 5 — Expense Classifier (side-track: oficina P2 simplified + T-95/T-99 resolved (b) session 122, suite 241, PR #76 pushed w/ addendum; next = merge decision + post-slice widening P2-D1)"
+**Current Session:** 2026-07-16 — Session 122: "oficina P2 /simplify + T-95/T-99 resolved (b) — suite 241, PR #76 pushed"
 
 ---
-## 2026-07-15 - Session 118: T-89 hooks verified live + T-90 resolved (14B/32K offload is Windows-desktop VRAM contention, not KV-quant drift) + gpu-vram-windows helper
+## 2026-07-16 - Session 122: "oficina P2 /simplify + T-95/T-99 resolved (b) — suite 241, PR #76 pushed"
 
 ### Context
 
-Session opened on "discuss next steps" (ref-lookup `--paths` + `resume.sh`). User picked the two quick items from session 117's Next: verify the T-89 hooks fire, and diagnose T-90 (the KV-quant/offload anomaly).
+Resumed from the session-121 handoff with the `/simplify` orientation briefing (`docs/plans/oficina-p2-simplify-orientation-2026-07-16.md`) as the entry point; full P2 context re-read (plans, refs, review-deferred findings, test DSL, 0622c26 diff) before running.
 
 ### What Was Done
 
-- Verified T-89 hooks (session 117's #1 Next item): both wired in `.claude/settings.json` (SessionStart → `oficina-runs-scan.py`; PostToolUse `mcp__ollama-bridge__submit_run` → `oficina-watch-hook.py`); hermetic suite 11/11; the SessionStart scan fires and correctly stays silent on already-marked runs (the cozempic sibling in the same array proves the array executes). Verified done — no change needed.
-- Resolved T-90: reproduced the 15 GB / 42%-58% CPU-GPU split at 32K, but the runner load log proves KV quant `q8_0` + Flash Attention are ACTIVE (KV cache 3.26 GB; f16 would be 6.5). Root cause = VRAM contention: the RTX 3060 also drives the Windows desktop, leaving only ~9 GB free (NVIDIA overlay/nvcontainer ~1 GB, Chrome ~0.8 GB, dwm ~0.6 GB). Not a config regression — no fix needed.
-- Found what holds host VRAM via `nvidia-smi.exe` + PowerShell `GPU Process Memory` perf counters (Linux `nvidia-smi` can't attribute host VRAM under WDDM — shows `[Not Found]`).
-- Built + tested `~/workspaces/scripts/gpu-vram-windows.sh` (machine-local): names each PID, sums over engines, drops the pid-0 shared pool, prints reclaim tips.
-- Wrote finding `docs/findings/kv-quant-vram-contention-2026-07-15.md` (`ref:kv-quant-vram-contention`) incl. the NVIDIA-overlay service CLI-control note (`Stop-Service NvContainerLocalSystem`, elevated; do NOT touch `NVDisplay.ContainerLocalSystem`); corrected CLAUDE.md's 32K fact to host-VRAM-dependent; indexed finding + helper. Commit `1622b9f`.
-- Split the still-unexplained sync-truncation asymmetry into new task **T-91**. (T-90 checkoff + T-91 append were both materialized directly in `tasks.md` this session, so neither is in this payload.)
+- `refactor(oficina): /simplify pass over the P2 diff — dedup + decompose (no behavior change)` (`5b35301`) — 4 parallel review agents (reuse/simplification/efficiency/altitude) → 13 applied fixes: `run()` decomposed to ~45 lines, new shared `errors.TriadError` base (evaluation failures keep `where=compile/test` attribution on Failed), `workspace.target_relpath` single-sources the symlink guard, table-driven intake unknown-keys, `Budgets`-from-schema, context files via `server._build_context_block`, `ledger.RUN_EVENTS` derived from the state fold, `scope_of`/anti-cheat efficiency fixes
+- `docs(oficina): T-99 DECIDED (b) — auto_verdict is ledger-only; P4 joins on run_id` (`21172f0`) — plan corrected in place (Goal/T6/event-note + result-report delta), findings decision record, tasks.md checkoff
+- `refactor(oficina): T-95 RESOLVED (b) — one per-call generation transport; Generation events single-shot-only by design` (`164de8a`) — `worker._chat_generation` + `_cold_start_grace` shared by single-shot and `loop.default_coder`; `spec.timeout_s` now reaches the loop coder (was hardcoded 1800); 6 new tests incl. the `EvaluationError.where`-attribution pin; suite 235→241
+- `docs(oficina): mcp-server memories — session-122 state` (`b38d7c9`)
+- Branch pushed (`6192eb3..b38d7c9`); PR #76 body gained a session-122 addendum (same layered-addendum pattern as session 121), superseding its stale "next session runs /simplify" line
 
 ### Decisions Made
 
-- T-90's "KV-quant drift" hypothesis disproven — closed as resolved, not fixed. The durable correction was the CLAUDE.md assumption (32K "always fits" held only on a near-empty card), not any config change.
-- The sync-truncation asymmetry is NOT explained by offload (offload slows generation, it does not truncate) → spun out as T-91 rather than folded under a "solved" T-90.
+- **T-99 (b), user call:** `auto_verdict` lives in the LEDGER only; `calls.jsonl` stays verdict-free; the P4 DPO pass joins ledger↔calls on `run_id`. Rationale: the call record is appended at generation time, before the verdict exists — the coupling would back-write an append-only log for a consumer that only arrives at P4. Revisit-at-P4 note attached (join is per-run; per-iteration call matching is order-based; anti-cheat iterations record a verdict without an evaluation call).
+- **T-95 (b), user call:** the "which seam owns the wrapper" question dissolves on decomposition — grace+timeout are per-call TRANSPORT (now one spelling in worker.py), Generation events are the single-shot run's phase NARRATIVE and stay out of loop runs BY DESIGN (loop narrates via Iteration events; per-call telemetry = calls.jsonl per T-99(b); `GenerationFinished`→phase `packaging` would break `fold_phase` mid-loop). Rejected worker-side-wrapper alternative recorded in the findings file.
+- `/simplify` skips recorded in `5b35301`: intake `_git_root` vs workspace `rev-parse` oracle unification and fail-loud `_git` adoption in anti-cheat (behavior changes), stable-prefix pre-fold + per-run client reuse (micro vs model-call cost, T-95-adjacent).
+- `Budgets.wall_clock_s` became `Optional[int]` — schema aligned with the loop's documented "0/None disables" behavior.
 
 ### Next
 
-- oficina P2 / first-client + the **G-D4** gate-vs-P2 priority decision (unchanged from 116). T-90 showed *contention*, not *thrash*, so the gate's "observed thrash" trigger is NOT yet met — mild evidence for gate-after-P2.
-- **T-86** oficina distribution runbook (incl. (d): re-adding the two T-89 hook entries on fresh clones — settings.json is gitignored).
-- **T-91** when convenient: diff the request options the sync `generate_code` sends vs the oficina worker's `_default_generate` — check for a `num_predict` cap on the sync path.
+- **PR #76 merge decision** — lean: merge as-is, run post-slice widening on a fresh branch (the PR is 40+ files, three review layers deep). User to confirm.
+- Post-slice widening (P2-D1): more kinds/validators, escalation ladder (P2-D9), tiny-model classifier (P2-D4 — batch OUTSIDE the coder loop).
+- Review deferrals still open: T-96 (worker refs env), T-97 (retention worktree-prune), T-98 (basename→relpath scoping).
 
 ### Gotchas
 
-- `powershell.exe -Command -` executes a single stdin line but silently drops a multi-line heredoc — stage a `.ps1` and use `-File "$(wslpath -w …)"`.
-- PowerShell `'{0:N0}'` formats with the pt-BR locale (`.` as thousands separator) — the source of the "1.039 MB" confusion; emit a plain `[int]` and format in awk.
-- Linux `nvidia-smi` inside WSL2 shows host GPU processes as `[Not Found]`/`[N/A]` (WDDM) — use `nvidia-smi.exe` + the PowerShell `GPU Process Memory` counter for per-process VRAM.
-- ~2.8–3 GB VRAM is held by the Windows desktop even idle; the `dwm` compositor (~0.6–0.9 GB) is irreducible, so ~11 GB free is the practical ceiling on this box.
+- The suite had already pinned T-95 option (b) before the decision existed: `test_worker_loop` asserts `GenerationStarted not in names` for loop runs ("loop, not single-shot") — the Generation-events-in-loop alternative would have broken a green test.
+- Loop prompt rendering for `context.files` changed deliberately with the `server._build_context_block` reuse: fenced `<context>` blocks (same as single-shot), missing file → `Error:` text in the prompt instead of silent skip, relative paths absolutized before the call. Invisible to tests (none pinned the old format) but visible to the model.

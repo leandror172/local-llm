@@ -58,8 +58,11 @@ def _fold_terminal_state(events: list[dict]) -> tuple[str, str | None]:
         payload = last_event.get("payload", {})
         deliverable = payload.get("deliverable", {})
         kind = deliverable.get("kind")
-        
-        if kind == "file":
+
+        if kind == "function":
+            branch = deliverable.get("branch", "unknown")
+            detail = f"branch: {branch} — oficina result <run_id>"
+        elif kind == "file":
             detail = f"file: {deliverable.get('target', 'unknown')}"
         else:
             detail = "answer ready — oficina result <run_id>"
@@ -69,10 +72,16 @@ def _fold_terminal_state(events: list[dict]) -> tuple[str, str | None]:
         payload = last_event.get("payload", {})
         what = payload.get("what")
         return "failed", what or "see oficina result <run_id>"
-    
+
+    elif event_type == "Exhausted":
+        # A loop run that never converged: terminal 'failed' with a best attempt on a branch.
+        payload = last_event.get("payload", {})
+        limit_hit = payload.get("limit_hit", "exhausted")
+        return "failed", f"loop {limit_hit} — best attempt on {payload.get('branch', 'the run branch')} — oficina result <run_id>"
+
     elif event_type == "Cancelled":
         return "cancelled", None
-    
+
     return "not terminal", None
 
 def _extract_origin(events: list[dict]) -> str:

@@ -41,6 +41,7 @@ is content the pipeline must not touch. See `docs/plans/resume-config-steps.md`.
 | resume.sh ref audit & improvement plan | `docs/plans/resume-sh-ref-audit.md` | Which ref tags to add/remove + 3 structural fixes (session 60) |
 | **T-81 Part 1 — AI-merge preview (stage/apply)** | `docs/plans/t81-part1-merge-preview-stage-apply.md` | `install-overlay --mode ai` split into `--stage` (call model, diff, write plan handle, no write) + `--apply-plan` (verify pre-image hash, apply); `--dry-run` stays pure. Staleness invariant. BUILT session 115 (`ref:overlay-ai-merge-mode`). |
 | **T-81 Part 2 — AI-merge completion tuning** | `docs/plans/t81-part2-merge-completion-tuning.md` | Fix `num_ctx=4096` input-overflow (`fit_num_ctx` in `backends.py`), empirical arm pick (`think:false`), config-driven read+wall-clock timeouts. No oficina. BUILT session 115. |
+| **oficina P2 — evaluated deliverable loop (FROZEN plan, T-92)** | `docs/plans/oficina-p2-evaluated-loop.md` | FROZEN session 119 (advisor-reviewed): coder⇄evaluator loop as a new `GenerateFn` seam. Decisions **P2-D1–P2-D13** (first slice = `function`-against-tests, Python, 3-iter; monotonic-prefix cache contract + single swappable `SEGMENTS`+guard test; rule-based in-loop classifier is cache-load-bearing; per-run reused worktree; signature = sorted normalized `error_key` set; category = failing stage via one shared parser; diversity-not-size escalation; delta-scope baseline C0 + free anti-cheat; T-91 is a P2 prereq; `input_required` declared-but-unreachable). Individually-anchored state + loop Mermaid diagrams; draft-P2→frozen event promotions; documentation-lifecycle rule (post-impl diagrams go FINAL in vision folder, plan reports result); run spec + acceptance + T1–T8 build steps. `ref:delegate-p2-goal`, `ref:delegate-p2-decisions`, `ref:delegate-p2-state-diagram`, `ref:delegate-p2-loop-diagram`, `ref:delegate-p2-events`, `ref:delegate-p2-acceptance` |
 | **oficina async ergonomics — migration shape + V-D12 (T-89)** | `docs/plans/oficina-async-ergonomics.md` | DECIDED session 117: no sync facade/cutover (sync directness = v1 interactive priority); routing convention (deliverable-shaped → `submit_run`, small → sync); harness-owned monitoring (PostToolUse watch hook, SessionStart store-scan, `watch --result` check, worker `refs` parity). `ref:oficina-async-migration-shape`, `ref:oficina-async-ergonomics-scope` |
 | **Overlay AI-merge latency (T-81 P2 findings)** | `docs/findings/overlay-merge-latency-2026-07-12.md` | `num_ctx=4096` truncated ~3.8K-token merge inputs (RC1); `fit_num_ctx` sizes ctx to input → 8192; `think:false` on qwen3:14b is 5.1× faster (86.9s→17.0s) + better placement (RC2); prod-chain `--stage` acceptance 4.16s. Chunking (§3.4) deferred — trigger not met. |
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
@@ -48,6 +49,7 @@ is content the pipeline must not touch. See `docs/plans/resume-config-steps.md`.
 | **Cache-warmed subagent fan-out pattern** | `docs/patterns/cache-warmed-subagent-fanout.md` | Manual (Agent + SendMessage) fan-out that caches one large shared context per model tier via turn-boundary breakpoints; deferred task injection (copy-to-unique + `copied` ack); planner(Opus)→implementer(Sonnet/worktree) tiers; when this beats a workflow. Ready-to-use shared prompts. `ref:cache-warmed-fanout`. |
 | **Technology conventions** | `docs/patterns/technology-conventions.md` | Reusable decisions: Python/uv, MCP, Ollama API, scripts, git, personas, licensing. Self-indexed via `ref:patterns-index` |
 | **Code design conventions** | `docs/patterns/code-design-conventions.md` | Structural patterns: named semantic methods over role strings. Self-indexed via `ref:patterns-code-design-index` |
+| **Test authoring — executable-spec (DSL) style** | `docs/patterns/test-authoring-executable-spec.md` | given/when/then bodies + named combinators as a test DSL; 4 rules (intent-distinct constants, hide fixture conventions, accretion stopping rule, given/when taxonomy). Piloted in `test_loop.py` (session 121). `ref:test-executable-spec`; promotion tracked by T-100. |
 | **LTG ENGINE — MOVED to sibling repo `latent-topic-graph`** | `/mnt/i/workspaces/latent-topic-graph/` | T-33 split (session 107): engine code (`src/ltg/` package), tests, ALL phase plans (master plan + phases 2/2.5/3/4/5 + extractor retrofit), `DECISIONS.md`, `probes/`, spike results, Phase 4 dataflow diagram — moved with full git history. llm keeps the **instance** at `ltg/` (corpus.yaml, config.yaml, index/, wrappers). Split record stays here: `docs/plans/ltg-repo-split.md`. |
 | **Session-handoff pipeline design** | `docs/plans/session-handoff-pipeline-design.md` | **Scope A (deterministic spine, NO model):** replace the all-in-Claude handoff with a register-driven pipeline — reuse existing handoff `ref:` blocks as write-slots (no new markers), deterministic locate/apply/verify/commit, git rollback, per-run `input.md`+`report.md` logging. Register shared with `resume.sh`; lives in `session-tracking` overlay. `ref:handoff-pipeline-design`. Frozen, not built (session 83). |
 | **Session-handoff Placer enhancement** | `docs/plans/session-handoff-placer-enhancement.md` | **[FUTURE]** the deferred local-model layer on top of Scope A: model expands *terse intent* → prose (saves authoring tokens). Placer altitude, F4 trust boundary, L0/L1 layered verdict, deferred-labeling (a), input↔report vs report↔reality deltas, DPO `calls.jsonl`, model pick, E1–E6 build steps. `ref:handoff-placer-enhancement`. |
@@ -348,7 +350,23 @@ Start here: `docs/vision/coding-delegate/README.md` · working memory:
 `docs/vision/coding-delegate/.memories/QUICK.md` · phase plans: **P1 (async substrate) BUILT +
 MERGED** (`docs/plans/oficina-p1-async-substrate.md`; sessions 114–115; `oficina` CLI installed
 machine-wide + 4 MCP tools live). oficina is a **machine-global service, not an overlay**
-(distribution model + new-machine enablement in the folder KNOWLEDGE.md; decision T-86). Next: P2.
+(distribution model + new-machine enablement in the folder KNOWLEDGE.md; decision T-86).
+**P2 FIRST SLICE BUILT (session 120, T-92, branch `feature/oficina-p2-loop`):** the evaluated
+coder⇄evaluator loop for `kind: function`. New modules in `mcp-server/src/ollama_mcp/oficina/`:
+`parser.py` (validator-output→`ParsedFailure`), `prompt.py` (`SEGMENTS`+`build_prompt` cache
+contract), `workspace.py` (per-run git worktree), `evaluator.py` (stage-ordered evaluate +
+delta-scope `attribute` + anti-cheat), `loop.py` (`EvaluatedLoop`); intake/ledger/worker/client
+extended (T-91 `num_predict` fix). Plan + result report: `docs/plans/oficina-p2-evaluated-loop.md`.
+Cache measurement gotcha (criterion 5): `docs/findings/oficina-p2-cache-measurement-2026-07-15.md`
+(`ref:oficina-p2-cache-measurement`). Next: post-slice widening (kinds/validators, escalation ladder).
+**PR #76 review (session 121):** confirmed correctness bugs fixed (parser exit-code/short-summary,
+subprocess+wall-clock timeouts, symlink path canonicalization, intake kind-scoped rejections +
+budgets unknown-key + `num_predict`, service Exhausted terminal + phase map, hook Exhausted case;
+235 tests green). Five items deferred with tasks T-95–T-99 (loop/GenerateFn seam unification, refs
+`LLM_REPO_ROOT` drop, retention worktree-prune, basename-only path scoping, `auto_verdict`→`calls.jsonl`
+plan overclaim): `docs/findings/oficina-p2-review-deferred-2026-07-16.md` (`ref:oficina-p2-review-deferred`).
+Loop readability refactors landed (commit 0622c26). **Next-session `/simplify` briefing** (mechanical
+dedup targets + what's out of scope): `docs/plans/oficina-p2-simplify-orientation-2026-07-16.md`.
 
 ## Web Research Tool (Session 44+)
 

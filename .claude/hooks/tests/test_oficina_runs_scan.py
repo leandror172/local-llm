@@ -132,6 +132,35 @@ def test_torn_last_line_tolerated() -> None:
         assert returncode == 0
         assert run_id in stdout  # Delivered is still the last VALID event
 
+def _exhausted() -> dict:
+    return {
+        "offset": 5,
+        "ts": "t",
+        "event": "Exhausted",
+        "payload": {
+            "spent": {"iterations": 3, "fresh_starts": 1},
+            "limit_hit": "exhausted",
+            "best_attempt_ref": "abc123",
+            "branch": "oficina-run-R9",
+        },
+    }
+
+
+def test_exhausted_run_is_surfaced_and_marked() -> None:
+    """An exhausted loop run (terminal 'failed') is surfaced AND gets a surfaced marker, so it
+    is not rescanned every session — the Exhausted event must be recognised as terminal."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_id = "R9"
+        _make_run(tmpdir, run_id, [_submitted(), _exhausted()])
+
+        returncode, stdout = _run_scan(tmpdir)
+        assert returncode == 0
+        assert run_id in stdout
+        assert "oficina-run-R9" in stdout  # names the best-attempt branch
+
+        assert (Path(tmpdir) / "runs" / run_id / "surfaced").exists()
+
+
 if __name__ == "__main__":
     test_functions = [
         test_terminal_unmarked_run_is_surfaced_with_origin,
@@ -139,7 +168,8 @@ if __name__ == "__main__":
         test_non_terminal_run_not_surfaced,
         test_failed_run_is_surfaced,
         test_missing_store_prints_nothing,
-        test_torn_last_line_tolerated
+        test_torn_last_line_tolerated,
+        test_exhausted_run_is_surfaced_and_marked,
     ]
     failed = False
     for test_func in test_functions:

@@ -157,6 +157,14 @@ into `_log_call` — present only for oficina runs, so the existing DPO readers
 `client.py` seam the substrate required (acceptance #6, verdict-protocol continuity);
 revert = remove the param from both signatures + the 3-line conditional.
 
+**T-99 decision (b) (2026-07-16, session 122):** the loop's `auto_verdict` is deliberately
+NOT written into `calls.jsonl` — it lives only in the ledger's `IterationEvaluated`
+(the call record is appended at generation time, before the verdict exists; a back-write
+would mutate the append-only log for a consumer that only arrives at P4). The P4 DPO
+pass joins ledger↔calls on `run_id`; note the join is per-run — per-iteration call
+matching is order-based, and anti-cheat iterations record a verdict without an
+evaluation call. Decision record: `ref:oficina-p2-review-deferred` (T-99).
+
 ## Debug Logging — Structured JSONL (2026-05, session 65)
 
 The server can emit a structured JSONL log to disk for hang diagnosis and

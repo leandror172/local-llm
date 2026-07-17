@@ -26,10 +26,54 @@ label). Keep under 30 lines.*
   (a one-shot CLI gains nothing from async; solved via preview stage/apply + num_ctx/think
   fixes). **Lesson: oficina's real first client must be an AGENT that parallelizes**, not a
   batch CLI — see KNOWLEDGE.md "T-81 outcome" + "Distribution" sections.
-- **Next:** T-86 (decide oficina distribution model + new-machine provisioning runbook;
-  discuss next session), then a genuine agent-driven first client / **P2** (evaluated
-  deliverable loop). P2 gaps parked in KNOWLEDGE.md (artifacts/ no-op, refs in worker,
-  triad key unification).
+- 2026-07-15: **P2 plan FROZEN (T-92, session 119)** — `docs/plans/oficina-p2-evaluated-loop.md`
+  (P2-D1–D13; caching-first: monotonic-prefix prompt layout, rule-based in-loop classifier,
+  per-run worktree, delta-scope baseline + free anti-cheat; first slice = function-against-tests,
+  Python, 3-iter, no escalation). Advisor caught + fixed a delta-scope masking hole (blanket
+  baseline-subtraction would mask an absent target). Diagrams individually ref-anchored. **See the
+  plan's "Build kickoff" section** for where code / tests / the validator live.
+- 2026-07-15: **P2 BUILD STARTED (branch `feature/oficina-p2-loop`).** **T1+T2 DONE.**
+  T1 `oficina/parser.py` (`parse_validator_output → ParsedFailure{stage,file,error_key,raw}`;
+  `category_for`/`scope_of`; Python normalizer; 20 tests). T2 `oficina/prompt.py` (`SEGMENTS`
+  tuple + `build_prompt` fold + ordering-guard test, P2-D2/D3 cache contract; 8 tests). Full
+  suite 178. Test bodies + impl local-model-generated (`my-python-q25c14`).
+  **T3 DONE** — `intake.py` gained `Acceptance`/`Budgets` models, `function` kind, 3 loop rejections
+  (acceptance/worktree/git-repo required), and **triad unified on where/whose/what** (retired
+  intake's stage/fault/detail). 28 intake tests (17 P1 + 11 new); full suite 189.
+  **T4 DONE** — `workspace.py` `Workspace` (assemble → worktree add + C0 baseline + injected
+  EvaluateFn seam + stable parts + AssemblyDone; snapshot; teardown remove+prune, keeps run branch).
+  11 git-integration tests; ledger gained `assembly_done`/`AssemblyDone`→working. Full suite 200.
+  **T5 DONE** — `evaluator.py`: real `evaluate` (stage-ordered compile→test via run-validate-code.sh
+  + pytest, T1-parsed), `attribute` (P2-D12 masking-hole guard), `diff_touches_test_files` (anti-cheat).
+  9 tests incl. 2 real-subprocess evaluate integration tests. `EvaluateFn` refined to (worktree,
+  base_repo, spec). Full suite 209.
+  **T6 DONE + T-91 RESOLVED.** `loop.py` `EvaluatedLoop` (injected coder/evaluate/workspace/ledger;
+  generate→snapshot→anti-cheat→evaluate→attribute→classify→signature/fresh-start→budget; emits
+  iteration events + Exhausted, NOT Delivered). `client.chat` gained `num_predict` (T-91 fix);
+  `default_coder` floors/caps at 2048. Ledger gained 5 loop events. 8 loop tests; full suite 217.
+  **T7 DONE.** `worker.process_run` branches on kind (`function`→`_run_loop`, else single-shot);
+  worker owns terminal Delivered (deliverable = run branch + commit); workspace torn down in finally;
+  `context.refs` resolved via `server._build_refs_block` into the loop's stable prefix (closes the
+  carried-from-P1 refs gap; the T-93 diagram seam is now LIVE — a run spec's `context.refs` injects a
+  mermaid anchor). Loop cancel via injected `is_cancelled`. 5 worker-loop tests; full suite 223.
+- 2026-07-15 (session 120): **P2 FIRST SLICE COMPLETE (T1–T8), branch `feature/oficina-p2-loop`.**
+  All 6 acceptance criteria met (`ref:delegate-p2-acceptance`); criterion 5 cache confirmed on
+  `prompt_eval_duration` (`ref:oficina-p2-cache-measurement`). T-91 resolved. New modules:
+  `parser.py`/`prompt.py`/`workspace.py`/`evaluator.py`/`loop.py` + intake/ledger/client/worker
+  extensions. Full suite 223 (was 150). ~64 new tests.
+- 2026-07-16 (session 121): **P2 first slice REVIEWED (PR #76) + hardened.** 10 confirmed correctness
+  bugs fixed w/ regression tests (false-Delivered exit-code guard, eval subprocess + wall-clock
+  timeouts, symlink path canonicalization, kind-scoped intake, Exhausted surfaced in result/phase/hook,
+  budgets `num_predict`); 5 deferred w/ tasks **T-95–T-99** (`docs/findings/oficina-p2-review-deferred-2026-07-16.md`,
+  `ref:oficina-p2-review-deferred`). Test-authoring DSL piloted (`ref:test-executable-spec`, T-100).
+  Loop readability refactors landed (0622c26). Suite 235. Commits d0a90df/9b1c5bc/0622c26/961c1e9.
+- 2026-07-16 (session 122): **`/simplify` DONE** (`5b35301` — 13 fixes: run() decomposed, TriadError,
+  intake table, `target_relpath`, Budgets-from-schema; suite 241). **T-99 DECIDED (b)** (`21172f0` —
+  auto_verdict ledger-only, P4 joins on run_id). **T-95 RESOLVED (b)** — shared per-call transport
+  (`_chat_generation`+`_cold_start_grace`); Generation events single-shot-only by design.
+- **Next:** (1) post-slice widening (P2-D1: kinds/validators, escalation ladder P2-D9, tiny-model
+  classifier P2-D4). (2) push/merge PR #76. T-96–T-98 still open; T-93 refs-diagram verdict still
+  unmeasured; T-86 distribution (`OFICINA_VALIDATE_CODE`).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary
