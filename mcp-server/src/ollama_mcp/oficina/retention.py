@@ -20,7 +20,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set, Tuple
 
 from .config import RetentionConfig
 from .ledger import Ledger
@@ -143,6 +143,59 @@ def _runs_past_ttl(
     return stale
 
 
+def _prune_over_keep_limit(
+    store: Store, config: RetentionConfig, dry_run: bool
+) -> Tuple[Set[str], List[PruneRecord]]:
+    """Keep-limit policy: prune artifacts of runs beyond ``artifacts_keep_runs``.
+
+    Returns the set of run ids whose artifacts were pruned — the TTL policy consumes
+    this as ``skip`` so it never re-prunes the same artifacts under a second policy.
+    ``artifacts_keep_runs`` never touches workspaces.
+    """
+    records: List[PruneRecord] = []
+    pruned: Set[str] = set()
+    for run_id in _runs_over_keep_limit(store, config.artifacts_keep_runs):
+        record = _prune_artifacts(store, run_id, "artifacts_keep_runs", dry_run)
+        if record:
+            records.append(record)
+            pruned.add(run_id)
+    return pruned, records
+
+
+def _prune_past_ttl(
+    store: Store, config: RetentionConfig, now: float, skip: Set[str], dry_run: bool
+) -> List[PruneRecord]:
+    """TTL policy: prune artifacts + workspace of runs past ``workspaces_ttl_days``.
+
+    ``skip`` names runs whose artifacts the keep-limit policy already pruned; their
+    artifacts are left alone here, but their workspace is ALWAYS reclaimed.
+    """
+    records: List[PruneRecord] = []
+    for run_id in _runs_past_ttl(store, config.workspaces_ttl_days, now):
+        if run_id not in skip:
+            record = _prune_artifacts(store, run_id, "workspaces_ttl_days", dry_run)
+            if record:
+                records.append(record)
+        workspace_record = _prune_workspace(store, run_id, "workspaces_ttl_days", dry_run)
+        if workspace_record:
+            records.append(workspace_record)
+    return records
+
+
+def _emit_records(worker_ledger: Ledger, records: List[PruneRecord]) -> None:
+    """Replay collected prune records into the worker ledger as RetentionPruned events."""
+    for record in records:
+        payload = {
+            "what": record.what,
+            "run_id": record.run_id,
+            "bytes_freed": record.bytes_freed,
+            "policy": record.policy,
+        }
+        if record.what == "workspace":
+            payload["git_pruned"] = record.git_pruned
+        worker_ledger.retention_pruned(payload)
+
+
 def sweep(
     store: Store,
     worker_ledger: Ledger,
@@ -152,32 +205,10 @@ def sweep(
 ) -> List[PruneRecord]:
     """Run both retention policies; emit RetentionPruned per prune unless dry-run."""
     now = time.time() if now is None else now
-    records: List[PruneRecord] = []
-    pruned: set = set()
-    for run_id in _runs_over_keep_limit(store, config.artifacts_keep_runs):
-        record = _prune_artifacts(store, run_id, "artifacts_keep_runs", dry_run)
-        if record:
-            records.append(record)
-            pruned.add(run_id)
-    for run_id in _runs_past_ttl(store, config.workspaces_ttl_days, now):
-        if run_id not in pruned:
-            record = _prune_artifacts(store, run_id, "workspaces_ttl_days", dry_run)
-            if record:
-                records.append(record)
-        workspace_record = _prune_workspace(store, run_id, "workspaces_ttl_days", dry_run)
-        if workspace_record:
-            records.append(workspace_record)
+    pruned, records = _prune_over_keep_limit(store, config, dry_run)
+    records += _prune_past_ttl(store, config, now, skip=pruned, dry_run=dry_run)
     if not dry_run:
-        for record in records:
-            payload = {
-                "what": record.what,
-                "run_id": record.run_id,
-                "bytes_freed": record.bytes_freed,
-                "policy": record.policy,
-            }
-            if record.what == "workspace":
-                payload["git_pruned"] = record.git_pruned
-            worker_ledger.retention_pruned(payload)
+        _emit_records(worker_ledger, records)
     return records
 
 
