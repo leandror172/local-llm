@@ -843,16 +843,19 @@ async def generate_code(
         prompt_chars=len(prompt),
     )
 
+    def _done(ok: bool, **fields):
+        debug_log.debug(
+            "tool_exit",
+            tool="generate_code",
+            ok=ok,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+            **fields,
+        )
+
     if output_file is not None:
         _pre = _resolve_output_path(output_file)
         if isinstance(_pre, str):
-            debug_log.debug(
-                "tool_exit",
-                tool="generate_code",
-                ok=False,
-                reason="resolve_failed",
-                ms=round((time.perf_counter() - t0) * 1000, 2),
-            )
+            _done(False, reason="resolve_failed")
             return _pre
 
     client = _get_client()
@@ -877,6 +880,7 @@ async def generate_code(
 
     full_prompt, prompt_err = await _assemble_prompt(base, context_files, refs, refs_root)
     if prompt_err is not None:
+        _done(False, reason="prompt_assembly_error")
         return prompt_err
 
     try:
@@ -890,44 +894,15 @@ async def generate_code(
         if output_file:
             write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
-                debug_log.debug(
-                    "tool_exit",
-                    tool="generate_code",
-                    ok=False,
-                    reason="write_failed",
-                    model=chosen_model,
-                    ms=round((time.perf_counter() - t0) * 1000, 2),
-                )
+                _done(False, reason="write_failed", model=chosen_model)
                 return write_result
             if output_only:
-                debug_log.debug(
-                    "tool_exit",
-                    tool="generate_code",
-                    ok=True,
-                    model=chosen_model,
-                    output_only=True,
-                    content_chars=len(content),
-                    ms=round((time.perf_counter() - t0) * 1000, 2),
-                )
+                _done(True, model=chosen_model, output_only=True, content_chars=len(content))
                 return write_result
-        debug_log.debug(
-            "tool_exit",
-            tool="generate_code",
-            ok=True,
-            model=chosen_model,
-            content_chars=len(content),
-            ms=round((time.perf_counter() - t0) * 1000, 2),
-        )
+        _done(True, model=chosen_model, content_chars=len(content))
         return content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
-        debug_log.debug(
-            "tool_exit",
-            tool="generate_code",
-            ok=False,
-            reason=type(e).__name__,
-            model=chosen_model,
-            ms=round((time.perf_counter() - t0) * 1000, 2),
-        )
+        _done(False, reason=type(e).__name__, model=chosen_model)
         return _format_error(e)
 
 
