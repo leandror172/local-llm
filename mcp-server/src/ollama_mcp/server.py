@@ -19,7 +19,7 @@ import pathlib
 import sys
 import time
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Callable
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
@@ -112,6 +112,54 @@ def _ref_lookup_script() -> str:
     return os.path.join(repo_root, ".claude", "tools", "ref-lookup.sh")
 
 
+async def _run_script(
+    args: list[str],
+    *,
+    timeout: int,
+    label: str,
+    on_error: Callable[[int, str, str], str] | None = None,
+    on_success: Callable[[str], None] | None = None,
+) -> str:
+    """Run a subprocess, returning stripped stdout or an ``Error:`` string.
+
+    Centralizes the ``create_subprocess_exec`` → ``wait_for`` → returncode → decode
+    dance shared by every script-backed tool (ref-lookup, detect/build/create-persona).
+    ``label`` names the tool in the default non-zero-exit, timeout, and generic-error
+    messages. Hooks let callers that need to differ opt out of the defaults:
+
+    - ``on_error(returncode, stdout, stderr) -> str`` overrides the non-zero-exit
+      message (the ref tools word theirs differently — that historical drift is now
+      explicit at the call site rather than copy-pasted).
+    - ``on_success(stdout)`` runs on a zero exit before the stripped stdout is
+      returned (create_persona reloads the registry here). Anything it raises is
+      caught by the generic handler, matching the pre-extraction inline behavior.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        out, err = stdout.decode(), stderr.decode()
+
+        if proc.returncode != 0:
+            if on_error is not None:
+                return on_error(proc.returncode, out, err)
+            err_msg = err.strip() if err else "Unknown error"
+            return f"Error: {label} exited with code {proc.returncode}: {err_msg}"
+
+        if on_success is not None:
+            on_success(out)
+        return out.strip()
+
+    except asyncio.TimeoutError:
+        proc.kill()
+        return f"Error: {label} timed out after {timeout} seconds."
+    except Exception as e:
+        return f"Error running {label}: {e}"
+
+
 async def _resolve_ref_key(key: str, root: str | None) -> str:
     """Run ref-lookup.sh for a single key. Return stdout or an Error: string.
 
@@ -128,25 +176,14 @@ async def _resolve_ref_key(key: str, root: str | None) -> str:
     if root is not None:
         args += ["--root", root]
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
-
-        if proc.returncode != 0:
-            err_msg = stdout.decode().strip() or stderr.decode().strip() or "Unknown error"
-            return f"Error: ref:'{key}' not found — {err_msg}"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: ref-lookup timed out after 10 seconds."
-    except Exception as e:
-        return f"Error running ref-lookup: {e}"
+    return await _run_script(
+        args,
+        timeout=10,
+        label="ref-lookup",
+        on_error=lambda rc, out, err: (
+            f"Error: ref:'{key}' not found — {out.strip() or err.strip() or 'Unknown error'}"
+        ),
+    )
 
 
 async def _build_refs_block(refs: list[str], root: str | None) -> str:
@@ -1104,27 +1141,11 @@ async def detect_persona(path: str) -> str:
     if not os.path.isdir(path):
         return f"Error: Directory not found: {path}"
 
-    try:
-        # create_subprocess_exec passes args as an array — no shell injection
-        # risk (equivalent to Node's execFile, not exec).
-        proc = await asyncio.create_subprocess_exec(
-            script, "--json-compact", path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"Error: detect-persona exited with code {proc.returncode}: {err_msg}"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: detect-persona timed out after 30 seconds."
-    except Exception as e:
-        return f"Error running detect-persona: {e}"
+    # create_subprocess_exec passes args as an array — no shell injection risk
+    # (equivalent to Node's execFile, not exec).
+    return await _run_script(
+        [script, "--json-compact", path], timeout=30, label="detect-persona"
+    )
 
 
 @mcp.tool()
@@ -1166,25 +1187,7 @@ async def build_persona(
             return f"Error: Codebase directory not found: {codebase_path}"
         args.extend(["--codebase", codebase_path])
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"Error: build-persona exited with code {proc.returncode}: {err_msg}"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: build-persona timed out after 120 seconds."
-    except Exception as e:
-        return f"Error running build-persona: {e}"
+    return await _run_script(args, timeout=120, label="build-persona")
 
 
 @mcp.tool()
@@ -1250,29 +1253,14 @@ async def create_persona(
     if dry_run:
         cmd.append("--dry-run")
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"Error: create-persona exited with code {proc.returncode}: {err_msg}"
-
-        # Reload registry so subsequent queries see the new persona
+    def _reload_registry(_stdout: str) -> None:
+        # Reload registry so subsequent queries see the new persona.
         if not dry_run and REGISTRY_PATH:
             registry.load_registry(REGISTRY_PATH)
 
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: create-persona timed out after 60 seconds."
-    except Exception as e:
-        return f"Error running create-persona: {e}"
+    return await _run_script(
+        cmd, timeout=60, label="create-persona", on_success=_reload_registry
+    )
 
 
 @mcp.tool()
@@ -1434,25 +1422,14 @@ async def ref_lookup(key: str, path: str | None = None) -> str:
     if path is not None:
         args += ["--root", path]
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"ref:'{key}' not found. Available keys: run ref_lookup(key='list')"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: ref-lookup timed out after 10 seconds."
-    except Exception as e:
-        return f"Error running ref-lookup: {e}"
+    return await _run_script(
+        args,
+        timeout=10,
+        label="ref-lookup",
+        on_error=lambda rc, out, err: (
+            f"ref:'{key}' not found. Available keys: run ref_lookup(key='list')"
+        ),
+    )
 
 
 @mcp.tool()
