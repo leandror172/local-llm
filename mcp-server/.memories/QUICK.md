@@ -49,8 +49,13 @@ under both the 4 MCP tools and the CLI), `retention`, `cli`, `config` (`OFICINA_
 override; default `~/.local/share/oficina/`). Tests: `tests/oficina/`. **P1 complete —
 live acceptance 6/6 (2026-07-12).** pydantic is now an explicit dep.
 **P2 evaluated loop (session 120, PR #76):** `parser`/`prompt`/`workspace`/`evaluator`/`loop`
-modules for `kind:function`. **Reviewed + hardened session 121** (10 correctness fixes, suite 235;
+modules for `kind:function`. **Reviewed + hardened session 121** (10 correctness fixes;
 invariants + deferred T-95–T-99 in the coding-delegate KNOWLEDGE.md + `ref:oficina-p2-review-deferred`).
+**Simplified session 122** (suite 241): `errors.TriadError` base (Assembly/Evaluation errors),
+`workspace.target_relpath`, table-driven intake unknown-keys, Budgets-from-schema, `run()`
+decomposed. **T-95/T-99 RESOLVED (b):** per-call transport = `worker._chat_generation` +
+`_cold_start_grace` (shared by single-shot + `loop.default_coder`; `spec.timeout_s` honored);
+`auto_verdict` is LEDGER-only — P4 DPO joins ledger↔`calls.jsonl` on `run_id`.
 Loop tests use the executable-spec DSL (`ref:test-executable-spec`).
 
 ## Deeper Memory -> KNOWLEDGE.md
