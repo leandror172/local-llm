@@ -73,33 +73,74 @@ def _build_prompt(spec: Dict[str, Any], srv) -> str:
     return prompt
 
 
-def _default_generate(spec: Dict[str, Any], run_id: str) -> GenerationResult:
-    """Run one generation via the real OllamaClient (imports server lazily)."""
+def _cold_start_grace(call: Callable[[], GenerationResult]) -> GenerationResult:
+    """Run ``call``, retrying ONCE on a cold-start timeout (conventions doc).
+
+    A first-call timeout is usually the model loading into VRAM — the retry hits a warm
+    model. The single shared spelling of the grace convention (T-95): the worker's
+    ``GenerateFn`` seam and every loop iteration's coder call both route through it.
+    """
+    try:
+        return call()
+    except OllamaTimeoutError:
+        return call()
+
+
+def _chat_generation(
+    prompt: str,
+    model: str,
+    run_id: str,
+    *,
+    timeout: int,
+    num_predict: Optional[int] = None,
+    strip_fences: bool = True,
+) -> GenerationResult:
+    """One Ollama chat call → ``GenerationResult`` — the shared generation transport (T-95).
+
+    Owns the call convention for BOTH the single-shot default and the loop's per-iteration
+    coder: client lifecycle, ``think=False``, ``run_id`` tagging (calls.jsonl), bounded
+    ``num_predict`` (T-91), fence stripping. Deliberately emits NO events — the single-shot
+    path narrates via GenerationStarted/Finished, the loop via IterationStarted/Evaluated,
+    and per-call telemetry lives in calls.jsonl joined on run_id (T-99 decision (b)).
+    """
     import asyncio
 
     from ollama_mcp import server as srv
     from ollama_mcp.client import OllamaClient
-    from ollama_mcp.config import DEFAULT_MODEL  # noqa: F401 (kept for parity)
-
-    kind = spec["deliverable"]["kind"]
-    prompt = _build_prompt(spec, srv)
-    model = _resolve_model(spec, kind, srv)
 
     async def _call() -> Any:
         client = OllamaClient()
         try:
             return await client.chat(
-                prompt=prompt, model=model, think=False,
-                timeout=spec.get("timeout_s", 1800), run_id=run_id,
+                prompt=prompt,
+                model=model,
+                think=False,
+                timeout=timeout,
+                run_id=run_id,
+                num_predict=num_predict,
             )
         finally:
             await client.close()
 
     resp = asyncio.run(_call())
-    content = srv._strip_code_fences(resp.content) if kind == "file" else resp.content
+    content = srv._strip_code_fences(resp.content) if strip_fences else resp.content
     return GenerationResult(
         content=content, model=resp.model,
         eval_count=resp.eval_count, duration_ms=resp.total_duration_ms,
+    )
+
+
+def _default_generate(spec: Dict[str, Any], run_id: str) -> GenerationResult:
+    """Run one generation via the shared transport (imports server lazily)."""
+    from ollama_mcp import server as srv
+
+    kind = spec["deliverable"]["kind"]
+    return _chat_generation(
+        _build_prompt(spec, srv),
+        _resolve_model(spec, kind, srv),
+        run_id,
+        timeout=spec.get("timeout_s", 1800),
+        strip_fences=(kind == "file"),
     )
 
 
@@ -133,11 +174,8 @@ class Worker:
         return (self.store.run_dir(run_id) / "cancel").exists()
 
     def _generate_with_cold_start_grace(self, spec: Dict[str, Any], run_id: str) -> GenerationResult:
-        """Generate, retrying ONCE on a cold-start timeout (conventions doc)."""
-        try:
-            return self._generate(spec, run_id)
-        except OllamaTimeoutError:
-            return self._generate(spec, run_id)
+        """Run the GenerateFn seam through the shared cold-start grace (one retry)."""
+        return _cold_start_grace(lambda: self._generate(spec, run_id))
 
     def _run_generation(self, ledger: Ledger, run_id: str, spec: Dict[str, Any]) -> Optional[GenerationResult]:
         """Emit GenerationStarted, run the seam, emit Finished; Failed on error."""
@@ -198,7 +236,9 @@ class Worker:
         from .workspace import Workspace
 
         num_predict = (spec.get("budgets") or {}).get("num_predict")
-        coder = self._loop_coder or default_coder(num_predict=num_predict)
+        coder = self._loop_coder or default_coder(
+            num_predict=num_predict, timeout=spec.get("timeout_s", 1800)
+        )
         evaluate = self._loop_evaluate or default_evaluate
         run_dir = self.store.run_dir(run_id) / "workspace"
         workspace = Workspace(spec, run_id, run_dir, evaluate)

@@ -175,6 +175,29 @@ def test_loop_tears_down_worktree(tmp_path):
     then_the_worktree_was_torn_down_leaving_the_branch(run)
 
 
+def test_evaluation_error_attribution_reaches_failed_event(tmp_path):
+    """An EvaluationError escaping the loop keeps its own where/whose on the Failed event
+    (shared TriadError base) — the worker must not rewrite it to the generic where='loop'."""
+    from ollama_mcp.oficina.evaluator import EvaluationError
+
+    store = Store(tmp_path / "store")
+
+    def _raising_evaluate(worktree, base_repo, spec):
+        raise EvaluationError("test", "test command produced no parseable result")
+
+    worker = Worker(
+        tmp_path / "store",
+        loop_coder=_coder(GOOD_AREA),
+        loop_evaluate=_raising_evaluate,
+    )
+    run_id = _submit(store, worker, _function_spec(_repo(tmp_path)))
+    worker.process_run(run_id)
+
+    failed = next(e for e in Ledger(store.events_path(run_id)).read() if e["event"] == "Failed")
+    assert failed["payload"]["where"] == "test"  # the stage's own attribution, not "loop"
+    assert failed["payload"]["whose"] == "system"
+
+
 def test_answer_kind_still_uses_single_shot(tmp_path):
     """A non-loop kind (answer) is unaffected: it varies the given (answer kind) and the injected
     seam (single-shot generate), and produces GenerationStarted→Finished→Delivered."""

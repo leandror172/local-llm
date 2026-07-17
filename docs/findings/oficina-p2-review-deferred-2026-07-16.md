@@ -68,6 +68,20 @@ call route through it. This shares the cross-cutting behavior WITHOUT forcing th
 one-shot seam. **Deferred because** it restructures the frozen worker and wants the author's eyes on
 the seam design (which of `GenerateFn`/`CoderFn` owns the wrapper), not an unattended rewrite.
 
+**RESOLVED (b): call-level transport helper; Generation events single-shot-only BY DESIGN**
+(2026-07-16, session 122, user call). The finding's three losses decompose: grace and timeout are
+per-call *transport* mechanics — now written once as `worker._chat_generation` (client lifecycle,
+`think=False`, `run_id` tag, `num_predict`, fence-strip) + `worker._cold_start_grace` (the single
+retry), composed by both `_default_generate` and `loop.default_coder`; `spec.timeout_s` now reaches
+the loop coder. The Generation events, by contrast, are the single-shot run's *phase narrative*, not
+per-call mechanics — injecting them into loop runs would duplicate what IterationStarted/Evaluated +
+`calls.jsonl` (run_id-joined, per T-99(b)) already record, and would break `fold_phase`
+(`GenerationFinished`→phase `packaging` mid-loop). The asymmetry is therefore intended, and was
+already pinned by `test_worker_loop`'s "`GenerationStarted` not in loop runs" assertion. The
+rejected alternative (worker-side wrapper emitting Generation events per iteration) is on record
+here in case a ledger consumer someday needs per-iteration generation telemetry the calls.jsonl
+join cannot provide. 6 new tests incl. the `EvaluationError.where`-attribution pin (suite 241).
+
 ## T-96 — `context.refs` silently dropped when the worker lacks `LLM_REPO_ROOT`
 
 **Bug.** `worker._resolve_refs_block` (worker.py:168-185) resolves `context.refs` (the T-93 diagram

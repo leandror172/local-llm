@@ -67,11 +67,13 @@ label). Keep under 30 lines.*
   budgets `num_predict`); 5 deferred w/ tasks **T-95–T-99** (`docs/findings/oficina-p2-review-deferred-2026-07-16.md`,
   `ref:oficina-p2-review-deferred`). Test-authoring DSL piloted (`ref:test-executable-spec`, T-100).
   Loop readability refactors landed (0622c26). Suite 235. Commits d0a90df/9b1c5bc/0622c26/961c1e9.
-- **Next:** (1) **`/simplify`** the PR diff — orientation `docs/plans/oficina-p2-simplify-orientation-2026-07-16.md`
-  (continues the 0622c26 readability thread across the rest of the diff). (2) **T-99** decide
-  `auto_verdict`→`calls.jsonl`. (3) post-slice widening (P2-D1: kinds/validators, escalation ladder
-  P2-D9, tiny-model classifier P2-D4). T-93 refs-diagram verdict still unmeasured; T-86 distribution
-  (`OFICINA_VALIDATE_CODE`). Then push/merge PR #76.
+- 2026-07-16 (session 122): **`/simplify` DONE** (`5b35301` — 13 fixes: run() decomposed, TriadError,
+  intake table, `target_relpath`, Budgets-from-schema; suite 241). **T-99 DECIDED (b)** (`21172f0` —
+  auto_verdict ledger-only, P4 joins on run_id). **T-95 RESOLVED (b)** — shared per-call transport
+  (`_chat_generation`+`_cold_start_grace`); Generation events single-shot-only by design.
+- **Next:** (1) post-slice widening (P2-D1: kinds/validators, escalation ladder P2-D9, tiny-model
+  classifier P2-D4). (2) push/merge PR #76. T-96–T-98 still open; T-93 refs-diagram verdict still
+  unmeasured; T-86 distribution (`OFICINA_VALIDATE_CODE`).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

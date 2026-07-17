@@ -29,7 +29,7 @@ from .intake import Budgets
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
-from .worker import GenerationResult
+from .worker import GenerationResult, _chat_generation, _cold_start_grace
 
 # (prompt, model, run_id) -> GenerationResult. The coder writes nothing; the loop places output.
 CoderFn = Callable[[str, str, str], GenerationResult]
@@ -309,43 +309,19 @@ def default_coder(num_predict: Optional[int] = None, timeout: int = 1800) -> Cod
     """The real coder: one bounded `chat` call per iteration (T-91 num_predict).
 
     ``num_predict=None`` takes the NUM_PREDICT floor/cap default, so callers pass a
-    budget value through unconditionally. Built as a factory so the loop stays free of
-    async/GPU concerns and tests inject a fake.
+    budget value through unconditionally; ``timeout`` comes from ``spec.timeout_s``
+    (wired by the worker, T-95). Built as a factory so the loop stays free of async/GPU
+    concerns and tests inject a fake. Transport + cold-start grace are the worker's
+    shared per-call helpers (T-95 decision (b)) — the loop emits NO Generation events
+    by design; per-call telemetry lives in calls.jsonl, run_id-tagged (T-99).
     """
     num_predict = num_predict or NUM_PREDICT
 
     def _coder(prompt: str, model: str, run_id: str) -> GenerationResult:
-        import asyncio
-
-        from ollama_mcp import server as srv
-        from ollama_mcp.client import OllamaClient, OllamaTimeoutError
-
-        async def _call() -> Any:
-            client = OllamaClient()
-            try:
-                return await client.chat(
-                    prompt=prompt,
-                    model=model,
-                    think=False,
-                    timeout=timeout,
-                    run_id=run_id,
-                    num_predict=num_predict,
-                )
-            finally:
-                await client.close()
-
-        try:
-            resp = asyncio.run(_call())
-        except OllamaTimeoutError:
-            # Cold-start grace (parity with the single-shot path): a first-call timeout is
-            # usually the model loading into VRAM — retry once before failing the whole run.
-            resp = asyncio.run(_call())
-        content = srv._strip_code_fences(resp.content)
-        return GenerationResult(
-            content=content,
-            model=resp.model,
-            eval_count=resp.eval_count,
-            duration_ms=resp.total_duration_ms,
+        return _cold_start_grace(
+            lambda: _chat_generation(
+                prompt, model, run_id, timeout=timeout, num_predict=num_predict
+            )
         )
 
     return _coder

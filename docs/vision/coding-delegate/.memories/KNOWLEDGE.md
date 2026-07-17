@@ -149,13 +149,17 @@ not trust green tests" rule paid off). Load-bearing fixes now in place — treat
 - **`Exhausted` is a first-class terminal:** surfaced by `service.result()` (best-attempt branch/commit,
   S11), the phase map, and the runs-scan hook — it was invisible to all three.
 
-**Deferred (need frozen-code reshape / a decision), tasks T-95–T-99:** the loop is a parallel
-`_run_loop` beside the `GenerateFn` seam (share the per-call wrapper: cold-start grace / Generation
-events / `timeout_s`); `context.refs` dropped when the worker lacks `LLM_REPO_ROOT`; retention doesn't
-`git worktree prune`; `scope_of`/anti-cheat compare by basename only; ~~`auto_verdict` never reaches
-`calls.jsonl`~~ **T-99 DECIDED (b), session 122: ledger-only** — the P4 DPO pass joins ledger↔calls
-on `run_id` (no call-record back-write); plan corrected in place; revisit join mechanics at P4.
-Full analysis:
+**Deferred (need frozen-code reshape / a decision), tasks T-95–T-99:** ~~the loop is a parallel
+`_run_loop` beside the `GenerateFn` seam~~ **T-95 RESOLVED (b), session 122:** per-call transport
+is ONE spelling (`worker._chat_generation` + `_cold_start_grace`, used by single-shot AND
+`default_coder`; `spec.timeout_s` reaches the loop coder) — Generation events stay
+**single-shot-only BY DESIGN** (the loop narrates via Iteration events; per-call telemetry =
+`calls.jsonl` run_id join per T-99(b); `fold_phase` would break otherwise). Still open:
+`context.refs` dropped when the worker lacks `LLM_REPO_ROOT` (T-96); retention doesn't
+`git worktree prune` (T-97); `scope_of`/anti-cheat compare by basename only (T-98).
+~~`auto_verdict` never reaches `calls.jsonl`~~ **T-99 DECIDED (b), session 122: ledger-only** —
+the P4 DPO pass joins ledger↔calls on `run_id` (no call-record back-write); plan corrected in
+place; revisit join mechanics at P4. Full analysis + decision records:
 `docs/findings/oficina-p2-review-deferred-2026-07-16.md` (`ref:oficina-p2-review-deferred`).
 
 **Tests use the executable-spec DSL** (`ref:test-executable-spec`): `test_loop`/`test_intake`/
