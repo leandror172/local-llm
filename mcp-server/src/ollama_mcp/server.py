@@ -96,6 +96,22 @@ def _build_context_block(context_files: list[ContextFile]) -> str:
 # refs param support
 # ---------------------------------------------------------------------------
 
+def _ref_lookup_script() -> str:
+    """Resolve ref-lookup.sh: ``OFICINA_REF_LOOKUP`` env, else ``LLM_REPO_ROOT``, else package-relative.
+
+    Env is read at CALL time (not config.REPO_ROOT's import-time snapshot) so a
+    detached oficina worker spawned without the server's env still resolves refs
+    (T-96). Mirrors ``evaluator._validate_code_script``.
+    """
+    override = os.environ.get("OFICINA_REF_LOOKUP")
+    if override:
+        return override
+    repo_root = os.environ.get("LLM_REPO_ROOT") or str(
+        pathlib.Path(__file__).resolve().parents[3]
+    )
+    return os.path.join(repo_root, ".claude", "tools", "ref-lookup.sh")
+
+
 async def _resolve_ref_key(key: str, root: str | None) -> str:
     """Run ref-lookup.sh for a single key. Return stdout or an Error: string.
 
@@ -104,10 +120,7 @@ async def _resolve_ref_key(key: str, root: str | None) -> str:
     Expected to be called against small ref folders; the script has no
     internal timeout, so keep ref roots compact.
     """
-    if not REPO_ROOT:
-        return "Error: LLM_REPO_ROOT not set — cannot locate ref-lookup script."
-
-    script = os.path.join(REPO_ROOT, ".claude", "tools", "ref-lookup.sh")
+    script = _ref_lookup_script()
     if not os.path.isfile(script):
         return f"Error: ref-lookup script not found at {script}"
 
