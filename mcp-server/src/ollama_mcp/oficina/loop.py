@@ -252,6 +252,21 @@ class EvaluatedLoop:
             spent=spent,
         )
 
+    def _time_limit_reached(self, started_at) -> Any:
+        return self.max_wall_clock_s and time.monotonic() - started_at > self.max_wall_clock_s
+
+    def _generate_with_snapshot(self, k, prev_sha, stable, target_rel, test_files, variable, worktree) -> Any:
+        self._emit_iteration_started(k)
+        prompt = build_prompt({**stable, **variable})
+        gen = self.coder(prompt, self.model, self.run_id)
+        target_path = worktree / target_rel
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(gen.content, encoding="utf-8")
+        snapshot = self.workspace.snapshot(f"oficina iteration {k} ({self.run_id})")
+
+        cheated = diff_touches_test_files(worktree, prev_sha, snapshot, test_files)
+        return cheated, gen, snapshot
+
     def run(self) -> LoopResult:
         """Assemble, then iterate generate→evaluate→classify→repair/fresh-start until terminal."""
         assembly = self.workspace.assemble(emit=self.ledger.assembly_done)
@@ -270,7 +285,7 @@ class EvaluatedLoop:
         started_at = time.monotonic()
 
         for k in range(1, self.max_iterations + 1):
-            if self.max_wall_clock_s and time.monotonic() - started_at > self.max_wall_clock_s:
+            if self._time_limit_reached(started_at):
                 return self._exhausted(iterations_used=k - 1, limit_hit="timeout")
             if self.is_cancelled():
                 self.ledger.cancelled({"stage": "looping", "iteration": k})
@@ -278,15 +293,7 @@ class EvaluatedLoop:
                     "cancelled", self._best, iterations_used=k - 1, snapshot=self._best_snapshot
                 )
 
-            self._emit_iteration_started(k)
-            prompt = build_prompt({**stable, **variable})
-            gen = self.coder(prompt, self.model, self.run_id)
-            target_path = worktree / target_rel
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            target_path.write_text(gen.content, encoding="utf-8")
-            snapshot = self.workspace.snapshot(f"oficina iteration {k} ({self.run_id})")
-
-            cheated = diff_touches_test_files(worktree, prev_sha, snapshot, test_files)
+            cheated, gen, snapshot = self._generate_with_snapshot(k, prev_sha, stable, target_rel, test_files, variable, worktree)
             prev_sha = snapshot
             if cheated:
                 variable = self._record_cheat_and_feedback(k, gen, cheated)
