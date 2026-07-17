@@ -57,6 +57,9 @@ decomposed. **T-95/T-99 RESOLVED (b):** per-call transport = `worker._chat_gener
 `_cold_start_grace` (shared by single-shot + `loop.default_coder`; `spec.timeout_s` honored);
 `auto_verdict` is LEDGER-only — P4 DPO joins ledger↔`calls.jsonl` on `run_id`.
 Loop tests use the executable-spec DSL (`ref:test-executable-spec`).
+**Session 123: T-96/T-97/T-98 RESOLVED** (branch `feature/oficina-p2-deferrals`, suite 260):
+refs fallback chain + fail-loud `RefsDropped`; retention `workspace` prune class (TTL =
+run-dir mtime); worktree-relative path scoping. Decision records: `ref:oficina-p2-review-deferred`.
 
 ## Deeper Memory -> KNOWLEDGE.md
 
