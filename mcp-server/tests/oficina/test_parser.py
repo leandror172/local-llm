@@ -228,10 +228,11 @@ def test_pytest_failed_is_structural_category():
     assert all(category_for(failure) == CATEGORY_STRUCTURAL for failure in failures)
 
 
-def test_pytest_failure_extracts_test_file_basename():
-    """.file is the test module basename ('test_area.py') from the nodeid."""
+def test_pytest_failure_extracts_worktree_relative_path():
+    """.file is the nodeid's path prefix ('tests/test_area.py') — pytest already emits the
+    worktree-relative spelling, so the parser must not destroy it to a basename (T-98)."""
     failures = parse_validator_output(STAGE_TEST, PYTEST_FAILED)
-    assert all(failure.file == "test_area.py" for failure in failures)
+    assert all(failure.file == "tests/test_area.py" for failure in failures)
 
 
 def test_pytest_error_and_failed_key_differently():
@@ -276,30 +277,38 @@ def test_pytest_output_without_summary_block_yields_no_failures():
 
 def test_scope_of_target_file():
     """A failure in a declared target file classifies as target."""
-    result = scope_of("area.py", ["/tmp/wt-abc/area.py"], ["tests/test_area.py"])
+    result = scope_of("src/area.py", ["src/area.py"], ["tests/test_area.py"])
     assert result == SCOPE_TARGET
 
 
 def test_scope_of_test_file():
     """A failure in a declared test file classifies as test."""
-    result = scope_of("test_area.py", ["/tmp/wt-abc/area.py"], ["tests/test_area.py"])
+    result = scope_of("tests/test_area.py", ["src/area.py"], ["tests/test_area.py"])
     assert result == SCOPE_TEST
 
 
 def test_scope_of_out_of_scope_file():
     """A failure in a file that is neither target nor test classifies as out —
     these are the only failures P2-D12 subtracts from the baseline."""
-    result = scope_of("unknown.py", ["/tmp/wt-abc/area.py"], ["tests/test_area.py"])
+    result = scope_of("unknown.py", ["src/area.py"], ["tests/test_area.py"])
     assert result == SCOPE_OUT
 
 
 def test_scope_of_none_file_is_out():
     """An unattributable (None) file classifies as out."""
-    result = scope_of(None, ["/tmp/wt-abc/area.py"], ["tests/test_area.py"])
+    result = scope_of(None, ["src/area.py"], ["tests/test_area.py"])
     assert result == SCOPE_OUT
 
 
-def test_scope_of_matches_by_basename():
-    """Absolute-path target declaration still matches a basename-only failure file."""
-    result = scope_of("area.py", ["/tmp/wt-abc/area.py"], ["tests/test_area.py"])
+def test_scope_of_basename_collision_is_out():
+    """T-98 regression: an out-of-scope file sharing the target's basename must be OUT —
+    basename matching classified it target, so the wart was never subtracted and the loop
+    could never pass (permanent false-exhaustion)."""
+    result = scope_of("lib/util.py", ["src/util.py"], [])
+    assert result == SCOPE_OUT
+
+
+def test_scope_of_normalizes_path_spellings():
+    """Dot-prefixed vs plain spellings of the same relative path still agree."""
+    result = scope_of("./src/area.py", ["src/area.py"], [])
     assert result == SCOPE_TARGET

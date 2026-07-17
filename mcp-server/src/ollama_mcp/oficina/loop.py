@@ -19,7 +19,6 @@ runaway).
 
 from __future__ import annotations
 
-import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
@@ -273,7 +272,7 @@ class EvaluatedLoop:
         worktree = assembly.worktree_path
         base_repo = assembly.base_repo
         target_rel = target_relpath(self.spec["deliverable"]["target"], base_repo)
-        target_files = [os.path.basename(target_rel)]
+        target_files = [target_rel]
         test_files = (self.spec.get("acceptance") or {}).get("test_files") or []
         baseline = assembly.baseline_failures
 

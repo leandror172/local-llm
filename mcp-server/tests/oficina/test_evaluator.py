@@ -118,6 +118,27 @@ def test_diff_touching_test_file_is_flagged(tmp_path):
     assert "test_area.py" in touched
 
 
+def test_diff_basename_collision_is_not_flagged(tmp_path):
+    """T-98 regression: a changed file sharing a declared test file's basename
+    (src/test_area.py vs declared test_area.py) is NOT a cheat — basename matching
+    fired anti-cheat on the target's own writes, so evaluation never ran."""
+    repo = _repo_with_commit(tmp_path)
+    c0 = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True
+    ).stdout.strip()
+    (repo / "src").mkdir()
+    (repo / "src" / "test_area.py").write_text("x = 1\n")
+    c1 = _commit_all(repo, "target shares the declared test file's basename")
+    assert diff_touches_test_files(repo, c0, c1, TEST_FILES) == []
+
+
+def test_scope_collision_wart_is_subtracted_not_attributed():
+    """T-98 regression (review scenario): a pre-existing wart in lib/util.py with target
+    src/util.py is out-of-scope and baseline-subtracted — the loop can still pass."""
+    wart = _pf("lib/util.py", "wart-key", stage=STAGE_COMPILE)
+    assert attributable_failures([wart], [wart], ["src/util.py"], TEST_FILES) == []
+
+
 def test_diff_touching_only_target_is_clean(tmp_path):
     """Editing only the target file leaves diff_touches_test_files empty."""
     repo = _repo_with_commit(tmp_path)
