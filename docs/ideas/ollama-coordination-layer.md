@@ -5,6 +5,12 @@
 names the full scheduler this busy-check contract was a seed of. This doc's mechanism +
 empirical findings remain inputs to the gate's G-D5 mechanism decision.
 **Updated:** session 43 (2026-03-15) — threat model revised after empirical testing.
+**TRIGGER FIRED (session 124, 2026-07-18):** the user confirmed concurrent Claude Code sessions
+are standing practice. This doc's build trigger ("VRAM thrash becomes an observed pain point")
+never fired because the pain arrived as **sync timeouts under contention**, not as measurable
+thrash — a guessed trigger firing on a different trigger. The problem statement below (line 17)
+is the canonical one and was dropped when T-88 reframed clients from *sessions* to *products*.
+Recovered in `docs/ideas/multi-session-contention.md` (`ref:multi-session-contention`, T-102).
 **Related:** warm-up MCP tool (bundled Option 1 built first), deferred-infra tasks.
 **Findings:** `docs/findings/ollama-eviction-concurrency-findings.md`
 

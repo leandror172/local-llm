@@ -46,6 +46,12 @@ where, in what order). T-21's shared-directory mechanism survives as a candidate
   submission with model-affinity tags, a priority class, intra-batch order preserved; the gate
   does admission, placement, and cross-client interleaving to minimize swaps. Keeps the gate
   dumb, small, product-agnostic.
+  **⚠ Note added 2026-07-18 (M-D4):** batching does **not** by itself force an async contract —
+  `gate.run_batch([...])` can block once on the whole batch while the gate still interleaves its
+  calls with other clients'. What batching *does* expose is that the caller's wait is now bounded
+  by the interleaved queue, not by its own work. See **G-D7** below: the missing axis is
+  blocking-vs-ticket, not batching. *(An earlier version of this note claimed a semaphore cannot
+  implement G-D2 — refuted on advisor review; recorded so it is not re-derived.)*
 - **G-D3 — resource model: two constraint families, vocabulary now, capacity-only v1.**
   - **Family A — capacity/placement** (residency): local GPU VRAM, hybrid VRAM+RAM
     (30B MoE partial offload), CPU-only pools, second/network/cloud GPUs. Placement logic:
@@ -64,7 +70,14 @@ where, in what order). T-21's shared-directory mechanism survives as a candidate
   generation seam is injectable — a gate client slots in behind `GenerateFn` later).
 - **G-D5 — mechanism: OPEN.** Candidates: T-21's shared-directory contract (zero-daemon,
   crash-safe by PID liveness) vs a small always-on broker owning the Ollama socket vs a
-  library-level semaphore in ollama-bridge. Note Ollama itself already provides: request
+  library-level semaphore in ollama-bridge. **⚠ This register conflates two independent axes
+  (2026-07-18, M-D4):** *mechanism location* (shared dir / broker / in-process library) vs.
+  *client contract* (blocking wait / ticket). Only the first is varied above. The contract axis
+  is mechanism-independent: **no** blocking contract can bound the wait below the caller's
+  deadline when the queue ahead holds 14B swaps and multi-minute generations — queueing *ahead
+  of* batch work does not help if the wait itself exhausts the caller. Every candidate therefore
+  needs a **ticket** path for clients that cannot tolerate unbounded wait. See **G-D7** and
+  `ref:multi-session-transport-requirement`. Note Ollama itself already provides: request
   queueing, refCount protection (evict-during-generation is safe), co-residency via
   `OLLAMA_MAX_LOADED_MODELS` when models fit. The v1 gate is **policy over Ollama's
   scheduler**, not a replacement: cross-client priority, cache-affinity reordering,
@@ -75,6 +88,18 @@ where, in what order). T-21's shared-directory mechanism survives as a candidate
   coding-specific (that lives in `intake.py`/`worker.py`). If the gate wants an event ledger
   + atomic queue + pidfile-arbitrated worker, extraction into a shared primitive becomes the
   T-76-style move: **do not extract until the gate is real** (second consumer rule).
+  **⚠ Trigger likely fired (2026-07-18, M-D4):** if the gate must hand out tickets (G-D5 above),
+  it needs exactly this machinery — the gate *is* the second consumer, and the altitude split
+  survives with both altitudes sitting on one shared async primitive.
+- **G-D7 — wait tolerance is a distinct axis from admission policy: OPEN (filed 2026-07-18).**
+  Admission policy answers *who goes next*; wait tolerance answers *how long a client can wait
+  before its transport dies*. The register above only ever modelled the first. A client waiting
+  **fairly** for four minutes is as dead as one waiting unfairly. Proposed resolution: clients
+  declare a deadline at submission; the gate answers admission *instantly* — capacity free ⇒
+  admit sync; projected wait > deadline ⇒ **refuse fast and return a ticket**. This is not the
+  "timeout-redirect hint" T-89 rejected (that was model-mediated recovery *after* paying for a
+  failed call); this is admission-time routing decided by the only component holding capacity
+  state. Full argument: `ref:multi-session-transport-requirement` (T-102).
 
 ## First rules the gate would own (concrete value, day one)
 
@@ -82,11 +107,22 @@ where, in what order). T-21's shared-directory mechanism survives as a candidate
    `ltg/.memories/QUICK.md` ("embed and infer calls must not run in parallel — VRAM"). A rule
    that lives in a memory file is exactly what a gate owns in code.
 2. **Interactive > batch priority** — a Claude session's sync `generate_code` should preempt
-   (queue ahead of, not interrupt) an LTG batch refresh.
+   (queue ahead of, not interrupt) an LTG batch refresh. **Note (2026-07-18):** singular "a
+   Claude session" — G-D2's priority *class* model gives no tie-break **within** a class, and N
+   concurrent sessions are all the same class. Interactive-vs-interactive ordering is unowned;
+   `ref:multi-session-contention`.
 3. **Swap-minimizing interleave** — group queued calls by model across clients; a 14B↔14B
    swap costs ~15s cold-load each way (ext4 store), so naive FIFO across two clients thrashes.
 
 ## Triggers (build when one fires)
+
+> **STATUS: FIRED (session 124, 2026-07-18 — M-D3).** The user confirmed **concurrent Claude
+> Code sessions are standing practice**, which is the T-21 trigger the first bullet inherited.
+> Session 118's "trigger NOT yet met" note rested on T-90 (Windows-desktop VRAM) being a
+> *different* cause — it is, and it does not bear on this. Note the client roster in
+> `ref:model-gate-altitude` enumerates *products* (LTG, expenses, benchmarks, oficina, "sync
+> tools") and **never modelled N instances of the same client** — the session-level framing was
+> lost when this doc superseded T-21. `ref:multi-session-contention` (T-102).
 
 - **Observed contention:** swap-thrash or a blocked interactive call once oficina runs, LTG
   refreshes, and expense probes actually overlap in practice (the T-21 trigger, inherited).

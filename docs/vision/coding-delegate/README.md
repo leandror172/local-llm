@@ -24,6 +24,14 @@ iteration is logged with an automatic verdict — the DPO flywheel becomes a byp
 state (user's words): *"given a detailed enough plan, a Claude session using it will mostly be
 the coordinator and verifier."*
 
+> **Scope note (added session 124, 2026-07-18).** "Evolve X **into** Y" above is
+> replacement-shaped grammar and has been read that way. It is **not** the decided migration
+> shape: T-89 (`ref:oficina-async-migration-shape`, session 117) rejected both a sync facade and
+> a hard cutover — **the sync path is permanent architecture, not transitional**. What migrates
+> is decided per call, not by deprecation. Separately, T-89's reasoning covers
+> interactive-vs-*batch* only; interactive-vs-*interactive* (N concurrent sessions) is open —
+> `ref:multi-session-contention`.
+
 ## Navigation
 
 The authoritative map lives in **`index.md`** (this folder): files by recontextualization
