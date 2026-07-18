@@ -179,7 +179,7 @@ def _parse_pytest(payload: str) -> list[ParsedFailure]:
         failures.append(
             ParsedFailure(
                 stage=STAGE_TEST,
-                file=_basename(file_part),
+                file=file_part,
                 error_key=error_key,
                 raw=line,
             )
@@ -239,14 +239,18 @@ def scope_of(
 ) -> str:
     """Classify a failure's file as ``target`` / ``test`` / ``out`` (P2-D12).
 
-    Comparison is by basename so absolute-path vs relative-path spellings agree.
+    Comparison is by normalized worktree-relative path (T-98): basename matching
+    silently flipped scope on collisions (``lib/util.py`` vs target ``src/util.py``
+    → permanent false-exhaustion). Every producer already speaks worktree-relative
+    — pytest nodeids and ``git diff --name-only`` emit it, and the evaluator stamps
+    compile failures with the target relpath — so callers pass that spelling.
     A ``None`` file (unattributable) is ``out``.
     """
     if file is None:
         return SCOPE_OUT
-    name = _basename(file)
-    if any(_basename(f) == name for f in target_files):
+    path = os.path.normpath(file)
+    if any(os.path.normpath(f) == path for f in target_files):
         return SCOPE_TARGET
-    if any(_basename(f) == name for f in test_files):
+    if any(os.path.normpath(f) == path for f in test_files):
         return SCOPE_TEST
     return SCOPE_OUT

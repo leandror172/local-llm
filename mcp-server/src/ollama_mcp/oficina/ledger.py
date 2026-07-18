@@ -41,7 +41,7 @@ _STATE_BY_EVENT: dict[str, str] = {
 
 RUN_EVENTS: frozenset[str] = frozenset(_STATE_BY_EVENT)
 WORKER_EVENTS: frozenset[str] = frozenset(
-    {"WorkerStarted", "WorkerStopped", "RetentionPruned"}
+    {"WorkerStarted", "WorkerStopped", "RetentionPruned", "RefsDropped"}
 )
 
 
@@ -195,6 +195,9 @@ class Ledger:
 
     def retention_pruned(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("RetentionPruned", payload)
+
+    def refs_dropped(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("RefsDropped", payload)
 
 
 def fold_state(events: List[Dict[str, Any]]) -> str:

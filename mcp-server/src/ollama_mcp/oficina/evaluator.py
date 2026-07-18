@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -85,7 +86,9 @@ def diff_touches_test_files(
 
     A non-empty result means the iteration edited the acceptance criteria (P2-D13) — the loop
     must reject that iteration rather than accept a test-run it rigged. Comparison is by
-    basename so path spellings agree.
+    normalized worktree-relative path (T-98): git emits that spelling, and declared
+    test_files use it — basename matching made a target named like a test file
+    (``src/test_utils.py`` vs ``tests/test_utils.py``) fire anti-cheat on its own writes.
     """
     if not test_files:
         return []  # nothing declared → nothing to diff; skip the subprocess entirely
@@ -95,8 +98,8 @@ def diff_touches_test_files(
         text=True,
     )
     changed = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-    test_basenames = {os.path.basename(t) for t in test_files}
-    return [path for path in changed if os.path.basename(path) in test_basenames]
+    declared = {os.path.normpath(t) for t in test_files}
+    return [path for path in changed if os.path.normpath(path) in declared]
 
 
 # --- evaluation (the real EvaluateFn) ---------------------------------------
@@ -119,8 +122,15 @@ def _validate_code_script() -> str:
 _STAGE_TIMEOUT_S = 900
 
 
-def _run_compile_stage(target_in_worktree: Path, timeout_s: int) -> List[ParsedFailure]:
-    """Run the compile validator on the target and parse its JSON (T1)."""
+def _run_compile_stage(
+    target_in_worktree: Path, target_rel: str, timeout_s: int
+) -> List[ParsedFailure]:
+    """Run the compile validator on the target and parse its JSON (T1).
+
+    Failures are stamped with ``target_rel`` (T-98): only the target is ever
+    compiled, so the worktree-relative spelling is known here — the validator's
+    own ``file`` field is not canonical.
+    """
     script = _validate_code_script()
     try:
         result = subprocess.run(
@@ -134,7 +144,8 @@ def _run_compile_stage(target_in_worktree: Path, timeout_s: int) -> List[ParsedF
     if result.returncode == 2:
         raise EvaluationError("compile", f"validator tool error: {result.stderr.strip()}")
     payload = json.loads(result.stdout)
-    return parse_validator_output(STAGE_COMPILE, payload)
+    failures = parse_validator_output(STAGE_COMPILE, payload)
+    return [replace(failure, file=target_rel) for failure in failures]
 
 
 def _run_test_stage(worktree: Path, test_cmd: str, timeout_s: int) -> List[ParsedFailure]:
@@ -182,7 +193,7 @@ def evaluate(worktree: Path, base_repo: Path, spec: Dict[str, Any]) -> List[Pars
         rel = target_relpath(target, base_repo)
         target_in_worktree = Path(worktree) / rel
         if target_in_worktree.exists():
-            compile_failures = _run_compile_stage(target_in_worktree, timeout_s)
+            compile_failures = _run_compile_stage(target_in_worktree, rel, timeout_s)
             if compile_failures:
                 return compile_failures
 

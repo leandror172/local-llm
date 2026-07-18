@@ -165,6 +165,26 @@ pass joins ledger↔calls on `run_id`; note the join is per-run — per-iteratio
 matching is order-based, and anti-cheat iterations record a verdict without an
 evaluation call. Decision record: `ref:oficina-p2-review-deferred` (T-99).
 
+## oficina P2 deferral resolutions — retention, refs, path canon (2026-07-17, session 123)
+
+Three invariants from the T-96–T-98 fixes (decision records: `ref:oficina-p2-review-deferred`):
+
+- **Retention prunes two state classes.** `artifacts/` (both policies, unchanged) and
+  `workspace/` (TTL policy only): resolve the target repo from `spec.json` → best-effort
+  `git worktree remove --force` + `prune` → always `rmtree` the workspace tree. A
+  moved/deleted repo still reclaims disk; `git_pruned` on the record/payload says which
+  case fired. TTL staleness is **run-dir mtime** — the artifacts-mtime measure was blind
+  to crashed runs (empty artifacts). `events.jsonl` stays untouchable.
+- **Ref-lookup script resolution is call-time and env-independent.**
+  `server._ref_lookup_script()`: `OFICINA_REF_LOOKUP` → `LLM_REPO_ROOT` → package-relative
+  (mirrors `evaluator._validate_code_script`). Unresolved `context.refs` emit
+  **`RefsDropped {run_id, refs, reason}`** to the worker ledger — never a silent `""`
+  (worker observability event, like RetentionPruned; frozen run-event registry untouched).
+- **Failure-path canonical spelling is worktree-relative.** pytest nodeids and
+  `git diff --name-only` emit it natively; the evaluator stamps compile failures with
+  `target_relpath` (only it has worktree knowledge). `scope_of` / `diff_touches_test_files`
+  compare normpath'd relpaths — basename matching flipped P2-D12 scope on collisions.
+
 ## Debug Logging — Structured JSONL (2026-05, session 65)
 
 The server can emit a structured JSONL log to disk for hang diagnosis and

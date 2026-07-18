@@ -1,14 +1,18 @@
 # Makefile for the ollama-bridge MCP server.
-# Diagnostic helpers — the server itself is launched by Claude Code via
-# run-server.sh; these targets are for observing it.
+# Diagnostic + test helpers — the server itself is launched by Claude Code via
+# run-server.sh; these targets are for observing and verifying it.
 
 LOG_FILE ?= /tmp/ollama-bridge.jsonl
 SCRIPTS  := scripts
 
-.PHONY: help logs logs-raw bridges
+.PHONY: help logs logs-raw bridges test test-oficina
 
 help:
-	@echo "ollama-bridge — diagnostic targets"
+	@echo "ollama-bridge — diagnostic + test targets"
+	@echo
+	@echo "  make test                  Run the full pytest suite (uv run pytest tests/)"
+	@echo "  make test-oficina          Run only the oficina suite (tests/oficina/)"
+	@echo "  make test ARGS='-k refs'   Pass pytest args through (any test target)"
 	@echo
 	@echo "  make logs                  Tail $(LOG_FILE) with pretty formatting"
 	@echo "  make logs CLIENT=abcd1234  Tail filtered to one bridge's client_id"
@@ -16,6 +20,12 @@ help:
 	@echo "  make bridges               List live bridge processes with banner info"
 	@echo
 	@echo "Override the log path: make logs LOG_FILE=/path/to/file.jsonl"
+
+test:
+	uv run pytest tests/ $(ARGS)
+
+test-oficina:
+	uv run pytest tests/oficina/ $(ARGS)
 
 logs:
 	@OLLAMA_BRIDGE_LOG_FILE=$(LOG_FILE) $(SCRIPTS)/watch-logs.sh $(CLIENT)

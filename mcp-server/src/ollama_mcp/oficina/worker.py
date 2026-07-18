@@ -203,11 +203,13 @@ class Worker:
         report = {"model": gen.model, "eval_count": gen.eval_count, "chars": len(gen.content)}
         ledger.delivered({"report": report, "deliverable": deliverable})
 
-    def _resolve_refs_block(self, spec: Dict[str, Any]) -> str:
-        """Resolve context.refs into a <refs> block (P2 carried-from-P1). Fail-open.
+    def _resolve_refs_block(self, spec: Dict[str, Any], run_id: str) -> str:
+        """Resolve context.refs into a <refs> block (P2 carried-from-P1). Best-effort, fail-loud.
 
         This is the seam a run spec uses to inject docs — including a mermaid diagram anchor
-        (T-93) — into the loop's stable prompt prefix at zero token cost.
+        (T-93) — into the loop's stable prompt prefix at zero token cost. A failed resolution
+        never fails the run, but is recorded as RefsDropped in the worker ledger (T-96) —
+        the run must not silently lose the docs it asked for.
         """
         refs = (spec.get("context") or {}).get("refs") or []
         if not refs:
@@ -218,9 +220,17 @@ class Worker:
 
         try:
             block = asyncio.run(_build_refs_block(refs, None))
-        except Exception:  # noqa: BLE001 — refs are best-effort context, never fatal
+        except Exception as exc:  # noqa: BLE001 — refs are best-effort context, never fatal
+            self._note_refs_dropped(run_id, refs, f"{type(exc).__name__}: {exc}")
             return ""
-        return "" if block.startswith("Error:") else block
+        if block.startswith("Error:"):
+            self._note_refs_dropped(run_id, refs, block)
+            return ""
+        return block
+
+    def _note_refs_dropped(self, run_id: str, refs: list, reason: str) -> None:
+        """Record a requested-but-unresolved refs block in the worker ledger (T-96)."""
+        self.worker_ledger.refs_dropped({"run_id": run_id, "refs": refs, "reason": reason})
 
     def _run_loop(self, ledger: Ledger, run_id: str, spec: Dict[str, Any]) -> None:
         """Run the evaluated loop (P2) for a code kind; emit terminal Delivered on success.
@@ -245,7 +255,7 @@ class Worker:
         loop = EvaluatedLoop(
             spec, run_id, workspace, evaluate, coder, ledger,
             is_cancelled=lambda: self._is_cancelled(run_id),
-            refs_block=self._resolve_refs_block(spec),
+            refs_block=self._resolve_refs_block(spec, run_id),
         )
         try:
             result = loop.run()

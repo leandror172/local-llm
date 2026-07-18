@@ -19,7 +19,7 @@ import pathlib
 import sys
 import time
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Callable
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
@@ -96,6 +96,70 @@ def _build_context_block(context_files: list[ContextFile]) -> str:
 # refs param support
 # ---------------------------------------------------------------------------
 
+def _ref_lookup_script() -> str:
+    """Resolve ref-lookup.sh: ``OFICINA_REF_LOOKUP`` env, else ``LLM_REPO_ROOT``, else package-relative.
+
+    Env is read at CALL time (not config.REPO_ROOT's import-time snapshot) so a
+    detached oficina worker spawned without the server's env still resolves refs
+    (T-96). Mirrors ``evaluator._validate_code_script``.
+    """
+    override = os.environ.get("OFICINA_REF_LOOKUP")
+    if override:
+        return override
+    repo_root = os.environ.get("LLM_REPO_ROOT") or str(
+        pathlib.Path(__file__).resolve().parents[3]
+    )
+    return os.path.join(repo_root, ".claude", "tools", "ref-lookup.sh")
+
+
+async def _run_script(
+    args: list[str],
+    *,
+    timeout: int,
+    label: str,
+    on_error: Callable[[int, str, str], str] | None = None,
+    on_success: Callable[[str], None] | None = None,
+) -> str:
+    """Run a subprocess, returning stripped stdout or an ``Error:`` string.
+
+    Centralizes the ``create_subprocess_exec`` → ``wait_for`` → returncode → decode
+    dance shared by every script-backed tool (ref-lookup, detect/build/create-persona).
+    ``label`` names the tool in the default non-zero-exit, timeout, and generic-error
+    messages. Hooks let callers that need to differ opt out of the defaults:
+
+    - ``on_error(returncode, stdout, stderr) -> str`` overrides the non-zero-exit
+      message (the ref tools word theirs differently — that historical drift is now
+      explicit at the call site rather than copy-pasted).
+    - ``on_success(stdout)`` runs on a zero exit before the stripped stdout is
+      returned (create_persona reloads the registry here). Anything it raises is
+      caught by the generic handler, matching the pre-extraction inline behavior.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        out, err = stdout.decode(), stderr.decode()
+
+        if proc.returncode != 0:
+            if on_error is not None:
+                return on_error(proc.returncode, out, err)
+            err_msg = err.strip() if err else "Unknown error"
+            return f"Error: {label} exited with code {proc.returncode}: {err_msg}"
+
+        if on_success is not None:
+            on_success(out)
+        return out.strip()
+
+    except asyncio.TimeoutError:
+        proc.kill()
+        return f"Error: {label} timed out after {timeout} seconds."
+    except Exception as e:
+        return f"Error running {label}: {e}"
+
+
 async def _resolve_ref_key(key: str, root: str | None) -> str:
     """Run ref-lookup.sh for a single key. Return stdout or an Error: string.
 
@@ -104,10 +168,7 @@ async def _resolve_ref_key(key: str, root: str | None) -> str:
     Expected to be called against small ref folders; the script has no
     internal timeout, so keep ref roots compact.
     """
-    if not REPO_ROOT:
-        return "Error: LLM_REPO_ROOT not set — cannot locate ref-lookup script."
-
-    script = os.path.join(REPO_ROOT, ".claude", "tools", "ref-lookup.sh")
+    script = _ref_lookup_script()
     if not os.path.isfile(script):
         return f"Error: ref-lookup script not found at {script}"
 
@@ -115,25 +176,14 @@ async def _resolve_ref_key(key: str, root: str | None) -> str:
     if root is not None:
         args += ["--root", root]
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
-
-        if proc.returncode != 0:
-            err_msg = stdout.decode().strip() or stderr.decode().strip() or "Unknown error"
-            return f"Error: ref:'{key}' not found — {err_msg}"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: ref-lookup timed out after 10 seconds."
-    except Exception as e:
-        return f"Error running ref-lookup: {e}"
+    return await _run_script(
+        args,
+        timeout=10,
+        label="ref-lookup",
+        on_error=lambda rc, out, err: (
+            f"Error: ref:'{key}' not found — {out.strip() or err.strip() or 'Unknown error'}"
+        ),
+    )
 
 
 async def _build_refs_block(refs: list[str], root: str | None) -> str:
@@ -153,6 +203,36 @@ async def _build_refs_block(refs: list[str], root: str | None) -> str:
             return result
 
     return "<refs>\n" + "\n\n".join(results) + "\n</refs>"
+
+
+async def _assemble_prompt(
+    base: str,
+    context_files: list[ContextFile] | None,
+    refs: list[str] | None,
+    refs_root: str | None,
+) -> tuple[str, str | None]:
+    """Wrap ``base`` outward with <context> then <refs> layers (<refs> → <context> → base).
+
+    Returns ``(assembled_prompt, None)`` on success, or ``(base, error_string)`` if any
+    block fails to build — the caller returns the error verbatim. A tuple (rather than a
+    sentinel ``Error:`` string) is deliberate: ``base`` is caller-supplied and may itself
+    legitimately start with ``"Error:"``, so success must not be distinguishable by prefix.
+
+    ``base`` must already carry any caller-specific prefix (e.g. generate_code's
+    ``[Language: X]`` hint) — this helper is prompt-content-agnostic.
+    """
+    full_prompt = base
+    if context_files:
+        context_block = _build_context_block(context_files)
+        if context_block.startswith("Error:"):
+            return base, context_block
+        full_prompt = f"{context_block}\n\n{full_prompt}"
+    if refs:
+        refs_block = await _build_refs_block(refs, refs_root)
+        if refs_block.startswith("Error:"):
+            return base, refs_block
+        full_prompt = f"{refs_block}\n\n{full_prompt}"
+    return full_prompt, None
 
 
 # ---------------------------------------------------------------------------
@@ -439,19 +519,10 @@ async def ask_ollama(
     client = _get_client()
 
     # Build prompt outward: context_files first, refs outermost (<refs> → <context> → prompt)
-    full_prompt = prompt
-    if context_files:
-        context_block = _build_context_block(context_files)
-        if context_block.startswith("Error:"):
-            _done(False, reason="context_block_error")
-            return context_block
-        full_prompt = f"{context_block}\n\n{full_prompt}"
-    if refs:
-        refs_block = await _build_refs_block(refs, refs_root)
-        if refs_block.startswith("Error:"):
-            _done(False, reason="refs_block_error")
-            return refs_block
-        full_prompt = f"{refs_block}\n\n{full_prompt}"
+    full_prompt, prompt_err = await _assemble_prompt(prompt, context_files, refs, refs_root)
+    if prompt_err is not None:
+        _done(False, reason="prompt_assembly_error")
+        return prompt_err
 
     try:
         response = await client.chat(
@@ -524,6 +595,21 @@ async def list_models() -> str:
     return "Available Ollama models:\n" + "\n".join(lines)
 
 
+def _model_matches(loaded_name: str, requested: str) -> bool:
+    """True if an Ollama model name (possibly ``model:tag``) matches a requested
+    base or fully-qualified name — tolerant of an implicit ``:latest`` tag.
+
+    Ollama reports loaded/available models as ``model:tag`` (e.g. ``my-coder-q3:latest``).
+    Callers request either the bare base (``my-coder-q3``) or the tagged form, so a
+    match holds three ways: exact, requested-plus-implicit-``:latest``, or base-only.
+    """
+    return (
+        loaded_name == requested
+        or loaded_name == f"{requested}:latest"
+        or requested == loaded_name.split(":")[0]
+    )
+
+
 async def _check_model_exists(client: OllamaClient, model: str) -> str | None:
     try:
         models = await client.list_models()
@@ -531,10 +617,7 @@ async def _check_model_exists(client: OllamaClient, model: str) -> str | None:
         return "Error: Cannot connect to Ollama. Is it running? Start with: ollama serve"
 
     available_names = [m.get("name", "") for m in models]
-    found = any(
-        name == model or name == f"{model}:latest" or model == name.split(":")[0]
-        for name in available_names
-    )
+    found = any(_model_matches(name, model) for name in available_names)
 
     if not found:
         base_names = [n.split(":")[0] for n in available_names]
@@ -580,13 +663,9 @@ async def warm_model(
             "Is it running? Start with: ollama serve"
         )
 
-    # Check if target model is already loaded
+    # Check if target model is already loaded (matcher handles the "model:tag" format)
     running_names = [m.get("name", "") for m in running]
-    # Ollama uses "model:tag" format; match with or without ":latest"
-    target_loaded = any(
-        name == model or name == f"{model}:latest" or model == name.split(":")[0]
-        for name in running_names
-    )
+    target_loaded = any(_model_matches(name, model) for name in running_names)
 
     if target_loaded:
         return f"Model '{model}' is already loaded in VRAM. No action needed."
@@ -764,16 +843,19 @@ async def generate_code(
         prompt_chars=len(prompt),
     )
 
+    def _done(ok: bool, **fields):
+        debug_log.debug(
+            "tool_exit",
+            tool="generate_code",
+            ok=ok,
+            ms=round((time.perf_counter() - t0) * 1000, 2),
+            **fields,
+        )
+
     if output_file is not None:
         _pre = _resolve_output_path(output_file)
         if isinstance(_pre, str):
-            debug_log.debug(
-                "tool_exit",
-                tool="generate_code",
-                ok=False,
-                reason="resolve_failed",
-                ms=round((time.perf_counter() - t0) * 1000, 2),
-            )
+            _done(False, reason="resolve_failed")
             return _pre
 
     client = _get_client()
@@ -792,23 +874,14 @@ async def generate_code(
     else:
         chosen_model = _DEFAULT_CODEGEN_MODEL
 
-    # Prepend language hint so the persona knows what to generate
-    if language:
-        full_prompt = f"[Language: {language}]\n{prompt}"
-    else:
-        full_prompt = prompt
+    # Prepend language hint so the persona knows what to generate; the hint must be
+    # part of `base` so it lands innermost (<refs> → <context> → [Language] → prompt).
+    base = f"[Language: {language}]\n{prompt}" if language else prompt
 
-    # Build prompt outward: context_files first, refs outermost (<refs> → <context> → [Language] → prompt)
-    if context_files:
-        context_block = _build_context_block(context_files)
-        if context_block.startswith("Error:"):
-            return context_block
-        full_prompt = f"{context_block}\n\n{full_prompt}"
-    if refs:
-        refs_block = await _build_refs_block(refs, refs_root)
-        if refs_block.startswith("Error:"):
-            return refs_block
-        full_prompt = f"{refs_block}\n\n{full_prompt}"
+    full_prompt, prompt_err = await _assemble_prompt(base, context_files, refs, refs_root)
+    if prompt_err is not None:
+        _done(False, reason="prompt_assembly_error")
+        return prompt_err
 
     try:
         response = await client.chat(
@@ -821,44 +894,15 @@ async def generate_code(
         if output_file:
             write_result = _write_output_file(_pre, content)
             if write_result.startswith("Error:"):
-                debug_log.debug(
-                    "tool_exit",
-                    tool="generate_code",
-                    ok=False,
-                    reason="write_failed",
-                    model=chosen_model,
-                    ms=round((time.perf_counter() - t0) * 1000, 2),
-                )
+                _done(False, reason="write_failed", model=chosen_model)
                 return write_result
             if output_only:
-                debug_log.debug(
-                    "tool_exit",
-                    tool="generate_code",
-                    ok=True,
-                    model=chosen_model,
-                    output_only=True,
-                    content_chars=len(content),
-                    ms=round((time.perf_counter() - t0) * 1000, 2),
-                )
+                _done(True, model=chosen_model, output_only=True, content_chars=len(content))
                 return write_result
-        debug_log.debug(
-            "tool_exit",
-            tool="generate_code",
-            ok=True,
-            model=chosen_model,
-            content_chars=len(content),
-            ms=round((time.perf_counter() - t0) * 1000, 2),
-        )
+        _done(True, model=chosen_model, content_chars=len(content))
         return content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
-        debug_log.debug(
-            "tool_exit",
-            tool="generate_code",
-            ok=False,
-            reason=type(e).__name__,
-            model=chosen_model,
-            ms=round((time.perf_counter() - t0) * 1000, 2),
-        )
+        _done(False, reason=type(e).__name__, model=chosen_model)
         return _format_error(e)
 
 
@@ -1072,27 +1116,11 @@ async def detect_persona(path: str) -> str:
     if not os.path.isdir(path):
         return f"Error: Directory not found: {path}"
 
-    try:
-        # create_subprocess_exec passes args as an array — no shell injection
-        # risk (equivalent to Node's execFile, not exec).
-        proc = await asyncio.create_subprocess_exec(
-            script, "--json-compact", path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"Error: detect-persona exited with code {proc.returncode}: {err_msg}"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: detect-persona timed out after 30 seconds."
-    except Exception as e:
-        return f"Error running detect-persona: {e}"
+    # create_subprocess_exec passes args as an array — no shell injection risk
+    # (equivalent to Node's execFile, not exec).
+    return await _run_script(
+        [script, "--json-compact", path], timeout=30, label="detect-persona"
+    )
 
 
 @mcp.tool()
@@ -1134,25 +1162,7 @@ async def build_persona(
             return f"Error: Codebase directory not found: {codebase_path}"
         args.extend(["--codebase", codebase_path])
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"Error: build-persona exited with code {proc.returncode}: {err_msg}"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: build-persona timed out after 120 seconds."
-    except Exception as e:
-        return f"Error running build-persona: {e}"
+    return await _run_script(args, timeout=120, label="build-persona")
 
 
 @mcp.tool()
@@ -1218,29 +1228,14 @@ async def create_persona(
     if dry_run:
         cmd.append("--dry-run")
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"Error: create-persona exited with code {proc.returncode}: {err_msg}"
-
-        # Reload registry so subsequent queries see the new persona
+    def _reload_registry(_stdout: str) -> None:
+        # Reload registry so subsequent queries see the new persona.
         if not dry_run and REGISTRY_PATH:
             registry.load_registry(REGISTRY_PATH)
 
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: create-persona timed out after 60 seconds."
-    except Exception as e:
-        return f"Error running create-persona: {e}"
+    return await _run_script(
+        cmd, timeout=60, label="create-persona", on_success=_reload_registry
+    )
 
 
 @mcp.tool()
@@ -1402,25 +1397,14 @@ async def ref_lookup(key: str, path: str | None = None) -> str:
     if path is not None:
         args += ["--root", path]
 
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
-
-        if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else "Unknown error"
-            return f"ref:'{key}' not found. Available keys: run ref_lookup(key='list')"
-
-        return stdout.decode().strip()
-
-    except asyncio.TimeoutError:
-        proc.kill()
-        return "Error: ref-lookup timed out after 10 seconds."
-    except Exception as e:
-        return f"Error running ref-lookup: {e}"
+    return await _run_script(
+        args,
+        timeout=10,
+        label="ref-lookup",
+        on_error=lambda rc, out, err: (
+            f"ref:'{key}' not found. Available keys: run ref_lookup(key='list')"
+        ),
+    )
 
 
 @mcp.tool()

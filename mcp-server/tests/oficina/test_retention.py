@@ -23,9 +23,9 @@ def _make_run(store, artifact_bytes=b"artifact-data", report="the report"):
     return run_id
 
 
-def _set_artifacts_mtime(store, run_id, epoch):
-    """Force the artifacts dir mtime to a specific epoch (for TTL tests)."""
-    os.utime(store.artifacts_dir(run_id), (epoch, epoch))
+def _set_run_dir_mtime(store, run_id, epoch):
+    """Force the run dir mtime to a specific epoch (TTL staleness measure, T-97)."""
+    os.utime(store.run_dir(run_id), (epoch, epoch))
 
 
 @pytest.fixture
@@ -55,11 +55,11 @@ def test_keep_runs_policy_prunes_runs_beyond_limit(tmp_path, worker_ledger):
     assert not store.artifacts_dir(r2).exists()
 
 
-def test_ttl_policy_prunes_old_workspace(tmp_path, worker_ledger):
-    """workspaces_ttl_days fires for artifacts older than the TTL."""
+def test_ttl_policy_prunes_artifacts_of_stale_run(tmp_path, worker_ledger):
+    """workspaces_ttl_days fires for runs whose RUN DIR is older than the TTL (T-97)."""
     store = Store(tmp_path)
     run_id = _make_run(store)
-    _set_artifacts_mtime(store, run_id, 1000)
+    _set_run_dir_mtime(store, run_id, 1000)
 
     config = RetentionConfig(workspaces_ttl_days=7, artifacts_keep_runs=99999)
     records = sweep(store, worker_ledger, config, now=10**9)

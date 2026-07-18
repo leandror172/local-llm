@@ -107,6 +107,17 @@ when refs were requested but dropped. **Deferred because** getting env-propagati
 detached, long-lived daemon is exactly what not to do unattended; and it reaches outside P2's blast
 radius. Cross-ref: T-86 distribution runbook (the worker's env on fresh machines).
 
+**RESOLVED (b)+(c)** (2026-07-17, session 123, user call). `server._ref_lookup_script()` resolves
+the script with a CALL-time fallback chain — `OFICINA_REF_LOOKUP` (direct script path, mirroring
+`OFICINA_VALIDATE_CODE`) → `LLM_REPO_ROOT` env → package-relative
+(`Path(server.__file__).parents[3]`) — so both spawn surfaces resolve refs without inherited env;
+option (a) alone was rejected because a plain-shell `oficina submit` has no `LLM_REPO_ROOT` to
+propagate either. Plus fail-loud: when refs were requested but resolution still fails, the worker
+emits **`RefsDropped {run_id, refs, reason}`** to the worker ledger (observability channel, like
+`RetentionPruned`; the frozen run-event registry is untouched) instead of silently injecting `""`.
+T-86 note: `OFICINA_REF_LOOKUP` joins `OFICINA_VALIDATE_CODE` as a distribution-runbook env var.
+9 tests (`test_refs_resolution.py`).
+
 ## T-97 — Retention never prunes worktrees (P2-D5 half unmet)
 
 **Bug.** P2-D5 states *both* teardown AND the retention sweep must `git worktree prune` the target,
@@ -125,6 +136,16 @@ mtime and **skips runs whose artifacts are empty** — which is exactly a crashe
 past TTL, `git worktree prune` the target repo and remove the run's `workspace/` tree — and fix the
 policy to measure staleness by the run dir, not the artifacts dir. Wants a small design (which repo
 to prune when the target moved/was deleted) rather than a bolt-on.
+
+**RESOLVED** (2026-07-17, session 123). The sweep gained a `workspace` prune class: for each
+TTL-stale run it resolves the target repo from `spec.json` (`deliverable.target` → `rev-parse
+--show-toplevel`), best-effort `git worktree remove --force` + `prune` there (mirroring
+`Workspace.teardown`), then removes the run's `workspace/` tree. Moved/deleted-repo design (user
+call): the workspace tree is STILL reclaimed and the record carries `git_pruned=False` — refusing
+to prune would re-leak the disk; `PruneRecord`/`RetentionPruned` gained `git_pruned` (None for
+artifacts records and dry-run). Staleness now measures the RUN DIR mtime — the artifacts-mtime
+measure skipped empty-artifacts runs, exactly a crashed run's state, so `workspaces_ttl_days`
+finally measures what its name says. 7 tests (`test_retention_worktrees.py`).
 
 ## T-98 — `scope_of` (and anti-cheat, and `target_files`) compare by basename only
 
@@ -146,6 +167,18 @@ multi-file deliverables (post-slice).
 paths** once (target and each failure's file), then compare full relative paths, not basenames. This
 ripples through `scope_of`, `diff_touches_test_files`, and the loop's `target_files`, and interacts
 with T-95's parser attribution — worth doing as one path-normalization change rather than piecemeal.
+
+**RESOLVED** (2026-07-17, session 123, one coordinated change). Canonical spelling = **worktree-
+relative path**; the provenance trace showed producers already speak it — pytest nodeid prefixes
+and `git diff --name-only` natively — so the fix mostly STOPS destruction at birth: `_parse_pytest`
+keeps the nodeid's path prefix (no `_basename`), and compile failures are stamped with
+`target_relpath` at the evaluator (`_run_compile_stage` gained `target_rel` — the validator's own
+`file` field is not canonical, and only the evaluator has worktree knowledge). Consumers
+(`scope_of`, `diff_touches_test_files`) compare `os.path.normpath`-normalized relpaths; the loop
+passes `target_files=[target_rel]`. Both confirmed collision scenarios pinned as regressions
+(wart `lib/util.py` vs target `src/util.py` → OUT and baseline-subtracted; changed
+`src/test_area.py` vs declared `test_area.py` → no anti-cheat), plus spelling-agreement
+(`./src/area.py` ≡ `src/area.py`). Basename-pinning tests updated in place. Suite 260.
 
 ## T-99 — `auto_verdict` is never written to `calls.jsonl` (plan/reality mismatch)
 
