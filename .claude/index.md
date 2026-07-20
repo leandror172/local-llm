@@ -219,6 +219,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | `benchmarks/lib/run-fewshot-test.sh` | `ollama-probe.py` | A/B test: baseline vs few-shot on same prompt |
 | `benchmarks/lib/run-compare-models.sh` | `compare-models.py` | Multi-model comparison: same prompt → N models → verdict → DPO pairs |
 | `benchmarks/lib/run-record-verdicts.sh` | `record-verdicts.py` | Record verdicts after the fact (when compare ran non-interactively); supports `--list`, `--entry N` |
+| `benchmarks/lib/run-write-model-bench.sh` | `writemodel_bench.py` | oficina write-model benchmark (T-104): 3 apply arms (code-anchored / whole-file / model-anchored) × size-bucketed corpus × N runs; reports by size bucket. `--per-bucket`/`--arms`/`--runs`/`--limit`. Serial 14B — full sweep is a multi-hour sit; smoke with `--limit`. `ref:oficina-write-model-benchmark` |
 
 ### Benchmark Python/JS Libraries (never call directly)
 | Library | Purpose |
@@ -230,6 +231,9 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | `benchmarks/lib/extract-html.py` | Extract HTML from LLM markdown output |
 | `benchmarks/lib/extract-code.py` | Extract code blocks from LLM output |
 | `benchmarks/lib/generate-report.py` | Generate comparison reports from results |
+| `benchmarks/lib/writemodel_apply.py` | Write-model benchmark apply layer (T-104): `locate_function` (ast), `apply_code_anchored`/`apply_whole_file`/`apply_search_replace`, SEARCH/REPLACE parser. Unit-tested in `test_writemodel_apply.py` (19 tests, model-free) |
+| `benchmarks/lib/writemodel_corpus.py` | Write-model benchmark corpus generator: size-bucketed tasks (small/medium/large) with a defective target fn + filler fns each carrying a passing test (the regression surface scales with size) |
+| `benchmarks/lib/writemodel_bench.py` | Write-model benchmark harness: prompt→ollama_chat→apply→pytest-split (target vs no-regression)→JSONL; `report()` by size bucket |
 
 **Data files (runtime artifacts, not scripts):**
 
