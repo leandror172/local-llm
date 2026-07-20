@@ -17,10 +17,12 @@ from ollama_mcp.oficina.intake import (
     RULE_ANSWER_WITH_TARGET,
     RULE_CONTEXT_FILE_MISSING,
     RULE_FILE_WITHOUT_TARGET,
+    RULE_LANGUAGE_NOT_SUPPORTED,
     RULE_OBJECTIVE_MISSING,
     RULE_TARGET_NOT_GIT_REPO,
     RULE_UNKNOWN_KEY,
     RULE_UNKNOWN_KIND,
+    RULE_UNSUPPORTED_LANGUAGE,
     RULE_WORKSPACE_UNSUPPORTED,
     RULE_WORKTREE_NOT_SUPPORTED,
     RULE_WORKTREE_REQUIRED,
@@ -335,3 +337,80 @@ def test_answer_kind_with_worktree_rejected():
     spec = an_answer_spec()
     spec["workspace"] = "worktree"
     rejects(spec, with_rule=RULE_WORKTREE_NOT_SUPPORTED)
+
+
+# --- Language: declared-or-inferred, loop-kind-scoped (Axis A widening, R1) -------
+#
+# R1 (declared, infer-from-extension as default): a loop kind resolves a language from
+# deliverable.language if present, else from the target's extension. The resolved language
+# must be supported. `language` on a non-loop kind is rejected (silent no-op → drops the
+# caller's intent, same reasoning as acceptance/worktree kind-scoping).
+
+
+def test_function_declared_language_accepted(tmp_path):
+    """A kind:function spec that declares a supported language is accepted."""
+    spec = a_function_spec(tmp_path)
+    spec["deliverable"]["language"] = "python"
+    accepts(spec)
+
+
+def test_function_declared_go_accepted(tmp_path):
+    """Declared language 'go' passes intake — intake is language-LIST-gated, not
+    implementation-gated; the loop's Go support need not exist yet for intake to accept it."""
+    spec = a_function_spec(tmp_path)
+    spec["deliverable"]["language"] = "go"
+    accepts(spec)
+
+
+def test_function_infers_python_from_py_extension(tmp_path):
+    """With no declared language, a .py target infers python and is accepted (the a_function_spec
+    default target is area.py). Inference is the default; declaration is the override."""
+    spec = a_function_spec(tmp_path)
+    assert "language" not in spec["deliverable"]
+    accepts(spec)
+
+
+def test_function_infers_unsupported_extension_rejected(tmp_path):
+    """A target extension with no supported language (.rs) is rejected — proving inference RAN
+    (an accepted result here would mean the extension was never inspected)."""
+    spec = a_function_spec(tmp_path)
+    spec["deliverable"]["target"] = str(tmp_path / "repo" / "area.rs")
+    rejects(spec, with_rule=RULE_UNSUPPORTED_LANGUAGE)
+
+
+def test_function_declared_unsupported_language_rejected(tmp_path):
+    """A declared language outside the supported set is rejected, even with a .py target —
+    declaration overrides inference, so the unsupported declaration wins the rejection."""
+    spec = a_function_spec(tmp_path)
+    spec["deliverable"]["language"] = "rust"
+    rejects(spec, with_rule=RULE_UNSUPPORTED_LANGUAGE)
+
+
+def test_function_unresolvable_language_rejected(tmp_path):
+    """A target with no extension and no declared language cannot resolve a language → rejected
+    (not silently defaulted to python)."""
+    spec = a_function_spec(tmp_path)
+    spec["deliverable"]["target"] = str(tmp_path / "repo" / "Makefile")
+    rejects(spec, with_rule=RULE_UNSUPPORTED_LANGUAGE)
+
+
+def test_file_kind_with_language_rejected(tmp_path):
+    """A declared language on kind:file is rejected — the single-shot path ignores language,
+    so accepting it would silently drop the caller's intent (same shape as acceptance/worktree)."""
+    spec = a_file_spec(tmp_path)
+    spec["deliverable"]["language"] = "python"
+    rejects(spec, with_rule=RULE_LANGUAGE_NOT_SUPPORTED)
+
+
+def test_answer_kind_with_language_rejected():
+    """A declared language on kind:answer is rejected for the same reason."""
+    spec = an_answer_spec()
+    spec["deliverable"]["language"] = "go"
+    rejects(spec, with_rule=RULE_LANGUAGE_NOT_SUPPORTED)
+
+
+def test_unsupported_language_rejection_carries_triad(tmp_path):
+    """The language rejection carries the where/whose/what triad like every other rejection."""
+    spec = a_function_spec(tmp_path)
+    spec["deliverable"]["language"] = "rust"
+    rejects_with_triad(spec, with_rule=RULE_UNSUPPORTED_LANGUAGE)

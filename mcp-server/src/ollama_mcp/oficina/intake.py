@@ -31,6 +31,7 @@ class Deliverable(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Optional[str] = None
     target: Optional[str] = None
+    language: Optional[str] = None  # loop kinds only; declared or inferred from target ext (R1)
 
 
 class Context(BaseModel):
@@ -83,6 +84,11 @@ BUDGETS_KEYS = set(Budgets.model_fields)
 VALID_KINDS = {"file", "answer", "function"}
 KINDS_REQUIRING_TARGET = {"file", "function"}
 LOOP_KINDS = {"function"}  # kinds that run through the evaluated loop (need acceptance)
+# Language: single source of truth for both resolve_language and the rejection rule (R1).
+# Intake is language-LIST-gated, not implementation-gated — 'go' is accepted here before the
+# loop's Go support exists (that gates at the loop, not intake).
+SUPPORTED_LANGUAGES = {"python", "go"}
+EXTENSION_TO_LANGUAGE = {".py": "python", ".go": "go"}
 DEFAULT_WORKSPACE = "in_place"
 WORKTREE_WORKSPACE = "worktree"
 SUPPORTED_WORKSPACES = {"in_place", "worktree"}
@@ -102,6 +108,9 @@ RULE_WORKTREE_REQUIRED = "worktree_required"
 RULE_TARGET_NOT_GIT_REPO = "target_not_git_repo"
 RULE_ACCEPTANCE_NOT_SUPPORTED = "acceptance_not_supported"
 RULE_WORKTREE_NOT_SUPPORTED = "worktree_not_supported"
+# Language rules (Axis A widening, R1) — mirror the acceptance _supported/_required pair.
+RULE_LANGUAGE_NOT_SUPPORTED = "language_not_supported"
+RULE_UNSUPPORTED_LANGUAGE = "unsupported_language"
 
 
 @dataclass
@@ -144,6 +153,22 @@ def _git_root(start: Path) -> Optional[Path]:
     for directory in (resolved, *resolved.parents):
         if (directory / ".git").exists():
             return directory
+    return None
+
+
+def resolve_language(deliverable: Dict[str, Any]) -> Optional[str]:
+    """Resolve a deliverable's language: declared wins, else inferred from the target extension (R1).
+
+    Returns the declared ``language`` verbatim — even an unsupported value like ``"rust"``; the
+    resolver resolves, the rule judges — else the extension-mapped language, else None (no
+    declaration and an absent/unknown extension).
+    """
+    language = deliverable.get("language")
+    if language:
+        return language
+    target = deliverable.get("target")
+    if target:
+        return EXTENSION_TO_LANGUAGE.get(Path(target).suffix)
     return None
 
 
@@ -238,6 +263,40 @@ def _check_worktree_supported(spec: Dict[str, Any]) -> Optional[Rejection]:
     return None
 
 
+def _check_language_supported(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """A declared language is only wired for loop kinds; reject it on file/answer.
+
+    Mirrors _check_acceptance_supported: the single-shot path ignores language, so accepting a
+    declared language on a non-loop kind silently drops the caller's intent.
+    """
+    deliverable = spec.get("deliverable") or {}
+    kind = deliverable.get("kind")
+    if deliverable.get("language") and kind not in LOOP_KINDS:
+        return Rejection(
+            RULE_LANGUAGE_NOT_SUPPORTED,
+            f"deliverable.language is only supported for loop kinds {sorted(LOOP_KINDS)}, not {kind!r}",
+        )
+    return None
+
+
+def _check_language_resolvable(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """A loop kind must resolve to a supported language — declared or inferred from the target ext (R1).
+
+    Mirrors _check_acceptance_required (a loop-kind requirement). ``None`` (unresolvable) and an
+    unsupported value both fail the single ``not in`` membership test.
+    """
+    deliverable = spec.get("deliverable") or {}
+    if deliverable.get("kind") not in LOOP_KINDS:
+        return None
+    language = resolve_language(deliverable)
+    if language not in SUPPORTED_LANGUAGES:
+        return Rejection(
+            RULE_UNSUPPORTED_LANGUAGE,
+            f"unsupported or unresolvable language {language!r}; supported: {sorted(SUPPORTED_LANGUAGES)}",
+        )
+    return None
+
+
 def _check_acceptance_required(spec: Dict[str, Any]) -> Optional[Rejection]:
     """A loop kind (function) needs an acceptance.test_cmd — the every-iteration gate (P2-D13)."""
     kind = (spec.get("deliverable") or {}).get("kind")
@@ -299,8 +358,10 @@ _CHECKS = (
     _check_workspace,
     _check_acceptance_supported,
     _check_worktree_supported,
+    _check_language_supported,
     _check_acceptance_required,
     _check_worktree_required,
+    _check_language_resolvable,
     _check_target_git_repo,
     _check_context_files,
 )
