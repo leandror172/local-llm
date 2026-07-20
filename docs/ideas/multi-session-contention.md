@@ -68,7 +68,76 @@ the longest already brush the ~600 s wall. Add a second session forcing a 14B↔
 cold-load each way, gate rule 3) and queueing behind a multi-minute generation, and that tail
 crosses it. **No new contention evidence is needed — the tail already exists; concurrency is
 what pushes it past the ceiling.**
+
+### ⚠ Two caveats that make this a LOWER BOUND, not a picture (user, 2026-07-18)
+
+Do not read the numbers above as "the GPU's workload." Both biases run the same direction:
+
+1. **`calls.jsonl` only sees the MCP bridge.** LTG refresh, expense classification, expense
+   acceptance probes, and benchmark runs **do not go through `generate_code`/`ask_ollama`** —
+   they call Ollama directly and are invisible to this log. **Real GPU load is strictly higher
+   than measured, by an unknown factor.** Any future contention measurement must instrument at
+   the Ollama endpoint, not the bridge.
+2. **The user has been acting as the gate.** The record's "zero recorded session collisions" is
+   evidence of *manual serialization*, not of system safety. It shows up explicitly once:
+   session 115 ran two Opus subagents *"serial for the 12 GB VRAM ceiling"* — logged as a build
+   note, never as a problem. **A human scheduler has been holding this together, which is
+   precisely why no incident exists to trigger the fix.**
+
+Corollary for T-88's trigger discipline: *"observed contention"* is unfalsifiable as a trigger
+while a human silently prevents the observation. A trigger that a person can satisfy by hand is
+not a trigger.
 <!-- /ref:multi-session-contention -->
+
+<!-- ref:multi-session-failure-mode -->
+## The failure mode (user, 2026-07-18) — the strongest argument in the record
+
+Ollama's internal queueing does **not** solve this. The sequence:
+
+1. Session A submits a generation; Ollama begins it
+2. Session B submits; Ollama queues it
+3. **B's deadline expires while B is still queued — B never received a token**
+4. B receives a timeout carrying **no information about why**
+5. B must choose: retry / rewrite the prompt / switch models / give up and write it itself
+
+**Every one of those choices is wrong**, because the correct action was *"wait, you were second
+in line."* And two are actively harmful:
+
+- **retry** appends another entry to the queue
+- **switching models** forces a swap, penalizing every client
+
+**The recovery amplifies the contention that caused it.**
+
+### The reframe: the scarce resource is information, not GPU time
+
+This is congestion collapse, and its root cause is a **signalling gap, not a scheduling gap**. A
+timeout conflates three unrelated states — *you were queued*, *the model is broken*, *the host is
+down* — and the caller must guess between them with no evidence. This is exactly why TCP grew
+explicit congestion notification rather than relying on retransmit timers.
+
+**Consequence for M-D4:** a ticket's primary value is **not** "don't hold the transport open."
+It is **"return a reason instead of a timeout."** Even a bare refusal — *"busy: qwen3:14b
+resident, you want qwen2.5-coder:14b, 1 queued ahead"* — lets the caller decide correctly. A
+timeout structurally cannot, no matter how generous.
+
+**This also demotes the "just raise the timeout" objection.** Raising `MCP_TIMEOUT` adds no
+information; it converts a fast uninformed failure into a slow uninformed stall, and the session
+is idle either way.
+
+### Two deadlines, never one
+
+Conflating these produced an earlier sloppy "120 s cliff" framing. Every client has both:
+
+| | What it is | Claude session | LTG refresh |
+|---|---|---|---|
+| **Transport ceiling** | hard; exceeding it *kills* the call | ~600 s | unbounded (own process) |
+| **Useful-wait horizon** | soft; beyond it, waiting costs more than doing something else | ~30 s | unbounded |
+
+The transport ceiling is a *failure* boundary; the useful-wait horizon is an *economics*
+boundary. A Claude session's real constraint is the second — a 4-minute **successful** block is
+nearly as bad as a timeout, because the session sat idle. A wait-tolerance contract that models
+only the first solves the wrong problem.
+<!-- /ref:multi-session-failure-mode -->
 
 <!-- ref:multi-session-t89-scope -->
 ## What T-89 actually decided (scope, not reversal)
@@ -185,6 +254,70 @@ This sharpens M-D2 rather than weakening it: **T-89 correctly answered the no-ga
 Its conclusion is sound for the world it was decided in, and the world changes when the gate
 lands. That is the difference between a decision being *wrong* and a decision being *scoped*.
 <!-- /ref:multi-session-transport-requirement -->
+
+<!-- ref:multi-session-busy-check -->
+## M-D4 decomposes into three separable decisions — and the MVP is not the gate
+
+M-D4 as filed bundles three claims of very different cost and confidence. Future sessions should
+resolve them **separately**, in this order:
+
+| | Claim | Cost | Needs a gate? | Status |
+|---|---|---|---|---|
+| **D1** | Wait tolerance is a distinct axis from admission policy (the two-deadline model above) | ~zero — vocabulary | no | **freeze-ready**; carried by G-D7 |
+| **D2** | Ticket-vs-block is a **per-client declared property**, not a global async mode | moderate — API shape | no | needs one sub-call, below |
+| **D3** | Admission returns **information**, fast | highest | **yes** | proposed; least evidence |
+
+**D2's open sub-call — contract or deadline?** Does a client declare `block | ticket`, or declare
+`useful_wait_s: 30` and let the gate derive the contract? *Lean: the deadline.* It is the honest
+input (a client knows its own economics, not the right mechanism), and a boolean gives the gate
+nothing to reason with — which makes D3 unimplementable. **Blocking is not deprecated:** LTG's
+batch refresh *should* block — no other work, no transport ceiling, and a ticket would add
+complexity for zero gain. Only clients with something else to do want tickets.
+
+**D3's two corrections** (both from this session, neither in the original M-D4 text):
+- **Drop the prediction requirement.** "Projected wait exceeds the deadline" needs generation-
+  duration estimates — unreliable, and a rabbit hole. The **structural** signals need no
+  estimation and are knowable exactly: *is anything running? is the resident model different from
+  the one I want (⇒ swap incoming)? how many are queued ahead?* Conservative refusal on those
+  alone is sufficient, and degrades gracefully.
+- **The gate must NOT unilaterally convert a call to async.** G-D2 already answers this —
+  *client-owns-plan, gate-owns-admission*. The gate returns the verdict plus the reason; **the
+  client decides** whether to wait, take a ticket, or do something else. Keeps the gate dumb,
+  which G-D2 explicitly wants.
+
+## The MVP is T-21's original busy-check, not the scheduler
+
+**The minimum viable version of D3 is a pre-flight busy-check** — which is exactly what T-21
+designed in March, before T-88 superseded it into a full scheduler.
+
+Before submitting, a client asks: *is the GPU busy, and with which model?* If a different model
+is resident, don't submit sync — go async. That is:
+
+- no admission control, no queue, no broker, no daemon, no new architecture
+- largely readable from Ollama's **existing** `/api/ps` — "which model is resident" covers the
+  swap-detection case, which is the expensive one. (PR #9392's `ACTIVE` field would add "is it
+  *currently generating*"; **verify the live field set under load — checked 2026-07-18 while idle,
+  `models: []`, so the populated shape is unconfirmed.**)
+- ~a day of work, not a project
+- **and it produces the contention measurement the record lacks, as a byproduct** — the only
+  option here that *generates* evidence instead of consuming it
+
+> **Estate lesson — generalization deferred this fix twice.** T-88 superseded T-21 by
+> *generalizing* it: busy-check became full scheduler, which made it big enough never to build.
+> The same move lost the founding problem statement (clients reframed *sessions*→*products*). The
+> busy-check was buildable in March and addresses the failure mode directly; the scheduler has
+> been "deserves soon" for four months. **Sibling of the existing corollary in
+> `ref:active-decisions`** (*"a deferral whose trigger is guessed will fire on a different
+> trigger"*): **a deferral that is generalized may become unbuildable, and take its problem
+> statement with it.**
+
+**Recommended sequencing** (supersedes the framing in M-D5 — the question is not "gate before or
+after P2 widening"):
+1. **Busy-check now** — small, addresses the failure mode, needs no new architecture, produces the
+   missing measurement
+2. **oficina P2-D1 widening** on its own merits, independently
+3. **The gate** when (1)'s data justifies it, designed with D1–D3 already in the register
+<!-- /ref:multi-session-busy-check -->
 
 <!-- ref:multi-session-decisions -->
 ## Decision register

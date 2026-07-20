@@ -100,6 +100,16 @@ where, in what order). T-21's shared-directory mechanism survives as a candidate
   "timeout-redirect hint" T-89 rejected (that was model-mediated recovery *after* paying for a
   failed call); this is admission-time routing decided by the only component holding capacity
   state. Full argument: `ref:multi-session-transport-requirement` (T-102).
+  **Decomposes into D1/D2/D3 with different costs — resolve separately, do NOT freeze as one:**
+  `ref:multi-session-busy-check`. Only D3 needs a gate to exist.
+- **G-D8 — the MVP is T-21's busy-check, not this scheduler: PROPOSED (2026-07-18).** A
+  pre-flight *"is the GPU busy, and with which model?"* check addresses the concrete failure mode
+  (`ref:multi-session-failure-mode`) with **no admission control, queue, broker, or daemon** —
+  largely readable from Ollama's existing `/api/ps`, ~a day of work — **and it produces the
+  contention measurement this doc's triggers have been waiting for, as a byproduct.** Estate
+  lesson attached: T-88 superseded T-21 by *generalizing* it, which made it big enough never to
+  build and lost the founding problem statement in the same move. Build the busy-check first;
+  design the gate when its data justifies one.
 
 ## First rules the gate would own (concrete value, day one)
 
@@ -123,6 +133,14 @@ where, in what order). T-21's shared-directory mechanism survives as a candidate
 > `ref:model-gate-altitude` enumerates *products* (LTG, expenses, benchmarks, oficina, "sync
 > tools") and **never modelled N instances of the same client** — the session-level framing was
 > lost when this doc superseded T-21. `ref:multi-session-contention` (T-102).
+>
+> **⚠ These triggers are unfalsifiable as written.** "Observed contention" cannot fire while the
+> *user manually serializes GPU work by hand* (documented once: session 115 ran two Opus subagents
+> *"serial for the 12 GB VRAM ceiling"*, logged as a build note, never as a problem). **A trigger
+> a person can satisfy by hand is not a trigger.** Compounding it: `calls.jsonl` sees only the MCP
+> bridge — LTG refresh, expense classification/acceptance, and benchmarks call Ollama directly and
+> are **invisible** to it, so measured load is a lower bound by an unknown factor. Instrument at
+> the Ollama endpoint, not the bridge. See `ref:multi-session-contention` § caveats.
 
 - **Observed contention:** swap-thrash or a blocked interactive call once oficina runs, LTG
   refreshes, and expense probes actually overlap in practice (the T-21 trigger, inherited).
