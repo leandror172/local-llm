@@ -89,6 +89,82 @@ instrument; it is temporary by design. Expect one predicted seam to prove unnece
 unpredicted seam to prove required.
 <!-- /ref:oficina-language-widening-warnings -->
 
+<!-- ref:oficina-function-kind-write-model -->
+## FINDING (session 124): `function` kind is file-granular, not function-granular
+
+Surfaced while reading `loop.py` for the Go work — this is the "Axis A reshapes Axis B" result
+the user predicted.
+
+**What the code does:** `loop.py:263` `target_path.write_text(gen.content, encoding="utf-8")` —
+every iteration replaces the **entire** target file with the model's output.
+
+**Who the only client is:** a **greenfield file whose entire content IS the deliverable** (a new
+`area.py` that is one function + imports). That is exactly the shape of the P2 first-slice
+acceptance fixture — **the behavior was shaped by the acceptance test, not by a real editing
+client.** Point `function` at a populated module ("fix `parse` in `evaluator.py`") and it nukes
+the module.
+
+**Why it's internally coherent but externally narrow:** at C0 the deliverable is absent (P2-D12
+baseline), so iter 1 generates from scratch; iters 2+ feed the previous whole-file attempt back
+and return a new whole file. Self-consistent — *as long as the target is single-unit*.
+
+**The misnaming:** `kind: function` is really "a whole FILE, generated iteratively against
+tests." Its only mechanical difference from `kind: file` is the evaluated loop + test gate; both
+target a whole file and overwrite it. The name promises function-level surgery; the mechanism
+delivers file-level replacement.
+
+**Consequence for Axis B (the reframe):** the interesting future kinds (`patch`, function-in-an-
+existing-file, `class`) are **edit-shaped, and edit-shaped is a write-MECHANISM change, not an
+intake rule.** Two mechanism options, unresolved (this is the open design conversation, T-104):
+- **(a) whole-file-with-context** — feed the existing target into the prompt; model returns the
+  complete modified file; overwrite stays correct. Cheap, reuses the write path. Fails on large
+  files (model must faithfully reproduce many unchanged lines; a paraphrase = a regression).
+- **(b) surgical** — model returns just the unit (or a patch); the loop locates + replaces the
+  span (patch_file exact-match, or a function-boundary parser). Correct for large files; real
+  machinery; interacts with anti-cheat (a surgical write touching a test file is still a cheat).
+
+The greenfield assumption is **load-bearing and undocumented** in the first slice. Go widening
+sits on the same overwrite mechanism, so Go inherits whatever this resolves to.
+
+### ROOT CAUSE (user, session 124): the loop reimplements what it should compose
+
+The user's expectation was `oficina = async(existing generate_code) + extra functionality`. What
+P2 actually shipped, traced by layer:
+
+| Layer | Expected | Reality |
+|---|---|---|
+| Generation transport | reuse | ✅ shared (`worker._chat_generation`, T-95) |
+| Prompt assembly | reuse `generate_code`'s | ⚠️ reimplemented `SEGMENTS`/`build_prompt` — **justified** by the P2-D2 cache-prefix contract |
+| Apply / write | reuse `generate_code` + `patch_file` | ❌ bespoke `write_text`, **whole-file only** |
+
+The apply divergence is the **unjustified** one and the direct cause of the file-granular problem:
+`generate_code`+`output_file` already does whole-file writes; **`patch_file` already does surgical
+exact-match edits** — and the loop inherited the first (its `write_text` ≈ `output_file`) and
+**silently dropped the second.** "Lacks patch_file's mode" IS "can only overwrite whole files."
+The P1 vision said in writing to *reuse* `generate_code`/`ask_ollama` semantics; P2's loop
+re-authored the write step instead of composing the tool built for it. `loop.py:263` is that drift.
+
+**PRINCIPLE (adopt): oficina composes the ollama-bridge tools; it does not reimplement them.**
+`loop.py:263`'s bespoke `write_text` is the divergence to correct. This shrinks the write-model
+work to *wiring existing primitives*:
+- **M1 (greenfield whole-file)** = compose `output_file` (already effectively there; route through
+  the real path, not a raw `write_text`).
+- **M2 (edit)** = compose **`patch_file` (already exists)** — the loop just has to call it.
+
+**The one genuinely new piece is code-anchoring.** `patch_file` today is **model-anchored** (the
+caller supplies `old_string` → reproduction fragility). Code-anchoring adds a **deterministic
+locator** that computes `old_string` from disk and hands `patch_file` a guaranteed-matching anchor.
+It is NOT a replacement for `patch_file` — it is a deterministic front-end feeding it a safe anchor.
+The locator is a per-language `LanguagePack` member (`locate_unit(source, name) -> span`), so it
+rides with the widening, not a new architecture. Anchor-ability is a kind property: **named-unit
+kinds (`function`, `class`) are code-anchorable (the name is the locator); arbitrary `patch` kinds
+are not** (back to model-anchored/whole-file).
+
+**Benchmark (T-104) reframed:** not "invented mechanism A vs B" but "does code-anchored-locator →
+`patch_file` beat the current bespoke whole-file on `qwen2.5-coder:14b`?" — a composed-existing
+path vs the bespoke one, measuring apply-success (100% by construction for code-anchored) + test-pass.
+<!-- /ref:oficina-function-kind-write-model -->
+
 ## Known live bugs to fold into the widening (session 124)
 
 - **`parser.py:109`** hardcodes `error_key = (f"py-{...}", …)` on **every** compile error
