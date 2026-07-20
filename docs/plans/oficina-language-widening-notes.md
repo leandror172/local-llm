@@ -163,6 +163,13 @@ are not** (back to model-anchored/whole-file).
 **Benchmark (T-104) reframed:** not "invented mechanism A vs B" but "does code-anchored-locator →
 `patch_file` beat the current bespoke whole-file on `qwen2.5-coder:14b`?" — a composed-existing
 path vs the bespoke one, measuring apply-success (100% by construction for code-anchored) + test-pass.
+
+**DECISION (session 124, after benchmark run 1): M2 = code-anchored.** Decided on **cost +
+timeout-safety** (size-invariant 25 tok vs whole-file's 40→134→310), NOT correctness — run 1 was a
+null on correctness (all arms tied 100%; the corpus's uniform filler never sprang the regression
+trap). Re-run declined: the open axis (correctness superiority) is not load-bearing for the
+decision, which rests on the axis the benchmark measured cleanly. Full report:
+`docs/findings/oficina-write-model-benchmark-2026-07-18.md` (`ref:oficina-write-model-report`).
 <!-- /ref:oficina-function-kind-write-model -->
 
 ## Known live bugs to fold into the widening (session 124)
