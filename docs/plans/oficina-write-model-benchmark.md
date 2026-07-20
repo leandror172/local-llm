@@ -101,4 +101,38 @@ known-correct tests (control over ground truth beats ecological messiness for a 
 - B-wins → M2 = whole-file-with-context; no locator; far cheaper Go path.
 - The number also sizes the anti-cheat surface: A only ever touches one span, so a surgical write
   hitting a test file is still detectable by the existing `diff_touches_test_files`.
+
+## RESULTS — run 1 (2026-07-18, 108 gens, `my-python-q25c14`, 0 errors)
+
+| COMBINED success | small | med | large | | output tokens | small | med | large |
+|---|---|---|---|---|---|---|---|---|
+| code_anchored | 100% | 100% | 100% | | code_anchored | 25 | 25 | 25 |
+| whole_file | 100% | 100% | 100% | | whole_file | 40 | 134 | **310** |
+| model_anchored | 100% | 100% | 100% | | model_anchored | 46 | 48 | 49 |
+
+**Correctness axis: NULL / inconclusive — do not misread.** Every arm tied at 100% in every bucket;
+the regression trap **never sprang**. This is a **coverage failure of the corpus, not a finding
+about the mechanisms**: the filler is 20 structurally-identical `op_k` functions, which is the
+*best case* for whole-file fidelity (a model rarely drops a line of a repetitive pattern). aider's
+lazy-omission effect needs heterogeneous, messy, large files. **You cannot conclude "whole-file is
+safe" from a test that did not stress it.** The pre-registered rule's literal "keep whole-file if
+within 5 points" branch is therefore INAPPLICABLE — the discriminating condition was not reached.
+
+**Cost axis: clean, strong, decision-relevant.** code-anchored is **size-invariant (25 tok flat)**;
+whole-file grows **linearly (40→134→310, a 12× gap at large)** because it must reproduce the whole
+file. This is not cosmetic: whole-file on a large file emitting ~310+ output tokens is exactly what
+blows the 120s `OLLAMA_TIMEOUT` ceiling we hit twice this session (T-103). code-anchored structurally
+never does.
+
+**Verdict:** code-anchored is favored on **cost + timeout-safety**, NOT on correctness (a genuine
+tie at this difficulty — the correctness question remains OPEN). Two forward paths:
+1. **Harden + re-run** — heterogeneous realistic filler, trickier defects, large→~500+ lines — to
+   actually test the omission hypothesis (the instrument, as built, optimized *for* whole-file).
+2. **Decide M2 = code-anchored now** on the cost/latency/ceiling argument alone (it solves a problem
+   hit today), accepting correctness as "equivalent at this difficulty."
+
+Meta-finding (free, on-theme): the 14B mis-generated the SEARCH/REPLACE *parser* during the build
+(wrong `=======` divider) and fenced its own block *contents* at runtime — the exact-format
+fragility arm C exists to measure, showing up in both the framework and the live output. A cheap
+prior in favor of removing exact-format reproduction from the model's plate (i.e. code-anchoring).
 <!-- /ref:oficina-write-model-benchmark -->
