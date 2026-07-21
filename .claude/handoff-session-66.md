@@ -134,6 +134,13 @@ Diagnostic rule from `mcp-server/.memories/KNOWLEDGE.md` (Debug Logging section)
 - **Scratch files:** Use `~/workspaces/tmp/`, never `/tmp/` (per `feedback_use_workspaces_tmp.md`).
 - **File reading during tests:** Use `rtk read <file>` not the Read tool or `cat` (per `feedback_use_rtk_read.md`).
 - **Verdict scoring after `generate_code` calls:** record verdict 0/1/2 + reason + `~N est. Claude tokens saved` per the `local-model-conventions` pattern. Hooks expect this format.
+  > **[CORRECTION 2026-07-21, T-105]** The last sentence was wrong, and stayed wrong for
+  > months. The hooks never accepted this inline form — `verdict-capture.py` has only ever
+  > parsed a `[VERDICT …]` block, so verdicts written this way were silently discarded
+  > (~90% of the corpus). Current authority: `CLAUDE.md` § "Local Model Usage" and
+  > `.claude/overlays/local-model-conventions.md`. Why it happened:
+  > `docs/findings/verdict-coverage-collapse-2026-07-21.md`.
+  > Left in place rather than rewritten — this file is a historical handoff, not documentation.
 - **Persona for MCP work:** `my-mcp-q25c14` (tool signatures, docstrings) vs `my-python-q25c14` (helpers); both share `qwen2.5-coder:14b` base — no `warm_model` needed when switching. See `project_few_shot_sibling_prompting.md`.
 
 ---
