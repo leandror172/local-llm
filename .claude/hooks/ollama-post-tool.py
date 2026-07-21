@@ -20,39 +20,87 @@ CALLS_LOG = pathlib.Path.home() / ".local/share/ollama-bridge/calls.jsonl"
 
 data = json.load(sys.stdin)
 
-# Only generation tools produce output worth a verdict.
-# Infrastructure/management tools (warm_model, list_models, ref_lookup,
-# query_personas) are fire-and-forget — no verdict needed.
+# The judgeable set (T-105, V-D1): tools whose output is code the session reviews
+# anyway. Deliberately NOT summarize/translate/classify_text — a 0/1/2 *quality*
+# verdict is not meaningful there, and prompting for one only yields filler that
+# pollutes the DPO corpus. Infrastructure tools (warm_model, list_models,
+# ref_lookup, query_personas) are fire-and-forget.
+#
+# oficina is absent on purpose: it bypasses these tools entirely (its GenerateFn
+# seam calls the client directly), and its verdict is per-RUN via run_result —
+# judging the N internal repair iterations would be the wrong granularity.
 GENERATION_TOOLS = {
-    "mcp__ollama-bridge__ask_ollama",
     "mcp__ollama-bridge__generate_code",
-    "mcp__ollama-bridge__summarize",
-    "mcp__ollama-bridge__translate",
-    "mcp__ollama-bridge__classify_text",
-    "mcp__ollama-bridge__build_persona",
-    "mcp__ollama-bridge__detect_persona",
+    "mcp__ollama-bridge__ask_ollama",
 }
 tool_name = data.get("tool_name", "")
 if tool_name not in GENERATION_TOOLS:
     print(json.dumps({}))
     sys.exit(0)
 
-# Find the most recent *call* record (skip any verdict records at the tail).
-prompt_hash = "unknown"
+
+def _returned_text(response):
+    """Extract the model's text from tool_response (a JSON string {"result": ...})."""
+    if isinstance(response, str):
+        try:
+            parsed = json.loads(response)
+        except Exception:
+            return response
+        if isinstance(parsed, dict):
+            return parsed.get("result", response)
+        return response
+    if isinstance(response, dict):
+        return response.get("result", "")
+    return ""
+
+
+# Identify the call that just ran by matching what it RETURNED against the log.
+#
+# The previous implementation read the LAST record in calls.jsonl. That is a
+# positional guess, not provenance: with parallel tool calls every concurrent hook
+# reads the same tail record. Measured effect before this fix — 217 injections
+# carrying only 75 distinct hashes, one hash emitted 16 times.
+#
+# Response content is ~97.5% unique across the corpus (547/563 distinct), so it
+# identifies the record precisely. The server returns bare content (no id), so
+# there is nothing better available on this side.
+call_id = "unknown"
+returned = _returned_text(data.get("tool_response"))
 if CALLS_LOG.exists():
-    for line in reversed(CALLS_LOG.read_text(encoding="utf-8").strip().splitlines()):
+    records = []
+    for line in CALLS_LOG.read_text(encoding="utf-8").strip().splitlines():
         try:
             entry = json.loads(line)
-            if entry.get("type") != "verdict":
-                prompt_hash = entry.get("prompt_hash", "unknown")
-                break
         except Exception:
             continue
+        if entry.get("type") != "verdict":
+            records.append(entry)
+
+    match = None
+    if returned:
+        # Newest-first: if an identical response was ever produced twice, the call
+        # that just ran is the later one.
+        for entry in reversed(records):
+            if entry.get("response") == returned:
+                match = entry
+                break
+    if match is not None:
+        # Pre-T-105 records have no call_id; prompt_hash keeps them joinable.
+        call_id = match.get("call_id") or match.get("prompt_hash", "unknown")
+
+# NO last-record fallback. Observed 2026-07-21: when a call exceeds the MCP
+# deadline it is moved to the background, the hook fires before anything is
+# logged, and a positional fallback confidently names the PREVIOUS call. A verdict
+# attached to the wrong call is worse than a missing one — it silently mislabels
+# the DPO corpus. Stay silent instead and let that call go unjudged.
+if call_id == "unknown":
+    print(json.dumps({}))
+    sys.exit(0)
 
 # Inject a compact template. Claude fills it before continuing its response.
 # The prompt_hash is embedded so the Stop hook can match verdict → call record.
 template = (
-    f"[VERDICT prompt_hash={prompt_hash}]\n"
+    f"[VERDICT call_id={call_id}]\n"
     "verdict: 0 | 1 | 2  ← 0=rejected 1=improved 2=accepted; pick one, delete the others\n"
     "reason: <one line>\n"
     "est_claude_tokens: <number — (prompt chars + response chars) / 4, mentally>\n"

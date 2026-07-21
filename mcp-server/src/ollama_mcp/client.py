@@ -14,6 +14,7 @@ import datetime
 import hashlib
 import json
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -141,6 +142,7 @@ class OllamaClient:
         timeout: int = DEFAULT_TIMEOUT,
         run_id: str | None = None,  # oficina: tags the call-log record (acceptance #6)
         num_predict: int | None = None,  # oficina/T-91: bound generation (floor + cap)
+        tool: str | None = None,  # T-105: originating MCP tool, for the judgeable denominator
     ) -> ChatResponse:
         """Send a chat completion request to Ollama.
 
@@ -265,7 +267,9 @@ class OllamaClient:
         )
 
         # Log the call for distillation / training data collection.
-        self._log_call(prompt, system, model, temperature, think, format is not None, result, run_id)
+        self._log_call(
+            prompt, system, model, temperature, think, format is not None, result, run_id, tool
+        )
 
         return result
 
@@ -279,6 +283,7 @@ class OllamaClient:
         had_format: bool,
         response: "ChatResponse",
         run_id: str | None = None,
+        tool: str | None = None,
     ) -> None:
         """Append a JSONL record for this call to CALL_LOG_PATH.
 
@@ -311,6 +316,16 @@ class OllamaClient:
 
             entry = {
                 "ts": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
+                # T-105: identity, distinct from prompt_hash. prompt_hash is a
+                # CONTENT address — identical prompts collide by design (one hash
+                # covered 24 calls across 8 models in a compare-models sweep), so it
+                # cannot identify a call or carry a verdict unambiguously.
+                # Lowercase hex only: the verdict-capture regex matches [a-f0-9]+.
+                "call_id": uuid.uuid4().hex[:12],
+                # T-105: which MCP tool produced this call. Without it the verdict
+                # denominator is unmeasurable — "coverage" silently mixes calls the
+                # harness never intended to prompt for (summarize/translate/sweeps).
+                "tool": tool,
                 "model": response.model,
                 "prompt_hash": prompt_hash,
                 "prompt": prompt if LOG_FULL_CONTENT else prompt[:200],
