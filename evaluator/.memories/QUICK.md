@@ -4,9 +4,15 @@
 
 ## Status
 
-Operational. 7 rubrics (Go, Python, Java, Shell, general, classification, writing).
+Operational. 7 rubrics (Go, Python, Java, Shell, general, classification, writing),
+**5–6 weighted criteria each**, split across `phase: 1` / `phase: 2`.
 Phase 1 validators for Go, Shell, Python, Java, JSON schema. Phase 2 LLM judge working.
 Used in Layer 4 benchmark runs; results in `evaluator/results/`.
+
+⚠️ **This module has ZERO automated tests** (verified 2026-07-21 — no `def test_` anywhere
+under `evaluator/`). The only source files are `lib/evaluate.py` and `lib/benchmark.py`;
+everything else in the tree is generated benchmark *output*. Characterize before changing.
+⚠️ **The judge is a LOCAL model**, not a frontier one — `DEFAULT_JUDGE_MODEL = "my-codegen-q3"`.
 
 ## Architecture
 

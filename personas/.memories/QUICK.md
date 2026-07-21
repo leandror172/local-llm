@@ -4,7 +4,10 @@
 
 ## Status
 
-37 active personas from 15 base models. Registry stable.
+**59 personas in `registry.yaml` — 51 active, 6 benchmark, 2 inactive — across 14 distinct
+base models** (verified 2026-07-21; 59 matching Modelfiles on disk). Registry stable.
+`status:` is a curation flag, **not usage telemetry** — there is no usage tracking and no
+automated deprecation. Re-count from `registry.yaml`, never from this line.
 Last additions: session 50 (2026-04-09) — gemma3:12b + gemma3:27b added to models.yaml;
   my-go-g3-12b, my-python-g3-12b created (active); my-go-g3-27b, my-python-g3-27b (inactive — too slow).
 MCP tools (create_persona, copy_persona) operational via ollama-bridge.
@@ -17,7 +20,8 @@ Three independent tools that coordinate through shared YAML files:
 - **build-persona.py** — LLM-driven conversational persona proposal
 
 Shared data:
-- `models.yaml` — single source of truth for 13 base models (contexts, temps, domains)
+- `models.yaml` — single source of truth for base models (contexts, temps, domains);
+  **19 entries defined**, of which 14 are actually referenced by a registry persona
 - `registry.yaml` — persona inventory (name, model, role, temperature, tier, status)
 
 ## Key Concepts

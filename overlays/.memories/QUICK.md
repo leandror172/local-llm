@@ -30,16 +30,18 @@ concepts live in `KNOWLEDGE.md`, chronology in `git log -- overlays/`.*
   register role must resolve, write roles gate (`BROKEN`), read-only advise (`ABSENT`).
   Exits 0 on all five repos. It found the starter templates did not satisfy their own
   register — a fresh install's first handoff would have failed on four roles.
-- **Tests: 287 total** via `make -C overlays test` — `test-ref-indexing` (bash, 9) +
-  `test-session-tracking` (pytest, 214) + `test-installer` (pytest, 64: `test_verify.py` +
-  `test_customizable.py` + `test_signals.py`). Bare `make` prints help; `ARGS='-k x'` filters
-  one suite. Not a test: `test-merge-plan.py` (manual Ollama diagnostic, network).
+- **Tests: 296 total** (verified 2026-07-21) via `make -C overlays test` —
+  `test-ref-indexing` (bash, 9) + `test-session-tracking` (pytest, 214) +
+  `test-installer` (pytest, 73: `test_verify.py` + `test_customizable.py` +
+  `test_signals.py` + `test_merge_stage_apply.py`). Bare `make` prints help;
+  `ARGS='-k x'` filters one suite. Not a test: `test-merge-plan.py` (manual Ollama
+  diagnostic, network).
 - **ref-indexing overlay:** v4 — hermetic overlay-shipped suite at `files/tests/`.
-  PR **#63** (`feat/t42-ref-lookup-paths`) not yet merged into umbrella `batch/session-97-base` (#57).
+  PR **#63** (`feat/t42-ref-lookup-paths`) is **CLOSED** (verified 2026-07-21).
 - **session-tracking overlay:** v11 (packaging flip + config-driven resume), installed and
-  committed in all five repos. `--verify` exit 0 everywhere. **PR #71**, branch
-  `feature/resume-config-steps` — must merge before llm leaves the branch: the editable
-  install points at the working tree, and `src/` does not exist on master.
+  committed in all five repos. `--verify` exit 0 everywhere. **PR #71 MERGED** —
+  `src/` **is** on master, so the old "checking out master breaks `st-resume`" hazard is
+  **resolved** and the editable install is safe on any branch.
 - **Deferred:** **T-83** install-time baseline / lockfile — the installer records nothing about
   what it installed, so `manual_if_exists` cannot tell "source moved since you reconciled" from
   "legitimately differs" (7 unconditional `[TODO]`s across 4 repos). `dpkg` conffiles are the
