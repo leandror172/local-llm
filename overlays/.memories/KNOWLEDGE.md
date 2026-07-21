@@ -45,6 +45,22 @@ removes the old content, and inserts the new version.
 Markers let the installer find and replace its own content without touching the rest.
 **Implication:** Manual edits inside overlay markers will be overwritten on update.
 Customizations go outside the markers — or into a `customizable:` keep-region.
+
+**The version is the ONLY trigger — content changes alone do not propagate.** Because the
+installer decides by comparing the installed marker version against the manifest, editing a
+`sections/*.md` file without bumping `manifest.yaml: version:` produces a **half-propagated
+overlay that reports success**: the `files:` entries (hash-based) update normally while the
+merge section dry-runs as `[SKIP] CLAUDE.md — already installed vN`. `--verify` will not catch
+it either — the installed marker still matches what was installed; it just no longer matches
+what the source now says. **Rule: a section edit and a version bump belong in the same commit.**
+Found 2026-07-21 propagating `ollama-scaffolding` v2→v3 (T-105); the dry run said SKIP for all
+three consumer repos and the corrected verdict rule would have reached none of them.
+
+**Corollary — dry-run against the real repo root.** `--target` must be the directory that *is*
+the git repo: `expenses/code`, not `expenses/`. Targeting a parent reports
+`[CREATE] CLAUDE.md — file missing` and would fabricate a `CLAUDE.md` + `.claude/` in a
+non-repo directory. Read every dry-run line: `[SKIP] … already installed` looks like healthy
+idempotence and is exactly what a missed version bump looks like.
 <!-- /ref:overlay-merge-markers -->
 
 ---

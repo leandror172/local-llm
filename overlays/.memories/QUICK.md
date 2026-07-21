@@ -51,15 +51,9 @@ concepts live in `KNOWLEDGE.md`, chronology in `git log -- overlays/`.*
 - **Discipline (recurring):** a new suite must be listed in `run-all-tests.sh`, or it runs green
   while testing nothing. Never propagate an overlay without `--verify` or a per-file `cmp`.
 
-- **Editing a `merge_sections` file does NOT propagate without a manifest `version:` bump
-  (learned 2026-07-21, T-105, ollama-scaffolding v2→v3).** CLAUDE.md merges are gated on the
-  installed `<!-- overlay:<name> vN -->` marker, so a content-only change to
-  `sections/*.md` dry-runs as `[SKIP] CLAUDE.md — already installed v2` while the `files:`
-  entry (hash-based) updates normally. The result is a **half-propagated overlay** that
-  reports success. Rule: change a section → bump the version in the same commit.
-- **Always dry-run against the real repo root.** `expenses` is not a repo — `expenses/code`
-  is. Targeting the parent reported `[CREATE] CLAUDE.md — file missing`, i.e. it would have
-  fabricated a CLAUDE.md and `.claude/` in a non-repo directory.
+- **A `sections/*.md` edit does NOT propagate without a manifest `version:` bump** — half-applies
+  and reports success. And `--target` must be the real repo root (`expenses/code`, not
+  `expenses/`). Both: KNOWLEDGE.md § "Merge Markers for Versioning" (`ref:overlay-merge-markers`).
 
 ## Deeper Memory → KNOWLEDGE.md
 

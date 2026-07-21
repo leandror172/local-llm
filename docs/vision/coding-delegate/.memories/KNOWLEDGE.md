@@ -140,6 +140,38 @@ confirmed live this session: the sync `generate_code` path inherited the model d
 functions mid-body 4× during T1/T2/T5 test-body delegation. The async worker path was unaffected,
 which is why the plan routes the loop through the worker seam, not the sync tool.
 
+## Session verdicts for runs — a second axis beside `auto_verdict` (T-105) — 2026-07-21
+
+A `PostToolUse` hook on `run_result` injects `[VERDICT run_id=…]` **once per run, judged on the
+deliverable** — never per loop iteration. The calling session reviews the artifact, not the N
+repair attempts; 18 oficina-tagged calls spanned 12 runs, so per-run judging asks ~12 questions
+instead of 18, and asks about the thing actually inspected.
+
+**Trigger rule:** prompted iff `result["deliverable"]` is non-null. That single condition gets the
+whole state machine right — `Failed`/`IntakeRejected`/`Cancelled` stay silent (the ledger's
+`auto_verdict` already records those as 0), `Exhausted` **is** judged because it surfaces a best
+attempt (S11), and polling `run_result` before terminal does not prompt.
+
+**Identity is free here, unlike the generate_code path.** `run_result(run_id)` names its subject in
+the *request*, so the hook reads `tool_input["run_id"]`; `generate_code` reveals identity only
+through its *response* and must match on content. Tools that name what they operate on are
+trivially hookable — worth remembering when designing future tools.
+
+**Why this is NOT redundant with `auto_verdict`.** `loop.py`'s `auto_verdict = 2 if passed else 0`
+is mechanical and binary: did the evaluator's tests pass. It **structurally cannot express
+`1 (improved)`** — *correct, but I had to change it* — historically **64.8%** of all verdicts and
+the richest DPO category. The two are different axes; keep both. (`auto_verdict` remains
+ledger-only per T-99; the P4 DPO pass joins ledger↔`calls.jsonl` on `run_id`.)
+
+**Record shape:** `run_id` + `tool: "oficina"`, and deliberately **no `call_id`** — a run spans
+several calls and naming one would misattribute the judgment. Readers tolerate the heterogeneous
+key. **Gotcha:** run ids are base64url (`-L-rwoCLLsoL33eirtSRzw`), so the capture regex had to widen
+from `[a-f0-9]` to `[A-Za-z0-9_-]`; a hex-only class rejects run-keyed blocks *silently*. Tests must
+use a real run id — a hex-shaped stand-in passes against the broken regex and proves nothing.
+
+Source / more detail: `docs/findings/verdict-coverage-collapse-2026-07-21.md`,
+`docs/plans/verdict-capture-repair.md` § Phase 4.
+
 ## P2 T8 live acceptance — all 6 criteria met — 2026-07-15
 
 Verified live (real Ollama, real git repo) + by the 223-test suite. (1) **Headline:** a seeded

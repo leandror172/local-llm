@@ -68,7 +68,7 @@ helper). Suite 279. **Write-model finding (T-104):** `loop.py:263` overwrites th
 `patch_file`). **M2 (edit) decided = code-anchored** (`locate_unit`→`patch_file`); not built yet.
 `ref:oficina-function-kind-write-model`, `ref:oficina-write-model-report`.
 
-Session 125 (2026-07-21): **`_log_call` gained `call_id` + `tool` (T-105)** — supersedes "every call → JSONL (prompt, response, model, latency, tokens)" above. `call_id` = `uuid4().hex[:12]`, **lowercase hex is load-bearing** (the verdict-capture regex matches `[a-f0-9]+`); it exists because `prompt_hash` is a *content address* that collides by design and so cannot identify a call. `tool` self-attributes the originating MCP tool (`ask_ollama` / `generate_code` / `summarize` / `classify_text` / `translate`, plus `oficina` set in `worker._chat_generation`, which reaches the client directly and never passes through an MCP tool). Without `tool` the verdict denominator was unmeasurable. **Both fields only appear after the bridge subprocess restarts** — a long-lived server keeps the old code.
+Session 125 (2026-07-21): **`_log_call` gained `call_id` + `tool` (T-105)** — supersedes "every call → JSONL (prompt, response, model, latency, tokens)" above. `prompt_hash` is a content address, not an identity. **Fields appear only after the bridge subprocess restarts.** Detail: KNOWLEDGE.md § "Call Logging for DPO".
 
 ## Deeper Memory -> KNOWLEDGE.md
 

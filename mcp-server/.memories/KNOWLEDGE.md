@@ -38,6 +38,27 @@ the quality signal. Passive collection during normal work.
 **Implication:** Logging failures are silently swallowed — never break a tool call
 for observability. Full content toggleable via `OLLAMA_LOG_FULL_CONTENT`.
 
+**`call_id` + `tool` (T-105, 2026-07-21).** `_log_call` also writes `call_id`
+(`uuid4().hex[:12]`) and `tool` (the originating MCP tool, or `"oficina"` set in
+`worker._chat_generation`, which reaches the client directly and never passes through an MCP
+tool). Both are threaded like `run_id` — an explicit kwarg on `client.chat`.
+
+- **`call_id` exists because `prompt_hash` is a CONTENT address, not an identity.** Identical
+  prompts collide by design: one hash covered **24 calls across 8 models** (a `compare-models`
+  sweep — i.e. the DPO-pair workflow itself). Verdicts keyed on the hash therefore could not say
+  *which* model was judged, and dedupe-on-hash silenced every sibling after the first. Two such
+  hashes still sit in the corpus carrying 10 verdicts each: usable as quality signal, **not** as
+  model-attributed DPO pairs.
+- **Lowercase hex is load-bearing** — `verdict-capture.py`'s capture group is `[A-Za-z0-9_-]+`
+  today only because oficina run ids are base64url; a `call_id` outside `[a-f0-9]` would have
+  been rejected silently by the original `[a-f0-9]+`.
+- **`tool` exists because the verdict denominator was unmeasurable without it.** "Coverage"
+  silently mixed calls the harness never intended to prompt for (summarize/translate/sweeps).
+- **Gotcha:** the bridge is a long-lived subprocess, so `client.py` changes appear in the log
+  only after it restarts. New fields can look inert for a whole session.
+
+Full story: `docs/findings/verdict-coverage-collapse-2026-07-21.md`.
+
 ## In-Flight Tracking for warm_model (2026-03)
 
 warm_model evicts the current model to load a new one. But evicting while

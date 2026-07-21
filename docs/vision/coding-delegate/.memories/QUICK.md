@@ -105,17 +105,10 @@ runs) only if H1 run logs validate the planner hypothesis (V-D2 — "graduation"
 - Deterministic spine; structured output only (never free-form tool use); 14B coder floor
 - ~3 iterations + 1 repetition-triggered fresh start; phase batching (~3 VRAM swaps/run)
 - Judge gates every DPO chosen label (S17); `auto_verdict` ≠ `curated_verdict`
-- **Session verdicts for runs shipped 2026-07-21 (T-105 Phase 4).** A `PostToolUse` hook on
-  `run_result` injects `[VERDICT run_id=…]` **once per run, on the deliverable** — never per
-  loop iteration (the session reviews the artifact, not the N repair attempts). Prompted only
-  when `result["deliverable"]` is non-null, so `Failed`/`IntakeRejected`/`Cancelled` stay
-  silent while `Exhausted` (which surfaces a best attempt) is judged; polling before terminal
-  does not prompt. The record carries `run_id` + `tool: "oficina"` and deliberately **no
-  `call_id`** — a run spans several calls and naming one would misattribute the judgment.
-  This is a **different axis from `auto_verdict`**, which is binary (`2 if passed else 0`,
-  `loop.py:157`) and structurally cannot express **1 (improved)** — historically 64.8% of all
-  verdicts and the richest DPO category. Gotcha: run ids are base64url, so the capture regex
-  had to widen from `[a-f0-9]` to `[A-Za-z0-9_-]`.
+- **Session verdicts ship per RUN, on the deliverable** (T-105, 2026-07-21) — a `run_result` hook
+  injects `[VERDICT run_id=…]` iff a deliverable exists. A **second axis** beside `auto_verdict`,
+  which is binary and cannot express `1 (improved)`. Detail: KNOWLEDGE.md § "Session verdicts for
+  runs".
 
 ## Deeper memory
 
