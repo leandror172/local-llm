@@ -12,6 +12,7 @@ produced by a delegated agent and I could not verify it, it is marked **UNVERIFI
 
 ---
 
+<!-- ref:verdict-coverage-findings -->
 ## 1. Headline
 
 The capture harness **works**. It was **never fed**.
@@ -45,6 +46,7 @@ The documentation defect (D1) explains why *judgments that were made* were disca
 capture plus full back-fill roughly doubles a small corpus and still leaves ~81 % of calls
 unjudged. That residue is **behavioural**, not a format problem, and only a gate (D6) or a
 narrower definition of "judgeable" (D10) touches it.
+<!-- /ref:verdict-coverage-findings -->
 
 ---
 

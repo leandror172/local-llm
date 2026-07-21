@@ -19,6 +19,7 @@ add enforcement yet.
 
 ### Decisions carried in
 
+<!-- ref:verdict-capture-decisions -->
 | # | Decision | Rationale |
 |---|---|---|
 | V-D1 | **Judgeable = `generate_code` + oficina run deliverables** | The calls whose output is reviewed anyway. Excludes summarize/translate/classify, warm-ups, sweeps. |
@@ -26,6 +27,7 @@ add enforcement yet.
 | V-D3 | **Measure first, gate later** | PostToolUse can't block; a `Stop` block forces continuation → forced ≠ considered verdicts. Revisit only if the docs fix fails to move coverage. |
 | V-D4 | **Real identity key, not a patched hash** | `prompt_hash` is content-addressing reused as identity (1 hash = 24 calls / 8 models). |
 | V-D5 | **Docs converge on the block; no tolerant reader live** | A tolerant reader can't recover `prompt_hash` from prose. Positional association is acceptable for the one-off back-fill only. |
+<!-- /ref:verdict-capture-decisions -->
 
 ---
 
