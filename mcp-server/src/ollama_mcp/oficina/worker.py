@@ -118,6 +118,10 @@ def _chat_generation(
                 timeout=timeout,
                 run_id=run_id,
                 num_predict=num_predict,
+                # T-105: oficina does NOT route through the generate_code MCP tool —
+                # this seam goes straight to the client, so it must self-attribute.
+                # Verdicts for these are per-RUN (via run_result), not per-call.
+                tool="oficina",
             )
         finally:
             await client.close()

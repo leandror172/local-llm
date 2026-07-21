@@ -105,6 +105,10 @@ runs) only if H1 run logs validate the planner hypothesis (V-D2 — "graduation"
 - Deterministic spine; structured output only (never free-form tool use); 14B coder floor
 - ~3 iterations + 1 repetition-triggered fresh start; phase batching (~3 VRAM swaps/run)
 - Judge gates every DPO chosen label (S17); `auto_verdict` ≠ `curated_verdict`
+- **Session verdicts ship per RUN, on the deliverable** (T-105, 2026-07-21) — a `run_result` hook
+  injects `[VERDICT run_id=…]` iff a deliverable exists. A **second axis** beside `auto_verdict`,
+  which is binary and cannot express `1 (improved)`. Detail: KNOWLEDGE.md § "Session verdicts for
+  runs".
 
 ## Deeper memory
 

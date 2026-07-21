@@ -68,6 +68,8 @@ helper). Suite 279. **Write-model finding (T-104):** `loop.py:263` overwrites th
 `patch_file`). **M2 (edit) decided = code-anchored** (`locate_unit`→`patch_file`); not built yet.
 `ref:oficina-function-kind-write-model`, `ref:oficina-write-model-report`.
 
+Session 125 (2026-07-21): **`_log_call` gained `call_id` + `tool` (T-105)** — supersedes "every call → JSONL (prompt, response, model, latency, tokens)" above. `prompt_hash` is a content address, not an identity. **Fields appear only after the bridge subprocess restarts.** Detail: KNOWLEDGE.md § "Call Logging for DPO".
+
 ## Deeper Memory -> KNOWLEDGE.md
 
 - **Transport Choice** — stdio over HTTP, rationale

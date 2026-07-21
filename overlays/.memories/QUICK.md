@@ -51,6 +51,10 @@ concepts live in `KNOWLEDGE.md`, chronology in `git log -- overlays/`.*
 - **Discipline (recurring):** a new suite must be listed in `run-all-tests.sh`, or it runs green
   while testing nothing. Never propagate an overlay without `--verify` or a per-file `cmp`.
 
+- **A `sections/*.md` edit does NOT propagate without a manifest `version:` bump** — half-applies
+  and reports success. And `--target` must be the real repo root (`expenses/code`, not
+  `expenses/`). Both: KNOWLEDGE.md § "Merge Markers for Versioning" (`ref:overlay-merge-markers`).
+
 ## Deeper Memory → KNOWLEDGE.md
 
 Concept-organized semantic memory: system rationale, merge markers, AI merge mode, manifest

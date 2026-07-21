@@ -147,7 +147,7 @@ Projects using the ollama-bridge MCP server should follow this verdict pattern
 whenever a local model generates code (via `mcp__ollama-bridge__generate_code`
 or `mcp__ollama-bridge__ask_ollama`):
 
-**Evaluate every local model response explicitly:**
+**Record a verdict for every `generate_code` / `ask_ollama` response:**
 
 Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
 
@@ -155,10 +155,29 @@ Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
 - `1` — used with modifications (note what changed and why)
 - `0` — not usable (note the failure reason: logic error / wrong API / off-task)
 
-**On verdicts 2 or 1, add a rough token estimate — do NOT read files or write code to compute it:**
-- Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
-- Note it inline in one phrase, e.g.: `2 — ~300 est. Claude tokens saved`
-- Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
+**Write it as this exact block — it is machine-captured, and nothing else is stored.** A
+`PostToolUse` hook injects the template pre-filled with the call's `call_id`; fill the three
+placeholder lines:
+
+```
+[VERDICT call_id=<the id the hook gave you>]
+verdict: 2
+reason: <one line>
+est_claude_tokens: <number>
+[/VERDICT]
+```
+
+A `Stop` hook scans the turn and appends filled blocks to `calls.jsonl`. **Prose verdicts are
+not captured** — a phrase like `2 — ~300 est. Claude tokens saved` is discarded. That exact
+mismatch cost ~90% of the corpus over five months (T-105).
+
+**For `est_claude_tokens`, do NOT read files or write code to compute it:** mentally apply
+`(chars in your prompt + chars in response) / 4`. Rough is fine; the log records exact values
+automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis.
+
+Not judged: `summarize`/`translate`/`classify_text` (a quality verdict is not meaningful),
+and cold-start timeouts (retry, record nothing). oficina runs are judged per-run on the
+finished deliverable.
 
 This pattern generates (prompt, local_response, verdict) triples that feed future
 DPO fine-tuning pipelines.

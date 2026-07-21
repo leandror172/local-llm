@@ -1,37 +1,52 @@
 # Session Log
 
-**Current Layer:** "Layer 5+ — oficina (P2 widening: Go Axis A + write-model M2)"
-**Current Session:** 2026-07-20 — Session 124: "founding problem recovered (T-102) + Go-widening Phase 1 + write-model M2 decided (T-104) — PR #79"
+**Current Layer:** "Layer 5+ — verdict/DPO harness (T-105); oficina P2 post-slice"
+**Current Session:** 2026-07-21 — Session 125: "verdict harness repaired — coverage 9.6% → 18.7% (T-105, PR #80)"
 
 ---
-## 2026-07-20 - Session 124: "founding problem recovered (T-102) + Go-widening Phase 1 + write-model M2 decided (T-104) — PR #79"
+## 2026-07-21 - Session 125: "verdict harness repaired — coverage 9.6% → 18.7% (T-105, PR #80)"
 
 ### Context
 
-Started from a review of oficina's capabilities and the user's question about whether all local codegen goes through the async path. That unwound into recovering oficina's *founding* problem (multi-session GPU contention), then into starting the P2 kind/language widening, where reading the loop surfaced a write-model design flaw. One branch `docs/t102-multi-session-contention`, PR #79.
+Started as a one-line question — "how many DPO triples do we have from ollama generate_code?" — and the 9.6% coverage answer turned into a full investigation. The user pushed back on two framings that shaped everything after: that recording verdicts is the *session's* job, not theirs, and that judgments were probably being made but not stored properly. Both were right.
 
 ### What Was Done
 
-- **T-102 — founding problem recovered:** multi-session GPU contention (N concurrent Claude sessions; sync times out under contention) was named session 42, downgraded 43, then dropped in the T-21→T-88 supersession (clients reframed sessions→products). New record `docs/ideas/multi-session-contention.md`; captured the failure mode + measurement caveats + busy-check MVP; amended every contradiction found (elevator prose, `Exhausted`/`Delivered`, `validate-code.py` docstring) as annotations; advisor-reviewed (two overstated claims corrected before commit).
-- **T-92 Axis A (Go widening) groundwork:** R1/R3/R4 settled (R3 `go build ./...` in a git worktree confirmed by throwaway experiment); 5-phase build plan; language-widening design notes (what-varies table, value-object-pack-over-ABC, two warnings).
-- **T-92 Axis A Phase 1 SHIPPED (tested):** `intake.py` gains `deliverable.language` (declared, else inferred from ext) + two kind-scoped rejection rules mirroring the acceptance pair. mcp-server suite **279 green, zero existing tests touched**.
-- **T-104 write-model finding + decision:** `loop.py:263` overwrites the whole target file → `kind:function` is file-granular; root cause = the loop reimplements what it should compose (dropped `patch_file`). Built + ran a **pre-registered 3-arm benchmark** (108 gens, `benchmarks/lib/writemodel_*`). **M2 (edit) DECIDED = code-anchored**; full report `docs/findings/oficina-write-model-benchmark-2026-07-18.md`.
-- **PR #79 opened** (9 commits, 25 files). Filed T-103 (timeout config mismatch, found while measuring).
+- **Diagnosed the verdict coverage collapse (T-105).** Every durable doc taught an inline phrase (`2 — ~300 est. Claude tokens saved`) while `verdict-capture.py` has only ever parsed a `[VERDICT …]` block **taught nowhere durable** — it existed solely as an ephemeral per-call hook injection. The harness worked; it was never fed. A live probe proved the chain end-to-end on the first try.
+- **Wrote the evidence report + plan** — `docs/findings/verdict-coverage-collapse-2026-07-21.md` (every claim carries `file:line`; §9 records four claims the investigation got *wrong*, with corrections) and `docs/plans/verdict-capture-repair.md`.
+- **Phase 0** — probed the hook schema live rather than trusting a delegated doc summary: the field is `tool_response` (**not** `tool_output`), `tool_use_id` exists, and `last_assistant_message` is final-message-only, so the whole-transcript scan must stay.
+- **Phase 1** — `call_id` + `tool` in `_log_call`; provenance by response-content match; **no positional fallback**.
+- **Phase 2 (root cause)** — CLAUDE.md, scaffolding-template and the overlay source converge on the block; `handoff-session-66.md` annotated (not rewritten) and archived; **overlay v3** propagated + committed to `expenses/code`, `web-research`, `career-search`.
+- **Phase 3** — back-filled 48/49 prose verdicts, provenance-flagged; **coverage 9.6% → 18.7%** (106/566).
+- **Phase 4** — oficina judged **per-run** on the deliverable via `run_result`; regex widened to `[A-Za-z0-9_-]`.
+- **Phase 5** — 26 hook tests, every one mutation-verified to fail against the broken code.
+- **Phase 7** — `cleanupPeriodDays: 365`; transcripts are the only audit trail for this bug class.
+- **Self-audit against the pattern docs** found two violations (stringly-typed `_emit`, prefix-sniffing for failure); both fixed.
+- **PR #80 opened**; T-105 registered in `tasks.md`.
 
 ### Decisions Made
 
-- **Founding problem is multi-session contention (T-102).** T-89 is **scope-limited, not reopened** (it answered interactive-vs-*batch*; interactive-vs-*interactive* was never posed). The gate (T-88) gains a wait-tolerance axis (**G-D7**) and its MVP is T-21's busy-check, not the scheduler (**G-D8**). Triggers were unfalsifiable (user manually serializes; `calls.jsonl` only sees the bridge).
-- **R1 = declared `deliverable.language`, infer-from-ext as default** (revisit when a non-author submits specs). **R3 = in-worktree `go build ./...`**. **R4 = compile self-attributes; test stage uses `go test -json`** via the Package field. Go category rule is flat.
-- **M2 (edit) = code-anchored** (`LanguagePack.locate_unit` → `patch_file`), decided on **cost/timeout-safety** (size-invariant 25 tok vs whole-file 40→134→310 — whole-file on large files is what blew the 120s ceiling twice this session), **NOT correctness** (benchmark null — uniform-filler corpus was whole-file's best case; regression trap never sprang). Re-run declined: the open axis isn't load-bearing. M1 (greenfield) = compose `output_file`.
-- **Principle: oficina composes the ollama-bridge tools, it does not reimplement them.** Sibling of T-95 (transport) and the T-102 busy-check — the re-authored local version is always the cruder one.
+- **Judgeable set narrowed:** `generate_code` + `ask_ollama` per-call; **oficina per-run**; NOT summarize/translate/classify_text — a 0/1/2 *quality* verdict is not meaningful there and yields filler that pollutes DPO.
+- **Measure first, gate later.** PostToolUse structurally cannot block; a `Stop` block forces turn continuation, and a forced verdict is not a considered one. Revisit only if the docs fix fails to move coverage.
+- **`call_id` replaces `prompt_hash` as identity.** `prompt_hash` is a content address — one hash covered 24 calls across 8 models, so a compare-models sweep could record exactly one verdict.
+- **No positional fallback in the hook.** A stale id mislabels the corpus, and mislabeled is worse than missing.
+- **Back-filled records carry no `call_id`** — those calls predate the field; inventing one would be fabrication.
+- `handoff-session-66.md` **annotated, not overwritten** (user's call): it is a historical handoff, not documentation.
 
 ### Next
 
-- **Build the edit kinds on M2** — `LanguagePack.locate_unit` (Python ast — the benchmark's `locate_function` is a seed; Go `go/parser`); loop composes `patch_file` for edit kinds; C0 baseline flips to target-present.
-- **Axis A Go read-side (Phase 3)** — `_parse_gotest`, compile-in-worktree, flat category rule; the honest oficina loop dogfood target (substantial + Python).
-- **PR #79 review/merge.** Standing: T-102 gate busy-check (G-D8), T-103 timeout config, T-93 measurement (unblocked), T-86 distribution.
+- **Review + merge PR #80** (12 commits). Then push the three downstream repos' `v2 → v3` commits if wanted.
+- **Phase 6 (the only open part of T-105)** — after real working sessions under the fixed docs, report coverage *among judgeable calls only* (now measurable via the `tool` field) and decide whether a `Stop` gate earns its friction.
+- Resume the pre-empted oficina track: **build the edit kinds on M2** (`LanguagePack.locate_unit` + loop composes `patch_file`), then Axis A Go read-side.
+- **T-106** — fix the stale LTG post-commit hook message.
+- **T-107** — decide overlay-vs-machine-global for the verdict hooks, then move hooks + tests out of `.claude/hooks/` together.
 
 ### Gotchas
 
-- **Delegating a large-context edit to the 14B timed out at 120s TWICE** (cold, then a real >120s generation on ~650-line context). That's T-103 (declared `OLLAMA_TIMEOUT=120` vs the effective ~600s ceiling; `.bashrc` vs `.claude.json` disagree). The retry-protocol fix worked: **split + shrink** (write trivial parts directly, tiny inline example). Async can't rescue it (T-104: kinds overwrite existing files).
-- **Do not read the benchmark's green table as "whole-file is safe."** It's a coverage null — the corpus's uniform `op_k` filler is whole-file's *best case* and never sprang the regression trap. Only the cost axis discriminated.
+- **Branch off master, not off an unmerged feature branch — the risk asymmetry matters.** This branch was cut from master while PR #79 was still open, which cost exactly two things: one `.claude/tasks.md` conflict (both branches append at the same deferred-infra closing boundary) and a session-number collision. Both were cheap and mechanical. Basing on the unmerged branch instead would have risked *dependency entanglement* — invisible until the parent changed. Resolution: PR #79 merged first, then `git rebase master`; the collision dissolved on its own (this handoff renumbered 124 → 125) and no history needed rewriting. Measured overlap beforehand was 4 files, all docs/memory, 3 of which auto-merged — the register design means concurrent sessions write to different regions of the same file.
+- **The MCP bridge is long-lived** — `client.py` changes (`call_id`/`tool`) only take effect after the subprocess restarts. Phase 1 looked correct but inert until the session restarted mid-way.
+- **Editing a `merge_sections` file does NOT propagate without a manifest `version:` bump** — the dry run reports `[SKIP] … already installed v2` and half-propagates while reporting success.
+- **Overlay targets must be the real repo root** — `expenses/code` is the repo, not `expenses/`; the parent dry-ran as `[CREATE] CLAUDE.md`, i.e. it would have fabricated files in a non-repo directory.
+- **`ltg/run-refresh.sh` does not exist** — the post-commit hook's suggested command is stale since the T-33 engine split; the real entry point is `/mnt/i/workspaces/latent-topic-graph/run-refresh.sh`.
+- **Three bugs were found by running the thing, not reading it**: a backgrounded call producing a stale id, `generate_code` fence-stripping defeating exact match, and run ids being base64url. All three fail *silently*.
+- **Local-model delegation was blocked all session** by VRAM contention (3 timeouts, including an 8B with no context files) — `my-python-q25c14` resident at 9.7 GB against ~9 GB free.

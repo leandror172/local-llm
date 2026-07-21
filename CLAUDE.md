@@ -97,7 +97,7 @@ code generation tasks. This generates training data for future distillation.
 - Simple Python utilities and scripts
 - Straightforward transformations (parsing, formatting, serialization)
 
-**After receiving local model output, evaluate it explicitly:**
+**After receiving `generate_code` or `ask_ollama` output, record a verdict — in the block form below.**
 
 Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
 
@@ -105,10 +105,33 @@ Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
 - `1` — used with modifications (note what changed and why)
 - `0` — not usable (note the failure reason: logic error / wrong API / off-task)
 
-**On verdicts 2 or 1, add a rough token estimate — do NOT read files or write code to compute it:**
-- Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
-- Note it inline in one phrase, e.g.: `2 — ~300 est. Claude tokens saved`
-- Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
+**The verdict MUST be written as this exact block — it is machine-captured, and no other
+shape is stored.** After each judgeable call a `PostToolUse` hook injects the template
+pre-filled with the right `call_id`; fill in the three placeholder lines and leave the rest:
+
+```
+[VERDICT call_id=<the id the hook gave you>]
+verdict: 2
+reason: <one line>
+est_claude_tokens: <number>
+[/VERDICT]
+```
+
+A `Stop` hook scans the turn for filled blocks and appends them to `calls.jsonl`. **Prose
+verdicts are not captured** — writing `2 — ~300 est. Claude tokens saved` instead of the block
+means the judgment is discarded. That mismatch cost ~90% of the corpus between 2026-03 and
+2026-07 (T-105: `docs/findings/verdict-coverage-collapse-2026-07-21.md`). If no template was
+injected, the call was not judgeable (or could not be identified) — write nothing.
+
+**For `est_claude_tokens`, do NOT read files or write code to compute it:** mentally apply
+`(chars in your prompt + chars in response) / 4`. Rough is fine; the log records exact values
+automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis.
+
+**Judgeable calls are `generate_code` and `ask_ollama` only.** `summarize`/`translate`/
+`classify_text` are not judged — a 0/1/2 *quality* verdict is not meaningful there. oficina runs
+are judged **per-run on the finished deliverable**, not per internal iteration.
+
+**Cold-start timeouts are not verdicts.** Retry; record nothing.
 
 **When output is imperfect:** Classify by defect type / fix scope / prompt cost — not line count. [ref:local-model-conventions]
 

@@ -530,6 +530,7 @@ async def ask_ollama(
             model=model,
             temperature=temperature,
             timeout=timeout,
+            tool="ask_ollama",
         )
         content = response.content
         if output_file:
@@ -889,6 +890,7 @@ async def generate_code(
             model=chosen_model,
             think=False,
             timeout=timeout,
+            tool="generate_code",
         )
         content = _strip_code_fences(response.content)
         if output_file:
@@ -940,6 +942,7 @@ async def summarize(
             prompt=prompt,
             model=model,
             think=False,
+            tool="summarize",
         )
         return response.content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
@@ -999,6 +1002,7 @@ async def classify_text(
             model=model,
             format=schema,
             think=False,
+            tool="classify_text",
         )
         return response.content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:
@@ -1041,6 +1045,7 @@ async def translate(
             prompt=prompt,
             model=model,
             think=False,
+            tool="translate",
         )
         return response.content
     except (OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError) as e:

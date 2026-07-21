@@ -1,5 +1,9 @@
 name: ollama-scaffolding
-version: 2
+# v3 (T-105, 2026-07-21): the verdict rule now names the machine-captured
+# [VERDICT call_id=...] block and states that prose verdicts are discarded.
+# The bump is load-bearing — CLAUDE.md merges are gated on this version, so
+# without it the corrected section silently would not reach installed repos.
+version: 3
 description: >
   Local model usage conventions for projects using the ollama-bridge MCP server.
   Includes: local-model-first rules, prompt style, serialization policy, verdict
