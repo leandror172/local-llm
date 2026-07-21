@@ -4,11 +4,11 @@
 
 meta:
   generated_from: ltg/corpus.yaml
-  commit: 3cf72c0f363ba34fc80b0eee220dd876f13ba2e2
-  file_count: 144
-  total_bytes: 1133271
+  commit: 8622cf76d2f1c220a5ab09eb4ac3a670b5c02da3
+  file_count: 152
+  total_bytes: 1226077
   group_counts:
-    archive: 82
+    archive: 90
     claude-meta: 6
     docs-ideas: 14
     docs-research: 24
@@ -24,6 +24,10 @@ files:
   group: archive
   sha256: d31f30149e80b3965a00f51316323920941c8d1dc20ab7e953a863f09f502f0a
   bytes: 5710
+- path: .claude/archive/handoff-session-66.md
+  group: archive
+  sha256: ce99e873f09b413723c38e9ea3476219d0764267905e5ac1873c12128ed0e455
+  bytes: 10781
 - path: .claude/archive/layer-0-findings.md
   group: archive
   sha256: 91190b46b2aec2dff74bafae5ca76596c4f3ff1b2d6e7ddd2f3b3154fa2f8e48
@@ -336,6 +340,34 @@ files:
   group: archive
   sha256: 6717191ce39d79b19866a4b719bddfb10ed284c49d321c3d62f7b40290948960
   bytes: 3713
+- path: .claude/archive/session-log-2026-07-13-s116-model-call-gate-decision-t-88-oficina-is.md
+  group: archive
+  sha256: 20c75604fb85ae174141bb9e455f7608dea08415a59fd9948ae9a8f4b781d506
+  bytes: 3416
+- path: .claude/archive/session-log-2026-07-14-s117-t-89-async-ergonomics-built-watch-hook-s.md
+  group: archive
+  sha256: ed9d3a492f34bccf2090a98d6e539741890b79358f247eb65c3444aa01c37723
+  bytes: 3740
+- path: .claude/archive/session-log-2026-07-15-s118-t-89-hooks-verified-live-t-90-resolved-1.md
+  group: archive
+  sha256: 54a66af378f840a2d30e91fa0fbf4aa9ceb335dd421e87d2ed34a94b0352c4a3
+  bytes: 3756
+- path: .claude/archive/session-log-2026-07-15-s119-oficina-p2-evaluated-loop-plan-frozen-t-.md
+  group: archive
+  sha256: a8178b46f6d8ff5bd15783a8f2ca2776e9677c260ca17e749a4c64540a3fa7ab
+  bytes: 3891
+- path: .claude/archive/session-log-2026-07-15-s120-oficina-p2-evaluated-loop-first-slice-bu.md
+  group: archive
+  sha256: a61dc2bcb3535caadb521a305d8eff69d1231d7a193202dff1ef20574ce5159e
+  bytes: 4059
+- path: .claude/archive/session-log-2026-07-16-s121-oficina-p2-pr-76-reviewed-hardened-10-co.md
+  group: archive
+  sha256: ecc4dd09a42074e3aad50835846938b145b8c6dcf55d28246188363d08eaa151
+  bytes: 5192
+- path: .claude/archive/session-log-2026-07-16-s122-oficina-p2-simplify-t-95-t-99-resolved-b.md
+  group: archive
+  sha256: 63a11c4eec7b38ccaa6ce4d03848f17bc29fa8049e4eebe677234d6db560878e
+  bytes: 4301
 - path: .claude/archive/session-log-layer0.md
   group: archive
   sha256: 500baa8e091a420aaea0088337bd5051efd7eb6eb9e19ba08dfc5774fbdfbdb1
@@ -346,24 +378,24 @@ files:
   bytes: 15617
 - path: .claude/index.md
   group: claude-meta
-  sha256: 765c1daf5bb974806a73c5dbfd6e50a779e9918e4f45bdfd6314aa11b0b981be
-  bytes: 38787
+  sha256: 04a5fa39d3170b32dd3594928783166dd15c0b91e6b19c1ce80a49aa8c10ad9f
+  bytes: 47353
 - path: .claude/plan-v2.md
   group: claude-meta
   sha256: a7fd2cf477890cf8eb3a6188e5c50bc772cbd4a8290cb89e509f4f21235a26ea
   bytes: 20946
 - path: .claude/session-context.md
   group: claude-meta
-  sha256: 99caef2c6806ae17030fc20efa2545384df9126e2ec9d1563382976dc40b8e34
-  bytes: 19087
+  sha256: 16438e2d478bba1c121869afd6fd4c1bf3601594383b09add09cc2fd67a32afc
+  bytes: 20753
 - path: .claude/skills/create-persona/SKILL.md
   group: claude-meta
   sha256: 551638e18748f29ec656701fe3cf2de4329d9433bc03e58dc5b4169624472fd5
   bytes: 2160
 - path: .claude/tasks.md
   group: claude-meta
-  sha256: e13e1cae2630f1efd039f90e7facf31d6973f12e26234e983c550ed11e80553e
-  bytes: 62265
+  sha256: b13679cb5fb0865cad4c4f4fde23f854da2097ed5debebf3f5aa2caad4bd0cd3
+  bytes: 82635
 - path: .claude/tools/OLLAMA-ANALYSIS-README.md
   group: claude-meta
   sha256: f341e5c1d778b5187eda0c6f7ce2aab3f6db0feb10c0226efa443189ef18846f
@@ -374,8 +406,8 @@ files:
   bytes: 24072
 - path: .memories/QUICK.md
   group: memories
-  sha256: 87e32732e25fb33ead503d601d2ae835472562ed6f4c15a5dea20e0c11b44afe
-  bytes: 9023
+  sha256: 7d998918a296cae8fb87d723f597f9adfc7a256e6cf8879b332436c9fc52ac72
+  bytes: 10155
 - path: benchmarks/.memories/KNOWLEDGE.md
   group: memories
   sha256: 25d9068617cfa96d9d6551958f39a8b4ed501d1b0c989914efe661a1941935bd
@@ -538,12 +570,12 @@ files:
   bytes: 12318
 - path: docs/vision/coding-delegate/.memories/KNOWLEDGE.md
   group: memories
-  sha256: 68768c02261ff689d43f5d5df8198033cc724cd12a85535a0763bfb36443bf57
-  bytes: 7573
+  sha256: e8160626f83f6b78e1e46ca1fef225319b18d68fec7c66b7f935c83a4e7047d6
+  bytes: 19529
 - path: docs/vision/coding-delegate/.memories/QUICK.md
   group: memories
-  sha256: ad50aa505320968d6cd5896c614557ad1c6f7962881a90ef94f4bc0b857fd397
-  bytes: 3498
+  sha256: 4fdfd905d1ccd6a406c27d6b9958f3ff93123c4b6ada3dbb1ad7a24f2e4c66dc
+  bytes: 8738
 - path: evaluator/.memories/KNOWLEDGE.md
   group: memories
   sha256: 48087dadcb78b916dbed33fafdb3f889526c7474958413474429b32777e8e20e
@@ -562,20 +594,20 @@ files:
   bytes: 2058
 - path: mcp-server/.memories/KNOWLEDGE.md
   group: memories
-  sha256: d2c306b8d13c0fa380872cab18d3e95832c0f3c93d2f83f3495d696faa1674b4
-  bytes: 12483
+  sha256: e04062399902e4e856894aa53fafc9ef801f1ad3ae94d61d412c657b95e98e90
+  bytes: 14547
 - path: mcp-server/.memories/QUICK.md
   group: memories
-  sha256: 527af3cd6351a5cdf0c35a21f39e7db2576de46d07baa67abd09362b887d068f
-  bytes: 3692
+  sha256: 5524a6a5acdf94acfa9cb86d7df7eea0b8a7495dc983e2f91336d9b68ec5d974
+  bytes: 5588
 - path: overlays/.memories/KNOWLEDGE.md
   group: memories
   sha256: 2ad92fd86ff45b4f6f78ceeaf16661701971002dc41e8ee6d922e5f5b028f8c2
   bytes: 17671
 - path: overlays/.memories/QUICK.md
   group: memories
-  sha256: 4d3d10331ccfea955986aff7f5a74d5afcb9b1ffc6a1d26466ff41b4f7c9edc2
-  bytes: 4417
+  sha256: c3b892d3ef15a686be460452c2c00dd376d58751972510f83f18755bdb41984f
+  bytes: 5197
 - path: overlays/session-tracking/.memories/KNOWLEDGE.md
   group: memories
   sha256: 2a899ad227a7dd2ab0648bae7cf277073685b6424f25a413e4bb715f863e49cf
