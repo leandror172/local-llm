@@ -138,6 +138,33 @@ Source: `scratchpad/recoverable-verdicts.json` (49 entries with `prompt_hash`, `
 **Acceptance:** coverage rises to ~18 %; every back-filled record resolves to exactly one call;
 the backup restores cleanly.
 
+### Phase 3 RESULTS (executed 2026-07-21) — DONE
+
+**Coverage 10.2 % → 18.7 %** (58 → 106 verdicts over 566 calls). 48 of 49 candidates written;
+1 refused as `ambiguous_prompt_hash`. Verdict spread `{1: 23, 2: 16, 0: 9}` — the
+improved-dominant shape the live corpus already had.
+
+- Verdict **and reason** both proved recoverable: transcripts carry
+  `Verdict: **1** — one mechanical defect: model defined ChatResult locally …`, so reasons are
+  real prose, not placeholders. Six spot-checks (two per verdict value) confirmed the parsed
+  digit matched the human intent before writing.
+- Records carry `source: "backfill-2026-07-21"` + `backfill_call_ts`, so reconstructions stay
+  distinguishable from live captures forever. 13 of 48 recovered an `est_claude_tokens`.
+- **No `call_id`** on back-filled records — these calls predate the field, and inventing one
+  would be fabrication. `prompt_hash` is the honest key, and it is unambiguous *because*
+  ambiguous hashes were skipped.
+- Backup: `~/.local/share/ollama-bridge/calls.jsonl.bak-backfill-2026-07-21` (624 lines;
+  log now 672 — delta exactly 48).
+- Script (one-off, not a repo tool — same treatment as the numeric migration's Phase 2):
+  `scratchpad/backfill.py`, dry-run by default.
+
+**Incidental finding — D4 is already in the historical corpus.** Two keys carry 10 verdict
+records each: `8005c6852894` and `b6cabb077b24` — the same two compare-models sweep hashes
+from §5.1. Twenty judgments of *different models' outputs* (distinct reasons, verdicts spanning
+0/1/2) are keyed to two content hashes and **cannot be attributed to a model**. They are
+pre-existing and `LIVE` (none from this back-fill). They are usable as quality signal but
+**not as model-attributed DPO pairs**; treat them as such in the P4 DPO pass.
+
 ---
 
 ## Phase 4 — Oficina run verdicts (D8)
