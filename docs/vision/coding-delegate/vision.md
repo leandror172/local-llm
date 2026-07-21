@@ -3,7 +3,9 @@
 <!-- ref:delegate-vision -->
 ## Intent and end state
 
-**The problem, in four measured facts:**
+**The problem, in five measured facts** (the fifth was RECOVERED 2026-07-18, session 124 — it
+predates this pitch by four months and was dropped in the T-21→T-88 supersession; see
+`ref:multi-session-contention`. The original four are incomplete, not wrong):
 1. Claude sessions spend tokens on mechanics local models can do — and the conventions that
    govern delegation (`ref:local-model-conventions`) are *manual policy* Claude must remember
    to follow every call.
@@ -14,6 +16,14 @@
 4. Two-thirds of evaluated local outputs are verdict 1 (improved) — and roughly a third of
    those needed only a compile-class fix Claude performed by hand
    (`ref:delegate-evidence-verdicts`).
+5. **N concurrent Claude Code sessions contend for one GPU.** Sessions across repos (the bridge
+   is user-level) each delegate coding work, each may want a different 14B persona, forcing
+   swaps. A synchronous call that waits its turn exhausts its own transport deadline — the
+   caller is not slow, it is *structurally unable to wait*. Measured 2026-07-18 (n=596 sync
+   calls): **p95 203s, p99 294s, max 581s — against an effective ~600s ceiling**, on a *single
+   uncontended session*. Contention plus swaps pushes that tail past the wall. First named
+   session 42 (2026-03-14),
+   `ollama-coordination-layer.md:17`. `ref:multi-session-contention`.
 
 **The move:** an async **deliverable run** system behind the MCP bridge. Claude submits a
 bounded spec → `run_id` immediately → a detached worker loops the local coder model against

@@ -71,9 +71,22 @@ label). Keep under 30 lines.*
   intake table, `target_relpath`, Budgets-from-schema; suite 241). **T-99 DECIDED (b)** (`21172f0` —
   auto_verdict ledger-only, P4 joins on run_id). **T-95 RESOLVED (b)** — shared per-call transport
   (`_chat_generation`+`_cold_start_grace`); Generation events single-shot-only by design.
-- **Next:** (1) post-slice widening (P2-D1: kinds/validators, escalation ladder P2-D9, tiny-model
-  classifier P2-D4). (2) push/merge PR #76. T-96–T-98 still open; T-93 refs-diagram verdict still
-  unmeasured; T-86 distribution (`OFICINA_VALIDATE_CODE`).
+- 2026-07-18 (session 124): **Founding problem RECOVERED + Go-widening groundwork + write-model
+  decided.** (1) **T-102**: the founding problem is *multi-session GPU contention* (dropped in the
+  T-21→T-88 supersession); sync times out under contention; T-89 scope-limited (interactive-vs-batch
+  only), gate needs a wait-tolerance axis (G-D7) + busy-check MVP (G-D8). (2) **T-92 Axis A**: Phase 1
+  shipped — `deliverable.language` (declared+inferred, kind-scoped rejects); R1/R3/R4 settled by a
+  worktree `go build` experiment. (3) **T-104**: `kind:function` is file-granular (`loop.py:263`
+  overwrites whole file) → the loop **reimplements what it should compose** (dropped `patch_file`).
+  **M2 (edit) DECIDED = code-anchored** (`locate_unit`→`patch_file`) on cost/timeout-safety;
+  benchmark run 1 null on correctness (corpus too easy), clean cost win. Report:
+  `ref:oficina-write-model-report`.
+- **Next:** (1) **build the edit kinds on M2** — `LanguagePack.locate_unit` (Python ast seeded /
+  Go go/parser), loop composes `patch_file`, C0 flips to target-present. (2) Axis A Go read-side
+  (Phase 3: `_parse_gotest`, compile-in-worktree, flat category rule — the honest oficina dogfood
+  target). (3) T-93 refs-diagram verdict; T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`).
+  Standing: T-102 gate busy-check (G-D8); harden write-model corpus IF real use shows whole-file
+  dropping code.
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

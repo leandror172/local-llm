@@ -80,6 +80,29 @@ worktree workspace (P2-D5) fixes the `artifacts/` retention no-op; `refs` in the
 unification are the plan's explicit carried-from-P1 items; the `server.py` private-helper promotion
 lands in build step T7. See the plan's "Build kickoff" section for module/seam/test/validator anchors.
 
+## Write model: the loop composes bridge tools, it does NOT reimplement them — 2026-07-18 (session 124, T-104)
+
+`loop.py:263` `target_path.write_text(gen.content)` **overwrites the entire target file** each
+iteration → `kind:function` is **file-granular, not function-granular**: its only real client is a
+greenfield single-unit file (the shape of the P2 acceptance fixture — behavior shaped by the test,
+not a real editing client). Point it at a populated module and it nukes the module.
+
+**Root cause = the loop reimplements what it should compose.** It rightly shares the chat transport
+(T-95) and rightly reimplements prompt assembly (the P2-D2 cache-prefix contract), but its bespoke
+`write_text` **silently dropped `patch_file`**, which already exists in the same server. "Lacks
+patch_file's mode" IS "whole-file only". **Principle: oficina composes the ollama-bridge tools, it
+does not reimplement them** — sibling of T-95 (transport) and the T-102 gate/busy-check (a scheduler
+proposed where a busy-check existed). Each time, the re-authored local version is the cruder one.
+
+**M2 (edit an existing named unit) DECIDED = code-anchored:** a per-language `LanguagePack.locate_unit`
+computes `old_string` from disk (100% apply, no model reproduction fragility) and feeds `patch_file`.
+Named-unit kinds (function/class) are code-anchorable (the name is the locator); arbitrary `patch` is
+not. M1 (greenfield new file) = compose `output_file`. Decided on **cost/timeout-safety** (benchmark
+run 1: code-anchored size-invariant 25 tok vs whole-file 40→134→310 — whole-file on large files is
+what blew the 120s ceiling twice this session), NOT correctness (a tie at tested difficulty; the
+corpus's uniform filler never sprang the regression trap). Not built. Full report:
+`ref:oficina-write-model-report`; finding `ref:oficina-function-kind-write-model`.
+
 ## P2 evaluated loop — validator-output parser contract (P2-T1) — 2026-07-15
 
 `oficina/parser.py` is the ONE place validator/evaluation output is parsed. `parse_validator_output(stage, payload)`

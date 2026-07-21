@@ -12,6 +12,16 @@ not own the overlay teaching.
 <!-- ref:oficina-async-migration-shape -->
 ## Migration shape (DECIDED): no facade, no cutover — routing convention + harness ergonomics
 
+> **SCOPE LIMIT (added session 124, 2026-07-18 — M-D2, `ref:multi-session-t89-scope`).** Everything
+> below reasons about **interactive vs. batch**: *one* privileged interactive caller against
+> queued background work. It does **not** address **interactive vs. interactive** — N concurrent
+> Claude Code sessions each issuing sync calls. "Sync bypasses the FIFO" is a priority mechanism
+> *only when exactly one caller uses it*; with N sessions all callers bypass it, arrive in
+> undefined order, and each burns its own transport deadline while the others force model swaps.
+> That question was never posed here. **This decision is scope-limited, NOT reopened** — its
+> interactive-vs-batch reasoning stands. The open question lives in
+> `docs/ideas/multi-session-contention.md` (T-102).
+
 Three shapes were considered for migrating the sync `generate_code`/`ask_ollama` path onto
 the async substrate:
 

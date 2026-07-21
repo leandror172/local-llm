@@ -60,6 +60,13 @@ Loop tests use the executable-spec DSL (`ref:test-executable-spec`).
 **Session 123: T-96/T-97/T-98 RESOLVED** (branch `feature/oficina-p2-deferrals`, suite 260):
 refs fallback chain + fail-loud `RefsDropped`; retention `workspace` prune class (TTL =
 run-dir mtime); worktree-relative path scoping. Decision records: `ref:oficina-p2-review-deferred`.
+**Session 124 (Go-widening groundwork):** `intake.py` gained `deliverable.language` (declared, else
+inferred from target ext; kind-scoped `language_not_supported`/`unsupported_language` mirroring the
+acceptance pair; `SUPPORTED_LANGUAGES`/`EXTENSION_TO_LANGUAGE` single source; `resolve_language`
+helper). Suite 279. **Write-model finding (T-104):** `loop.py:263` overwrites the whole target file
+→ `kind:function` is file-granular; the loop reimplements what it should COMPOSE (dropped
+`patch_file`). **M2 (edit) decided = code-anchored** (`locate_unit`→`patch_file`); not built yet.
+`ref:oficina-function-kind-write-model`, `ref:oficina-write-model-report`.
 
 ## Deeper Memory -> KNOWLEDGE.md
 

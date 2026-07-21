@@ -150,10 +150,19 @@ tf 26 evt Run.Exhausted
 tf 27 rmo Ledger.RunStatus
 ```
 
-Draft semantics: `IterationEvaluated` carries the failure classification and auto-verdict;
-repetition signature fires `FreshStart`; budget exhaustion emits `Exhausted` and then
-`Delivered` (degraded, best attempt) — exhaustion is a *quality* of the delivery, not a
-different terminal state (per `ref:delegate-state-machine`).
+Semantics: `IterationEvaluated` carries the failure classification and auto-verdict;
+repetition signature fires `FreshStart`; budget exhaustion emits **`Exhausted` as its own
+terminal event**, mapping to public `failed` with the best attempt attached — it does **NOT**
+emit `Delivered`.
+
+> **CORRECTED session 124 (2026-07-18).** This paragraph previously read *"emits `Exhausted` and
+> then `Delivered` (degraded, best attempt) — exhaustion is a quality of the delivery, not a
+> different terminal state"*, contradicting **the table at the top of this same file** (row
+> `Exhausted`: *"maps to public `failed`… (NOT Delivered)"*). The as-built code is the authority:
+> the loop emits `Exhausted` and the worker owns `Delivered` separately (T6/T7, session 120), and
+> session 121 made `Exhausted` a first-class terminal surfaced by `service.result()`, the phase
+> map, and the runs-scan hook. The degraded-delivery framing was a P2-draft idea that did not
+> survive the freeze.
 
 P3–P6 slices (assembly/context requests, judge + approval gate, question channel) are
 vocabulary-only for now — see the table; model them as slices when their phase plan opens.

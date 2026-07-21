@@ -5,9 +5,11 @@ Scaffolds code snippets into compilable units (adds package declaration,
 main function if missing), compiles, runs static analysis, and reports
 results as JSON matching the validate-html.js contract.
 
-Supported languages:
+Supported languages (see DISPATCH at the bottom of this file — the authority):
   - Go: go build + go vet
   - Shell: shellcheck
+  - Python: compile()
+  - Java: javac (+ scaffold)
 
 Usage:
   python3 lib/validate-code.py [options] <file1.go> [file2.go ...]

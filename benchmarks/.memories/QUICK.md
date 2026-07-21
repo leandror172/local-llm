@@ -12,6 +12,12 @@ Results in `benchmarks/results/` (timestamped directories).
 `backend` (3, Go+Java), `structured` (5, JSON), `visual` (3, Canvas), `decomposed` (3×3 stages)
 
 ## Key Tools
+- `lib/writemodel_bench.py` (+ `run-write-model-bench.sh`) — oficina write-model benchmark (T-104):
+  3 apply arms (code-anchored/whole-file/model-anchored) × size-bucketed corpus. Reusable pattern:
+  programmatic corpus where every filler fn carries a test (regression surface scales with size);
+  `writemodel_apply.py` (ast locator + appliers, 19 unit tests). **Run-1 finding:** at 14B on easy
+  edits all arms tie on correctness (uniform filler = whole-file's best case → null); code-anchored
+  wins on cost (size-invariant vs whole-file's linear token growth). `ref:oficina-write-model-report`
 - `lib/compare-models.py` — side-by-side comparison, verdict capture
 - `lib/record-verdicts.py` — verdict scale: 2=accepted 1=improved 0=rejected; use `--verdicts 2,1 --notes "|n2"`
   for non-interactive mode (Claude Code has no TTY — interactive `input()` hits EOFError)
