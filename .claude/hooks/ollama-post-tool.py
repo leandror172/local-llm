@@ -41,8 +41,18 @@ if tool_name not in GENERATION_TOOLS and tool_name != RUN_RESULT_TOOL:
     sys.exit(0)
 
 
+def emit_call_verdict(call_id: str) -> None:
+    """Ask for a verdict on ONE model call."""
+    _emit("call_id", call_id)
+
+
+def emit_run_verdict(run_id: str) -> None:
+    """Ask for a verdict on an oficina RUN's deliverable (never a single call)."""
+    _emit("run_id", run_id)
+
+
 def _emit(key: str, value: str) -> None:
-    """Print the verdict template keyed by `key`={call_id|run_id}, then exit."""
+    """Owns the template text and the hook output envelope; exits when done."""
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PostToolUse",
@@ -88,22 +98,24 @@ if tool_name == RUN_RESULT_TOOL:
     if not run_id:
         _silent()
 
+    # Decide on the parse, not on a prefix. run_result returns JSON on success and
+    # prose on failure ("Error: unknown run_id", "Error: run not terminal yet"), so
+    # "did it parse as an object" IS the channel — sniffing for an "Error:" prefix
+    # would be inspecting the value to infer failure.
     payload = _returned_text(data.get("tool_response"))
-    if not isinstance(payload, str) or payload.startswith("Error:"):
-        # unknown run_id, or "run not terminal yet" — nothing to judge, and polling
-        # run_result before completion must not prompt.
-        _silent()
     try:
-        result = json.loads(payload)
-    except Exception:
-        _silent()
+        result = json.loads(payload) if isinstance(payload, str) else None
+    except ValueError:
+        result = None
+
     if not isinstance(result, dict) or not result.get("deliverable"):
-        # Failed / IntakeRejected / Cancelled produce no deliverable. The ledger's
-        # auto_verdict already records those as 0; a session verdict adds nothing.
-        # Exhausted DOES surface a best-attempt deliverable, so it is judged.
+        # No deliverable → nothing to judge. Failed / IntakeRejected / Cancelled land
+        # here, and the ledger's auto_verdict already records those as 0; polling
+        # before terminal lands here too. Exhausted DOES surface a best attempt, so
+        # it is judged.
         _silent()
 
-    _emit("run_id", run_id)
+    emit_run_verdict(run_id)
 
 
 # Identify the call that just ran by matching what it RETURNED against the log.
@@ -162,4 +174,4 @@ if call_id == "unknown":
 
 # Claude fills the template inline; the Stop hook matches verdict → call record
 # by the embedded key.
-_emit("call_id", call_id)
+emit_call_verdict(call_id)
