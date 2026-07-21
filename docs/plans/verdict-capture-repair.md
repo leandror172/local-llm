@@ -110,7 +110,7 @@ Make the durable docs teach what the harness parses. Edit in place:
 | `docs/scaffolding-template.md` | 158-161 | Same |
 | `overlays/ollama-scaffolding/files/local-model-conventions.md` | 144-151 | Same (overlay **source**) |
 | `.claude/overlays/local-model-conventions.md` | 150 | `cp` from the overlay source — currently byte-identical, keep it so |
-| `.claude/handoff-session-66.md` | 136 | Correct the false claim *"Hooks expect this format"* or mark the file historical |
+| `.claude/archive/handoff-session-66.md` | 136 | Correct the false claim *"Hooks expect this format"* or mark the file historical |
 | `docs/plans/verdict-numeric-migration.md` | 38-41, 230 | Annotate: § "Chat-text grammar (no change needed)" was the miss; Phase 5.1 entrenched the competing form |
 | `.claude/agents/impl-opus.md`, `impl-opus-med.md` | 17-19 | They defer to the inline doc — inherit the fix automatically once the overlay doc is corrected; verify |
 

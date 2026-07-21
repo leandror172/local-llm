@@ -132,7 +132,7 @@ closed loop that talks only to itself. Persistent instruction beats ephemeral in
 
 ### 3.5 The capstone: a document that is confidently wrong
 
-`.claude/handoff-session-66.md:136`
+`.claude/archive/handoff-session-66.md:136`
 
 > - **Verdict scoring after `generate_code` calls:** record verdict 0/1/2 + reason +
 >   `~N est. Claude tokens saved` per the `local-model-conventions` pattern.
@@ -208,7 +208,7 @@ untested one.
 | # | Defect | Evidence | Impact |
 |---|---|---|---|
 | D1 | Durable docs teach inline; regex accepts block only | §3.2–3.4 | **Root cause** — ~90 % loss |
-| D2 | A doc asserts inline *is* hook-expected | `.claude/handoff-session-66.md:136` | Misinforms future sessions |
+| D2 | A doc asserts inline *is* hook-expected | `.claude/archive/handoff-session-66.md:136` | Misinforms future sessions |
 | D3 | Migration plan holds both halves | plan `:41` vs `:230` | Wrong axis addressed |
 | D4 | `prompt_hash` is not a call identity | §5.1 | Blocks safe back-fill |
 | D5 | Hash provenance is a positional guess | `ollama-post-tool.py:43-47` | Can mislabel verdicts |
@@ -355,7 +355,7 @@ Recorded because each was stated with more confidence than the evidence supporte
 - `overlays/ollama-scaffolding/files/local-model-conventions.md:144-151` → `cp` to
   `.claude/overlays/local-model-conventions.md` (currently byte-identical) → reinstall overlay
   to the 3 downstream repos (`expenses`, `web-research`, `career-search`)
-- `.claude/handoff-session-66.md:136` — correct or mark historical
+- `.claude/archive/handoff-session-66.md:136` — correct or mark historical
 - `.claude/agents/impl-opus.md:17-19`, `impl-opus-med.md` — inherit the gap via the inline doc
 
 **Code**
