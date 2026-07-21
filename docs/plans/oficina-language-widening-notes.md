@@ -185,6 +185,7 @@ decision, which rests on the axis the benchmark measured cleanly. Full report:
   **fails loud rather than falsely passing** — a half-migrated Go run errors instead of silently
   declaring success. Safety net to lean on during the build.
 
+<!-- ref:oficina-language-widening-decisions -->
 ## Decisions — SETTLED (session 124, after the R3 experiment)
 
 - **R1 — how language is decided: DECLARED.** Add `deliverable.language: Optional[str]` to intake;
@@ -205,6 +206,8 @@ decision, which rests on the axis the benchmark measured cleanly. Full report:
   single-file-through-a-script and has the same blind spot; the worktree is the right compile
   context for BOTH, and Python may eventually want to converge toward Go's, not vice-versa. Not
   acting on it now — noted.)*
+
+<!-- /ref:oficina-language-widening-decisions -->
 
 ## Measured Go output shapes (from the session-124 experiment; write parsers against THESE)
 
