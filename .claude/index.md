@@ -84,7 +84,10 @@ is content the pipeline must not touch. See `docs/plans/resume-config-steps.md`.
 | **T-90 — KV-quant "anomaly" is VRAM contention** | `docs/findings/kv-quant-vram-contention-2026-07-15.md` | q8_0 KV + Flash Attention verified ACTIVE; 14B/32K partial-offload is host-VRAM contention (RTX 3060 also drives Windows desktop → only ~9 GB free of 12). How to inspect host VRAM from WSL (`nvidia-smi.exe` + PowerShell GPU perf counter; Linux nvidia-smi can't under WDDM). Levers: async `submit_run`, disable NVIDIA overlay, lower num_ctx. `ref:kv-quant-vram-contention` |
 | **Model update survey (May 2026)** | `docs/findings/model-updates-2026-05.md` | New models vs current stack: Qwen3.5 tiny (0.8B/2B/4B), Phi-4-mini, Fara-7B, DeepSeek R2 32B, Qwen3-Embedding-8B. Nemotron, Mistral-Nemo, Qwen3.6, MiMo watch entries added session 78. |
 | **Leaderboard survey (Jun 2026)** | `docs/findings/leaderboard-survey-2026-06.md` | HF Open LLM Leaderboard v2 parquet (4,576 models) + Arena.ai rankings. Key finding: leaderboard stale for 2025-2026 models. Falcon3-7B notable (TII license); AceMath-7B blocked (CC-BY-NC-4.0); Kimi K2 cloud-only (1T params). |
-| Portfolio document | `docs/portfolio/portfolio.md` | Unified overview of all 3 repos (llm, expense, web-research), AI/ML techniques, cross-cutting patterns |
+| Portfolio document | `docs/portfolio/portfolio.md` | Unified overview of all 3 repos (llm, expense, web-research), AI/ML techniques, cross-cutting patterns. ⚠️ **Stale (last touched 2026-06-09)** — still uses the retired `ACCEPTED/IMPROVED/REJECTED` vocabulary and claims verdicts are recorded on *every* output (measured: 18.7%). Deliberately left for a career-search session to rewrite. |
+| **Doc staleness report (2026-06-09)** | `docs/portfolio/doc-staleness-report-2026-06-09.md` | First staleness audit — caught a `KNOWLEDGE.md` contradicting itself on the embedding model. Precedent + method for the session-126 register refresh. Untracked. |
+| **RAG/AI-ML claims verification (2026-06-09)** | `docs/portfolio/rag-verification-report-2026-06-09.md` | What could honestly be claimed for a Java+AI role listing RAG + vector DBs; per-item status. Untracked. |
+| **Overlay distribution options (9 options A–I)** | `docs/findings/overlay-distribution-options.md` | Symlink / vendor / package / submodule … evaluated for shipping the session-tracking pipeline; per-option files-per-repo, sync cost, runtime dep. `ref:overlay-distribution-options`. Superseded in practice by R-D9 (code = package, config = overlay), retained for the rationale. |
 | AI-readable engineer profile | `docs/portfolio/engineer-profile.md` | Structured doc designed for LLM context — skills, philosophy, conversation starters |
 | Portfolio chatbot roadmap | `docs/portfolio/hf-space/ROADMAP-smart-chatbot.md` | 4-phase plan: static expansion → retrieval → source awareness → cross-project |
 | Chatbot context sync script | `docs/portfolio/hf-space/sync-context.sh` | Copies .memories/ + READMEs from all 3 repos into context/ for chatbot |
@@ -163,6 +166,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/hooks/tests/run-tests.sh` | Hermetic hook tests — runs every `test_*.py` in `.claude/hooks/tests/` via subprocess against the hook scripts (26 tests). Self-running scripts with a `__main__` block printing PASS/FAIL — **not pytest**, no fixtures | After any change to a `.claude/hooks/` script |
 | `.claude/hooks/tests/test_verdict_capture.py` | Verdict-harness tests (T-105, 14): the **producer→consumer round-trip** (fills the actually-injected template and feeds it to the actual consumer — mutation-verified to fail on key drift), content-match provenance incl. the fence-stripped case, silent-on-no-match, both-keys recording, legacy `prompt_hash=` acceptance, dedupe, the sweep regression (two calls sharing one `prompt_hash` are independently judgeable), and the oficina per-run path (prompt only when a deliverable exists; silent while not terminal; `run_id`-keyed block — uses a **real base64url run id**, mutation-verified to fail against a hex-only regex). HOME-isolated via `tempfile` | After any change to `ollama-post-tool.py` or `verdict-capture.py` |
 | `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; `--list` = all keys; `--paths` = KEY→repo-relative-path map (`.claude/local/` excluded) | Any time a `[ref:KEY]` tag is needed; `--paths` for programmatic key→file lookup |
+| `.claude/tools/check-ref-integrity.sh` | Validate `ref:` block integrity across every `*.md`: dangling `[ref:KEY]` tags, unclosed blocks, duplicate definitions. `--root <abs>` to check another repo. Thin wrapper over `check-ref-integrity.py` | After editing any `<!-- ref:KEY -->` block or adding a `[ref:KEY]` tag. **Baseline is not zero** — 17 errors / 178 warnings pre-exist (2026-07-21); compare against that, don't expect clean |
 | `overlays/ref-indexing/files/tests/test-ref-lookup-paths.sh` | Fully hermetic tests for `ref-lookup.sh` (`--paths`/`--list`/single-key/glob): builds its own fixture corpus via `--root`, no repo coupling (9 tests, exit 0 = all pass). Run via `make -C overlays test-ref-indexing`; installs to consumer repos as `.claude/tools/tests/...` | After any change to `ref-lookup.sh` |
 | `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
 | `.claude/tools/handoff-harvest.sh` | Emit commit subjects since the last `chore(session-handoff): session ` commit (tighter than bare prefix — avoids false boundaries from other `chore(session-handoff):` uses); fallback to last 20 if none found | Run at handoff Step 2 to seed `what_was_done` |
@@ -250,10 +254,13 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 
 ## Personas (Modelfiles)
 
-**Registry:** `personas/registry.yaml` (machine-readable source of truth)
-**Template:** `personas/persona-template.md` (spec for creating new personas)
-**Full catalog (all categories + modelfiles):** `personas/personas-reference.md` [ref:personas lives here]
-**Ideas / future candidates:** `personas/ideas.md`
+**Folder-local index (authoritative map): `personas/index.md`** — files, tools, tests,
+memory, and the open `ref:personas` catalog gap (T-108). Index split, same pattern as
+`docs/vision/coding-delegate/index.md`; do not re-inline the persona file map here.
+
+Fastest entry points: `personas/registry.yaml` (source of truth) ·
+`personas/personas-reference.md` (`ref:personas` lives here — **known incomplete**,
+34 of 59; see `personas/index.md`) · `personas/persona-template.md` · `personas/ideas.md`
 
 ---
 
@@ -305,21 +312,12 @@ Full research → `.claude/archive/layer-1-research.md`
 
 ---
 
-## Layer 3 Implementation
+## Layer 3 Implementation (Personas)
 
-| Topic | File | Key Content |
-|-------|------|-------------|
-| Persona template spec | `personas/persona-template.md` | Fields, defaults, skeleton, model selection, checklist |
-| Persona registry | `personas/registry.yaml` | **59 personas — 51 active, 6 benchmark, 2 inactive**, across 14 base models (2026-07-21); machine-readable source of truth |
-| Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags; accepts raw float temps [0.0,2.0] (T-19) |
-| Creator bash wrapper | `personas/run-create-persona.sh` | Whitelist-safe entry point (auto-approved) |
-| All Modelfiles | `modelfiles/*.Modelfile` | **59 total** across all categories (1:1 with registry entries) |
-| Full persona catalog | `personas/personas-reference.md` | All personas by category with modelfile + base model |
-| Future persona ideas | `personas/ideas.md` | Candidates not yet built |
-| Personas test harness | `personas/run-tests.sh` | `python3 -m pytest` wrapper; 21 tests across unit + integration |
-| Personas pytest config | `personas/pyproject.toml` | `[tool.pytest.ini_options]` testpaths + pythonpath |
-| Temperature unit tests | `personas/tests/test_temperature.py` | Tests for `parse_temperature_input` (models.py) |
-| collect_from_flags tests | `personas/tests/test_collect_flags.py` | Integration tests: argparse + collect_from_flags end-to-end |
+**Moved → `personas/index.md`.** Every row of this table was a `personas/` (or
+persona-owned `modelfiles/`) path, so the whole map now lives with the code it describes.
+Snapshot: **59 personas — 51 active, 6 benchmark, 2 inactive**, across 14 base models,
+59 Modelfiles, 21 tests (2026-07-21; re-derive from `registry.yaml`, don't quote this).
 
 ---
 

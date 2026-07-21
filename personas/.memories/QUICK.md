@@ -12,6 +12,10 @@ Last additions: session 50 (2026-04-09) — gemma3:12b + gemma3:27b added to mod
   my-go-g3-12b, my-python-g3-12b created (active); my-go-g3-27b, my-python-g3-27b (inactive — too slow).
 MCP tools (create_persona, copy_persona) operational via ollama-bridge.
 
+**Folder map → `personas/index.md`** (authoritative; the root `.claude/index.md` is a
+pointer only). ⚠️ **`ref:personas` lists 34 of 59 — 51% of real calls use an omitted
+persona (T-108).** Strategies recorded in `index.md` § "Open"; decision deferred.
+
 ## Architecture
 
 Three independent tools that coordinate through shared YAML files:
