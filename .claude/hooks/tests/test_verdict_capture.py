@@ -177,6 +177,22 @@ def test_post_tool_matches_call_by_response_content():
         assert "eee555fff666" not in template, "tail record won over the content match"
 
 
+def test_post_tool_matches_when_tool_stripped_code_fences():
+    """generate_code returns stripped content; the log keeps the raw fenced text.
+
+    Regression, found live 2026-07-21: exact-match-only silently skipped EVERY
+    generate_code call — the primary judgeable tool — because the returned text is
+    a substring of the logged text and never equals it.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        body = "from typing import List\n\ndef select(x):\n    return x\n"
+        write_calls(home, [call("aaa111bbb222", "beef00000001", f"```python\n{body}```")])
+        template = run_post_tool(home, "mcp__ollama-bridge__generate_code", body)
+        assert template is not None, "fenced/stripped mismatch was not tolerated"
+        assert "call_id=aaa111bbb222" in template
+
+
 def test_post_tool_stays_silent_when_nothing_matches():
     """A backgrounded call is not yet logged; naming the previous call would mislabel."""
     with tempfile.TemporaryDirectory() as td:
@@ -260,6 +276,7 @@ if __name__ == "__main__":
         test_injected_template_is_parseable_once_filled,
         test_post_tool_skips_non_judgeable_tool,
         test_post_tool_matches_call_by_response_content,
+        test_post_tool_matches_when_tool_stripped_code_fences,
         test_post_tool_stays_silent_when_nothing_matches,
         test_capture_writes_both_call_id_and_prompt_hash,
         test_capture_accepts_legacy_prompt_hash_form,

@@ -80,8 +80,20 @@ if CALLS_LOG.exists():
     if returned:
         # Newest-first: if an identical response was ever produced twice, the call
         # that just ran is the later one.
+        needle = returned.strip()
         for entry in reversed(records):
-            if entry.get("response") == returned:
+            logged = (entry.get("response") or "").strip()
+            if not logged:
+                continue
+            # Exact match is the common case (ask_ollama returns content verbatim).
+            #
+            # Containment covers the tools that post-process before returning:
+            # generate_code returns _strip_code_fences(content) while _log_call
+            # records the RAW content, so the returned text is a substring of the
+            # logged text and never equals it. Observed live 2026-07-21 — exact
+            # match alone silently skipped every generate_code call, i.e. exactly
+            # the tool this harness exists to judge.
+            if logged == needle or (len(needle) > 20 and needle in logged):
                 match = entry
                 break
     if match is not None:
