@@ -58,7 +58,7 @@ if CALLS_LOG.exists():
         except Exception:
             continue
         if entry.get("type") == "verdict":
-            for key in ("call_id", "prompt_hash"):
+            for key in ("call_id", "prompt_hash", "run_id"):
                 if entry.get(key):
                     existing_verdict_keys.add(entry[key])
         else:
@@ -107,9 +107,14 @@ full_text = "\n".join(assistant_chunks)
 #
 # `prompt_hash=` is still accepted so blocks written before T-105 — and any still
 # sitting in an open transcript when this shipped — are not silently dropped.
-# Both forms must stay lowercase-hex: the capture group is [a-f0-9]+.
+#
+# The value charset is [A-Za-z0-9_-], NOT [a-f0-9]: oficina run ids are
+# base64url-shaped (e.g. `-L-rwoCLLsoL33eirtSRzw`), so a hex-only class would
+# reject every run-keyed block *silently* — the same class of failure this whole
+# harness was repaired for. call_id remains lowercase hex; the wider class admits
+# it unchanged.
 pattern = re.compile(
-    r"\[VERDICT (?:call_id|prompt_hash)=([a-f0-9]+)\]\s*"
+    r"\[VERDICT (call_id|prompt_hash|run_id)=([A-Za-z0-9_-]+)\]\s*"
     r"verdict:\s*([012])[^\n]*\n"
     r"reason:\s*([^\n]+)\n"
     r"est_claude_tokens:\s*(\d+)[^\n]*\n"
@@ -123,23 +128,30 @@ if not matches:
 
 # --- Append new verdict records ---
 new_records = []
-for key, verdict, reason, est_tokens in matches:
+for key_name, key, verdict, reason, est_tokens in matches:
     if key in existing_verdict_keys:
         continue
-    call = calls_by_id.get(key, {})
     record = {
         "type": "verdict",
         "ts": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
-        # Both keys are written: call_id is identity, prompt_hash keeps the record
-        # joinable with pre-T-105 data and with readers that still expect it.
-        "call_id": call.get("call_id") or key,
-        "prompt_hash": call.get("prompt_hash") or key,
         "verdict": int(verdict),
         "reason": reason.strip(),
         "est_claude_tokens": int(est_tokens),
     }
-    if call.get("tool"):
-        record["tool"] = call["tool"]
+    if key_name.lower() == "run_id":
+        # oficina: one verdict for the RUN's deliverable, not its N iterations.
+        # There is deliberately no call_id — the run spans several calls, and
+        # picking one would misattribute the judgment.
+        record["run_id"] = key
+        record["tool"] = "oficina"
+    else:
+        call = calls_by_id.get(key, {})
+        # Both keys are written: call_id is identity, prompt_hash keeps the record
+        # joinable with pre-T-105 data and with readers that still expect it.
+        record["call_id"] = call.get("call_id") or key
+        record["prompt_hash"] = call.get("prompt_hash") or key
+        if call.get("tool"):
+            record["tool"] = call["tool"]
     new_records.append(record)
     existing_verdict_keys.add(key)  # a block repeated within one turn is one verdict
 

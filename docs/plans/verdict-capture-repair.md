@@ -152,6 +152,39 @@ Per V-D2, judge the **deliverable**, not the iterations.
 **Acceptance:** completing an oficina run and calling `run_result` prompts once, and the
 captured verdict joins to the run's calls via `run_id`.
 
+### Phase 4 scouting (2026-07-21) — one blocker, one simplification
+
+**BLOCKER — `run_id` is not hex, so the current regex rejects it.** The capture group is
+`([a-f0-9]+)`; real run ids are base64url-shaped (`-L-rwoCLLsoL33eirtSRzw`,
+`8gXFFyziyzG-uZLs8eycJg`) — mixed case, `-`, `_`. A `[VERDICT run_id=…]` block would silently
+fail to parse, reproducing the exact class of bug this whole effort is fixing. **The character
+class must widen to `[A-Za-z0-9_-]+` in the same commit that introduces run-keyed blocks**, with
+a test using a real run id. (`re.IGNORECASE` already admits `A-F`; it does not help here.)
+
+**SIMPLIFICATION — identity needs no content matching.** `run_result(run_id: str)`
+(`server.py:1544`) takes the id as an explicit argument, so the hook reads
+`tool_input["run_id"]` directly. This is strictly more reliable than the `generate_code` path,
+which must match on returned content.
+
+**Granularity is a real reduction:** 18 oficina-tagged calls span 12 runs (up to 3 calls each),
+so per-run judging asks for ~12 verdicts instead of 18, and asks about the thing actually
+reviewed.
+
+**Do NOT conflate with `auto_verdict`.** `loop.py:157` already records
+`auto_verdict = 2 if passed else 0` into the ledger (T-99: ledger-only; the P4 DPO pass joins
+ledger↔`calls.jsonl` on `run_id`). That signal is **binary and mechanical** — "did the
+evaluator's tests pass". It structurally cannot express **1 (improved)**: *correct, but I had to
+change it* — historically 64.8% of all verdicts and the richest DPO category. The session
+verdict is a different axis and adds what `auto_verdict` cannot.
+
+**Open decisions:**
+1. Should non-`Delivered` terminal states (Failed / Exhausted) be prompted for a verdict, or is
+   `auto_verdict = 0` already sufficient there? Leaning: prompt only when a deliverable exists.
+2. `run_result` may be polled more than once — dedupe on `run_id` covers it, but confirm the
+   hook does not prompt on the not-terminal-yet error path (`server.py:1562`).
+3. Verdict records would gain a `run_id` key alongside `call_id`/`prompt_hash`; readers
+   (`ollama-stats.py`, `ollama-verdicts.py`) must tolerate the heterogeneous key.
+
 ---
 
 ## Phase 5 — Tests (D7)

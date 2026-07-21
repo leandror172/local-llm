@@ -102,6 +102,27 @@ def run_post_tool(home: Path, tool_name: str, returned: str):
     return out.get("hookSpecificOutput", {}).get("additionalContext")
 
 
+def run_run_result_hook(home: Path, run_id, payload):
+    """Fire the PostToolUse hook for run_result; return the template, or None.
+
+    `payload` is what the tool returned: a dict (serialised like the real tool
+    does) or a raw string for the error paths.
+    """
+    returned = payload if isinstance(payload, str) else json.dumps(payload)
+    proc = _run(
+        POST_TOOL,
+        home,
+        {
+            "tool_name": "mcp__ollama-bridge__run_result",
+            "tool_input": {} if run_id is None else {"run_id": run_id},
+            "tool_response": json.dumps({"result": returned}),
+        },
+    )
+    assert proc.returncode == 0, proc.stderr
+    out = json.loads(proc.stdout or "{}")
+    return out.get("hookSpecificOutput", {}).get("additionalContext")
+
+
 def run_capture(home: Path, transcript: Path) -> None:
     proc = _run(
         CAPTURE, home, {"hook_event_name": "Stop", "transcript_path": str(transcript)}
@@ -201,6 +222,79 @@ def test_post_tool_stays_silent_when_nothing_matches():
         assert run_post_tool(home, "mcp__ollama-bridge__generate_code", "NOT LOGGED") is None
 
 
+# --- oficina: judged per run, on the deliverable ----------------------------
+
+# A real oficina run id: base64url-shaped, NOT hex. Using a hex-looking stand-in
+# here would make these tests pass against a hex-only regex and miss the bug.
+REAL_RUN_ID = "-L-rwoCLLsoL33eirtSRzw"
+
+
+def test_run_result_prompts_once_when_a_deliverable_exists():
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        write_calls(home, [])
+        template = run_run_result_hook(
+            home,
+            REAL_RUN_ID,
+            {"state": "completed", "report": {}, "deliverable": {"branch": "b", "commit": "c"}},
+        )
+        assert template is not None, "a delivered run was not offered for judging"
+        assert f"run_id={REAL_RUN_ID}" in template
+        assert "call_id" not in template, "a run must not be judged as a single call"
+
+
+def test_run_result_silent_when_run_produced_no_deliverable():
+    """Failed / IntakeRejected / Cancelled: the ledger's auto_verdict already says 0."""
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        write_calls(home, [])
+        assert run_run_result_hook(
+            home, REAL_RUN_ID, {"state": "failed", "report": {}, "deliverable": None}
+        ) is None
+
+
+def test_run_result_silent_while_run_not_terminal():
+    """run_result may be polled before completion; polling must not prompt."""
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        write_calls(home, [])
+        assert run_run_result_hook(
+            home, REAL_RUN_ID, "Error: run not terminal yet — running"
+        ) is None
+
+
+def test_capture_accepts_run_keyed_block():
+    """Regression: run ids are base64url, so a hex-only capture group rejects them."""
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        write_calls(home, [])
+        write_transcript(home / "t.jsonl", block("run_id", REAL_RUN_ID, 1, "deliverable needed edits"))
+        run_capture(home, home / "t.jsonl")
+
+        verdicts = read_verdicts(home)
+        assert len(verdicts) == 1, "run-keyed block was not captured"
+        assert verdicts[0]["run_id"] == REAL_RUN_ID
+        assert verdicts[0]["tool"] == "oficina"
+        assert "call_id" not in verdicts[0], "a run verdict must not claim a single call"
+
+
+def test_capture_dedupes_on_run_id():
+    """run_result is often called more than once for the same run."""
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        write_calls(
+            home,
+            [{
+                "type": "verdict", "ts": "t", "run_id": REAL_RUN_ID, "tool": "oficina",
+                "verdict": 2, "reason": "first", "est_claude_tokens": 10,
+            }],
+        )
+        write_transcript(home / "t.jsonl", block("run_id", REAL_RUN_ID, 0, "replay"))
+        run_capture(home, home / "t.jsonl")
+
+        assert len(read_verdicts(home)) == 1
+
+
 # --- consumer side ---------------------------------------------------------
 
 def test_capture_writes_both_call_id_and_prompt_hash():
@@ -278,6 +372,11 @@ if __name__ == "__main__":
         test_post_tool_matches_call_by_response_content,
         test_post_tool_matches_when_tool_stripped_code_fences,
         test_post_tool_stays_silent_when_nothing_matches,
+        test_run_result_prompts_once_when_a_deliverable_exists,
+        test_run_result_silent_when_run_produced_no_deliverable,
+        test_run_result_silent_while_run_not_terminal,
+        test_capture_accepts_run_keyed_block,
+        test_capture_dedupes_on_run_id,
         test_capture_writes_both_call_id_and_prompt_hash,
         test_capture_accepts_legacy_prompt_hash_form,
         test_capture_dedupes_on_call_id,
