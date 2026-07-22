@@ -44,7 +44,7 @@ is content the pipeline must not touch. See `docs/plans/resume-config-steps.md`.
 | **oficina P2 — evaluated deliverable loop (FROZEN plan, T-92)** | `docs/plans/oficina-p2-evaluated-loop.md` | FROZEN session 119 (advisor-reviewed): coder⇄evaluator loop as a new `GenerateFn` seam. Decisions **P2-D1–P2-D13** (first slice = `function`-against-tests, Python, 3-iter; monotonic-prefix cache contract + single swappable `SEGMENTS`+guard test; rule-based in-loop classifier is cache-load-bearing; per-run reused worktree; signature = sorted normalized `error_key` set; category = failing stage via one shared parser; diversity-not-size escalation; delta-scope baseline C0 + free anti-cheat; T-91 is a P2 prereq; `input_required` declared-but-unreachable). Individually-anchored state + loop Mermaid diagrams; draft-P2→frozen event promotions; documentation-lifecycle rule (post-impl diagrams go FINAL in vision folder, plan reports result); run spec + acceptance + T1–T8 build steps. `ref:delegate-p2-goal`, `ref:delegate-p2-decisions`, `ref:delegate-p2-state-diagram`, `ref:delegate-p2-loop-diagram`, `ref:delegate-p2-events`, `ref:delegate-p2-acceptance` |
 | **oficina async ergonomics — migration shape + V-D12 (T-89)** | `docs/plans/oficina-async-ergonomics.md` | DECIDED session 117: no sync facade/cutover (sync directness = v1 interactive priority); routing convention (deliverable-shaped → `submit_run`, small → sync); harness-owned monitoring (PostToolUse watch hook, SessionStart store-scan, `watch --result` check, worker `refs` parity). `ref:oficina-async-migration-shape`, `ref:oficina-async-ergonomics-scope` |
 | **Overlay AI-merge latency (T-81 P2 findings)** | `docs/findings/overlay-merge-latency-2026-07-12.md` | `num_ctx=4096` truncated ~3.8K-token merge inputs (RC1); `fit_num_ctx` sizes ctx to input → 8192; `think:false` on qwen3:14b is 5.1× faster (86.9s→17.0s) + better placement (RC2); prod-chain `--stage` acceptance 4.16s. Chunking (§3.4) deferred — trigger not met. |
-| **Verdict capture collapse — findings (T-105, session 125)** | `docs/findings/verdict-coverage-collapse-2026-07-21.md` | Why local-model verdict coverage is 9.9%: every durable doc teaches an inline phrase (`2 — ~300 est. …`) while the capture regex accepts only a `[VERDICT prompt_hash=…]` block **taught nowhere durable** (`verdict-capture.py:88-95` vs `CLAUDE.md:110`). Evidence-cited (file:line) register D1–D10; **49 recoverable** verdicts; **81.4% of calls carry no judgment in any form** — the format fix is the minority of the gap; `prompt_hash` is content-addressing reused as identity (1 hash = 24 calls / 8 models); `calls.jsonl` has no `tool` field so the denominator is unmeasurable. §9 records four claims the investigation got wrong + corrections. Live probe proved the harness works. `ref:verdict-coverage-findings` |
+| **Verdict capture collapse — findings (T-105, session 125)** | `docs/findings/verdict-coverage-collapse-2026-07-21.md` | Why local-model verdict coverage is 9.9%: every durable doc teaches an inline phrase (`2 — ~300 est. …`) while the capture regex accepts only a `[VERDICT prompt_hash=…]` block **taught nowhere durable** (`verdict-capture.py:88-95` vs `CLAUDE.md:110`). Evidence-cited (file:line) register D1–D10; **49 recoverable, 48 actually recovered** (the 49th's subagent transcript was already collected) — coverage **9.6% → 18.7%** after PR #80; **81.4% of calls carry no judgment in any form** — the format fix is the minority of the gap; `prompt_hash` is content-addressing reused as identity (1 hash = 24 calls / 8 models); `calls.jsonl` has no `tool` field so the denominator is unmeasurable. §9 records four claims the investigation got wrong + corrections. Live probe proved the harness works. `ref:verdict-coverage-findings` |
 | **Verdict capture repair — plan (T-105)** | `docs/plans/verdict-capture-repair.md` | 8-phase repair. Decisions V-D1–V-D5: judgeable = `generate_code` + oficina **per-run** deliverables (oficina bypasses the MCP tool — `loop.py:260` → `GenerateFn` seam `worker.py:43`); **measure first, gate later** (PostToolUse cannot block; a `Stop` block forces turn continuation → forced ≠ considered verdict); `call_id`+`tool` in `_log_call` replace `prompt_hash` as identity. Phase 0 verifies the hook schema empirically before any hook edit; Phase 5 tests the **producer→consumer seam** (the 2026-03 fixture test was the wrong shape). `ref:verdict-capture-decisions` |
 | Scaffolding template (portable) | `docs/scaffolding-template.md` | `.claude/` convention: directory structure, file purposes, ref:KEY system, setup checklist |
 | **Claude Code dynamic workflows guide** | `.claude/workflows-feature-guide.md` | What workflows are (script-orchestrated subagents at scale), when to use vs not, commands (`/deep-research`, `/workflows`, `ultracode`), limits, repo-specific candidates. Captured session 81. |
@@ -84,7 +84,10 @@ is content the pipeline must not touch. See `docs/plans/resume-config-steps.md`.
 | **T-90 — KV-quant "anomaly" is VRAM contention** | `docs/findings/kv-quant-vram-contention-2026-07-15.md` | q8_0 KV + Flash Attention verified ACTIVE; 14B/32K partial-offload is host-VRAM contention (RTX 3060 also drives Windows desktop → only ~9 GB free of 12). How to inspect host VRAM from WSL (`nvidia-smi.exe` + PowerShell GPU perf counter; Linux nvidia-smi can't under WDDM). Levers: async `submit_run`, disable NVIDIA overlay, lower num_ctx. `ref:kv-quant-vram-contention` |
 | **Model update survey (May 2026)** | `docs/findings/model-updates-2026-05.md` | New models vs current stack: Qwen3.5 tiny (0.8B/2B/4B), Phi-4-mini, Fara-7B, DeepSeek R2 32B, Qwen3-Embedding-8B. Nemotron, Mistral-Nemo, Qwen3.6, MiMo watch entries added session 78. |
 | **Leaderboard survey (Jun 2026)** | `docs/findings/leaderboard-survey-2026-06.md` | HF Open LLM Leaderboard v2 parquet (4,576 models) + Arena.ai rankings. Key finding: leaderboard stale for 2025-2026 models. Falcon3-7B notable (TII license); AceMath-7B blocked (CC-BY-NC-4.0); Kimi K2 cloud-only (1T params). |
-| Portfolio document | `docs/portfolio/portfolio.md` | Unified overview of all 3 repos (llm, expense, web-research), AI/ML techniques, cross-cutting patterns |
+| Portfolio document | `docs/portfolio/portfolio.md` | Unified overview of all 3 repos (llm, expense, web-research), AI/ML techniques, cross-cutting patterns. ⚠️ **Stale (last touched 2026-06-09)** — still uses the retired `ACCEPTED/IMPROVED/REJECTED` vocabulary and claims verdicts are recorded on *every* output (measured: 18.7%). Deliberately left for a career-search session to rewrite. |
+| **Doc staleness report (2026-06-09)** | `docs/portfolio/doc-staleness-report-2026-06-09.md` | First staleness audit — caught a `KNOWLEDGE.md` contradicting itself on the embedding model. Precedent + method for the session-126 register refresh. |
+| **RAG/AI-ML claims verification (2026-06-09)** | `docs/portfolio/rag-verification-report-2026-06-09.md` | What could honestly be claimed for a Java+AI role listing RAG + vector DBs; per-item status. |
+| **Overlay distribution options (9 options A–I)** | `docs/findings/overlay-distribution-options.md` | Symlink / vendor / package / submodule … evaluated for shipping the session-tracking pipeline; per-option files-per-repo, sync cost, runtime dep. `ref:overlay-distribution-options`. Superseded in practice by R-D9 (code = package, config = overlay), retained for the rationale. |
 | AI-readable engineer profile | `docs/portfolio/engineer-profile.md` | Structured doc designed for LLM context — skills, philosophy, conversation starters |
 | Portfolio chatbot roadmap | `docs/portfolio/hf-space/ROADMAP-smart-chatbot.md` | 4-phase plan: static expansion → retrieval → source awareness → cross-project |
 | Chatbot context sync script | `docs/portfolio/hf-space/sync-context.sh` | Copies .memories/ + READMEs from all 3 repos into context/ for chatbot |
@@ -163,6 +166,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/hooks/tests/run-tests.sh` | Hermetic hook tests — runs every `test_*.py` in `.claude/hooks/tests/` via subprocess against the hook scripts (26 tests). Self-running scripts with a `__main__` block printing PASS/FAIL — **not pytest**, no fixtures | After any change to a `.claude/hooks/` script |
 | `.claude/hooks/tests/test_verdict_capture.py` | Verdict-harness tests (T-105, 14): the **producer→consumer round-trip** (fills the actually-injected template and feeds it to the actual consumer — mutation-verified to fail on key drift), content-match provenance incl. the fence-stripped case, silent-on-no-match, both-keys recording, legacy `prompt_hash=` acceptance, dedupe, the sweep regression (two calls sharing one `prompt_hash` are independently judgeable), and the oficina per-run path (prompt only when a deliverable exists; silent while not terminal; `run_id`-keyed block — uses a **real base64url run id**, mutation-verified to fail against a hex-only regex). HOME-isolated via `tempfile` | After any change to `ollama-post-tool.py` or `verdict-capture.py` |
 | `.claude/tools/ref-lookup.sh KEY` | Print a ref block by key; `--list` = all keys; `--paths` = KEY→repo-relative-path map (`.claude/local/` excluded) | Any time a `[ref:KEY]` tag is needed; `--paths` for programmatic key→file lookup |
+| `.claude/tools/check-ref-integrity.sh` | Validate `ref:` block integrity across every `*.md`: dangling `[ref:KEY]` tags, unclosed blocks, duplicate definitions. `--root <abs>` to check another repo. Thin wrapper over `check-ref-integrity.py` | After editing any `<!-- ref:KEY -->` block or adding a `[ref:KEY]` tag. **Baseline is not zero** — 17 errors / 178 warnings pre-exist (2026-07-21); compare against that, don't expect clean |
 | `overlays/ref-indexing/files/tests/test-ref-lookup-paths.sh` | Fully hermetic tests for `ref-lookup.sh` (`--paths`/`--list`/single-key/glob): builds its own fixture corpus via `--root`, no repo coupling (9 tests, exit 0 = all pass). Run via `make -C overlays test-ref-indexing`; installs to consumer repos as `.claude/tools/tests/...` | After any change to `ref-lookup.sh` |
 | `.claude/tools/rotate-session-log.sh` | Archive old session-log entries (keep last 3) | Auto-called by session-handoff skill |
 | `.claude/tools/handoff-harvest.sh` | Emit commit subjects since the last `chore(session-handoff): session ` commit (tighter than bare prefix — avoids false boundaries from other `chore(session-handoff):` uses); fallback to last 20 if none found | Run at handoff Step 2 to seed `what_was_done` |
@@ -171,7 +175,7 @@ Other findings (benchmarks, decomposition, few-shot) → `.claude/archive/layer-
 | `.claude/tools/ollama-verdicts.py` | Detailed verdict analysis: reasons, patterns, rejection heuristics | Finding which models/prompts need improvement |
 | `overlays/session-tracking/files/handoff/run-handoff.sh` | Session-handoff pipeline entrypoint (wraps `handoff.py`): `--payload` (stage) / `--id` (promote) / `--payload --amend` (additive follow-up to last committed session) / `--abort` / `--repo-root` / `--registry`. Lives in the overlay source; installs to `.claude/tools/handoff/run-handoff.sh` in target repos | Running the deterministic handoff transaction; stage emits a JSON handle, promote commits |
 | `overlays/test_merge_stage_apply.py` | T-81 Part 1 stage→apply suite (13 tests): staleness invariant (STALE abort before write), dry-run purity, CRLF preservation, independent-path merge check. Hermetic (mocked `FakeBackend`). Run via `make -C overlays test-installer` | After any change to `ai_merge`/stage/apply in `lib/planner.py` |
-| `overlays/Makefile` | Overlay dev test runner — delegates to `scripts/`: `make test` (all 291), `make test-ref-indexing` (9), `make test-session-tracking` (214), `make test-installer` (68: `test_verify.py` + `test_customizable.py` + `test_signals.py` + `test_merge_stage_apply.py`). `ARGS='-k x'` passes pytest filters. Default `make` prints help | Before committing overlay changes |
+| `overlays/Makefile` | Overlay dev test runner — delegates to `scripts/`: `make test` (all 296), `make test-ref-indexing` (9), `make test-session-tracking` (214), `make test-installer` (73: `test_verify.py` + `test_customizable.py` + `test_signals.py` + `test_merge_stage_apply.py`). `ARGS='-k x'` passes pytest filters. Default `make` prints help | Before committing overlay changes |
 | `overlays/scripts/run-all-tests.sh` | Aggregator — runs every overlay suite, prints a PASS/FAIL summary, exits nonzero on any failure (runs all suites even if one fails). Backs `make test` | CI / one-shot full overlay test run |
 | `overlays/scripts/test-{ref-indexing,session-tracking,installer}.sh` | Per-suite runners (resolve cwd + interpreter for each suite); args pass through to the underlying test/pytest. Backs the per-suite `make` targets | Running one overlay's suite standalone |
 
@@ -250,10 +254,13 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 
 ## Personas (Modelfiles)
 
-**Registry:** `personas/registry.yaml` (machine-readable source of truth)
-**Template:** `personas/persona-template.md` (spec for creating new personas)
-**Full catalog (all categories + modelfiles):** `personas/personas-reference.md` [ref:personas lives here]
-**Ideas / future candidates:** `personas/ideas.md`
+**Folder-local index (authoritative map): `personas/index.md`** — files, tools, tests,
+memory, and the open `ref:personas` catalog gap (T-108). Index split, same pattern as
+`docs/vision/coding-delegate/index.md`; do not re-inline the persona file map here.
+
+Fastest entry points: `personas/registry.yaml` (source of truth) ·
+`personas/personas-reference.md` (`ref:personas` lives here — **known incomplete**,
+34 of 59; see `personas/index.md`) · `personas/persona-template.md` · `personas/ideas.md`
 
 ---
 
@@ -261,7 +268,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 
 | Topic | File | Key Content |
 |-------|------|-------------|
-| MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, 10 tools |
+| MCP server (complete project) | `mcp-server/` | FastMCP server, Ollama async client, **18 tools**, 279 tests |
 | Usage patterns & limitations docs | `mcp-server/README.md` | Architecture, tools, delegation guide, troubleshooting |
 | Server config (defaults, env vars) | `mcp-server/src/ollama_mcp/config.py` | OLLAMA_URL, model, timeout, think, temps |
 | Ollama async client | `mcp-server/src/ollama_mcp/client.py` | httpx connection pooling, ChatResponse, error types |
@@ -305,21 +312,12 @@ Full research → `.claude/archive/layer-1-research.md`
 
 ---
 
-## Layer 3 Implementation
+## Layer 3 Implementation (Personas)
 
-| Topic | File | Key Content |
-|-------|------|-------------|
-| Persona template spec | `personas/persona-template.md` | Fields, defaults, skeleton, model selection, checklist |
-| Persona registry | `personas/registry.yaml` | 28 active, 0 planned; machine-readable source of truth |
-| Persona creator CLI | `personas/create-persona.py` | Interactive 8-step flow or `--non-interactive` flags; accepts raw float temps [0.0,2.0] (T-19) |
-| Creator bash wrapper | `personas/run-create-persona.sh` | Whitelist-safe entry point (auto-approved) |
-| All Modelfiles | `modelfiles/*.Modelfile` | 28 total across all categories |
-| Full persona catalog | `personas/personas-reference.md` | All personas by category with modelfile + base model |
-| Future persona ideas | `personas/ideas.md` | Candidates not yet built |
-| Personas test harness | `personas/run-tests.sh` | `python3 -m pytest` wrapper; 21 tests across unit + integration |
-| Personas pytest config | `personas/pyproject.toml` | `[tool.pytest.ini_options]` testpaths + pythonpath |
-| Temperature unit tests | `personas/tests/test_temperature.py` | Tests for `parse_temperature_input` (models.py) |
-| collect_from_flags tests | `personas/tests/test_collect_flags.py` | Integration tests: argparse + collect_from_flags end-to-end |
+**Moved → `personas/index.md`.** Every row of this table was a `personas/` (or
+persona-owned `modelfiles/`) path, so the whole map now lives with the code it describes.
+Snapshot: **59 personas — 51 active, 6 benchmark, 2 inactive**, across 14 base models,
+59 Modelfiles, 21 tests (2026-07-21; re-derive from `registry.yaml`, don't quote this).
 
 ---
 

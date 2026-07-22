@@ -96,15 +96,31 @@ must be backward-compatible.
 
 ## DPO Data Collection Strategy (2026-03)
 
-Every local model call is logged to JSONL (prompt, response, model, latency, token counts).
-Human verdicts (0/1/2) are recorded alongside each generation.
-The evaluator framework adds automated quality scores (Phase 1) and LLM judge scores (Phase 2).
-Together these form DPO training triples: (prompt, response, quality_signal).
+Every local model call is logged to JSONL (prompt, response, model, latency, token counts;
+plus `call_id` + `tool` since 2026-07-21). Human verdicts (0/1/2) are recorded **for the
+judgeable subset** — `generate_code`/`ask_ollama` per-call and oficina per-RUN — as separate
+typed records joined on `call_id`. The evaluator framework adds automated quality scores
+(Phase 1) and LLM judge scores (Phase 2). Together these form DPO training triples:
+(prompt, response, quality_signal).
 
 **Rationale:** Fine-tuning requires labeled preference data. Collecting it passively
 during normal work avoids the cost of dedicated annotation.
-**Implication:** Every coding task that uses local models produces training data as
-a byproduct. The verdict protocol is not overhead — it's the data pipeline.
+
+**MEASURED REALITY, not the design intent (T-105, 2026-07-21 — do not restate the
+aspiration as fact):** coverage is **18.7% (106 verdicts / 566 calls)**, not 100%.
+For five months the capture parser accepted only a `[VERDICT …]` block that no durable
+doc taught, so judgments written in the documented prose form were silently discarded —
+repaired in PR #80, which recovered 48 of them (9.6% → 18.7%). The format defect explains
+the *minority* of the gap: **~81% of calls carry no judgment in any form**, which is
+behavioural, and the enforcement gate is deliberately deferred (Phase 6). Coverage
+*among judgeable calls only* is not yet computable — the `tool` field that would make it
+so is prospective (1 of 566 records carried it at repair time).
+**Corpus today: 106 labeled triples. No fine-tuning has been run.**
+Findings: `docs/findings/verdict-coverage-collapse-2026-07-21.md`.
+
+**Implication:** Coding tasks that use local models produce training data as a byproduct
+**only when the session actually records the verdict block** — the pipeline is opt-in per
+call, and its historical yield is roughly one in five.
 
 ## Local-First with Frontier Escalation (2026-02)
 

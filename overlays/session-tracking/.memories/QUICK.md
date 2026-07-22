@@ -10,10 +10,10 @@
   Installed + committed in **all five repos**; `--verify` exit 0 everywhere.
 - **Engine:** `uv tool install --editable overlays/session-tracking` → entry points
   `st-handoff` / `st-resume`. Shim order: `st-handoff` → source tree → legacy
-  `~/.claude/tools/handoff/` (dormant fallback; deletable once PR #71 lands).
-  ⚠️ The editable install points at llm's **working tree** — `src/` exists only on
-  `feature/resume-config-steps` (PR **#71**). Checking out master breaks `st-resume` in
-  four repos until it merges.
+  `~/.claude/tools/handoff/` (dormant fallback). **PR #71 is MERGED and `src/` is on
+  master** (verified 2026-07-21), so the editable install is safe on any branch — the
+  old "checking out master breaks `st-resume` in four repos" hazard is resolved.
+  The legacy `~/.claude/tools/handoff/` copy still exists on disk and is now deletable.
 - **Layout:** `src/sessiontracking/{register,handoff,resume}`. `register/` = `registry_io`
   + `locator` — the primitive both products import; products never import each other.
   `pyproject.toml` at the overlay root; tests in `tests/`.
@@ -29,7 +29,8 @@
   (exit 2); an absent version means schema 1. Three version facts, never conflate: package
   `--version` (machine-global) ≠ `registry.yaml: version:` (per-file contract) ≠ CLAUDE.md
   `<!-- overlay:session-tracking vN -->` (per-repo config generation).
-- **Tests:** 287 across the overlay suite (`make -C overlays test`); 214 in the package.
+- **Tests:** 296 across the overlay suite (`make -C overlays test`); 214 in the package
+  (verified 2026-07-21).
 - **Key files:** `pyproject.toml`, `src/sessiontracking/`, `tests/`, `manifest.yaml`,
   `files/handoff/run-handoff.sh` (shim), `files/registry.yaml`, `files/resume.yaml`,
   `files/resume.sh` (shim), `files/rotate-session-log.sh`,

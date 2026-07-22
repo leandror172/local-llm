@@ -15,11 +15,19 @@ path-dependency in `pyproject.toml`).
 
 ## Current index state
 
-- 875 topics (113 files) + 101 anchors = **976 nodes**; edges **3067** (3006
-  similarity τ=0.70/K=10 + 21 same_as + 40 references); Leiden 207 coarse /
-  218 fine. First post-split rebuild = SP-10 acceptance PASS (2026-07-05):
-  all 49 removed anchors traced to moved files, 875 topics exact
-  (record: engine repo `probes/split-acceptance.md`).
+- **Live, queried 2026-07-21** (`run-inspect.sh --stats` + newest `runs/graph-*.json`):
+  **1357 nodes** over **190 files**, all embedded with `qwen3-embedding:8b`; edges
+  **3779** (3624 similarity τ=0.70/K=10 + 26 same_as + 129 references). The
+  1186-topic / 171-anchor split is **inferred** from `--stats`' extractor-model
+  breakdown (anchors carry no extractor), not a direct readout — no anchors run
+  artifact is retained. Leiden community counts are **not** exposed by `--stats` and no
+  community run artifact is retained — re-derive before citing one.
+- *Historical marker (do not cite as current):* first post-split rebuild = SP-10
+  acceptance PASS (2026-07-05) at 875 topics / 113 files / 101 anchors / 3067 edges,
+  all 49 removed anchors traced to moved files (record: engine repo
+  `probes/split-acceptance.md`). The corpus has grown ~40% since.
+- **Refresh discipline:** these counts drift with every corpus change. They were ~40%
+  stale when checked on 2026-07-21. Re-query rather than quoting this block.
 - **Rebuild order (MANDATORY):** extract → embed → store → anchors → graph →
   communities; `run-rebuild-all.sh --embeddings runs/<tag>-embeddings.jsonl`
   covers the derivation stages (store onward).

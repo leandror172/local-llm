@@ -46,14 +46,14 @@ Evidence: 2-agent prior-art comparison + clones survey (`docs/research/coding-su
 mining (10.7% coverage; ~1/3 of "improved" = compile-class). web-research field report shipped cross-repo.
 Session 98 (2026-06-30): **`my-go-qcoder` HTTP 500 = host-RAM ENOMEM, NOT VRAM.** 30B partial-offload reads ~10–15 GiB of weights into RAM > old WSL2 15.5 GiB. **Fix = WSL `.wslconfig` memory=24GB (load-bearing).** T-67 ext4 store move EXECUTED (`/mnt/ollama-store/models`, ext4 vhdx on I:) but did NOT free RAM — Ollama keeps mmap off for partially-offloaded models on any fs; payoff was cold load 33s→15.6s + clean store. Health: `make -C ~/workspaces ollama-store-check`. See KNOWLEDGE.md "Host-RAM budget". **T-68 DONE (session, 2026-07-01):** reboot-persistence self-heals (udev `SYSTEMD_WANTS` recover service + attach-only logon task — device matched by UUID, survived a real reboot cold PASS incl. sde→sdd letter change); old 162 GB on I: reclaimed (394 GB free).
 
-Session 125 (2026-07-21): **Verdict harness repaired (T-105).** Coverage was 9.9% — every durable doc taught an inline phrase (`2 — ~300 est. …`) while the capture regex accepted only a `[VERDICT …]` block **taught nowhere durable**; the harness worked, it was never fed (live probe captured cleanly). **Judgeable set NARROWED — supersedes "0/1/2 on every local model output" above:** `generate_code` + `ask_ollama` per-call; **oficina per-RUN** via `run_result` (it bypasses the MCP tools via the `GenerateFn` seam); NOT summarize/translate/classify_text. **`call_id` replaces `prompt_hash` as verdict identity** — `prompt_hash` is a content address and collided (1 hash = 24 calls / 8 models), so a sweep could record exactly one verdict. The hook now injects **only on a confirmed response-content match, with no positional fallback** — a stale id mislabels, which is worse than a miss. **81.4% of calls carry no judgment at all**: format was the minority of the gap; gate deferred pending measurement. Findings `docs/findings/verdict-coverage-collapse-2026-07-21.md`, plan `docs/plans/verdict-capture-repair.md`.
+Session 125 (2026-07-21): **Verdict harness repaired (T-105). Coverage 9.6% → 18.7% (106/566).** *(One measurement, three published numbers — reconcile before citing: **9.6%** = 54/562 at investigation start · **10.2%** = 58/566 in the archived pre-backfill snapshot · **18.7%** = 106/566 post-repair. **48** prose verdicts were recovered; the findings doc's "49 recoverable" counts one whose subagent transcript had already been collected.)* Every durable doc taught an inline phrase (`2 — ~300 est. …`) while the capture regex accepted only a `[VERDICT …]` block **taught nowhere durable**; the harness worked, it was never fed (live probe captured cleanly). **Judgeable set NARROWED — supersedes "0/1/2 on every local model output" above:** `generate_code` + `ask_ollama` per-call; **oficina per-RUN** via `run_result` (it bypasses the MCP tools via the `GenerateFn` seam); NOT summarize/translate/classify_text. **`call_id` replaces `prompt_hash` as verdict identity** — `prompt_hash` is a content address and collided (1 hash = 24 calls / 8 models), so a sweep could record exactly one verdict. The hook now injects **only on a confirmed response-content match, with no positional fallback** — a stale id mislabels, which is worse than a miss. **81.4% of calls carry no judgment at all**: format was the minority of the gap; gate deferred pending measurement. Findings `docs/findings/verdict-coverage-collapse-2026-07-21.md`, plan `docs/plans/verdict-capture-repair.md`.
 
 ## Repo Structure
 
 ```
 llm/
   mcp-server/    # MCP bridge server (Python/FastMCP) — Claude Code ↔ Ollama
-  personas/      # 50+ specialized model configs from 13 base models
+  personas/      # 59 model configs (51 active) across 14 base models
   evaluator/     # Two-phase evaluation framework (automated + LLM-as-judge)
   benchmarks/    # Multi-language code validation suite
   overlays/      # Portable scaffolding packages for cross-repo consistency
@@ -68,7 +68,7 @@ llm/
 - **Bash wrappers over direct python3** — `./script.sh` form, whitelist-safe
 - **ref-indexing convention** — `<!-- ref:KEY -->` blocks for runtime lookups; `ref-lookup.sh --paths` emits `KEY<TAB>relpath` map (`.claude/local/` excluded)
 - **Local-first, frontier escalation** — try local models first, Claude for judgment
-- **Verdict protocol** — 0/1/2 on every local model output → DPO data
+- **Verdict protocol** — 0/1/2 on every **judgeable** call: `generate_code`/`ask_ollama` per-call, oficina per-RUN via `run_result`. NOT summarize/translate/classify_text (narrowed T-105, session 125). Measured coverage **18.7%** (106/566), not 100%
 
 ## Deeper Memory -> KNOWLEDGE.md
 
@@ -77,4 +77,4 @@ llm/
 - **Cross-Repo Architecture** — 3 repos, one hardware platform, MCP integration layer
 - **DPO Data Collection** — passive training data from verdict-labeled inference logs
 - **Smart RAG Research** — content-linking retrieval cluster (7 sources, 5 philosophies); hub at `ref:smart-rag-research`. Converges chatbot Phase 3 + Layer 7 RAG into one substrate.
-- **Latent Topic Graph (LTG)** — topic-level retrieval substrate; concept `ref:concept-latent-topic-graph` (concept + smart-rag lineage stay in this repo). **Engine split to sibling repo `latent-topic-graph` (T-33, session 107)** — Phases 0–5 complete there; Phase 6 MCP server lands THERE. This repo keeps the instance at `ltg/` (1022-node index pre-split; first post-split rebuild has an explainable anchor delta). Split record: `docs/plans/ltg-repo-split.md` (`ref:ltg-split-frozen-decisions`). Engine plans/decisions/probes + their ref keys → sibling repo.
+- **Latent Topic Graph (LTG)** — topic-level retrieval substrate; concept `ref:concept-latent-topic-graph` (concept + smart-rag lineage stay in this repo). **Engine split to sibling repo `latent-topic-graph` (T-33, session 107)** — Phases 0–5 complete there; **Phase 6 MCP server BUILT there and registered globally** (`mcp__ltg__retrieve_context`/`find_related`/`relate_files` → `latent-topic-graph/run-server.sh`). This repo keeps the instance at `ltg/` (**1,357 nodes / 190 files / 3,779 edges**, queried 2026-07-21). Split record: `docs/plans/ltg-repo-split.md` (`ref:ltg-split-frozen-decisions`). Engine plans/decisions/probes + their ref keys → sibling repo.

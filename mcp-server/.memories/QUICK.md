@@ -4,7 +4,9 @@
 
 ## Status
 
-Operational, system-wide availability. 12 tools exposed to Claude Code.
+Operational, system-wide availability. **18 tools** exposed to Claude Code (verified
+2026-07-21 by decorator site, not by `grep -c "@mcp.tool"` — that returns 19 because one
+hit is a docstring). 279 tests green.
 All tools verified, call logging active. Server is the integration layer for all 3 repos.
 
 ## Architecture
@@ -23,8 +25,9 @@ Both share `qwen2.5-coder:14b` base — no warm_model call needed when switching
 
 ask_ollama, generate_code, summarize, classify_text, translate,
 list_models, warm_model, query_personas, detect_persona, build_persona,
-ref_lookup, patch_file, submit_run, run_status, run_result, cancel_run
-(last 4 = oficina async runs; CLI parity via `oficina` entry point + `watch-run.sh`)
+create_persona, copy_persona, ref_lookup, patch_file,
+submit_run, run_status, run_result, cancel_run
+(18 total; last 4 = oficina async runs; CLI parity via `oficina` entry point + `watch-run.sh`)
 
 ## Key Patterns
 
