@@ -170,6 +170,15 @@ null on correctness (all arms tied 100%; the corpus's uniform filler never spran
 trap). Re-run declined: the open axis (correctness superiority) is not load-bearing for the
 decision, which rests on the axis the benchmark measured cleanly. Full report:
 `docs/findings/oficina-write-model-benchmark-2026-07-18.md` (`ref:oficina-write-model-report`).
+
+**AMENDED (session 126, 2026-07-22): M2 = whole-file-with-context; code-anchored is the on-file
+fallback.** The code-anchored choice above is superseded for the loop's edit mode: its
+timeout-safety leg was measured on the sync path and does not transfer to the loop's 1800s
+budget, and span confinement forces a constrained edit language (unit naming, response-shape
+validation, import merging) whose cost was never priced. Full amendment + new evidence:
+`ref:oficina-write-model-report` § AMENDMENT; build plan `docs/plans/oficina-p2-edit-mode.md`
+(`ref:oficina-edit-mode`, `ref:oficina-edit-mode-decisions`). The anchor-ability analysis and
+locator design above remain valid capital if the omission trigger ever fires.
 <!-- /ref:oficina-function-kind-write-model -->
 
 ## Known live bugs to fold into the widening (session 124)

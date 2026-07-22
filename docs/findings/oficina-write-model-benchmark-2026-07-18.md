@@ -114,4 +114,26 @@ fenced its own block **contents** at runtime — the exact-format fragility arm 
 appearing in both the framework code and the live output. A cheap independent prior in favor of
 removing exact-format reproduction from the model's plate (i.e. code-anchoring), even though the
 correctness benchmark itself could not confirm it.
+
+## AMENDMENT (session 126, 2026-07-22): M2 revised — whole-file-with-context
+
+The decision above is **superseded for the loop's edit mode**; M2 = whole-file-with-context.
+Build plan: `docs/plans/oficina-p2-edit-mode.md` (`ref:oficina-edit-mode-decisions`, E-D1).
+New evidence, each item absent from the original decision:
+
+1. **The timeout-safety leg does not transfer.** Both blown ceilings were on the SYNC
+   `generate_code` path (T-103, ~120s); the loop's coder runs under `spec.timeout_s`
+   (default 1800s), where a ~310-token whole-file generation is ~10s of GPU time.
+2. **Code-anchored's real cost was never priced.** Span confinement forces a constrained edit
+   language — a `unit` spec field, response-shape validation, deterministic import merging, a
+   constants boundary — harness+spec complexity outside this benchmark's apply-layer framing.
+3. **Product intent clarified (session 126):** oficina is an async coding subagent; edit-shaped
+   work routes through the loop by default, so spec simplicity dominates per-iteration output
+   tokens.
+4. The pre-registered rule's own branch — "keep whole-file if within ~5 points at large; the
+   locator isn't worth its cost" — is satisfied by the observed ties (corpus caveat carried).
+
+**Code-anchored remains on file as the fallback mechanism, unbuilt.** Observable trigger: a real
+edit run shows silently dropped sibling code — a delta-scope regression or an H1 diff-review
+catch. If it fires: harden the corpus (heterogeneous filler, 500+ lines), re-run, revisit.
 <!-- /ref:oficina-write-model-report -->
