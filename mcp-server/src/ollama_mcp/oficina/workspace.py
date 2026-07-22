@@ -57,6 +57,7 @@ class Assembly:
     baseline_failures: List[ParsedFailure]
     stable_parts: Dict[str, str]
     test_files_materialized: List[str] = field(default_factory=list)
+    mode: str = "greenfield"  # "edit" when the target is committed at HEAD (E-D2), else greenfield
 
 
 def target_relpath(target: str, base_repo: "Path | str") -> str:
@@ -110,10 +111,12 @@ class Workspace:
         """Build the worktree + C0 baseline; optionally emit AssemblyDone via ``emit``."""
         base_repo = self._resolve_base_repo()
         self._add_worktree(base_repo)
+        # Fail fast on the uncommitted-target guard (E-D2a) before C0/evaluate do any work.
+        mode, current_file = self._detect_mode(base_repo)
         materialized = self._materialize_test_files()
         c0_sha = self._commit(f"oficina C0 baseline ({self.run_id})")
         baseline_failures = self._evaluate(self.worktree_path, base_repo, self.spec)
-        stable_parts = self._build_stable_parts()
+        stable_parts = self._build_stable_parts(current_file)
 
         assembly = Assembly(
             worktree_path=self.worktree_path,
@@ -123,6 +126,7 @@ class Workspace:
             baseline_failures=baseline_failures,
             stable_parts=stable_parts,
             test_files_materialized=materialized,
+            mode=mode,
         )
         if emit is not None:
             emit(
@@ -131,6 +135,7 @@ class Workspace:
                     "base_commit": c0_sha,
                     "test_files_materialized": materialized,
                     "baseline_failure_count": len(baseline_failures),
+                    "mode": mode,
                 }
             )
         return assembly
@@ -187,6 +192,35 @@ class Workspace:
         self.run_dir.mkdir(parents=True, exist_ok=True)
         _git(base_repo, "worktree", "add", "-b", self.branch, str(self.worktree_path), "HEAD")
 
+    def _detect_mode(self, base_repo: Path) -> tuple[str, str]:
+        """Classify the run as ``edit`` or ``greenfield`` and return ``(mode, current_file)`` (E-D2).
+
+        The discriminator is target presence at HEAD in the freshly-checked-out worktree — no
+        spec field. ``current_file`` is the target's RAW committed content (returned verbatim so
+        the model sees the file exactly), and is ``""`` for greenfield. Contract:
+        - target committed with content  → ``("edit", <raw content>)``;
+        - target committed but empty     → greenfield (nothing to preserve, E-D2b);
+        - target absent from disk        → greenfield (today's from-scratch generation);
+        - target on disk but NOT at HEAD → ``AssemblyError`` (E-D2a): the worktree checks out
+          HEAD, so the model cannot see uncommitted WIP; silent greenfield would generate
+          against an invisible file and collide with it on delivery.
+        """
+        target = self.spec.get("deliverable", {}).get("target")
+        if not target:
+            return ("greenfield", "")
+        relpath = target_relpath(target, base_repo)
+        worktree_target_path = self.worktree_path / relpath
+        if worktree_target_path.exists():
+            content = worktree_target_path.read_text(encoding="utf-8")
+            return ("edit", content) if content.strip() else ("greenfield", "")
+        if (base_repo / target).exists():
+            raise AssemblyError(
+                "assembling",
+                f"target {target!r} exists on disk but is not committed at HEAD — "
+                "commit it to edit it, or point at a new path for greenfield",
+            )
+        return ("greenfield", "")
+
     def _materialize_test_files(self) -> List[str]:
         """Guarantee every declared test_file exists in the worktree (P2-D13).
 
@@ -211,7 +245,7 @@ class Workspace:
         _git(self.worktree_path, *_GIT_IDENTITY, "commit", "--allow-empty", "-m", message)
         return _git(self.worktree_path, "rev-parse", "HEAD")
 
-    def _build_stable_parts(self) -> Dict[str, str]:
+    def _build_stable_parts(self, current_file: str = "") -> Dict[str, str]:
         """The run-constant prompt parts (P2-D2): objective, tests-as-context, context files.
 
         System/constraints/refs are layered on in T6; this fills the parts that come from
@@ -219,9 +253,13 @@ class Workspace:
         test_cmd, in the prompt as acceptance context — P2-D13); ``_materialize_test_files``
         has already guaranteed each declared test exists. Context files render through the
         server's ``_build_context_block`` — the same block the single-shot path feeds the
-        model, so the two paths cannot drift on context formatting.
+        model, so the two paths cannot drift on context formatting. In edit mode
+        ``current_file`` carries the target's committed content (E-D3); it is run-constant
+        (the C0 content) and so belongs in the stable prefix — omitted when empty (greenfield).
         """
         parts: Dict[str, str] = {"objective": self.spec.get("objective", "") or ""}
+        if current_file:
+            parts["current_file"] = current_file
 
         test_files = ((self.spec.get("acceptance") or {}).get("test_files")) or []
         test_blocks = [
