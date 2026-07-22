@@ -42,6 +42,10 @@ SEGMENTS: tuple[Segment, ...] = (
     Segment("system", "", True),
     Segment("constraints", "CONSTRAINTS:", True),
     Segment("context", "CONTEXT:", True),
+    # Edit mode (T-110/E-D3): the target's committed content, run-constant → stable prefix.
+    # Placed before `tests` so the model reads what it is modifying, then the acceptance tests.
+    # Reorder-within-stable is allowed by P2-D2; omitted entirely in greenfield (blank part).
+    Segment("current_file", "CURRENT FILE (you are modifying this file):", True),
     Segment("tests", "TESTS (implement against these — they are the acceptance criteria):", True),
     Segment("objective", "OBJECTIVE:", True),
     Segment("repair_feedback", "REPAIR FEEDBACK (from the previous attempt):", False),

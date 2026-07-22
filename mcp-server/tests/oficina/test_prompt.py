@@ -109,3 +109,29 @@ def test_changing_only_variable_parts_preserves_prefix():
     stable_prefix = build_prompt(STABLE_PARTS)
     assert build_prompt(FULL_PARTS).startswith(stable_prefix)
     assert build_prompt(other).startswith(stable_prefix)
+
+
+# --- current_file segment (T-110, E-D3): stable, between context and tests --
+
+
+def test_current_file_segment_renders_between_context_and_tests():
+    """The 'current_file' segment renders between context and tests, with its header
+    and content appearing in the correct order."""
+    parts = {
+        **STABLE_PARTS,
+        "current_file": "def area(w, h): return w * h",
+    }
+    prompt = build_prompt(parts)
+    assert "CURRENT FILE" in prompt  # Header is present
+    context_index = prompt.find("def caller(): return area(2, 3)")
+    current_index = prompt.find("def area(w, h): return w * h")
+    tests_index = prompt.find("assert area(2, 3) == 6")
+    assert context_index < current_index < tests_index
+
+
+def test_blank_current_file_is_omitted():
+    """A blank 'current_file' part is omitted entirely — the header and content
+    do not appear in the built prompt (greenfield stays byte-identical)."""
+    parts = {**STABLE_PARTS, "current_file": ""}
+    prompt = build_prompt(parts)
+    assert "CURRENT FILE" not in prompt
