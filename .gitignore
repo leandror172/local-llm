@@ -43,6 +43,11 @@ ltg/index/
 ltg/index.bak*/
 ltg/embeddings.jsonl
 
+# LTG refresh wrapper — verbatim copy of the engine repo's script (T-106); keep untracked
+# so it stays a cheap cp-resync, not a fork. Re-sync:
+#   cp -p /mnt/i/workspaces/latent-topic-graph/run-refresh.sh ltg/
+ltg/run-refresh.sh
+
 # Environment variables (API keys, secrets)
 .env
 # Aider working files (chat history, cache, tags — not config)
