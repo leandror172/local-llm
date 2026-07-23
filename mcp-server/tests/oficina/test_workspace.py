@@ -12,6 +12,7 @@ import subprocess
 
 import pytest
 
+from ollama_mcp.oficina.evaluator import evaluate as real_evaluate
 from ollama_mcp.oficina.parser import STAGE_COMPILE, ParsedFailure
 from ollama_mcp.oficina.workspace import AssemblyError, Workspace
 
@@ -129,6 +130,71 @@ def test_stable_parts_include_objective_and_tests(tmp_path):
     assembly = ws.assemble()
     assert assembly.stable_parts["objective"] == "implement area(w, h)"
     assert "def test_area" in assembly.stable_parts["tests"]
+
+
+# --- edit mode (T-110, E-D2) ------------------------------------------------
+
+
+def _make_repo_with_target(tmp_path, target_content="def area(w, h):\n    return w + h\n"):
+    """A repo whose target file is already committed at HEAD (the edit-mode shape)."""
+    repo = _make_repo(tmp_path)
+    (repo / "area.py").write_text(target_content)
+    _git(repo, "add", "area.py")
+    _git(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "seed target")
+    return repo
+
+
+def test_assemble_greenfield_when_target_absent(tmp_path):
+    """No target at HEAD → greenfield: mode says so and no current_file part exists."""
+    repo = _make_repo(tmp_path)
+    assembly = _workspace(tmp_path, repo).assemble()
+    assert assembly.mode == "greenfield"
+    assert "current_file" not in assembly.stable_parts
+
+
+def test_assemble_edit_mode_when_target_committed(tmp_path):
+    """A committed target → edit mode, with its content as the current_file stable part."""
+    repo = _make_repo_with_target(tmp_path)
+    assembly = _workspace(tmp_path, repo).assemble()
+    assert assembly.mode == "edit"
+    assert "return w + h" in assembly.stable_parts["current_file"]
+
+
+def test_assemble_rejects_uncommitted_target(tmp_path):
+    """A target on disk but absent at HEAD is an AssemblyError — the model cannot see WIP (E-D2a)."""
+    repo = _make_repo(tmp_path)
+    (repo / "area.py").write_text("def area(w, h):\n    return w * h  # uncommitted WIP\n")
+    with pytest.raises(AssemblyError) as excinfo:
+        _workspace(tmp_path, repo).assemble()
+    assert "not committed" in excinfo.value.triad["what"]
+
+
+def test_assemble_empty_committed_target_is_greenfield(tmp_path):
+    """An empty committed target carries nothing to preserve → greenfield (E-D2b)."""
+    repo = _make_repo_with_target(tmp_path, target_content="")
+    assembly = _workspace(tmp_path, repo).assemble()
+    assert assembly.mode == "greenfield"
+    assert "current_file" not in assembly.stable_parts
+
+
+def test_assembly_done_payload_carries_mode(tmp_path):
+    """The AssemblyDone payload names the mode alongside the baseline count."""
+    repo = _make_repo_with_target(tmp_path)
+    captured = []
+    _workspace(tmp_path, repo).assemble(emit=captured.append)
+    assert captured[0]["mode"] == "edit"
+
+
+def test_edit_mode_c0_runs_real_compile_on_committed_target(tmp_path):
+    """Edit-mode C0 integration (E-D2/E-D7): a target committed BROKEN is present at C0, so the
+    real evaluate runs the compile stage on its committed content and surfaces the failure as the
+    baseline. This is the novelty edit mode introduces — greenfield C0 never had a target present,
+    so compile at baseline was unreachable before. Uses the real evaluator, not the injected fake."""
+    repo = _make_repo_with_target(tmp_path, target_content="def area(w, h)\n    return w * h\n")  # no colon
+    assembly = Workspace(_spec(repo), "rid1", tmp_path / "run", real_evaluate).assemble()
+    assert assembly.mode == "edit"
+    assert assembly.baseline_failures  # the committed target's compile failure IS the C0 baseline
+    assert assembly.baseline_failures[0].stage == STAGE_COMPILE
 
 
 # --- per-iteration snapshot -------------------------------------------------

@@ -135,4 +135,10 @@ Meta-finding (free, on-theme): the 14B mis-generated the SEARCH/REPLACE *parser*
 (wrong `=======` divider) and fenced its own block *contents* at runtime — the exact-format
 fragility arm C exists to measure, showing up in both the framework and the live output. A cheap
 prior in favor of removing exact-format reproduction from the model's plate (i.e. code-anchoring).
+
+**AMENDMENT (session 126, 2026-07-22):** path 2 was taken in session 124; session 126 **revised
+M2 to whole-file-with-context** — the timeout leg of the cost argument was sync-path-only (does
+not transfer to the loop's 1800s budget) and code-anchoring's edit-language cost was unpriced.
+Record: `ref:oficina-write-model-report` § AMENDMENT; build plan
+`docs/plans/oficina-p2-edit-mode.md`.
 <!-- /ref:oficina-write-model-benchmark -->

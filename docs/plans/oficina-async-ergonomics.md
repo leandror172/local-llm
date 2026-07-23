@@ -53,6 +53,17 @@ deliverable-shaped / long / parallelizable work → `submit_run` (`kind: file` �
 `generate_code`, `kind: answer` ≈ `ask_ollama` — S20/V-D10, nothing to build); small calls
 where Claude would wait anyway → sync tools. The async substrate already serves both tool
 classes; migration is a routing decision per call, not a code change.
+
+> **ROUTING DEFAULT REVISED (session 126, 2026-07-22).** The "small calls where Claude would
+> wait anyway → sync" arm assumed the sync path is dependable for small calls. Under standing
+> multi-session use (T-102, M-D3: trigger FIRED) sync is structurally fragile — p99 294s against
+> the ~600s wall, measured *uncontended* — and edit-shaped deliverables are now loop-capable
+> (`docs/plans/oficina-p2-edit-mode.md`). **Revised default: delegated codegen — small edits
+> included — routes async (`submit_run` + the harness watch below), the same contract as any
+> subagent dispatch. Sync remains the opportunistic fast path** for trivial calls when the GPU
+> is known-free; the busy-check (G-D8, `ref:multi-session-busy-check`) is the designed admission
+> signal for that choice. The (b)/(c) rejections above stand — the sync path is not closed; its
+> default role shrinks.
 <!-- /ref:oficina-async-migration-shape -->
 
 <!-- ref:oficina-async-ergonomics-scope -->

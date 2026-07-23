@@ -414,3 +414,19 @@ def test_unsupported_language_rejection_carries_triad(tmp_path):
     spec = a_function_spec(tmp_path)
     spec["deliverable"]["language"] = "rust"
     rejects_with_triad(spec, with_rule=RULE_UNSUPPORTED_LANGUAGE)
+
+
+# --- edit mode (T-110): intake accepts function + already-existing target ----
+# The formerly-DANGEROUS case (T-104): a function spec pointed at an existing file. Edit mode
+# (E-D2) makes it safe; intake must accept it because target-presence is an ASSEMBLY concern
+# (committed-at-HEAD), never an intake rule — intake does not touch the filesystem for the target.
+
+
+def test_function_with_already_existing_target_accepted(tmp_path):
+    """Intake accepts a kind:function spec whose target file already exists on disk —
+    target presence is an assembly-time concern (E-D2), not an intake rule."""
+    from pathlib import Path
+    spec = a_function_spec(tmp_path)
+    target_path = Path(spec["deliverable"]["target"])
+    target_path.write_text("existing content")
+    assert accepts(spec)

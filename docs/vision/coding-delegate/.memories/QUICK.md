@@ -81,12 +81,20 @@ label). Keep under 30 lines.*
   **M2 (edit) DECIDED = code-anchored** (`locate_unit`→`patch_file`) on cost/timeout-safety;
   benchmark run 1 null on correctness (corpus too easy), clean cost win. Report:
   `ref:oficina-write-model-report`.
-- **Next:** (1) **build the edit kinds on M2** — `LanguagePack.locate_unit` (Python ast seeded /
-  Go go/parser), loop composes `patch_file`, C0 flips to target-present. (2) Axis A Go read-side
-  (Phase 3: `_parse_gotest`, compile-in-worktree, flat category rule — the honest oficina dogfood
-  target). (3) T-93 refs-diagram verdict; T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`).
-  Standing: T-102 gate busy-check (G-D8); harden write-model corpus IF real use shows whole-file
-  dropping code.
+- 2026-07-22 (session 126): **M2 REVERSED → whole-file-with-context; edit mode BUILT + ACCEPTED
+  (T-110).** Re-grounding caught the code-anchored plan growing an edit language (unit field,
+  response validation, import merge) serving no founding fact; T-104 amended (code-anchored =
+  on-file fallback, omission trigger); **T-89 routing default revised — delegated codegen async-first,
+  small edits included**. Build: Opus subagent T1–T5 + Opus-med adversarial review (MERGE-READY,
+  10/10 invariants) + live acceptance R1–R4 (246-line module diff 2+/2−, siblings byte-intact;
+  observed drift additive not omissive; uncommitted-guard Failed 1.3s). Suite 279→298. E-D1–E-D9 +
+  RESULTS: `docs/plans/oficina-p2-edit-mode.md`.
+- **Next:** (1) **Axis A Go read-side** (Phase 3: `_parse_gotest`, compile-in-worktree, flat
+  category rule — the honest oficina dogfood target; now simpler: `locate_unit` dropped from the
+  predicted pack, edit mode is language-agnostic). (2) T-93 refs-diagram verdict; T-86 distribution
+  (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`). Standing: T-102 gate busy-check (G-D8); prefix-reuse
+  tracking via `.claude/tools/ollama-cache-report.py`; harden write-model corpus IF a real edit run
+  drops sibling code (the E-D1 fallback trigger).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary
