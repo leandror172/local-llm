@@ -264,3 +264,73 @@ def test_omitted_sibling_function_is_attributable(tmp_path):
     failure = attributable[0]
     assert failure.file == "test_geometry.py"
     assert failure.error_key[0].startswith("pytest-error")
+
+
+# --- Go twins (T-92 Phase 3): evaluate() dispatches by the resolved language --
+# Real `go build` / `go test -json` subprocesses, mirroring the Python
+# integration tests above. Fixture programs local-model-generated
+# (call 8b750b184149); tests hand-written per this file's convention.
+
+GO_MOD = "module example.com/probe\n\ngo 1.23\n"
+GO_AREA_BROKEN = "package probe\n\nfunc Area(w, h int) int {\n\treturn mathutil.Volume(w, h)\n}\n"
+GO_AREA = "package probe\n\nfunc Area(w, h int) int {\n\treturn w * h\n}\n"
+GO_TEST_PASSING = (
+    "package probe\n\nimport (\n\t\"testing\"\n)\n\n"
+    "func TestArea(t *testing.T) {\n\tif got := Area(2, 3); got != 6 {\n"
+    "\t\tt.Errorf(\"Area(2,3) = %d, want 6\", got)\n\t}\n}\n"
+)
+GO_TEST_FAILING = (
+    "package probe\n\nimport (\n\t\"testing\"\n)\n\n"
+    "func TestArea(t *testing.T) {\n\tif got := Area(2, 3); got != 7 {\n"
+    "\t\tt.Errorf(\"Area(2,3) = %d, want 7\", got)\n\t}\n}\n"
+)
+
+
+def _go_project(tmp_path, area_src, test_src):
+    (tmp_path / "go.mod").write_text(GO_MOD)
+    (tmp_path / "area.go").write_text(area_src)
+    (tmp_path / "area_test.go").write_text(test_src)
+
+
+def _go_spec(tmp_path, test_cmd="go test -json ./..."):
+    return {
+        "deliverable": {"kind": "function", "target": str(tmp_path / "area.go")},
+        "acceptance": {"test_cmd": test_cmd, "test_files": ["area_test.go"]},
+    }
+
+
+def test_evaluate_go_reports_compile_failure_on_broken_target(tmp_path):
+    """A Go target with an undefined reference fails the COMPILE stage — run as
+    `go build ./...` in the worktree (R3), keyed `go-…` — and the test stage is
+    not reached (P2-D8 first-failing-stage)."""
+    _go_project(tmp_path, GO_AREA_BROKEN, GO_TEST_PASSING)
+    failures = evaluate(tmp_path, tmp_path, _go_spec(tmp_path))
+    assert failures and failures[0].stage == STAGE_COMPILE
+    assert failures[0].error_key[0].startswith("go-")
+
+
+def test_evaluate_go_clean_project_yields_no_failures(tmp_path):
+    """A compiling Go target whose test passes evaluates to zero failures."""
+    _go_project(tmp_path, GO_AREA, GO_TEST_PASSING)
+    assert evaluate(tmp_path, tmp_path, _go_spec(tmp_path)) == []
+
+
+def test_evaluate_go_test_failure_attributes_worktree_relative_file(tmp_path):
+    """A failing Go test yields a test-stage failure whose .file resolves
+    worktree-relative through the -json Package field (R4): 'area_test.go' at
+    the module root, keyed go-test-failed:…"""
+    _go_project(tmp_path, GO_AREA, GO_TEST_FAILING)
+    failures = evaluate(tmp_path, tmp_path, _go_spec(tmp_path))
+    assert failures and failures[0].stage == STAGE_TEST
+    assert failures[0].file == "area_test.go"
+    assert failures[0].error_key[0].startswith("go-test-failed:")
+
+
+def test_evaluate_go_imposes_json_on_plain_test_cmd(tmp_path):
+    """A2: the Go test stage OWNS the command. A caller test_cmd WITHOUT -json still
+    yields structurally attributed failures — the stage imposes `go test -json ./...`,
+    because honoring a plain `go test` would silently lose Package-field attribution
+    (the P2-D12 masking hole reintroduced as a caller default)."""
+    _go_project(tmp_path, GO_AREA, GO_TEST_FAILING)
+    failures = evaluate(tmp_path, tmp_path, _go_spec(tmp_path, test_cmd="go test ./..."))
+    assert failures and failures[0].file == "area_test.go"
