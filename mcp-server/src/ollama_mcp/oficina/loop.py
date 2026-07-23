@@ -19,6 +19,7 @@ runaway).
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
@@ -30,20 +31,30 @@ from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
 from .worker import GenerationResult, _chat_generation, _cold_start_grace
 
-# (prompt, model, run_id) -> GenerationResult. The coder writes nothing; the loop places output.
-CoderFn = Callable[[str, str, str], GenerationResult]
+# (prompt, model, run_id, *, num_predict) -> GenerationResult. The coder writes nothing; the
+# loop places output. num_predict is passed per call (E-D9) because the edit-mode floor is only
+# known post-assembly (file size); it is optional so trivial fakes may ignore it.
+CoderFn = Callable[..., GenerationResult]
 
 # First slice defaults (P2-D1): single Python persona, bounded generation (T-91 / P2-D10).
 DEFAULT_CODER_MODEL = "my-python-q25c14"
 NUM_PREDICT = 2048  # floored so a function is never truncated; capped to bound runaway
+EDIT_NUM_PREDICT_CAP = 8192  # E-D9 ceiling for the file-size-derived edit-mode floor
 
 _SYSTEM = "You are a precise Python engineer. Implement the objective so every provided test passes."
-# No leading "CONSTRAINTS:" label here — prompt.SEGMENTS already prepends that header for the
-# 'constraints' segment; embedding it again doubled the header in every prompt.
+# No leading "CONSTRAINTS:" label in either variant — prompt.SEGMENTS already prepends that header
+# for the 'constraints' segment; embedding it again doubled the header in every prompt.
+# Greenfield (E-D4): generate the file from scratch. Kept BYTE-IDENTICAL (pinned in a test).
 _CONSTRAINTS = (
     "- Implement ONLY the objective; do not modify the tests.\n"
     "- One responsibility per function; name functions after what they return or do.\n"
     "- Return the complete file content, no markdown fences."
+)
+# Edit (E-D4): the CURRENT FILE segment carries the file being modified; preserve the rest.
+_EDIT_CONSTRAINTS = (
+    "- Modify the current file to meet the objective; do not modify the tests.\n"
+    "- Preserve all code the objective does not require changing.\n"
+    "- Return the complete updated file content, no markdown fences."
 )
 
 
@@ -109,6 +120,10 @@ class EvaluatedLoop:
         self.max_iterations = budgets.iterations
         self.max_fresh_starts = budgets.fresh_starts
         self.max_wall_clock_s = budgets.wall_clock_s
+        # E-D9: an explicit budget ALWAYS wins; otherwise the effective num_predict is resolved
+        # post-assembly (edit mode sizes to the current file). Set to the floor until run() knows.
+        self._explicit_num_predict = budgets.num_predict
+        self._num_predict = NUM_PREDICT
         self.model = spec.get("model") or "auto"
         if self.model == "auto":
             self.model = DEFAULT_CODER_MODEL
@@ -122,13 +137,32 @@ class EvaluatedLoop:
 
     def _stable_prompt_parts(self, assembly) -> Dict[str, str]:
         """The run-constant prompt parts (P2-D2): system + constraints + the assembled parts, with
-        any pre-resolved refs block prepended to the context (docs/diagrams before file context)."""
-        parts = {"system": _SYSTEM, "constraints": _CONSTRAINTS, **assembly.stable_parts}
+        any pre-resolved refs block prepended to the context (docs/diagrams before file context).
+
+        The constraints variant is selected by ``assembly.mode`` (E-D4): edit mode states the
+        preservation contract, greenfield keeps today's from-scratch constraints. ``_SYSTEM`` and
+        the ordering are shared, and constraints are stable within a run, so the cache holds.
+        """
+        constraints = _EDIT_CONSTRAINTS if assembly.mode == "edit" else _CONSTRAINTS
+        parts = {"system": _SYSTEM, "constraints": constraints, **assembly.stable_parts}
         if self.refs_block:
             parts["context"] = "\n\n".join(
                 p for p in (self.refs_block, parts.get("context", "")) if p
             )
         return parts
+
+    def _resolve_num_predict(self, assembly) -> int:
+        """The effective per-call generation budget (E-D9). An explicit ``budgets.num_predict``
+        always wins. Otherwise greenfield keeps the NUM_PREDICT floor/cap; edit mode sizes to the
+        current file — ``max(NUM_PREDICT, ceil(chars/4) * 2)`` capped at ``EDIT_NUM_PREDICT_CAP`` —
+        so a whole-file rewrite is never truncated mid-file (the T-91 class one level up)."""
+        if self._explicit_num_predict is not None:
+            return self._explicit_num_predict
+        if assembly.mode == "edit":
+            current_file = assembly.stable_parts.get("current_file", "")
+            derived = math.ceil(len(current_file) / 4) * 2
+            return min(EDIT_NUM_PREDICT_CAP, max(NUM_PREDICT, derived))
+        return NUM_PREDICT
 
     def _emit_iteration_started(self, k: int) -> None:
         """Record the iteration and the budget remaining after it (P2-D10)."""
@@ -255,12 +289,17 @@ class EvaluatedLoop:
         return self.max_wall_clock_s and time.monotonic() - started_at > self.max_wall_clock_s
 
     def _generate_with_snapshot(self, k, prev_sha, stable, target_rel, test_files, variable, worktree) -> Any:
+        from ollama_mcp import server as srv  # lazy — compose the server's fence stripper (E-D5)
+
         self._emit_iteration_started(k)
         prompt = build_prompt({**stable, **variable})
-        gen = self.coder(prompt, self.model, self.run_id)
+        gen = self.coder(prompt, self.model, self.run_id, num_predict=self._num_predict)
+        # The loop owns its write invariant (E-D5): strip fences here so a fenced response never
+        # lands on disk to mislead the compile stage — regardless of what the injected coder returns.
+        content = srv._strip_code_fences(gen.content)
         target_path = worktree / target_rel
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(gen.content, encoding="utf-8")
+        target_path.write_text(content, encoding="utf-8")
         snapshot = self.workspace.snapshot(f"oficina iteration {k} ({self.run_id})")
 
         cheated = diff_touches_test_files(worktree, prev_sha, snapshot, test_files)
@@ -269,6 +308,8 @@ class EvaluatedLoop:
     def run(self) -> LoopResult:
         """Assemble, then iterate generate→evaluate→classify→repair/fresh-start until terminal."""
         assembly = self.workspace.assemble(emit=self.ledger.assembly_done)
+        # E-D9: now that the mode and current-file size are known, fix the per-call generation budget.
+        self._num_predict = self._resolve_num_predict(assembly)
         worktree = assembly.worktree_path
         base_repo = assembly.base_repo
         target_rel = target_relpath(self.spec["deliverable"]["target"], base_repo)
@@ -314,19 +355,21 @@ class EvaluatedLoop:
 def default_coder(num_predict: Optional[int] = None, timeout: int = 1800) -> CoderFn:
     """The real coder: one bounded `chat` call per iteration (T-91 num_predict).
 
-    ``num_predict=None`` takes the NUM_PREDICT floor/cap default, so callers pass a
-    budget value through unconditionally; ``timeout`` comes from ``spec.timeout_s``
-    (wired by the worker, T-95). Built as a factory so the loop stays free of async/GPU
-    concerns and tests inject a fake. Transport + cold-start grace are the worker's
-    shared per-call helpers (T-95 decision (b)) — the loop emits NO Generation events
-    by design; per-call telemetry lives in calls.jsonl, run_id-tagged (T-99).
+    The construction-time ``num_predict`` is a FALLBACK (NUM_PREDICT floor/cap when None):
+    the loop now owns per-call resolution (E-D9) and passes an effective value on every call,
+    which wins. A caller invoking the coder directly (or the worker's pre-assembly wiring) still
+    gets the baked value. ``timeout`` comes from ``spec.timeout_s`` (wired by the worker, T-95).
+    Built as a factory so the loop stays free of async/GPU concerns and tests inject a fake.
+    Transport + cold-start grace are the worker's shared per-call helpers (T-95 decision (b)) —
+    the loop emits NO Generation events; per-call telemetry lives in calls.jsonl, run_id-tagged.
     """
-    num_predict = num_predict or NUM_PREDICT
+    baked = num_predict or NUM_PREDICT
 
-    def _coder(prompt: str, model: str, run_id: str) -> GenerationResult:
+    def _coder(prompt: str, model: str, run_id: str, num_predict: Optional[int] = None) -> GenerationResult:
+        effective = num_predict if num_predict is not None else baked
         return _cold_start_grace(
             lambda: _chat_generation(
-                prompt, model, run_id, timeout=timeout, num_predict=num_predict
+                prompt, model, run_id, timeout=timeout, num_predict=effective
             )
         )
 

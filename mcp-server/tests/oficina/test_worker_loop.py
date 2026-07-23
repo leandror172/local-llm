@@ -47,7 +47,7 @@ def _function_spec(repo):
 
 
 def _coder(content):
-    def _fn(prompt, model, run_id):
+    def _fn(prompt, model, run_id, num_predict=None):
         return GenerationResult(content=content, model="fake", eval_count=5, duration_ms=1.0)
     return _fn
 

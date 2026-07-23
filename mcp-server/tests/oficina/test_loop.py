@@ -13,10 +13,17 @@ delta-scope family). Behavioral tests vary `when_`; the two structural tests (an
 keep a bespoke `given_`.
 """
 
+import math
 import subprocess
 
 from ollama_mcp.oficina.ledger import Ledger, fold_state
-from ollama_mcp.oficina.loop import EvaluatedLoop
+from ollama_mcp.oficina.loop import (
+    EDIT_NUM_PREDICT_CAP,
+    NUM_PREDICT,
+    EvaluatedLoop,
+    _CONSTRAINTS,
+    _EDIT_CONSTRAINTS,
+)
 from ollama_mcp.oficina.parser import STAGE_TEST, ParsedFailure
 from ollama_mcp.oficina.workspace import Workspace
 from ollama_mcp.oficina.worker import GenerationResult
@@ -51,14 +58,16 @@ def _spec(repo, iterations=3, fresh_starts=1):
 
 
 class FakeCoder:
-    """Records each prompt; returns the next canned content."""
+    """Records each prompt and the per-call num_predict; returns the next canned content."""
 
     def __init__(self, contents):
         self.contents = list(contents)
         self.prompts = []
+        self.num_predicts = []
 
-    def __call__(self, prompt, model, run_id):
+    def __call__(self, prompt, model, run_id, num_predict=None):
         self.prompts.append(prompt)
+        self.num_predicts.append(num_predict)
         content = self.contents.pop(0) if self.contents else "def area(w, h):\n    return w * h\n"
         return GenerationResult(content=content, model=model, eval_count=10, duration_ms=1.0)
 
@@ -109,6 +118,7 @@ class _Run:
         self.coder = None
         self.ledger = None
         self.result = None
+        self.worktree = None  # the assembled worktree path, set by when_ (for on-disk assertions)
 
 
 def given_a_function_run(tmp_path):
@@ -124,14 +134,20 @@ def given_a_function_run_whose_target_is_a_test_file(tmp_path):
     return run
 
 
-def when_the_coder_iterates(*, on, writing, and_evaluation_yields, with_baseline=CLEAN, injecting=""):
+def when_the_coder_iterates(
+    *, on, writing, and_evaluation_yields, with_baseline=CLEAN, injecting="", with_num_predict=None
+):
     """Drive the loop over `on`: `writing` is the coder's per-iteration output, and
     `and_evaluation_yields` the per-iteration evaluations. The C0 baseline (`with_baseline`,
-    CLEAN by default) is prepended automatically; `injecting` is a pre-resolved <refs> block."""
+    CLEAN by default) is prepended automatically; `injecting` is a pre-resolved <refs> block;
+    `with_num_predict` sets an explicit budgets.num_predict (E-D9 explicit-override case)."""
     spec = _spec(on.repo, iterations=len(writing) or 1)
     spec["deliverable"]["target"] = str(on.target)
+    if with_num_predict is not None:
+        spec["budgets"]["num_predict"] = with_num_predict
     evaluate = FakeEvaluate([with_baseline, *and_evaluation_yields])
     workspace = Workspace(spec, "rid1", on.tmp_path / "run", evaluate)
+    on.worktree = workspace.worktree_path
     on.ledger = Ledger(on.tmp_path / "events.jsonl")
     on.coder = FakeCoder(writing)
     on.result = EvaluatedLoop(
@@ -299,3 +315,104 @@ def test_iteration_editing_tests_is_rejected(tmp_path):
         on=run, writing=[A_TAMPERED_TEST], and_evaluation_yields=EVALUATION_NEVER_REACHED
     )
     then_the_iteration_was_rejected_as_a_cheat(run)
+
+
+# --- edit mode (T-110, E-D2/E-D4/E-D5/E-D9) ---------------------------------
+# Edit runs vary the `given` (target committed at HEAD, so assemble picks edit mode) — structural,
+# a bespoke `given_`, like anti-cheat and refs. GOOD_AREA (above) is the coder's clean output.
+
+EXISTING_AREA = "def area(w, h):\n    return w + h  # bug: objective wants w * h\n"
+FENCED_AREA = "```python\ndef area(w, h):\n    return w * h\n```\n"
+# A large committed file: ceil(chars/4)*2 must exceed NUM_PREDICT so the derived floor is visible.
+A_BIG_FILE = "# padding line to grow the file\n" * 600 + "def area(w, h):\n    return w + h\n"
+
+
+def given_an_edit_run(tmp_path, current_content=EXISTING_AREA):
+    """A run whose target file (area.py) is already committed at HEAD → edit mode (E-D2)."""
+    run = _Run(tmp_path)
+    (run.repo / "area.py").write_text(current_content)
+    _git(run.repo, "add", "area.py")
+    _git(run.repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-m", "seed target")
+    return run
+
+
+def then_the_target_on_disk_is_unfenced(run):
+    """Rule-3 boundary verb (a single filesystem assertion): the on-disk target the compile stage
+    reads carries the code with markdown fences stripped (E-D5)."""
+    disk = (run.worktree / "area.py").read_text()
+    assert "```" not in disk and "def area(w, h):" in disk
+
+
+def then_the_coder_saw_num_predict(run, expected, *, at=1):
+    """The coder's per-call num_predict on iteration `at` (1-based) equals `expected` (E-D9)."""
+    assert run.coder.num_predicts[at - 1] == expected
+
+
+def test_edit_run_prompt_carries_current_file_and_edit_constraints(tmp_path):
+    """An edit run's prompt shows the CURRENT FILE segment (the committed content) and the edit
+    constraints variant (preserve untouched code), not the greenfield from-scratch constraints."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+    prompt = then_the_prompt_at_iteration(run, 1)
+    assert "CURRENT FILE" in prompt and "return w + h" in prompt
+    assert _EDIT_CONSTRAINTS.splitlines()[1] in prompt  # "- Preserve all code ..."
+
+
+def test_greenfield_run_prompt_has_no_current_file_and_keeps_scratch_constraints(tmp_path):
+    """A greenfield run (target absent at C0) renders no CURRENT FILE header and keeps today's
+    from-scratch constraints — the compositional half of the byte-identical guarantee."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+    prompt = then_the_prompt_at_iteration(run, 1)
+    assert "CURRENT FILE" not in prompt
+    assert _CONSTRAINTS.splitlines()[0] in prompt  # "- Implement ONLY the objective ..."
+
+
+def test_greenfield_constraints_are_byte_identical():
+    """E-D4 pin: greenfield keeps today's _CONSTRAINTS verbatim (a whole-string constant pin)."""
+    assert _CONSTRAINTS == (
+        "- Implement ONLY the objective; do not modify the tests.\n"
+        "- One responsibility per function; name functions after what they return or do.\n"
+        "- Return the complete file content, no markdown fences."
+    )
+
+
+def test_fenced_edit_generation_lands_stripped_on_disk(tmp_path):
+    """A fenced coder response in edit mode is stripped before the target write (E-D5)."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[FENCED_AREA], and_evaluation_yields=[CLEAN])
+    then_the_target_on_disk_is_unfenced(run)
+
+
+def test_fenced_greenfield_generation_lands_stripped_on_disk(tmp_path):
+    """Fence-strip on the write step applies in BOTH modes — greenfield too (E-D5)."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[FENCED_AREA], and_evaluation_yields=[CLEAN])
+    then_the_target_on_disk_is_unfenced(run)
+
+
+def test_edit_num_predict_floor_derives_from_file_size(tmp_path):
+    """E-D9: with no explicit budget, edit mode sizes num_predict to the current file —
+    max(NUM_PREDICT, ceil(chars/4)*2) capped at EDIT_NUM_PREDICT_CAP — so a whole-file rewrite
+    of a large module is never truncated. A big file raises the floor above the greenfield default."""
+    run = given_an_edit_run(tmp_path, current_content=A_BIG_FILE)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+    expected = min(EDIT_NUM_PREDICT_CAP, max(NUM_PREDICT, math.ceil(len(A_BIG_FILE) / 4) * 2))
+    assert expected > NUM_PREDICT
+    then_the_coder_saw_num_predict(run, expected)
+
+
+def test_explicit_num_predict_budget_overrides_edit_floor(tmp_path):
+    """E-D9: an explicit budgets.num_predict ALWAYS wins over the derived edit-mode floor."""
+    run = given_an_edit_run(tmp_path, current_content=A_BIG_FILE)
+    when_the_coder_iterates(
+        on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN], with_num_predict=512
+    )
+    then_the_coder_saw_num_predict(run, 512)
+
+
+def test_greenfield_num_predict_is_the_unchanged_default(tmp_path):
+    """E-D9: greenfield behavior is unchanged — the coder still sees the NUM_PREDICT floor."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+    then_the_coder_saw_num_predict(run, NUM_PREDICT)
