@@ -508,6 +508,97 @@ def test_gotest_failure_preserves_raw_output():
     assert "want 12" in failures[0].raw
 
 
+# --- _parse_go_build: go build stderr (T-92 Phase 3) -------------------------
+
+# Measured `go build ./...` stderr (session-124 experiment): `# pkg` banner lines
+# are non-failures; error lines are `./path:line:col: message` with a REAL
+# worktree-relative path — compile attribution needs no stamp (R4).
+GO_BUILD_FAIL = """\
+# example.com/probe
+./area.go:10:23: undefined: mathutil.Volume
+./area.go:5:1: syntax error: unexpected }, expected expression
+"""
+
+# The SAME undefined-reference error at a different line:col — volatile
+# coordinates must strip (P2-D7): error_key identical to GO_BUILD_FAIL's first.
+GO_BUILD_FAIL_SHIFTED = """\
+# example.com/probe
+./area.go:40:7: undefined: mathutil.Volume
+"""
+
+# Subpackage errors + the remaining message classes. Paths keep their package
+# dir (T-98: worktree-relative, never a bare basename).
+GO_BUILD_CLASSES = """\
+# example.com/probe/geo
+./geo/volume.go:3:5: cannot use x (variable of type string) as int value
+./geo/volume.go:7:2: "fmt" imported and not used
+./geo/volume.go:9:1: weird unclassifiable failure
+"""
+
+
+def test_gobuild_banner_lines_are_skipped_and_errors_parsed():
+    """The `# pkg` banner is not a failure; the two error lines each yield one
+    ParsedFailure with stage compile."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert len(failures) == 2
+    assert all(failure.stage == STAGE_COMPILE for failure in failures)
+
+
+def test_gobuild_file_is_worktree_relative_without_dot_slash():
+    """.file strips the leading './' but keeps the worktree-relative path."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert all(failure.file == "area.go" for failure in failures)
+
+
+def test_gobuild_subpackage_file_keeps_package_dir():
+    """A subpackage error's .file keeps its directory ('geo/volume.go') — T-98:
+    basename-only attribution flips scope on collisions."""
+    failures = parser_mod._parse_go_build(GO_BUILD_CLASSES)
+    assert all(failure.file == "geo/volume.go" for failure in failures)
+
+
+def test_gobuild_classifies_undefined_and_syntax():
+    """Message-tail classification mirrors classify_go_error (validate-code.py:115):
+    'undefined:' → go-undefined_reference; 'syntax error'/'expected' → go-syntax_error."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert failures[0].error_key[0] == "go-undefined_reference"
+    assert failures[1].error_key[0] == "go-syntax_error"
+
+
+def test_gobuild_classifies_type_unused_and_fallback():
+    """'cannot use'/'type ' → go-type_error; 'imported and not used' →
+    go-unused_import; anything unmatched falls back to go-compile_error."""
+    kinds = [f.error_key[0] for f in parser_mod._parse_go_build(GO_BUILD_CLASSES)]
+    assert kinds == ["go-type_error", "go-unused_import", "go-compile_error"]
+
+
+def test_gobuild_error_key_stable_across_line_shift():
+    """The same defect at 10:23 vs 40:7 keys identically — line:col are volatile
+    coordinates (P2-D7)."""
+    fail1 = parser_mod._parse_go_build(GO_BUILD_FAIL)[0]
+    fail2 = parser_mod._parse_go_build(GO_BUILD_FAIL_SHIFTED)[0]
+    assert fail1.error_key == fail2.error_key
+
+
+def test_gobuild_preserves_raw_line():
+    """.raw retains the original error line for the diff report."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert "undefined: mathutil.Volume" in failures[0].raw
+
+
+def test_gobuild_empty_or_banner_only_stderr_yields_no_failures():
+    """Empty stderr and banner-only stderr both parse to [] (a clean build)."""
+    assert parser_mod._parse_go_build("") == []
+    assert parser_mod._parse_go_build("# example.com/probe\n") == []
+
+
+def test_gobuild_failures_are_mechanical_category():
+    """Flat Go rule: every compile-stage failure is mechanical (asserted, not
+    inherited by accident — same pinning stance as the go-test half)."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert all(category_for(failure) == CATEGORY_MECHANICAL for failure in failures)
+
+
 # --- flat Go category rule (T-92 Phase 3; folded into the _parse_gotest run) --
 
 
