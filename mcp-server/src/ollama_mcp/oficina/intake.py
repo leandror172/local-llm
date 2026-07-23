@@ -2,8 +2,11 @@
 
 Profiles share ONE schema and differ only in intake rules:
 - ``kind: file``     — requires ``deliverable.target`` (today's output_file semantics)
-- ``kind: function`` — P2 loop deliverable: requires ``target`` AND an ``acceptance``
-  spec (``test_cmd`` is the every-iteration gate), tests run in an isolated ``worktree``
+- ``kind: function`` — the evaluated-loop deliverable (greenfield OR edit): requires ``target``
+  AND an ``acceptance`` spec (``test_cmd`` is the every-iteration gate), tests run in an isolated
+  ``worktree``. Greenfield vs edit is NOT an intake concern — intake accepts a ``function`` spec
+  whether the target is new or already exists on disk; the mode is decided at assembly by whether
+  the target is committed at HEAD (E-D2), so intake never touches the filesystem for the target.
 - ``kind: answer``   — forbids ``target`` (budget implicitly 1, workspace in_place)
 
 Every rejection names its rule and carries the **where/whose/what** triad — the single

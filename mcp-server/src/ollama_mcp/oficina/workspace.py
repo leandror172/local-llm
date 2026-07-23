@@ -5,10 +5,15 @@ incremental caches persist, and delta-scoped evaluation (S16/P2-D12) becomes a c
 between per-iteration snapshots in the same tree. The deliverable is a branch + diff report.
 
 **Assembling** (P2-D13) is the ordered substep sequence:
-``worktree add <base> on a run branch → materialize/verify test_files → commit C0 (deliverable
-ABSENT) → evaluate C0 → build the stable prompt prefix → AssemblyDone``. C0 pins the tests and
-excludes the deliverable, which is what makes both the delta-scope baseline (P2-D12) and the
-anti-cheat check (any iteration touching a test_file, T5) free.
+``worktree add <base> on a run branch → detect mode → materialize/verify test_files → commit C0
+→ evaluate C0 → build the stable prompt prefix → AssemblyDone``. What C0 contains is
+**mode-dependent** (E-D2): in a **greenfield** run the target is absent, so C0 excludes the
+deliverable and the delta-scope baseline (P2-D12) and anti-cheat (any iteration touching a
+test_file, T5) are free; in an **edit** run the target is already committed at HEAD, so it is
+present at C0 (its content becomes the ``current_file`` stable part and the compile stage runs on
+it at baseline). The mode is the target's presence at HEAD in the checkout — no spec field; a
+target on disk but NOT at HEAD is a fail-loud ``AssemblyError`` (E-D2a: the model can't see
+uncommitted WIP). The tests are always pinned by C0 regardless of mode.
 
 **Teardown** removes the worktree AND prunes the target's worktree registry — P2-D5's advisor
 note: retention's ``rm -rf`` of the workspace dir would otherwise leave a dangling

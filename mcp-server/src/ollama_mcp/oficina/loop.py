@@ -2,19 +2,25 @@
 
 This is the value inflection of oficina: instead of P1's single shot, generate → evaluate
 cheaply every iteration → classify the failure (rule-based, no model call — P2-D4) → repair
-or fresh-start → budget out. The first slice (P2-D1) is `function`-against-pre-authored-tests,
-Python, 3 iterations, one persona, no escalation ladder.
+or fresh-start → budget out. The `function` kind is whole-file-against-pre-authored-tests,
+Python, 3 iterations, one persona, no escalation ladder — **greenfield or edit** by whether the
+target is committed at HEAD (E-D2, detected in ``workspace.assemble``); the loop consumes the
+resulting ``Assembly.mode`` and treats both uniformly through the same whole-file write.
 
 Collaborators are INJECTED (coder, evaluate, workspace, ledger) so the loop is unit-testable
 with fakes — no GPU, no git required in the pure path. The worker (T7) wires the real ones.
 
-Prompt layout obeys P2-D2 via ``build_prompt``: stable parts (system/constraints/context/tests/
-objective) are byte-identical every iteration; only ``repair_feedback``/``previous_attempt`` vary,
-so the KV prefix is reused. Fresh-start (P2-D7) drops the variable tail but keeps the stable prefix.
+Prompt layout obeys P2-D2 via ``build_prompt``: the stable parts (system/constraints/context/
+current_file/tests/objective) are byte-identical every iteration; only ``repair_feedback``/
+``previous_attempt`` vary, so the KV prefix is reused. Two parts are **mode-selected but still
+run-constant**: the constraints variant (E-D4 — greenfield from-scratch vs edit preserve-the-rest)
+and, in edit mode, ``current_file`` (the target's C0 content, E-D3). Fresh-start (P2-D7) drops the
+variable tail but keeps the stable prefix.
 
 Generation is bounded by ``num_predict`` (T-91): the sync path used to inherit the model default
-and truncate functions mid-body; the loop floors it (never truncate a function) and caps it (bound
-runaway).
+and truncate functions mid-body. Greenfield floors/caps at ``NUM_PREDICT``; edit mode sizes the
+budget to the current file (E-D9) so a whole-file rewrite of a large module is never truncated —
+an explicit ``budgets.num_predict`` always wins. Resolved post-assembly, when the file size is known.
 """
 
 from __future__ import annotations
