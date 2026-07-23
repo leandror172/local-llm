@@ -338,4 +338,3 @@ def _classify_go_error(message: str) -> str:
         return "unused_import"
     else:
         return "compile_error"
-
