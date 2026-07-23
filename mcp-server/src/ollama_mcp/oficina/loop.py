@@ -363,8 +363,10 @@ def default_coder(num_predict: Optional[int] = None, timeout: int = 1800) -> Cod
 
     The construction-time ``num_predict`` is a FALLBACK (NUM_PREDICT floor/cap when None):
     the loop now owns per-call resolution (E-D9) and passes an effective value on every call,
-    which wins. A caller invoking the coder directly (or the worker's pre-assembly wiring) still
-    gets the baked value. ``timeout`` comes from ``spec.timeout_s`` (wired by the worker, T-95).
+    which wins — so the worker's construction-time ``num_predict=budgets.num_predict`` is inert
+    on the loop path (an explicit budget wins inside ``_resolve_num_predict`` instead); only a
+    direct 3-arg call (tests/legacy) sees the baked value. ``timeout`` comes from
+    ``spec.timeout_s`` (wired by the worker, T-95).
     Built as a factory so the loop stays free of async/GPU concerns and tests inject a fake.
     Transport + cold-start grace are the worker's shared per-call helpers (T-95 decision (b)) —
     the loop emits NO Generation events; per-call telemetry lives in calls.jsonl, run_id-tagged.

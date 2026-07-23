@@ -228,3 +228,39 @@ def test_evaluate_skips_compile_when_target_absent_at_c0(tmp_path):
     failures = evaluate(tmp_path, tmp_path, spec)
     assert failures
     assert all(failure.stage == STAGE_TEST for failure in failures)
+
+
+def test_omitted_sibling_function_is_attributable(tmp_path):
+    """T6 omission simulation (acceptance criterion 6): an edit iteration that rewrites the
+    target but DROPS a sibling function produces that sibling's failure as an ATTRIBUTABLE
+    regression — test outcomes are always in scope for delta-scoping, so the loop can never
+    deliver an omission whose victim is covered by the declared tests (E-D6's behavioral net)."""
+    (tmp_path / "geometry.py").write_text(
+        "def area(w, h):\n    return w + h\n\n\ndef perimeter(w, h):\n    return 2 * (w + h)\n"
+    )
+    (tmp_path / "test_geometry.py").write_text(
+        "from geometry import area, perimeter\n\n\n"
+        "def test_area():\n    assert area(2, 3) == 6\n\n\n"
+        "def test_perimeter():\n    assert perimeter(2, 3) == 10\n"
+    )
+    spec = {
+        "deliverable": {"kind": "function", "target": str(tmp_path / "geometry.py")},
+        "acceptance": {
+            "test_cmd": f"{sys.executable} -m pytest -q",
+            "test_files": ["test_geometry.py"],
+        },
+    }
+    baseline = evaluate(tmp_path, tmp_path, spec)  # edit-mode C0: area fails, perimeter passes
+    (tmp_path / "geometry.py").write_text("def area(w, h):\n    return w * h\n")  # fix + omission
+    current = evaluate(tmp_path, tmp_path, spec)
+    attributable = attributable_failures(
+        current, baseline, ["geometry.py"], ["test_geometry.py"]
+    )
+    assert attributable, "the dropped sibling's failure must stay live"
+    # The pytest -q short summary for a collection error is just "ERROR <file>" (the ImportError
+    # naming the dropped symbol prints ABOVE the summary block) — so the pin is on scope+class,
+    # not on the sibling's name. Product note: omission-by-import-breakage yields thin repair
+    # feedback; recorded in the T-110 plan notes.
+    failure = attributable[0]
+    assert failure.file == "test_geometry.py"
+    assert failure.error_key[0].startswith("pytest-error")
