@@ -203,3 +203,28 @@ def test_evaluate_times_out_a_hanging_test_command(tmp_path):
     }
     with pytest.raises(EvaluationError):
         evaluate(tmp_path, tmp_path, spec)
+
+
+# --- edit mode (T-110, E-D2/E-D7): compile runs iff the target is present at C0 ----
+
+
+def test_evaluate_skips_compile_when_target_absent_at_c0(tmp_path):
+    """The evaluator skips the compile stage when the target file is absent at C0 (greenfield).
+
+    Edit-mode C0 differs: the committed target is present, so compile runs on its current content
+    (covered by the broken-target/clean-target tests). Here the target is absent, so evaluation
+    goes straight to the test stage — which surfaces the import failure of the not-yet-written
+    module. Every failure is test-stage, proving compile ran only because a target was present."""
+    (tmp_path / "test_area.py").write_text(
+        "from area import area\n\n\ndef test_area():\n    assert area(2, 3) == 6\n"
+    )
+    spec = {
+        "deliverable": {"kind": "function", "target": str(tmp_path / "area.py")},
+        "acceptance": {
+            "test_cmd": f"{sys.executable} -m pytest -q",
+            "test_files": ["test_area.py"],
+        },
+    }
+    failures = evaluate(tmp_path, tmp_path, spec)
+    assert failures
+    assert all(failure.stage == STAGE_TEST for failure in failures)
