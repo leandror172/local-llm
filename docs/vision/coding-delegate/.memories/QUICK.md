@@ -89,12 +89,25 @@ label). Keep under 30 lines.*
   10/10 invariants) + live acceptance R1–R4 (246-line module diff 2+/2−, siblings byte-intact;
   observed drift additive not omissive; uncommitted-guard Failed 1.3s). Suite 279→298. E-D1–E-D9 +
   RESULTS: `docs/plans/oficina-p2-edit-mode.md`.
-- **Next:** (1) **Axis A Go read-side** (Phase 3: `_parse_gotest`, compile-in-worktree, flat
-  category rule — the honest oficina dogfood target; now simpler: `locate_unit` dropped from the
-  predicted pack, edit mode is language-agnostic). (2) T-93 refs-diagram verdict; T-86 distribution
-  (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`). Standing: T-102 gate busy-check (G-D8); prefix-reuse
-  tracking via `.claude/tools/ollama-cache-report.py`; harden write-model corpus IF a real edit run
-  drops sibling code (the E-D1 fallback trigger).
+- 2026-07-23 (session 127): **AXIS A COMPLETE — Go is a supported language (T-92 Phases 2–5, one
+  session, suite 329).** Both parsers + language-dispatched `evaluate()` (A2 imposed `-json`;
+  greenfield stderr fallback pinned empirically) + loop language axis + **`LanguagePack`
+  extracted from the two working implementations** (4 members vs 5–6 predicted; delta =
+  `ref:patterns-refactoring-duplicate-first`, duplicate-first discipline validated). **Coder
+  defaults = 16K-ctx personas** (32K cannot fit the card — measured 14.2 GiB / 2.5 tok/s
+  offloaded vs 11.1 GiB / 13–21 tok/s). Live acceptance greenfield 1-iter Delivered + first Go
+  EDIT run (1-line surgical diff). Build via 5 dogfood edit runs incl. stubs-then-retry;
+  **loop-economics finding: iteration 1 lands 90–95% and repeat iterations never see the
+  residual defect — review-fix-inline won every time** (argues for budgets.iterations=1 default
+  on reviewed edit runs). Docstring deleted 4-for-4 (E-D6 systematic). **T-111** filed:
+  cooperative cancel can't interrupt an in-flight generation (cancel latency = transport window).
+- **Next:** (1) **Axis B kinds reconsideration** (fed by Axis A: language axis proven, taxonomy
+  trigger for E-D8 rename + dead `acceptance.validators` removal). (2) T-93 refs-diagram verdict;
+  T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`/`OFICINA_GO`). Standing: T-102 gate
+  busy-check (G-D8); T-111 cancel gap; prefix-reuse tracking via
+  `.claude/tools/ollama-cache-report.py`; harden write-model corpus IF a real edit run drops
+  sibling code (the E-D1 fallback trigger — 4-for-4 docstring deletions are DOC omissions, not
+  code; trigger not fired).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).
   Guild roles demoted — no `my-aprendiz-*` personas; `journeyman` reserved for H2. Boundary

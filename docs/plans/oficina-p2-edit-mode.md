@@ -218,3 +218,27 @@ structurally confirmed (review invariant 2) and was measured live in T8 for the 
 error path); R2 sprang no omission at 246 lines. **Product note:** omission-by-import-breakage
 yields thin repair feedback (the `-q` summary is just `ERROR <file>` — the symbol name prints
 above the summary block); a future parser enhancement could capture the `E ImportError` line.
+
+## RESULTS addendum — session 127 (T-92 build: 5 production edit runs on parser/evaluator)
+
+The Go-widening build ran five real edit runs against load-bearing modules — the E-D6
+"production runs ARE the corpus" stance now has data:
+
+- **The module docstring was deleted in 4 of 4 runs that touched `parser.py`/`evaluator.py`
+  with a large module docstring — including runs whose objective EXPLICITLY said "do NOT
+  modify … the module docstring".** Systematic, not random: a whole-file rewriter treats
+  large doc blocks as expendable filler. It never fired E-D1's fallback trigger (doc, not
+  sibling *code* — code siblings were preserved once a do-not-modify constraint appeared),
+  but it is the dominant drift mode. Mitigation practiced: restore-in-review, one Edit.
+- **Loop economics: iteration 1 landed 90–95% of the pins in every run, and iterations 2–3
+  (and fresh starts) NEVER saw the residual defect** — three runs repeated an identical
+  small bug (off-by-two strip, JSONL-vs-JSON, out-of-stub edits) across every retry.
+  Review-fix-inline beat additional iterations five out of five. Product implication:
+  `budgets.iterations: 1` is arguably the right default for H1-reviewed edit runs; the
+  3-iteration default spends ~2× the GPU for zero observed convergence gain.
+- **Stubs-then-retry works as recorded**: after a run restructured `evaluate()` and broke
+  protected tests, committing the dispatch + contract-docstring stubs and asking only for
+  body fills produced to-spec bodies (though it *still* edited outside the stubs — the
+  transplant salvage, taking only the stub bodies, was the recovery).
+- **First Go edit run (stretch): surgical.** 1-line diff, doc comment preserved, edit mode
+  auto-detected on a `.go` target — T-110's machinery is language-agnostic as designed.
