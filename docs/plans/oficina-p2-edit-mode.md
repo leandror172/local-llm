@@ -187,3 +187,34 @@ Estimated new tests: ~17. Suite 279 → ~296.
   defaults async; sync = opportunistic fast path pending the busy-check (G-D8).
 - At handoff: register T-110 in `.claude/tasks.md`; update coding-delegate QUICK/KNOWLEDGE +
   mcp-server QUICK (write-protocol: in place); `.claude/index.md` row (done with this plan).
+
+## RESULTS — T6 live acceptance (session 126, 2026-07-22): **PASSED**
+
+Build: T1–T5 by an Opus subagent (6 commits, suite 279→297), adversarially reviewed
+(MERGE-READY, 10/10 invariants, findings F1–F6 all LOW; F1 fixed + omission pin `08d72ad`,
+suite 298; F2/F3/F6 accepted-with-note). Live runs, all real Ollama (`my-python-q25c14`):
+
+- **R1 — small edit, symlink-spelled target** (`~/workspaces/...`): Delivered, 1 iteration.
+  `mode: "edit"` in AssemblyDone; CURRENT FILE segment + edit constraints confirmed in the
+  live prompt; sibling body intact, 2/2 green on the branch. **Verdict 1** — the first live
+  E-D6 observation: drift was *additive* (unrequested type annotations on both functions),
+  not omissive; plainly visible in the diff (the H1 gate's class).
+- **R2 — 246-line module, 24 tested fillers**: Delivered, 1 iteration. **Diff 2+/2− — only
+  the target function touched; all 24 fillers byte-intact; 25/25 green.** Round-trip complete
+  (criterion 7): `eval_count` 1299, no truncation. The derived E-D9 budget (~2850) was
+  operative but not load-bearing (output < 2048) — an above-floor live stress needs a
+  ~500-line file; the resolution logic is unit-pinned. **Verdict 2.**
+- **R3 — greenfield control**: Delivered, 1 iteration; `mode: "greenfield"`; **zero**
+  edit-mode bytes in the live prompt, greenfield constraints verbatim (review F4 closed).
+  **Verdict 1** (one unused import).
+- **R4 — E-D2a guard probe**: uncommitted target → **Failed in 1.3 s at `assembling`**,
+  `whose: payload`, message names the target + both exits; zero GPU spent. No verdict —
+  Failed runs carry no deliverable (by design).
+
+**Criterion 5 (cache)** could not be re-measured live: every run converged in iteration 1
+(tests-as-context, the T8 product note — a positive result in itself). The contract is
+structurally confirmed (review invariant 2) and was measured live in T8 for the same layout.
+**Criterion 6 (omission)**: suite-level integration pin via the real evaluator (collection-
+error path); R2 sprang no omission at 246 lines. **Product note:** omission-by-import-breakage
+yields thin repair feedback (the `-q` summary is just `ERROR <file>` — the symbol name prints
+above the summary block); a future parser enhancement could capture the `E ImportError` line.
