@@ -94,14 +94,22 @@ patch_file's mode" IS "whole-file only". **Principle: oficina composes the ollam
 does not reimplement them** — sibling of T-95 (transport) and the T-102 gate/busy-check (a scheduler
 proposed where a busy-check existed). Each time, the re-authored local version is the cruder one.
 
-**M2 (edit an existing named unit) DECIDED = code-anchored:** a per-language `LanguagePack.locate_unit`
-computes `old_string` from disk (100% apply, no model reproduction fragility) and feeds `patch_file`.
-Named-unit kinds (function/class) are code-anchorable (the name is the locator); arbitrary `patch` is
-not. M1 (greenfield new file) = compose `output_file`. Decided on **cost/timeout-safety** (benchmark
-run 1: code-anchored size-invariant 25 tok vs whole-file 40→134→310 — whole-file on large files is
-what blew the 120s ceiling twice this session), NOT correctness (a tie at tested difficulty; the
-corpus's uniform filler never sprang the regression trap). Not built. Full report:
-`ref:oficina-write-model-report`; finding `ref:oficina-function-kind-write-model`.
+**M2 (edit) REVERSED to whole-file-with-context and BUILT + ACCEPTED (T-110, session 126,
+E-D1–E-D9).** The code-anchored `locate_unit`→`patch_file` design above is retained as the recorded
+FALLBACK — its timeout-safety leg was sync-path-only (the loop runs under `spec.timeout_s` 1800s)
+and its edit-language cost (a `unit` spec field, response-shape validation, import merging) was
+never priced; `ref:oficina-write-model-report` § AMENDMENT. Edit runs feed the committed file into
+the prompt as a `current_file` STABLE segment (C0 content — cache-safe by construction) with
+mode-selected constraints; the model returns the whole modified file; the unchanged loop evaluates
+it. Mode = target committed at HEAD (E-D2, no spec field); an uncommitted target is a fail-loud
+`AssemblyError` (live: Failed in 1.3 s, zero GPU). Fence-strip moved to the loop's write step (the
+loop owns its write invariant); edit `num_predict` sizes to the file — `max(2048, ceil(chars/4)*2)`
+cap 8192, explicit budget wins — resolved post-assembly, passed per-call (E-D9). Live acceptance
+(4 runs): a 246-line module delivered with diff 2+/2−, all 24 siblings byte-intact; the observed
+whole-file drift is ADDITIVE (unrequested annotations), not omissive; every run converged in
+iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run dropping sibling code
+→ harden the corpus, revisit code-anchored. Plan + results: `docs/plans/oficina-p2-edit-mode.md`
+(`ref:oficina-edit-mode`, `ref:oficina-edit-mode-decisions`).
 
 ## P2 evaluated loop — validator-output parser contract (P2-T1) — 2026-07-15
 

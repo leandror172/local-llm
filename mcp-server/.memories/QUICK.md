@@ -68,10 +68,21 @@ inferred from target ext; kind-scoped `language_not_supported`/`unsupported_lang
 acceptance pair; `SUPPORTED_LANGUAGES`/`EXTENSION_TO_LANGUAGE` single source; `resolve_language`
 helper). Suite 279. **Write-model finding (T-104):** `loop.py:263` overwrites the whole target file
 → `kind:function` is file-granular; the loop reimplements what it should COMPOSE (dropped
-`patch_file`). **M2 (edit) decided = code-anchored** (`locate_unit`→`patch_file`); not built yet.
+`patch_file`). **M2 (edit) decided = code-anchored — SUPERSEDED s126, see below.**
 `ref:oficina-function-kind-write-model`, `ref:oficina-write-model-report`.
 
 Session 125 (2026-07-21): **`_log_call` gained `call_id` + `tool` (T-105)** — supersedes "every call → JSONL (prompt, response, model, latency, tokens)" above. `prompt_hash` is a content address, not an identity. **Fields appear only after the bridge subprocess restarts.** Detail: KNOWLEDGE.md § "Call Logging for DPO".
+
+Session 126 (2026-07-22): **Edit mode SHIPPED (T-110, whole-file-with-context)** — supersedes s124's
+"M2 = code-anchored" (that design = recorded fallback, omission trigger). `kind:function` at a
+committed target is a first-class edit run: `workspace._detect_mode` sets `Assembly.mode`;
+`current_file` stable prompt segment; `_EDIT_CONSTRAINTS` by mode; fence-strip at the loop write
+step (composes `server._strip_code_fences`); edit `num_predict` = `max(2048, ceil(chars/4)*2)` cap
+8192, explicit budget wins, resolved post-assembly, passed per-call (CoderFn kwarg). Uncommitted
+target → fail-loud AssemblyError. Suite 279→298; live acceptance PASSED (R1–R4). Plan + results:
+`docs/plans/oficina-p2-edit-mode.md`. New analysis tool `.claude/tools/ollama-cache-report.py` —
+per-run prefix-reuse report over calls.jsonl (duration-not-count rule; ledger-inline option B
+deferred, noted in-file).
 
 ## Deeper Memory -> KNOWLEDGE.md
 
