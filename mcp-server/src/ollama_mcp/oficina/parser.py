@@ -1,38 +1,3 @@
-"""Shared validator-output parser (P2 build step T1; P2-D7/D8/D12).
-
-The evaluated loop runs the deliverable through evaluation *stages* in order
-(`ref:delegate-p2-decisions` P2-D8). Three of those stages emit wildly
-different raw output:
-
-  - **compile** — ``benchmarks/lib/validate-code.py`` prints a JSON *array* of
-    per-file result dicts: ``{file, path, status, errors:[{type,text,line}],
-    warnings, error_count, warning_count, ...}`` (``validate-code.py:690``).
-  - **test (pytest)** — free-form text; the machine-readable signal is the
-    *short test summary* section, whose lines look like
-    ``FAILED path::nodeid - AssertionError: ...`` and
-    ``ERROR path::nodeid - ImportError: ...``.
-  - **test (go)** — ``go test -json`` emits a JSON-Lines event stream; the
-    authoritative failures are the ``Action:"fail"`` events with a non-empty
-    ``Test`` field (never a text scrape of ``--- FAIL:`` output lines).
-
-``parse_validator_output`` folds them into ONE ``ParsedFailure`` shape so the
-three downstream readers never re-parse compiler text:
-
-  - **P2-D8** ``category_for`` reads ``.stage`` (+ ``.error_key`` for the
-    test-stage ERROR/FAILED split — the Python ``py_compile``-only caveat;
-    Go's rule is flat: compile→mechanical, test→structural).
-  - **P2-D7** the repetition signature reads ``.error_key`` — the defect minus
-    its volatile coordinates (line/col, abs paths, temp dirs, addresses), so a
-    defect keys identically regardless of where in the file it lands.
-  - **P2-D12** ``scope_of`` reads ``.file`` to decide in-target / in-test /
-    out-of-scope, which drives delta-scoped subtraction.
-
-First slice (P2-D1) wrote exactly one normalizer: Python. T-92 Phase 2 made the
-compile error_key prefix language-derived (R1 identifiers in, prefix spelling
-out); Phase 3 added the Go test parser beside the Python one (duplicated on
-purpose — the LanguagePack extraction is Phase 4).
-"""
-
 from __future__ import annotations
 
 import json
@@ -326,3 +291,51 @@ def _parse_gotest(payload: str, module: str) -> list[ParsedFailure]:
         )
 
     return failures
+
+# --- go build stderr parser (T-92 Phase 3) ------------------------
+
+
+def _parse_go_build(payload: str) -> list[ParsedFailure]:
+    """Parse the stderr of `go build ./...` into zero or more ``ParsedFailure``.
+
+    Args:
+        payload: The stderr output from `go build`.
+
+    Returns:
+        A list of failures (empty when no errors occurred).
+    """
+    failures: list[ParsedFailure] = []
+    lines = payload.splitlines()
+    for line in lines:
+        if line.startswith("#"):
+            continue  # Skip package banner lines
+        match = re.match(r"\./(\S+):(\d+):(\d+): (.*)", line)
+        if not match:
+            continue  # Skip non-error lines
+        file, line_num, col_num, message = match.groups()
+        kind = _classify_go_error(message)
+        error_key = (f"go-{kind}", _normalize(message))
+        failures.append(
+            ParsedFailure(
+                stage=STAGE_COMPILE,
+                file=file[2:],  # Strip leading './'
+                error_key=error_key,
+                raw=line,
+            )
+        )
+    return failures
+
+
+def _classify_go_error(message: str) -> str:
+    """Classify a Go compiler error message into a kind."""
+    if "undefined:" in message or "undefined name" in message:
+        return "undefined_reference"
+    elif "syntax error" in message or "expected" in message:
+        return "syntax_error"
+    elif "cannot use" in message or "type " in message or "cannot convert" in message:
+        return "type_error"
+    elif "imported and not used" in message:
+        return "unused_import"
+    else:
+        return "compile_error"
+
