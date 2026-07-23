@@ -1,3 +1,38 @@
+"""Shared validator-output parser (P2 build step T1; P2-D7/D8/D12).
+
+The evaluated loop runs the deliverable through evaluation *stages* in order
+(`ref:delegate-p2-decisions` P2-D8). Three of those stages emit wildly
+different raw output:
+
+  - **compile** — ``benchmarks/lib/validate-code.py`` prints a JSON *array* of
+    per-file result dicts: ``{file, path, status, errors:[{type,text,line}],
+    warnings, error_count, warning_count, ...}`` (``validate-code.py:690``).
+  - **test (pytest)** — free-form text; the machine-readable signal is the
+    *short test summary* section, whose lines look like
+    ``FAILED path::nodeid - AssertionError: ...`` and
+    ``ERROR path::nodeid - ImportError: ...``.
+  - **test (go)** — ``go test -json`` emits a JSON-Lines event stream; the
+    authoritative failures are the ``Action:"fail"`` events with a non-empty
+    ``Test`` field (never a text scrape of ``--- FAIL:`` output lines).
+
+``parse_validator_output`` folds them into ONE ``ParsedFailure`` shape so the
+three downstream readers never re-parse compiler text:
+
+  - **P2-D8** ``category_for`` reads ``.stage`` (+ ``.error_key`` for the
+    test-stage ERROR/FAILED split — the Python ``py_compile``-only caveat;
+    Go's rule is flat: compile→mechanical, test→structural).
+  - **P2-D7** the repetition signature reads ``.error_key`` — the defect minus
+    its volatile coordinates (line/col, abs paths, temp dirs, addresses), so a
+    defect keys identically regardless of where in the file it lands.
+  - **P2-D12** ``scope_of`` reads ``.file`` to decide in-target / in-test /
+    out-of-scope, which drives delta-scoped subtraction.
+
+First slice (P2-D1) wrote exactly one normalizer: Python. T-92 Phase 2 made the
+compile error_key prefix language-derived (R1 identifiers in, prefix spelling
+out); Phase 3 added the Go test parser beside the Python one (duplicated on
+purpose — the LanguagePack extraction is Phase 4).
+"""
+
 from __future__ import annotations
 
 import json
@@ -212,8 +247,8 @@ def category_for(failure: ParsedFailure) -> str:
             return CATEGORY_MECHANICAL
         if failure.error_key[0].startswith("pytest-failed"):
             return CATEGORY_STRUCTURAL
-        if failure.error_key[0].startswith("go-test-failed:"):
-            return CATEGORY_STRUCTURAL
+    if failure.error_key[0].startswith("go-test-failed:"):
+        return CATEGORY_STRUCTURAL
     raise ValueError(f"uncategorizable failure: {failure!r}")
 
 
@@ -240,50 +275,54 @@ def scope_of(
         return SCOPE_TEST
     return SCOPE_OUT
 
+# --- go test -json event stream parser (T-92 Phase 3) ------------------------
+
 
 def _parse_gotest(payload: str, module: str) -> list[ParsedFailure]:
-    """Parse the JSONL output of `go test -json` into ParsedFailures.
+    """Parse the stdout of `go test -json ./...` into zero or more ``ParsedFailure``.
 
     Args:
-        payload: The stdout of `go test -json ./...`.
-        module: The module path (e.g., "example.com/probe").
+        payload: The JSON Lines output from `go test -json`.
+        module: The module path to strip from package paths.
 
     Returns:
-        A list of failures.
+        A list of failures (empty when no tests failed).
     """
-    lines = payload.splitlines()
-    tests = {}
-    failures = []
+    failures: list[ParsedFailure] = []
+    events = [json.loads(line) for line in payload.splitlines() if line.strip()]
 
-    for line in lines:
-        if not line.strip():
-            continue
-        event = json.loads(line)
-        action = event.get("Action")
-        test_name = event.get("Test")
+    test_outputs: dict[str, list[str]] = {}
+    for event in events:
+        if event.get("Action") == "output" and event.get("Test"):
+            test_outputs.setdefault(event["Test"], []).append(event["Output"])
 
-        if action == "run" and test_name:
-            tests[test_name] = {"output": []}
-        elif action == "output" and test_name:
-            tests[test_name]["output"].append(event["Output"])
-        elif action == "fail" and test_name:
-            output = tests[test_name].get("output", [])
-            for line in output:
-                match = re.search(r"(\S+)_test\.go:(\d+)", line)
-                if match:
-                    file_path = match.group(1) + "_test.go"
-                    package_dir = event["Package"].replace(module, "").lstrip("/")
-                    if package_dir:
-                        file_path = os.path.join(package_dir, file_path)
-                    error_key = ("go-test-failed:" + _normalize(test_name), _normalize(line))
-                    failures.append(
-                        ParsedFailure(
-                            stage=STAGE_TEST,
-                            file=file_path,
-                            error_key=error_key,
-                            raw=line,
-                        )
-                    )
-                    break
+    for event in events:
+        if event.get("Action") != "fail" or not event.get("Test"):
+            continue  # package-level fail events (no Test) summarize, never count
+        test = event["Test"]
+        # The detail line is the Output carrying the file:line fragment — keying on
+        # it (not the join of all outputs) keeps error_key invariant to volatile
+        # output composition ('=== RUN' banners, extra logs), per P2-D7.
+        detail_line = next(
+            (o for o in test_outputs.get(test, []) if re.search(r"\S+_test\.go:\d+", o)),
+            None,
+        )
+        file_part = None
+        if detail_line is not None:
+            file_name = re.search(r"(\S+_test\.go):\d+", detail_line).group(1)
+            package_dir = (
+                "" if event["Package"] == module
+                else event["Package"].removeprefix(module + "/")
+            )
+            file_part = f"{package_dir}/{file_name}" if package_dir else file_name
+        raw = (detail_line or "\n".join(test_outputs.get(test, []))).strip()
+        failures.append(
+            ParsedFailure(
+                stage=STAGE_TEST,
+                file=file_part,
+                error_key=("go-test-failed:" + _normalize(test), _normalize(raw)),
+                raw=raw,
+            )
+        )
 
     return failures
