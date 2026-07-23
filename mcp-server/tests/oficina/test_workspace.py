@@ -12,6 +12,7 @@ import subprocess
 
 import pytest
 
+from ollama_mcp.oficina.evaluator import evaluate as real_evaluate
 from ollama_mcp.oficina.parser import STAGE_COMPILE, ParsedFailure
 from ollama_mcp.oficina.workspace import AssemblyError, Workspace
 
@@ -182,6 +183,18 @@ def test_assembly_done_payload_carries_mode(tmp_path):
     captured = []
     _workspace(tmp_path, repo).assemble(emit=captured.append)
     assert captured[0]["mode"] == "edit"
+
+
+def test_edit_mode_c0_runs_real_compile_on_committed_target(tmp_path):
+    """Edit-mode C0 integration (E-D2/E-D7): a target committed BROKEN is present at C0, so the
+    real evaluate runs the compile stage on its committed content and surfaces the failure as the
+    baseline. This is the novelty edit mode introduces — greenfield C0 never had a target present,
+    so compile at baseline was unreachable before. Uses the real evaluator, not the injected fake."""
+    repo = _make_repo_with_target(tmp_path, target_content="def area(w, h)\n    return w * h\n")  # no colon
+    assembly = Workspace(_spec(repo), "rid1", tmp_path / "run", real_evaluate).assemble()
+    assert assembly.mode == "edit"
+    assert assembly.baseline_failures  # the committed target's compile failure IS the C0 baseline
+    assert assembly.baseline_failures[0].stage == STAGE_COMPILE
 
 
 # --- per-iteration snapshot -------------------------------------------------
