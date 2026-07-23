@@ -25,17 +25,21 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, List
 
 from .errors import TriadError
+from .intake import resolve_language
 from .parser import (
     SCOPE_OUT,
     STAGE_COMPILE,
     STAGE_TEST,
     ParsedFailure,
+    _parse_go_build,
+    _parse_gotest,
     parse_validator_output,
     scope_of,
 )
@@ -179,15 +183,69 @@ def _run_test_stage(worktree: Path, test_cmd: str, timeout_s: int) -> List[Parse
     return failures
 
 
+# --- Go stages (T-92 Phase 3): duplicated beside the Python stages on purpose —
+# the LanguagePack extraction is Phase 4. Signatures + contracts are pinned here;
+# bodies are filled by the evaluator edit run against the test_evaluator.py twins.
+
+
+def _go_binary() -> str:
+    """Resolve the go binary: ``OFICINA_GO`` env override, else PATH lookup, else the
+    literal ``go`` (the ``_validate_code_script`` env-override pattern — the detached
+    worker's PATH may lack the login shell's ``/usr/local/go/bin``)."""
+    raise NotImplementedError
+
+
+def _read_go_module(worktree: Path) -> str:
+    """The module path from the worktree's ``go.mod`` — the line starting ``module ``."""
+    raise NotImplementedError
+
+
+def _run_go_compile_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
+    """R3: run ``go build ./...`` with ``cwd=worktree``, capturing output.
+
+    Exit 0 → ``[]``; nonzero → ``_parse_go_build(stderr)`` (the path in each error
+    line is already worktree-relative — compile is self-attributing, R4). A timeout
+    raises ``EvaluationError("compile", ...)`` exactly like the Python stage.
+    """
+    raise NotImplementedError
+
+
+def _run_go_test_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
+    """A2: ALWAYS run ``go test -json ./...`` with ``cwd=worktree`` — the caller's
+    ``test_cmd`` is deliberately not consulted, because Package-field attribution
+    depends on ``-json`` and honoring a plain ``go test`` would silently degrade
+    into the P2-D12 masking hole.
+
+    Exit 0 → ``[]``; nonzero → ``_parse_gotest(stdout, module)`` with the module
+    from ``_read_go_module``; nonzero with ZERO parsed failures raises
+    ``EvaluationError("test", ...)`` (tests-never-ran must not read as passed —
+    the same guard as the Python test stage). A timeout raises ``EvaluationError``.
+    """
+    raise NotImplementedError
+
+
 def evaluate(worktree: Path, base_repo: Path, spec: Dict[str, Any]) -> List[ParsedFailure]:
     """The real ``EvaluateFn``: stage-ordered evaluation, first failing stage wins (P2-D8).
 
     Compile runs only when the target exists in the worktree (at C0 the deliverable is absent,
     so evaluation goes straight to the test stage, which surfaces the import/undefined failure).
+    The stages are language-dispatched (T-92 Phase 3): the resolved deliverable language picks
+    the Go twins or the Python originals; the flow (presence rule, first-failing-stage) is
+    invariant.
     """
     target = (spec.get("deliverable") or {}).get("target")
     acceptance = spec.get("acceptance") or {}
     timeout_s = (spec.get("budgets") or {}).get("wall_clock_s") or _STAGE_TIMEOUT_S
+    language = resolve_language(spec.get("deliverable") or {}) or "python"
+
+    if language == "go":
+        if target:
+            rel = target_relpath(target, base_repo)
+            if (Path(worktree) / rel).exists():
+                compile_failures = _run_go_compile_stage(Path(worktree), timeout_s)
+                if compile_failures:
+                    return compile_failures
+        return _run_go_test_stage(Path(worktree), timeout_s)
 
     if target:
         rel = target_relpath(target, base_repo)
