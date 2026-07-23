@@ -302,23 +302,24 @@ def _parse_go_build(payload: str) -> list[ParsedFailure]:
         payload: The stderr output from `go build`.
 
     Returns:
-        A list of failures (empty when no errors occurred).
+        A list of failures (empty when no errors are present).
     """
     failures: list[ParsedFailure] = []
     lines = payload.splitlines()
     for line in lines:
         if line.startswith("#"):
             continue  # Skip package banner lines
-        match = re.match(r"\./(\S+):(\d+):(\d+): (.*)", line)
+        match = re.match(r"\./([^:]+):(\d+):(\d+):\s*(.*)", line)
         if not match:
             continue  # Skip non-error lines
-        file, line_num, col_num, message = match.groups()
+        file_path, _, _, message = match.groups()
+        file_part = file_path[2:]  # Strip leading './'
         kind = _classify_go_error(message)
         error_key = (f"go-{kind}", _normalize(message))
         failures.append(
             ParsedFailure(
                 stage=STAGE_COMPILE,
-                file=file[2:],  # Strip leading './'
+                file=file_part,
                 error_key=error_key,
                 raw=line,
             )
@@ -327,14 +328,15 @@ def _parse_go_build(payload: str) -> list[ParsedFailure]:
 
 
 def _classify_go_error(message: str) -> str:
-    """Classify a Go compiler error message into a kind."""
-    if "undefined:" in message or "undefined name" in message:
+    """Classify a Go build error message into a kind."""
+    message_lower = message.lower()
+    if "undefined:" in message_lower or "undefined name" in message_lower:
         return "undefined_reference"
-    elif "syntax error" in message or "expected" in message:
+    elif "syntax error" in message_lower or "expected" in message_lower:
         return "syntax_error"
-    elif "cannot use" in message or "type " in message or "cannot convert" in message:
+    elif "cannot use" in message_lower or "type " in message_lower or "cannot convert" in message_lower:
         return "type_error"
-    elif "imported and not used" in message:
+    elif "imported and not used" in message_lower:
         return "unused_import"
     else:
         return "compile_error"
