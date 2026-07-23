@@ -1,31 +1,3 @@
-"""Shared validator-output parser (P2 build step T1; P2-D7/D8/D12).
-
-The evaluated loop runs the deliverable through evaluation *stages* in order
-(`ref:delegate-p2-decisions` P2-D8). Two of those stages emit wildly different
-raw output:
-
-  - **compile** — ``benchmarks/lib/validate-code.py`` prints a JSON *array* of
-    per-file result dicts: ``{file, path, status, errors:[{type,text,line}],
-    warnings, error_count, warning_count, ...}`` (``validate-code.py:690``).
-  - **test** — ``pytest`` emits free-form text; the machine-readable signal is
-    the *short test summary* section, whose lines look like
-    ``FAILED path::nodeid - AssertionError: ...`` and
-    ``ERROR path::nodeid - ImportError: ...``.
-
-``parse_validator_output`` folds both into ONE ``ParsedFailure`` shape so the
-three downstream readers never re-parse compiler text:
-
-  - **P2-D8** ``category_for`` reads ``.stage`` (+ ``.error_key`` for the
-    test-stage ERROR/FAILED split — the Python ``py_compile``-only caveat).
-  - **P2-D7** the repetition signature reads ``.error_key`` — the defect minus
-    its volatile coordinates (line/col, abs paths, temp dirs, addresses), so a
-    defect keys identically regardless of where in the file it lands.
-  - **P2-D12** ``scope_of`` reads ``.file`` to decide in-target / in-test /
-    out-of-scope, which drives delta-scoped subtraction.
-
-First slice (P2-D1) writes exactly one normalizer: Python.
-"""
-
 from __future__ import annotations
 
 import os
@@ -98,7 +70,7 @@ def _normalize(text: str) -> str:
 # --- per-stage parsers ------------------------------------------------------
 
 
-def _parse_compile(payload: list) -> list[ParsedFailure]:
+def _parse_compile(payload: list, language: str) -> list[ParsedFailure]:
     """One ParsedFailure per error across every failing file in the JSON array."""
     failures: list[ParsedFailure] = []
     for result in payload:
@@ -106,7 +78,7 @@ def _parse_compile(payload: list) -> list[ParsedFailure]:
             continue
         for error in result.get("errors", []):
             text = error["text"]
-            error_key = (f"py-{error['type']}", _normalize(text))
+            error_key = (f"{language}-{error['type']}", _normalize(text))
             failures.append(
                 ParsedFailure(
                     stage=STAGE_COMPILE,
@@ -190,7 +162,7 @@ def _parse_pytest(payload: str) -> list[ParsedFailure]:
 # --- public surface ---------------------------------------------------------
 
 
-def parse_validator_output(stage: str, payload: Any) -> list[ParsedFailure]:
+def parse_validator_output(stage: str, payload: Any, language: str = "py") -> list[ParsedFailure]:
     """Parse one stage's raw output into zero or more ``ParsedFailure``.
 
     Args:
@@ -200,12 +172,13 @@ def parse_validator_output(stage: str, payload: Any) -> list[ParsedFailure]:
             stage is explicit — never sniffed from the payload.
         payload: a ``list[dict]`` for the compile stage, a ``str`` for the test
             stage.
+        language: the programming language of the code being compiled (default "py").
 
     Returns:
         A list of failures (empty when the stage passed).
     """
     if stage == STAGE_COMPILE:
-        return _parse_compile(payload)
+        return _parse_compile(payload, language)
     if stage == STAGE_TEST:
         return _parse_pytest(payload)
     raise ValueError(f"unknown stage: {stage!r}")
