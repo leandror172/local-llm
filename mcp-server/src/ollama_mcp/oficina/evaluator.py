@@ -192,12 +192,19 @@ def _go_binary() -> str:
     """Resolve the go binary: ``OFICINA_GO`` env override, else PATH lookup, else the
     literal ``go`` (the ``_validate_code_script`` env-override pattern — the detached
     worker's PATH may lack the login shell's ``/usr/local/go/bin``)."""
-    raise NotImplementedError
+    return os.environ.get("OFICINA_GO") or shutil.which("go") or "go"
 
 
 def _read_go_module(worktree: Path) -> str:
     """The module path from the worktree's ``go.mod`` — the line starting ``module ``."""
-    raise NotImplementedError
+    go_mod_path = worktree / "go.mod"
+    if not go_mod_path.exists():
+        raise EvaluationError("test", "go.mod not found in worktree")
+    for line in go_mod_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("module "):
+            return line[len("module "):]
+    raise EvaluationError("test", "no module line found in go.mod")
 
 
 def _run_go_compile_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
@@ -207,7 +214,19 @@ def _run_go_compile_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]
     line is already worktree-relative — compile is self-attributing, R4). A timeout
     raises ``EvaluationError("compile", ...)`` exactly like the Python stage.
     """
-    raise NotImplementedError
+    try:
+        result = subprocess.run(
+            [_go_binary(), "build", "./..."],
+            cwd=str(worktree),
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        raise EvaluationError("compile", f"go build exceeded {timeout_s}s")
+    if result.returncode != 0:
+        return _parse_go_build(result.stderr)
+    return []
 
 
 def _run_go_test_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
@@ -221,7 +240,33 @@ def _run_go_test_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
     ``EvaluationError("test", ...)`` (tests-never-ran must not read as passed —
     the same guard as the Python test stage). A timeout raises ``EvaluationError``.
     """
-    raise NotImplementedError
+    try:
+        result = subprocess.run(
+            [_go_binary(), "test", "-json", "./..."],
+            cwd=str(worktree),
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        raise EvaluationError("test", f"go test exceeded {timeout_s}s")
+    if result.returncode == 0:
+        return []
+    failures = _parse_gotest(result.stdout, _read_go_module(worktree))
+    if not failures:
+        # go <1.24: a build failure under `go test -json` emits NO fail events —
+        # the compiler errors go to stderr in `go build` shape (banner + error
+        # lines). This is every greenfield C0 (test file references the absent
+        # target), so surface them as failures before declaring "no parseable
+        # result"; an EvaluationError here would kill greenfield Go assembly.
+        failures = _parse_go_build(result.stderr)
+    if not failures:
+        tail = (result.stderr or result.stdout or "").strip()[-300:]
+        raise EvaluationError(
+            "test",
+            f"go test produced no parseable result (rc={result.returncode}): {tail}",
+        )
+    return failures
 
 
 def evaluate(worktree: Path, base_repo: Path, spec: Dict[str, Any]) -> List[ParsedFailure]:

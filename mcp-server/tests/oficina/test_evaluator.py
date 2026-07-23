@@ -326,6 +326,19 @@ def test_evaluate_go_test_failure_attributes_worktree_relative_file(tmp_path):
     assert failures[0].error_key[0].startswith("go-test-failed:")
 
 
+def test_evaluate_go_greenfield_c0_surfaces_build_failure(tmp_path):
+    """Greenfield C0 (target ABSENT, test file references the missing function): the
+    Go test stage must surface the build failure as parsed failures — not crash on
+    go 1.23's mixed -json output (build errors are NOT JSON-wrapped until go 1.24),
+    and not raise (an EvaluationError at C0 would kill every greenfield Go assembly).
+    Mirrors the Python C0 path, where pytest's collection ERROR becomes the baseline."""
+    (tmp_path / "go.mod").write_text(GO_MOD)
+    (tmp_path / "area_test.go").write_text(GO_TEST_PASSING)  # references absent Area
+    failures = evaluate(tmp_path, tmp_path, _go_spec(tmp_path))
+    assert failures, "the build failure must become parsed failures, not a crash/raise"
+    assert all(f.error_key[0].startswith("go-") for f in failures)
+
+
 def test_evaluate_go_imposes_json_on_plain_test_cmd(tmp_path):
     """A2: the Go test stage OWNS the command. A caller test_cmd WITHOUT -json still
     yields structurally attributed failures — the stage imposes `go test -json ./...`,
