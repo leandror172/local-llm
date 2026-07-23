@@ -43,7 +43,12 @@ from .worker import GenerationResult, _chat_generation, _cold_start_grace
 CoderFn = Callable[..., GenerationResult]
 
 # First slice defaults (P2-D1): single Python persona, bounded generation (T-91 / P2-D10).
-DEFAULT_CODER_MODEL = "my-python-q25c14"
+# 16K ctx variants (s127): the 32K personas' live footprint is ~14.2 GiB — they can
+# NEVER fully fit the 12 GB card and CPU-offload to ~2.5 tok/s under desktop load,
+# while the 16K variants fit VRAM (11.1 GiB measured) at ~13+ tok/s. Loop prompts are
+# bounded (~11K tok worst observed); NOTE: no input-fit guard exists yet — a very
+# large edit target could overflow 16K silently (the T-81 P2 input-overflow class).
+DEFAULT_CODER_MODEL = "my-python-q25c14-16k"
 NUM_PREDICT = 2048  # floored so a function is never truncated; capped to bound runaway
 EDIT_NUM_PREDICT_CAP = 8192  # E-D9 ceiling for the file-size-derived edit-mode floor
 
@@ -53,7 +58,7 @@ _SYSTEM = "You are a precise Python engineer. Implement the objective so every p
 # selected once per run from the resolved deliverable language. Composes with the
 # mode axis (_CONSTRAINTS / _EDIT_CONSTRAINTS below) — every combination is a
 # stable prompt segment, so the P2-D2 cache contract holds unchanged.
-_CODER_MODELS = {"python": DEFAULT_CODER_MODEL, "go": "my-go-q25c14"}
+_CODER_MODELS = {"python": DEFAULT_CODER_MODEL, "go": "my-go-q25c14-16k"}
 _SYSTEMS = {
     "python": _SYSTEM,
     "go": "You are a precise Go engineer. Implement the objective so every provided test passes.",

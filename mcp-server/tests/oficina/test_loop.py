@@ -442,7 +442,7 @@ def test_go_run_selects_go_system_and_go_coder_model(tmp_path):
     run = given_a_go_function_run(tmp_path)
     when_the_coder_iterates(on=run, writing=[A_GO_AREA], and_evaluation_yields=[CLEAN])
     assert "Go engineer" in run.coder.prompts[0]
-    assert run.coder.models == ["my-go-q25c14"]
+    assert run.coder.models == ["my-go-q25c14-16k"]
 
 
 def test_python_run_keeps_python_system_and_coder_model(tmp_path):
@@ -451,4 +451,4 @@ def test_python_run_keeps_python_system_and_coder_model(tmp_path):
     run = given_a_function_run(tmp_path)
     when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
     assert "Python engineer" in run.coder.prompts[0]
-    assert run.coder.models == ["my-python-q25c14"]
+    assert run.coder.models == ["my-python-q25c14-16k"]
