@@ -1,52 +1,41 @@
 # Session Log
 
-**Current Layer:** "Layer 5+ — verdict/DPO harness (T-105); oficina P2 post-slice"
-**Current Session:** 2026-07-21 — Session 125: "verdict harness repaired — coverage 9.6% → 18.7% (T-105, PR #80)"
+**Current Layer:** "Layer 5 — Expense Classifier (oficina P2 track active)"
+**Current Session:** 2026-07-22 — Session 126: "oficina edit mode built + accepted (T-110); M2 revised to whole-file; register refresh"
 
 ---
-## 2026-07-21 - Session 125: "verdict harness repaired — coverage 9.6% → 18.7% (T-105, PR #80)"
+## 2026-07-22 - Session 126: "oficina edit mode built + accepted (T-110); M2 revised to whole-file; register refresh"
 
 ### Context
 
-Started as a one-line question — "how many DPO triples do we have from ollama generate_code?" — and the 9.6% coverage answer turned into a full investigation. The user pushed back on two framings that shaped everything after: that recording verdicts is the *session's* job, not theirs, and that judgments were probably being made but not stored properly. Both were right.
+Post-/clear continuation of session 126: the pre-clear half did the stale-register refresh (commits eba4d0e..33c6f92, unhandoffed — T-108 raised there); this half ran branch cleanup + T-106 + the full edit-mode arc, ending with PR #82 open.
 
 ### What Was Done
 
-- **Diagnosed the verdict coverage collapse (T-105).** Every durable doc taught an inline phrase (`2 — ~300 est. Claude tokens saved`) while `verdict-capture.py` has only ever parsed a `[VERDICT …]` block **taught nowhere durable** — it existed solely as an ephemeral per-call hook injection. The harness worked; it was never fed. A live probe proved the chain end-to-end on the first try.
-- **Wrote the evidence report + plan** — `docs/findings/verdict-coverage-collapse-2026-07-21.md` (every claim carries `file:line`; §9 records four claims the investigation got *wrong*, with corrections) and `docs/plans/verdict-capture-repair.md`.
-- **Phase 0** — probed the hook schema live rather than trusting a delegated doc summary: the field is `tool_response` (**not** `tool_output`), `tool_use_id` exists, and `last_assistant_message` is final-message-only, so the whole-transcript scan must stay.
-- **Phase 1** — `call_id` + `tool` in `_log_call`; provenance by response-content match; **no positional fallback**.
-- **Phase 2 (root cause)** — CLAUDE.md, scaffolding-template and the overlay source converge on the block; `handoff-session-66.md` annotated (not rewritten) and archived; **overlay v3** propagated + committed to `expenses/code`, `web-research`, `career-search`.
-- **Phase 3** — back-filled 48/49 prose verdicts, provenance-flagged; **coverage 9.6% → 18.7%** (106/566).
-- **Phase 4** — oficina judged **per-run** on the deliverable via `run_result`; regex widened to `[A-Za-z0-9_-]`.
-- **Phase 5** — 26 hook tests, every one mutation-verified to fail against the broken code.
-- **Phase 7** — `cleanupPeriodDays: 365`; transcripts are the only audit trail for this bug class.
-- **Self-audit against the pattern docs** found two violations (stringly-typed `_emit`, prefix-sniffing for failure); both fixed.
-- **PR #80 opened**; T-105 registered in `tasks.md`.
+- **T-106 fixed** — `ltg/run-refresh.sh` restored as a gitignored verbatim copy of the engine wrapper (9c1460a); full branch cleanup: 55 `-d` + 20 cherry-verified `-D` local, 66 origin branches deleted — master-only end state, in sync
+- **M2 re-grounded and REVISED to whole-file-with-context** — edit-mode plan E-D1–E-D9 + T-104 amendment (code-anchored = on-file fallback, observable omission trigger) + T-89 routing-default revision (delegated codegen async-first, small edits included) (197aa56)
+- **T-110 BUILT via subagent pipeline** — impl-opus T1–T5 (adfabed..c38a1ab, suite 279→297), impl-opus-med adversarial review (MERGE-READY, 10/10 invariants re-derived, F1–F6 all LOW), F1 polish + real-evaluator omission pin (08d72ad, suite 298)
+- **T6 live acceptance PASSED** (7c3bd3d): R1 edit via symlink-spelled target (1 iter, sibling intact); R2 246-line module — diff 2+/2−, 24 siblings byte-intact, 25/25 green; R3 greenfield control byte-clean of edit segments; R4 uncommitted-guard Failed 1.3 s with correct triad, zero GPU
+- **`.claude/tools/ollama-cache-report.py` NEW** — per-run prefix-reuse report over calls.jsonl (duration-not-count); retroactively reproduces T8's hand measurement (0.30x of cold); option B (ledger-inline) deferred in-file
+- **PR #82 opened** (12 commits); memories updated in place (mcp-server QUICK, coding-delegate QUICK/KNOWLEDGE); T-110 registered shipped, T-109 counter-evidence recorded
+- **Verdict harness worked all session**: 7 blocks captured normally (4 call-level incl. from inside a subagent, 3 run-level) — live counter-evidence to T-109 finding (1); finding (2) reproduced (backgrounded generate_code bypassed PostToolUse, call_id recovered by timestamp)
 
 ### Decisions Made
 
-- **Judgeable set narrowed:** `generate_code` + `ask_ollama` per-call; **oficina per-run**; NOT summarize/translate/classify_text — a 0/1/2 *quality* verdict is not meaningful there and yields filler that pollutes DPO.
-- **Measure first, gate later.** PostToolUse structurally cannot block; a `Stop` block forces turn continuation, and a forced verdict is not a considered one. Revisit only if the docs fix fails to move coverage.
-- **`call_id` replaces `prompt_hash` as identity.** `prompt_hash` is a content address — one hash covered 24 calls across 8 models, so a compare-models sweep could record exactly one verdict.
-- **No positional fallback in the hook.** A stale id mislabels the corpus, and mislabeled is worse than missing.
-- **Back-filled records carry no `call_id`** — those calls predate the field; inventing one would be fabrication.
-- `handoff-session-66.md` **annotated, not overwritten** (user's call): it is a historical handoff, not documentation.
+- **M2 (edit) = whole-file-with-context (E-D1, amends T-104):** the timeout-safety leg was sync-path-only, and span confinement forces an edit language (unit field, response validation, import merging) no founding fact needs; code-anchored stays on file as the fallback (trigger: a real edit run drops sibling code)
+- **Mode = target committed at HEAD; no new spec fields (E-D2);** uncommitted target fails loud at assembly
+- **T-89 routing default revised:** delegated codegen — small edits included — defaults async (`submit_run` + harness watch); sync = opportunistic fast path pending the busy-check (G-D8)
+- **Cache tracking = read-side report (option A);** ledger-inline (option B) deferred with its trigger noted inside the tool file, keeping the task surface minimal
 
 ### Next
 
-- **Review + merge PR #80** (12 commits). Then push the three downstream repos' `v2 → v3` commits if wanted.
-- **Phase 6 (the only open part of T-105)** — after real working sessions under the fixed docs, report coverage *among judgeable calls only* (now measurable via the `tool` field) and decide whether a `Stop` gate earns its friction.
-- Resume the pre-empted oficina track: **build the edit kinds on M2** (`LanguagePack.locate_unit` + loop composes `patch_file`), then Axis A Go read-side.
-- **T-106** — fix the stale LTG post-commit hook message.
-- **T-107** — decide overlay-vs-machine-global for the verdict hooks, then move hooks + tests out of `.claude/hooks/` together.
+- **Review + merge PR #82** (edit mode, 12 commits)
+- **Axis A Go read-side (Phase 3)** — now simpler: `locate_unit` dropped from the predicted `LanguagePack` (edit mode is language-agnostic)
+- Standing: T-102 busy-check (G-D8), T-105 Phase 6 (judgeable-coverage measurement — data accumulating), T-103, T-107/T-109 (verdict-substrate checks), T-108 (persona catalog strategy)
 
 ### Gotchas
 
-- **Branch off master, not off an unmerged feature branch — the risk asymmetry matters.** This branch was cut from master while PR #79 was still open, which cost exactly two things: one `.claude/tasks.md` conflict (both branches append at the same deferred-infra closing boundary) and a session-number collision. Both were cheap and mechanical. Basing on the unmerged branch instead would have risked *dependency entanglement* — invisible until the parent changed. Resolution: PR #79 merged first, then `git rebase master`; the collision dissolved on its own (this handoff renumbered 124 → 125) and no history needed rewriting. Measured overlap beforehand was 4 files, all docs/memory, 3 of which auto-merged — the register design means concurrent sessions write to different regions of the same file.
-- **The MCP bridge is long-lived** — `client.py` changes (`call_id`/`tool`) only take effect after the subprocess restarts. Phase 1 looked correct but inert until the session restarted mid-way.
-- **Editing a `merge_sections` file does NOT propagate without a manifest `version:` bump** — the dry run reports `[SKIP] … already installed v2` and half-propagates while reporting success.
-- **Overlay targets must be the real repo root** — `expenses/code` is the repo, not `expenses/`; the parent dry-ran as `[CREATE] CLAUDE.md`, i.e. it would have fabricated files in a non-repo directory.
-- **`ltg/run-refresh.sh` does not exist** — the post-commit hook's suggested command is stale since the T-33 engine split; the real entry point is `/mnt/i/workspaces/latent-topic-graph/run-refresh.sh`.
-- **Three bugs were found by running the thing, not reading it**: a backgrounded call producing a stale id, `generate_code` fence-stripping defeating exact match, and run ids being base64url. All three fail *silently*.
-- **Local-model delegation was blocked all session** by VRAM contention (3 timeouts, including an 8B with no context files) — `my-python-q25c14` resident at 9.7 GB against ~9 GB free.
+- **A `generate_code` that outlives the 120s foreground window returns via task notification and bypasses PostToolUse** — no verdict template; recover the `call_id` from calls.jsonl by timestamp (T-109 finding 2, reproduced live)
+- **`pytest -q`'s short summary for a collection error is just `ERROR <file>`** — the ImportError naming the dropped symbol prints above the summary block, so omission-by-import-breakage yields thin repair feedback (recorded in the T-110 plan)
+- **Edit/Write and `git add` in the same parallel tool batch race** — an index.md row nearly missed its commit; sequence file edits strictly before staging
+- **Live whole-file edit drift is ADDITIVE (unrequested type annotations), not omissive** — and every T6 run converged in iteration 1 (tests-as-context), so per-run cache measurement needs multi-iteration runs (hence the report tool)
