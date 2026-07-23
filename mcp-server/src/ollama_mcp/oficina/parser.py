@@ -1,32 +1,3 @@
-"""Shared validator-output parser (P2 build step T1; P2-D7/D8/D12).
-
-The evaluated loop runs the deliverable through evaluation *stages* in order
-(`ref:delegate-p2-decisions` P2-D8). Two of those stages emit wildly different
-raw output:
-
-  - **compile** — ``benchmarks/lib/validate-code.py`` prints a JSON *array* of
-    per-file result dicts: ``{file, path, status, errors:[{type,text,line}],
-    warnings, error_count, warning_count, ...}`` (``validate-code.py:690``).
-  - **test** — ``pytest`` emits free-form text; the machine-readable signal is
-    the *short test summary* section, whose lines look like
-    ``FAILED path::nodeid - AssertionError: ...`` and
-    ``ERROR path::nodeid - ImportError: ...``.
-
-``parse_validator_output`` folds both into ONE ``ParsedFailure`` shape so the
-three downstream readers never re-parse compiler text:
-
-  - **P2-D8** ``category_for`` reads ``.stage`` (+ ``.error_key`` for the
-    test-stage ERROR/FAILED split — the Python ``py_compile``-only caveat).
-  - **P2-D7** the repetition signature reads ``.error_key`` — the defect minus
-    its volatile coordinates (line/col, abs paths, temp dirs, addresses), so a
-    defect keys identically regardless of where in the file it lands.
-  - **P2-D12** ``scope_of`` reads ``.file`` to decide in-target / in-test /
-    out-of-scope, which drives delta-scoped subtraction.
-
-First slice (P2-D1) wrote exactly one normalizer: Python. T-92 Phase 2 made the
-compile error_key prefix language-derived (R1 identifiers in, prefix spelling out).
-"""
-
 from __future__ import annotations
 
 import os
@@ -240,6 +211,8 @@ def category_for(failure: ParsedFailure) -> str:
             return CATEGORY_MECHANICAL
         if failure.error_key[0].startswith("pytest-failed"):
             return CATEGORY_STRUCTURAL
+    if failure.error_key[0].startswith("go-test-failed:"):
+        return CATEGORY_STRUCTURAL
     raise ValueError(f"uncategorizable failure: {failure!r}")
 
 
@@ -265,3 +238,57 @@ def scope_of(
     if any(os.path.normpath(f) == path for f in test_files):
         return SCOPE_TEST
     return SCOPE_OUT
+
+# --- go test -json event stream parser (T-92 Phase 3) ------------------------
+
+
+def _parse_gotest(payload: str, module: str) -> list[ParsedFailure]:
+    """Parse the stdout of `go test -json ./...` into zero or more ``ParsedFailure``.
+
+    Args:
+        payload: The JSON Lines output from `go test -json`.
+        module: The module path to strip from package paths.
+
+    Returns:
+        A list of failures (empty when no tests failed).
+    """
+    import json
+
+    failures: list[ParsedFailure] = []
+    events = [json.loads(line) for line in payload.splitlines() if line.strip()]
+
+    test_outputs: dict[str, list[str]] = {}
+    current_test = None
+
+    for event in events:
+        action = event.get("Action")
+        test = event.get("Test")
+
+        if action == "output" and test:
+            if test not in test_outputs:
+                test_outputs[test] = []
+            test_outputs[test].append(event["Output"])
+
+        elif action == "fail":
+            if test:
+                raw_output = "\n".join(test_outputs.get(test, []))
+                file_match = re.search(r"(\S+)_test\.go:\d+", raw_output)
+                if file_match:
+                    file_part = file_match.group(1)
+                    package_dir = event["Package"].removeprefix(module + "/")
+                    if package_dir:
+                        file_part = f"{package_dir}/{file_part}_test.go"
+                    else:
+                        file_part += "_test.go"
+
+                    error_key = ("go-test-failed:" + _normalize(test), _normalize(raw_output))
+                    failures.append(
+                        ParsedFailure(
+                            stage=STAGE_TEST,
+                            file=file_part,
+                            error_key=error_key,
+                            raw=raw_output,
+                        )
+                    )
+
+    return failures
