@@ -312,3 +312,49 @@ def test_scope_of_normalizes_path_spellings():
     """Dot-prefixed vs plain spellings of the same relative path still agree."""
     result = scope_of("./src/area.py", ["src/area.py"], [])
     assert result == SCOPE_TARGET
+
+
+# --- language-derived error_key prefix (T-92 Phase 2) ------------------------
+
+# validate-code.py emits the SAME JSON shape for Go (classify_go_error,
+# validate-code.py:115) — but parser.py hardcoded "py-" on every compile error
+# regardless of language, so a Go compile failure keyed as py-… and silently
+# corrupted the P2-D7 repetition signature (the T-92 Phase 2 bug).
+COMPILE_FAIL_GO = [
+    {
+        "file": "area.go",
+        "path": "/tmp/wt-abc/area.go",
+        "status": "fail",
+        "errors": [
+            {"type": "undefined_reference", "text": "undefined: mathutil.Volume", "line": 10}
+        ],
+        "warnings": [],
+        "error_count": 1,
+        "warning_count": 0,
+        "load_time_ms": 4,
+        "validated_at": "2026-07-23T00:00:00.000Z",
+    }
+]
+
+
+def test_compile_failure_under_go_keys_go_prefix():
+    """A compile failure parsed with language="go" keys ("go-<type>", …), never "py-…" —
+    the prefix is derived from the language the caller resolved (R1), not hardcoded."""
+    failures = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL_GO, language="go")
+    assert failures
+    assert failures[0].error_key[0] == "go-undefined_reference"
+
+
+def test_compile_failure_default_language_keys_py_prefix():
+    """Omitting language preserves today's py- prefix byte-identically — every
+    existing caller keeps its behavior with zero migration (the R1 default posture)."""
+    failures = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL)
+    assert failures[0].error_key[0] == "py-syntax_error"
+
+
+def test_compile_error_key_detail_is_language_neutral():
+    """Only the prefix half varies by language; the normalized detail half is computed
+    from the message text alone, so the same text yields the same detail either way."""
+    default = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL)[0]
+    as_go = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL, language="go")[0]
+    assert default.error_key[1] == as_go.error_key[1]
