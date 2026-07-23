@@ -1,3 +1,40 @@
+"""Shared validator-output parser (P2 build step T1; P2-D7/D8/D12).
+
+The evaluated loop runs the deliverable through evaluation *stages* in order
+(`ref:delegate-p2-decisions` P2-D8). The stages emit wildly different raw
+output:
+
+  - **compile (python)** — ``benchmarks/lib/validate-code.py`` prints a JSON
+    *array* of per-file result dicts: ``{file, path, status,
+    errors:[{type,text,line}], warnings, error_count, ...}``
+    (``validate-code.py:690``).
+  - **compile (go)** — ``go build ./...`` stderr: ``# pkg`` banner lines (not
+    failures) and ``./path:line:col: message`` error lines with real
+    worktree-relative paths (R4: compile is self-attributing).
+  - **test (pytest)** — free-form text; the machine-readable signal is the
+    *short test summary* section (``FAILED path::nodeid - ...``).
+  - **test (go)** — ``go test -json`` emits a JSON-Lines event stream; the
+    authoritative failures are the ``Action:"fail"`` events with a non-empty
+    ``Test`` field (never a text scrape of ``--- FAIL:`` output lines).
+
+The parsers fold everything into ONE ``ParsedFailure`` shape so the three
+downstream readers never re-parse compiler text:
+
+  - **P2-D8** ``category_for`` reads ``.stage`` (+ ``.error_key`` for the
+    test-stage ERROR/FAILED split — the Python ``py_compile``-only caveat;
+    Go's rule is flat: compile→mechanical, test→structural).
+  - **P2-D7** the repetition signature reads ``.error_key`` — the defect minus
+    its volatile coordinates (line/col, abs paths, temp dirs, addresses), so a
+    defect keys identically regardless of where in the file it lands.
+  - **P2-D12** ``scope_of`` reads ``.file`` to decide in-target / in-test /
+    out-of-scope, which drives delta-scoped subtraction.
+
+First slice (P2-D1) wrote exactly one normalizer: Python. T-92 Phase 2 made the
+compile error_key prefix language-derived (R1 identifiers in, prefix spelling
+out); Phase 3 added the Go parsers beside the Python ones (duplicated on
+purpose — the LanguagePack extraction is Phase 4).
+"""
+
 from __future__ import annotations
 
 import json
@@ -302,24 +339,23 @@ def _parse_go_build(payload: str) -> list[ParsedFailure]:
         payload: The stderr output from `go build`.
 
     Returns:
-        A list of failures (empty when no errors are present).
+        A list of failures (empty when no errors occurred).
     """
     failures: list[ParsedFailure] = []
     lines = payload.splitlines()
     for line in lines:
         if line.startswith("#"):
             continue  # Skip package banner lines
-        match = re.match(r"\./([^:]+):(\d+):(\d+):\s*(.*)", line)
+        match = re.match(r"\./(\S+):(\d+):(\d+): (.*)", line)
         if not match:
             continue  # Skip non-error lines
-        file_path, _, _, message = match.groups()
-        file_part = file_path[2:]  # Strip leading './'
+        file, line_num, col_num, message = match.groups()
         kind = _classify_go_error(message)
         error_key = (f"go-{kind}", _normalize(message))
         failures.append(
             ParsedFailure(
                 stage=STAGE_COMPILE,
-                file=file_part,
+                file=file,  # the regex group already excludes the leading './'
                 error_key=error_key,
                 raw=line,
             )
@@ -328,15 +364,15 @@ def _parse_go_build(payload: str) -> list[ParsedFailure]:
 
 
 def _classify_go_error(message: str) -> str:
-    """Classify a Go build error message into a kind."""
-    message_lower = message.lower()
-    if "undefined:" in message_lower or "undefined name" in message_lower:
+    """Classify a Go compiler error message into a kind."""
+    if "undefined:" in message or "undefined name" in message:
         return "undefined_reference"
-    elif "syntax error" in message_lower or "expected" in message_lower:
+    elif "syntax error" in message or "expected" in message:
         return "syntax_error"
-    elif "cannot use" in message_lower or "type " in message_lower or "cannot convert" in message_lower:
+    elif "cannot use" in message or "type " in message or "cannot convert" in message:
         return "type_error"
-    elif "imported and not used" in message_lower:
+    elif "imported and not used" in message:
         return "unused_import"
     else:
         return "compile_error"
+
