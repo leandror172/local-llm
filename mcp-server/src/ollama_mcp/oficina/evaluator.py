@@ -27,9 +27,9 @@ import json
 import os
 import shutil
 import subprocess
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 from .errors import TriadError
 from .intake import resolve_language
@@ -269,38 +269,102 @@ def _run_go_test_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
     return failures
 
 
+# --- LanguagePack (T-92 Phase 4): extracted from the two working implementations —
+# membership is what ACTUALLY diverged in Phase 3, not the seam-map prediction.
+# Dropped from the prediction: error_prefix (parser-internal via _ERROR_KEY_PREFIX),
+# category_rule (folded into the error_key prefixes category_for reads), locate_unit
+# (edit mode is language-agnostic, T-110). Proved variant against the prediction:
+# the TEST STAGE as a whole — Go imposes its command (A2) while Python honors the
+# caller's test_cmd — so the member is the stage, not a parse function. The Go
+# helpers (_go_binary, _read_go_module, the stderr fallback) stay module-private:
+# unpredicted seams, but internal to Go's stage, not pack surface.
+#
+# Altitude note: coder_model/system_prompt are generation-side values living in an
+# evaluation module — accepted to keep ONE pack per language without an import
+# cycle (loop → evaluator is the existing direction; a separate languages module
+# would need evaluator's stages AND be needed by evaluate()).
+#
+# Model choice (s127, measured): 32K personas' live footprint (~14.2 GiB) cannot
+# fit the 12 GB card and CPU-offload to ~2.5 tok/s; the 16K variants fit VRAM
+# (11.1 GiB) at ~13+ tok/s. Loop prompts observed ≤ ~11K tok; no input-fit guard
+# exists yet (T-81 P2 overflow class — flagged).
+
+_StageFn = Callable[[Path, Path, Dict[str, Any], int], List[ParsedFailure]]
+
+
+def _python_compile(worktree: Path, base_repo: Path, spec: Dict[str, Any], timeout_s: int) -> List[ParsedFailure]:
+    target = (spec.get("deliverable") or {}).get("target")
+    rel = target_relpath(target, base_repo)
+    return _run_compile_stage(worktree / rel, rel, timeout_s)
+
+
+def _python_test(worktree: Path, base_repo: Path, spec: Dict[str, Any], timeout_s: int) -> List[ParsedFailure]:
+    test_cmd = (spec.get("acceptance") or {}).get("test_cmd")
+    if not test_cmd:
+        return []
+    return _run_test_stage(worktree, test_cmd, timeout_s)
+
+
+def _go_compile(worktree: Path, base_repo: Path, spec: Dict[str, Any], timeout_s: int) -> List[ParsedFailure]:
+    return _run_go_compile_stage(worktree, timeout_s)
+
+
+def _go_test(worktree: Path, base_repo: Path, spec: Dict[str, Any], timeout_s: int) -> List[ParsedFailure]:
+    return _run_go_test_stage(worktree, timeout_s)
+
+
+@dataclass(frozen=True)
+class LanguagePack:
+    """One language's varying pieces; the evaluation FLOW (presence rule,
+    first-failing-stage, P2-D8) is invariant and lives in ``evaluate``."""
+
+    compile_stage: _StageFn
+    test_stage: _StageFn
+    system_prompt: str
+    coder_model: str
+
+
+PYTHON = LanguagePack(
+    compile_stage=_python_compile,
+    test_stage=_python_test,
+    system_prompt="You are a precise Python engineer. Implement the objective so every provided test passes.",
+    coder_model="my-python-q25c14-16k",
+)
+
+GO = LanguagePack(
+    compile_stage=_go_compile,
+    test_stage=_go_test,
+    system_prompt="You are a precise Go engineer. Implement the objective so every provided test passes.",
+    coder_model="my-go-q25c14-16k",
+)
+
+LANGUAGES: Dict[str, LanguagePack] = {"python": PYTHON, "go": GO}
+
+
+def language_pack(spec: Dict[str, Any]) -> LanguagePack:
+    """The pack for a spec's resolved deliverable language; Python is the fallback
+    (a ``None`` resolution means no loop-language contract — the R1 default)."""
+    language = resolve_language(spec.get("deliverable") or {}) or "python"
+    return LANGUAGES.get(language, PYTHON)
+
+
 def evaluate(worktree: Path, base_repo: Path, spec: Dict[str, Any]) -> List[ParsedFailure]:
     """The real ``EvaluateFn``: stage-ordered evaluation, first failing stage wins (P2-D8).
 
-    Compile runs only when the target exists in the worktree (at C0 the deliverable is absent,
-    so evaluation goes straight to the test stage, which surfaces the import/undefined failure).
-    The stages are language-dispatched (T-92 Phase 3): the resolved deliverable language picks
-    the Go twins or the Python originals; the flow (presence rule, first-failing-stage) is
-    invariant.
+    Compile runs only when the target exists in the worktree (at C0 a greenfield deliverable
+    is absent, so evaluation goes straight to the test stage, which surfaces the
+    import/undefined failure). ONE algorithm; the varying steps come from the spec's
+    ``LanguagePack`` (T-92 Phase 4).
     """
     target = (spec.get("deliverable") or {}).get("target")
-    acceptance = spec.get("acceptance") or {}
     timeout_s = (spec.get("budgets") or {}).get("wall_clock_s") or _STAGE_TIMEOUT_S
-    language = resolve_language(spec.get("deliverable") or {}) or "python"
-
-    if language == "go":
-        if target:
-            rel = target_relpath(target, base_repo)
-            if (Path(worktree) / rel).exists():
-                compile_failures = _run_go_compile_stage(Path(worktree), timeout_s)
-                if compile_failures:
-                    return compile_failures
-        return _run_go_test_stage(Path(worktree), timeout_s)
+    pack = language_pack(spec)
 
     if target:
         rel = target_relpath(target, base_repo)
-        target_in_worktree = Path(worktree) / rel
-        if target_in_worktree.exists():
-            compile_failures = _run_compile_stage(target_in_worktree, rel, timeout_s)
+        if (Path(worktree) / rel).exists():
+            compile_failures = pack.compile_stage(Path(worktree), base_repo, spec, timeout_s)
             if compile_failures:
                 return compile_failures
 
-    test_cmd = acceptance.get("test_cmd")
-    if not test_cmd:
-        return []
-    return _run_test_stage(Path(worktree), test_cmd, timeout_s)
+    return pack.test_stage(Path(worktree), base_repo, spec, timeout_s)

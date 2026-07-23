@@ -1,8 +1,8 @@
 # Refactoring conventions
 
-**Status:** seeded this session (single origin — the `_run_script` extraction across the
-previously-untested persona tools). Candidate for promotion into
-`docs/patterns/code-design-conventions.md` once it proves out across a second refactor,
+**Status:** two proof-points (the `_run_script` extraction; the T-92 `LanguagePack`
+extraction, session 127 — see "Duplicate before you abstract" below). Promotion into
+`docs/patterns/code-design-conventions.md` is now warranted per the original criteria,
 mirroring the staging arrangement of `docs/patterns/test-authoring-executable-spec.md`.
 
 These govern the **process** of changing code safely — the sequence of steps around a
@@ -62,3 +62,58 @@ untested code, "the tests still pass" can be nearly meaningless — passing test
   `14 → 14` and `260 → 260` were real evidence — no new characterization pass was needed.)
 
 <!-- /ref:patterns-refactoring-characterize-first -->
+
+---
+
+<!-- ref:patterns-refactoring-duplicate-first -->
+## Duplicate Before You Abstract (proof-point 2: the T-92 LanguagePack)
+
+**Decision:** When adding a second implementation of a varying concern (a new language, a
+new backend), **write it concretely and duplicated beside the first, then extract the
+abstraction from the two working implementations** — never design the interface from a
+seam-map prediction. The duplication is the measurement instrument; it is temporary by
+design.
+
+**Why (the measured prediction-vs-reality delta, T-92 Phase 3→4, session 127):**
+
+The Go-widening seam map (session 124) predicted a 5–6 member `LanguagePack`:
+`{compile, parse_test, attribute_file, category_rule, error_prefix, system_prompt,
+persona}` — plus, in an earlier draft, `locate_unit`. The pack extracted from two
+*working* implementations has **4 members**: `{compile_stage, test_stage, system_prompt,
+coder_model}`. The delta:
+
+- **Three predicted members proved unnecessary:** `error_prefix` (stayed parser-internal
+  — a map keyed by the language id, no caller touches it), `category_rule` (folded into
+  the error-key prefixes `category_for` already reads — zero new code), `locate_unit`
+  (dissolved before Phase 3 by an unrelated decision — edit mode went whole-file).
+- **One predicted invariant proved variant:** the table said `test_cmd` was
+  "caller-supplied, no variation". Reality: Go's test stage **owns its command**
+  (imposes `go test -json` for structural attribution) while Python honors the
+  caller's — so the member is the *whole stage*, not a parse function.
+- **Three unpredicted seams emerged, none as pack members:** a module-path reader
+  (`go.mod`), binary resolution (`OFICINA_GO`/`which`), and a go<1.24 stderr fallback
+  for build-failures-under-test (discovered *empirically* by a greenfield C0 twin) —
+  all module-private inside Go's stage.
+
+A pack designed from the prediction would have carried three dead members (the exact
+failure that produced the dead `acceptance.validators` field), missed the command-
+ownership asymmetry, and been blindsided by the fallback. The 329-test suite, green with
+**zero test edits** across the extraction, is what "the duplication was the measurement
+instrument" buys.
+
+**Rules:**
+
+1. The first implementation's shape is an *accident*, not a spec — do not let its
+   signatures define the interface (Warning 1: Go's compile is a different execution
+   model, not a different parser).
+2. Extract only when the second implementation **works** — a green suite over both
+   duplicated paths is the extraction's precondition and its characterization net.
+3. Record the prediction-vs-reality delta at extraction time; it is the evidence that
+   the discipline paid, and the calibration for the next prediction.
+
+**When this does NOT apply:**
+
+- The variation is a *value*, not a mechanism (a string, a constant) — parameterize
+  directly; duplication buys no information.
+
+<!-- /ref:patterns-refactoring-duplicate-first -->

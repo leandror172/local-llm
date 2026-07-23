@@ -203,3 +203,31 @@ seam to prove unnecessary and one unpredicted to prove required") is a **predict
 evidence only exists after Phase 4 extracts the pack from two working implementations. Promoting
 the staging pattern on an unverified prediction would be the anticipation-over-evidence failure
 the warnings themselves describe. Execution point: the Phase 4 exit item added above.
+**EXECUTED session 127** — see A5.
+
+### A5 — RESULT (session 127): Phases 2–4 built; the delta the discipline predicted
+
+Phases 2 and 3 shipped in one session (suite 298→329): language-derived prefixes, both Go
+parsers (`_parse_go_build`, `_parse_gotest`), flat categories, the loop language axis, the
+language-dispatched `evaluate()` with imposed `-json` (A2), and an empirically-pinned
+greenfield-C0 hardening (go<1.24 emits build failures under `go test -json` as *stderr in
+go-build shape* with no fail events — the test stage falls back to `_parse_go_build(stderr)`).
+Build mechanism: hand-written red pins gating **oficina edit runs on the very modules being
+widened** (parser.py ×2, evaluator.py ×2 incl. a stubs-then-retry recovery); every run
+delivered 90–95% in iteration 1 and none could see its own residual defect across repeated
+iterations — review-fix-inline beat iterations 2–3 every time.
+
+**Phase 4 extracted `LanguagePack` from the two working implementations** (evaluator.py;
+loop imports it): **4 members** `{compile_stage, test_stage, system_prompt, coder_model}`
+against the predicted 5–6. The full prediction-vs-reality delta is recorded as the pattern
+proof-point: `ref:patterns-refactoring-duplicate-first`. Suite green with **zero test
+edits** across the extraction. Coder models are the 16K ctx variants (measured VRAM
+decision — 32K cannot fit the card; rationale in the pack comment).
+
+**`acceptance.validators` reconsidered (Phase 4 exit item): the language field IS the
+registry key; the dead field is not it.** It stays in intake for now — deleting it would
+flip accepted-and-ignored into unknown-key REJECTION for any spec carrying it — and its
+removal is queued for the Axis-B kind-widening pass, which must touch the intake taxonomy
+anyway (same trigger as E-D8's rename).
+
+Phase 5 (live acceptance) is next; its stretch goal (a Go edit run) stands.

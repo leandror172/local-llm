@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from .evaluator import attributable_failures, diff_touches_test_files
+from .evaluator import LANGUAGES, attributable_failures, diff_touches_test_files
 from .intake import Budgets, resolve_language
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
@@ -43,26 +43,14 @@ from .worker import GenerationResult, _chat_generation, _cold_start_grace
 CoderFn = Callable[..., GenerationResult]
 
 # First slice defaults (P2-D1): single Python persona, bounded generation (T-91 / P2-D10).
-# 16K ctx variants (s127): the 32K personas' live footprint is ~14.2 GiB — they can
-# NEVER fully fit the 12 GB card and CPU-offload to ~2.5 tok/s under desktop load,
-# while the 16K variants fit VRAM (11.1 GiB measured) at ~13+ tok/s. Loop prompts are
-# bounded (~11K tok worst observed); NOTE: no input-fit guard exists yet — a very
-# large edit target could overflow 16K silently (the T-81 P2 input-overflow class).
-DEFAULT_CODER_MODEL = "my-python-q25c14-16k"
+# Coder model + system line live in the per-language pack (T-92 Phase 4, in
+# .evaluator — incl. the measured 16K-variant rationale). These aliases keep the
+# established import surface (tests, non-loop fallbacks).
+DEFAULT_CODER_MODEL = LANGUAGES["python"].coder_model
 NUM_PREDICT = 2048  # floored so a function is never truncated; capped to bound runaway
 EDIT_NUM_PREDICT_CAP = 8192  # E-D9 ceiling for the file-size-derived edit-mode floor
 
-_SYSTEM = "You are a precise Python engineer. Implement the objective so every provided test passes."
-
-# Language axis (T-92 Phase 3, A1): values keyed by the R1 language identifier,
-# selected once per run from the resolved deliverable language. Composes with the
-# mode axis (_CONSTRAINTS / _EDIT_CONSTRAINTS below) — every combination is a
-# stable prompt segment, so the P2-D2 cache contract holds unchanged.
-_CODER_MODELS = {"python": DEFAULT_CODER_MODEL, "go": "my-go-q25c14-16k"}
-_SYSTEMS = {
-    "python": _SYSTEM,
-    "go": "You are a precise Go engineer. Implement the objective so every provided test passes.",
-}
+_SYSTEM = LANGUAGES["python"].system_prompt
 # No leading "CONSTRAINTS:" label in either variant — prompt.SEGMENTS already prepends that header
 # for the 'constraints' segment; embedding it again doubled the header in every prompt.
 # Greenfield (E-D4): generate the file from scratch. Kept BYTE-IDENTICAL (pinned in a test).
@@ -146,11 +134,15 @@ class EvaluatedLoop:
         self._explicit_num_predict = budgets.num_predict
         self._num_predict = NUM_PREDICT
         # R1: language is resolved once (declared wins, else target extension);
-        # None (no loop-language contract) falls back to the Python defaults.
+        # None (no loop-language contract) falls back to the Python pack. The pack
+        # supplies the language axis (coder model + system line, A1/Phase 4);
+        # it composes with the mode axis (_CONSTRAINTS / _EDIT_CONSTRAINTS) —
+        # both selections are run-constant, so the P2-D2 cache contract holds.
         self.language = resolve_language(spec.get("deliverable") or {}) or "python"
+        self._pack = LANGUAGES.get(self.language, LANGUAGES["python"])
         self.model = spec.get("model") or "auto"
         if self.model == "auto":
-            self.model = _CODER_MODELS.get(self.language, DEFAULT_CODER_MODEL)
+            self.model = self._pack.coder_model
         # Loop-carried run state (one EvaluatedLoop instance == one run; set up by run()).
         self._branch = ""
         self._fresh_used = 0
@@ -170,7 +162,7 @@ class EvaluatedLoop:
         """
         constraints = _EDIT_CONSTRAINTS if assembly.mode == "edit" else _CONSTRAINTS
         parts = {
-            "system": _SYSTEMS.get(self.language, _SYSTEM),
+            "system": self._pack.system_prompt,
             "constraints": constraints,
             **assembly.stable_parts,
         }
