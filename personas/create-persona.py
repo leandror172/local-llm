@@ -487,6 +487,11 @@ def collect_from_flags(args) -> dict:
         num_ctx = model_defaults["num_ctx"]
     else:
         _, base_tag, num_ctx = select_model(domain)
+    if args.num_ctx is not None:
+        if args.num_ctx < 1024:
+            print(f"[ERROR] --num-ctx {args.num_ctx} is below the 1024 floor", file=sys.stderr)
+            sys.exit(2)
+        num_ctx = args.num_ctx
     language = args.language or None
 
     # Apply domain default when no --temperature flag was given
@@ -586,6 +591,10 @@ def parse_args():
     p.add_argument("--base-model", metavar="TAG",
                    help="Override the base model tag (e.g., qwen3.5:9b). "
                         "Bypasses the domain's default model. Must exist in models.yaml.")
+    p.add_argument("--num-ctx", type=int, metavar="N",
+                   help="Override the context window (PARAMETER num_ctx) for ctx-variant "
+                        "personas (e.g., a 16K variant that fits fully in VRAM). "
+                        "Defaults to the base model's models.yaml value.")
     p.add_argument("--force", action="store_true",
                    help="Overwrite existing Modelfile if it already exists.")
     return p.parse_args()
