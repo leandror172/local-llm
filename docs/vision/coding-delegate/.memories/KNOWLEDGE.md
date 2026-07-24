@@ -132,7 +132,22 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   (system/persona) in an evaluation module are an accepted altitude wart, noted in-code.
 - **Coder defaults are the 16K-ctx personas** (`my-*-q25c14-16k`): 32K live footprint
   14.2 GiB cannot fit the 12 GB card (2.5 tok/s offloaded); 16K = 11.1 GiB VRAM-fit at
-  13–21 tok/s. No input-fit guard yet (T-81 P2 overflow class, flagged in the pack comment).
+  13–21 tok/s.
+- **Input-fit guard (T-112, s129) — the loop refuses what cannot fit.** `_context_overflow`
+  weighs `ceil(len(prompt)/4) + the resolved num_predict` against the model's window, read
+  live from `/api/show` via an injected `context_limit_for` seam (the loop resolves its own
+  model, so the worker cannot look it up first). Iteration 1 over → fail-loud
+  `ContextBudgetError` (`whose="payload"`; the remedy is the caller's), later iterations →
+  `_exhausted(limit_hit="context_budget")` with the best attempt. An unresolvable ceiling
+  disables the guard and says so ONCE via the `ContextLimitUnknown` run event — never guesses,
+  because guessing high disables it silently and guessing low aborts valid work. Live: refused
+  in 0.72 s with zero GPU calls; the chars/4 estimate came within 1.3% of the real count.
+- **A whole-file edit pays for the file TWICE** (once in the prompt, once in the output), so on
+  a given persona files above roughly `(num_ctx − tests − overhead) / 2` cannot be edited whole
+  **at all** — `loop.py` on the 16K coder is a worked example (no `num_predict` both fits the
+  window and suffices to emit the file). Code-anchoring does not have this bound: it pays for
+  the file once. This is a third leg the M2 decision never weighed — it priced cost-per-token
+  and timeout safety, never window feasibility. `ref:oficina-ctx-overflow`.
 - Extraction delta vs the seam-map prediction: `ref:patterns-refactoring-duplicate-first`.
 
 ## P2 evaluated loop — validator-output parser contract (P2-T1) — 2026-07-15

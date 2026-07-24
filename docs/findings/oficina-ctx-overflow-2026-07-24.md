@@ -106,6 +106,40 @@ tells the truth about occupancy.
 <!-- /ref:oficina-ctx-overflow -->
 
 <!-- ref:oficina-ctx-overflow-guard -->
+## The feasibility band — a sharper form of the same defect
+
+Scoping the build surfaced a case stronger than an overflow: an edit that **cannot be
+expressed at all** on a given model. Prompt and output compete for one window, and an oficina
+edit run returns the *whole file*, so the file is paid for twice — once in the prompt, once in
+the output:
+
+| write mechanism | prompt | output | feasible while |
+|---|---|---|---|
+| oficina edit run (T-110 whole-file) | file + tests | ≈ file | `2×file + tests + overhead ≤ num_ctx` |
+| `generate_code` + `patch_file` (code-anchored) | file + tests | ≈ the edit | `file + tests + overhead ≤ num_ctx` |
+
+Measured on this very build — editing `loop.py` to *add the guard*:
+
+```
+prompt  12,664  (loop.py 5,178 + test_loop.py 6,585 + ~900 overhead)
+E-D9 num_predict  8,192          total 20,856  vs  16,384      over by 4,472
+headroom for num_predict: 3,720  |  returning loop.py whole needs ~5,178
+```
+
+**No budget both fits the window and is large enough to emit the file.** The guard's own build
+is the first run the guard would have refused — on the 16K coder it is impossible, not tight.
+Note it is the *tests* that close the band, not the file: `loop.py` alone would fit twice over,
+but tests-as-context is what makes P2 runs converge in one iteration, so they are not optional.
+
+**This is a third leg the M2 decision never had.** T-104 chose code-anchored on cost-per-token
+and timeout safety; the s126 amendment reversed it to whole-file because the timeout leg was
+sync-path-only and the edit language was unpriced (`ref:oficina-write-model-report` § AMENDMENT).
+Neither pricing considered **window feasibility**. It does not by itself re-open M2 — whole-file's
+correctness advantages stand — but it bounds it: whole-file editing carries a hard file-size
+ceiling of roughly `(num_ctx − tests − overhead) / 2`, and code-anchoring does not. Feeds T-113's
+open question (do the 32K personas keep a role?) with a concrete answer: for whole-file edits of
+files this size, yes — or code-anchor instead.
+
 ## What this settles for T-112
 
 **The guard's predicate is `prompt_tokens + num_predict ≤ num_ctx`, not prompt size alone.** The
@@ -150,6 +184,41 @@ oficina never becomes a consumer of the registry *shape* — leaving
 `/api/ps` measures 14.2 GiB). Open sub-question: what a guard does when the ceiling is
 undeterminable, since fail-open on a guard forfeits its purpose.
 <!-- /ref:oficina-ctx-overflow-guard -->
+
+## RESULTS — the guard shipped and was accepted live (session 129)
+
+Built as `EvaluatedLoop._context_overflow` + an injected `context_limit_for` seam, fed by
+`worker.model_context_limit()` (`/api/show`). Suite 332 → **337**; hook suite 26/26.
+
+**Negative acceptance** — run `n8F0YVvypRnAF-_z70hsyQ`, the *same* `loop.py` edit that motivated
+this doc, on the 16K coder:
+
+```
+23:36:45.055  AssemblyDone
+23:36:45.772  Failed   where=generation  whose=payload
+              "prompt ~12497 tokens + generation budget 8192 exceeds
+               the model's 16384-token context window"
+```
+
+**0.72 s, zero generation calls in `calls.jsonl`** — matching the E-D2a precedent's shape (fail
+loud, no GPU). The predicted 12,664 vs the actual **12,497** puts the `chars/4` estimate within
+**1.3%**, confirming D2: it is conservative in the safe direction on code.
+
+**Positive acceptance** — control run `dy-Bi1nMo5LIqnpzrtXRTw` (`prompt.py`, ~3.2K prompt) passed
+the guard, generated, and Delivered on iteration 1. Necessary evidence: a guard that refuses
+everything would pass the negative test alone.
+
+**The control also exposed an unrelated, larger defect (T-119):** asked for one small helper, the
+model returned it *plus ~110 lines of the acceptance test file pasted into the production module*,
+whole test functions included — and the run reported `passed: true`, `auto_verdict: 2`,
+**Delivered**, because test functions added to a source module cannot make the acceptance tests
+fail. Tests-green ≠ deliverable-good; it is the mirror of the anti-cheat check, which catches the
+target editing the tests but not the tests leaking into the target.
+
+**E-D6 correction:** that same run **preserved** the module docstring, making it 5-for-6, not
+universal. Every observed deletion has been on a large file — output-budget pressure is now a live
+hypothesis rather than a settled rule. (The T-112 build run, on the much larger `loop.py`, *did*
+delete it, and did so against an explicit preservation instruction in the objective.)
 
 ## Reproducing
 
