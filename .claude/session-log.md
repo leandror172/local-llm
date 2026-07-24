@@ -1,45 +1,35 @@
 # Session Log
 
 **Current Layer:** "Layer 5 — Expense Classifier (oficina P2 track active)"
-**Current Session:** 2026-07-23 — Session 127: "Go widening complete (T-92 Axis A, Phases 2–5) — LanguagePack + 16K coder defaults; PR #83"
+**Current Session:** 2026-07-24 — Session 128: T-114 edit-iteration default + T-115 refactoring-conventions promotion (PR #84)
 
 ---
-## 2026-07-23 - Session 127: "Go widening complete (T-92 Axis A, Phases 2–5) — LanguagePack + 16K coder defaults; PR #83"
+## 2026-07-24 - Session 128: T-114 edit-iteration default + T-115 refactoring-conventions promotion (PR #84)
 
 ### Context
 
-Resumed post-merge of PR #82 (edit mode) with the register naming "Axis A Go read-side" as next. The Go-widening plan was amended to current state first (A1–A4: post-T-110 deltas, `-json` imposed, `_parse_gotest` dogfood as an edit run), then the user green-lit Phases 2+3 and later extended to "the next 3 phases" — the whole of Axis A landed in one session.
+Continued from a compacted session; entry point was the choice "T-114 / T-115" after a next-steps discussion. Docs-first ordering, local-model delegation with convention refs, and VRAM checks were all user-directed.
 
 ### What Was Done
 
-- **T-92 Axis A COMPLETE, Phases 2–5, suite 298→329, PR #83 OPEN** (`feature/oficina-p2-go`, 30 commits)
-- Phase 2: language-derived compile `error_key` prefix (`_ERROR_KEY_PREFIX`; R1 identifiers in, pinned `py-` spelling out) — built by the first-ever production edit run on `parser.py`
-- Phase 3 (duplicated-on-purpose): `_parse_go_build` + `_parse_gotest` beside the Python parsers; flat Go categories; loop language axis; language-dispatched `evaluate()` — in-worktree `go build ./...` (R3), Go test stage IMPOSES `go test -json ./...` (A2), greenfield-C0 stderr fallback pinned empirically (go<1.24 emits build failures unwrapped)
-- Phase 4: `LanguagePack` extracted from the two working implementations — 4 members vs 5–6 predicted, zero test edits; delta recorded as new `ref:patterns-refactoring-duplicate-first` (staging doc met its own promotion bar); `acceptance.validators` decided (language is the key; dead-field removal queued for Axis B)
-- Phase 5: live acceptance PASSED (greenfield Go, 1 iteration, auto-routed, fallback fired in production) + stretch: first Go EDIT run — surgical 1-line diff, doc comment preserved
-- `create-persona --num-ctx` override + `my-python-q25c14-16k`/`my-go-q25c14-16k`; loop coder defaults flipped to them (measured: 32K = 14.2 GiB live, cannot fit the card, 2.5 tok/s offloaded; 16K = 11.1 GiB VRAM-fit, 13–21 tok/s)
-- GPU forensics mid-session: stale load-time VRAM split diagnosed (evict+rewarm rebalances), desktop cleared of suspects, live T-102 evidence (concurrent session), one run killed via ollama restart
-- Verdict-capture failure diagnosed to mechanism (T-109(1)): mid-turn assistant text is NOT persisted to Fable transcripts — rule memorized + recorded; all 8 session verdicts captured and grep-verified thereafter
-- T-111 registered (cooperative cancel cannot interrupt an in-flight generation); stubs-then-retry recovery validated after a run restructured `evaluate()`; session-127 wrap (QUICK memories ×2, KNOWLEDGE LanguagePack section, E-D6 addendum in the edit-mode plan, staleness sweep: persona counts 61/53, README `kind: function`+Go)
+- T-115: promoted `refactoring-conventions` to a first-class pattern-doc family (graduate-in-place) — gateway row in the master `ref:patterns-index`, Status staging→stable, `.claude/index.md` row + a code-design cross-ref updated; zero new ref-integrity errors (36==36 stashed-vs-applied).
+- T-114: oficina **edit runs now default to a single iteration** (greenfield keeps 3; an explicit `budgets.iterations` always wins) — mirrors the E-D9 `num_predict` resolve-by-mode contract; +3 tests, suite 329→332.
+- Core T-114 resolver + constants delegated to the local 16K coder (`my-python-q25c14-16k`) with code-design convention refs injected server-side (verdict 2, accepted as-is).
+- De-staled memory: the "~3 iterations" lines in oficina QUICK + the KNOWLEDGE E-D9 sibling.
+- Opened PR #84 (3 commits); branch `feature/oficina-t114-t115`.
 
 ### Decisions Made
 
-- Dogfood-first build shape: hand-written red pins gating oficina edit runs on the modules being widened (parser ×2, evaluator ×2); worked, with review-fix-inline closing each run's 5–10% residue
-- A2 settled: the Go test stage owns its command — a caller `test_cmd` without `-json` is overridden, never honored (P2-D12 masking-hole class)
-- Coder defaults = 16K-ctx personas (measured VRAM decision, reversible; no input-fit guard yet → T-112)
-- Loop-economics finding (5/5 runs): iteration 1 lands 90–95% and retries never see the residual defect → `budgets.iterations: 1` for reviewed edit runs is now a data-backed candidate (T-114)
-- Follow-ups registered as T-112–T-115 (input-fit guard, ctx re-probe, iterations default, refactoring-conventions promotion)
+- T-115 promotion = **graduate-in-place**: content stays in its own file (the process/shape/test-body taxonomy is why it's separate). Promotion is *earning a master-index gateway row*, not relocating content — a staged doc's tell is the ABSENCE of that row (test-executable-spec still has none; T-100 open).
+- T-114 keyed on **mode** (edit→1, greenfield→3), resolved post-assembly like `num_predict` — mode isn't known at intake (decided at assembly by target-at-HEAD), so it can't be a schema default. Greenfield left at 3 (the 5/5 evidence is edit-only). The resolver is the single future home for an H2-forces-3 rule.
 
 ### Next
 
-- Review + merge **PR #83** (Go widening, 30 commits)
-- **Axis B kinds reconsideration** — fed by Axis A (E-D8 rename + dead `acceptance.validators` removal ride the same taxonomy pass)
-- Triage T-112–T-115; standing: T-102 busy-check (G-D8), T-105 Phase 6, T-103, T-111
+- Merge PR #84.
+- **Axis B kinds reconsideration** — E-D8 `kind` rename + dead `acceptance.validators` removal ride one taxonomy pass.
+- Triage **T-112** (input-fit guard) + **T-113** (ctx-footprint re-probe) — they protect the 16K coder defaults now used on every run.
 
 ### Gotchas
 
-- **Mid-turn assistant text is not persisted to Fable session transcripts** — a `[VERDICT]` block emitted between tool calls is invisible to the Stop-hook capture; blocks must ride the turn's FINAL message, then verify with a `calls.jsonl` grep (T-109(1) mechanism, diagnosed live)
-- **go<1.24: build failures under `go test -json` arrive UNWRAPPED on stderr in go-build shape** with zero fail events — every greenfield Go C0 hits this; the stderr fallback is load-bearing
-- **Ollama's VRAM/CPU split is decided at load time and never rebalanced** — after freeing VRAM, evict + rewarm to claim it; `/api/ps size_vram < size` is the offload tell
-- **Cooperative cancel waits out the in-flight generation** — cancel latency equals the remaining per-call transport window (25+ min observed under contention; T-111)
-- **Whole-file edit runs deleted a large module docstring 4-for-4**, twice against an explicit do-not-modify constraint — restore-in-review is the working mitigation (E-D6 addendum)
+- The 16K coder's VRAM footprint is fixed by `num_ctx` pre-reserving the KV cache at load (11.25 GiB VRAM + 0.64 GiB CPU, 95/5) — it does NOT grow with how much context you send; oversized input truncates silently at 16K rather than spilling VRAM (the T-112 risk).
+- The executable-spec DSL hard-codes `iterations=len(writing)`, so exercising a mode-*default* budget needed a `with_iterations=None` knob to OMIT the budget. Supply EXACTLY as many failing evals as iterations expected — `FakeEvaluate` returns `[]` (a pass) once exhausted, which would end the loop early and mask the count.
