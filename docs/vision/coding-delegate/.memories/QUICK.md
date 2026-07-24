@@ -124,7 +124,7 @@ runs) only if H1 run logs validate the planner hypothesis (V-D2 — "graduation"
 
 - One call, one deliverable; tests-first (test run → review → implementation run)
 - Deterministic spine; structured output only (never free-form tool use); 14B coder floor
-- ~3 iterations + 1 repetition-triggered fresh start; phase batching (~3 VRAM swaps/run)
+- Iteration budget by mode (T-114): edit runs default to **1** (retries never see their own residual), greenfield ~3; +1 repetition-triggered fresh start; explicit budget always wins; phase batching (~3 VRAM swaps/run)
 - Judge gates every DPO chosen label (S17); `auto_verdict` ≠ `curated_verdict`
 - **Session verdicts ship per RUN, on the deliverable** (T-105, 2026-07-21) — a `run_result` hook
   injects `[VERDICT run_id=…]` iff a deliverable exists. A **second axis** beside `auto_verdict`,

@@ -49,6 +49,8 @@ CoderFn = Callable[..., GenerationResult]
 DEFAULT_CODER_MODEL = LANGUAGES["python"].coder_model
 NUM_PREDICT = 2048  # floored so a function is never truncated; capped to bound runaway
 EDIT_NUM_PREDICT_CAP = 8192  # E-D9 ceiling for the file-size-derived edit-mode floor
+GREENFIELD_ITERATIONS = 3  # the P2 default iteration budget
+EDIT_ITERATIONS = 1  # T-114: s127 (5/5) — iteration 1 lands ~90-95% and retries never saw their own residual; a reviewed edit run gets one shot
 
 _SYSTEM = LANGUAGES["python"].system_prompt
 # No leading "CONSTRAINTS:" label in either variant — prompt.SEGMENTS already prepends that header
@@ -126,7 +128,11 @@ class EvaluatedLoop:
         # safety net (P2-D10), 0/None disables; the per-stage subprocess timeout (evaluator)
         # bounds a single hung run. Checked between iterations.
         budgets = Budgets(**(spec.get("budgets") or {}))
-        self.max_iterations = budgets.iterations
+        # T-114: an explicit budgets.iterations ALWAYS wins; otherwise the effective max is
+        # resolved post-assembly by mode (edit lands in 1, greenfield keeps 3), mirroring
+        # _num_predict (E-D9). Provisional until run() knows the mode.
+        self._explicit_iterations = budgets.iterations
+        self.max_iterations = self._explicit_iterations or GREENFIELD_ITERATIONS
         self.max_fresh_starts = budgets.fresh_starts
         self.max_wall_clock_s = budgets.wall_clock_s
         # E-D9: an explicit budget ALWAYS wins; otherwise the effective num_predict is resolved
@@ -184,6 +190,17 @@ class EvaluatedLoop:
             derived = math.ceil(len(current_file) / 4) * 2
             return min(EDIT_NUM_PREDICT_CAP, max(NUM_PREDICT, derived))
         return NUM_PREDICT
+
+    def _resolve_max_iterations(self, assembly) -> int:
+        """The effective per-run iteration budget (T-114). An explicit ``budgets.iterations``
+        always wins. Otherwise the mode decides: an ``edit`` run gets EDIT_ITERATIONS (s127:
+        iteration 1 lands the fix and retries never saw their own residual); greenfield keeps
+        GREENFIELD_ITERATIONS."""
+        if self._explicit_iterations is not None:
+            return self._explicit_iterations
+        if assembly.mode == "edit":
+            return EDIT_ITERATIONS
+        return GREENFIELD_ITERATIONS
 
     def _emit_iteration_started(self, k: int) -> None:
         """Record the iteration and the budget remaining after it (P2-D10)."""
@@ -331,6 +348,8 @@ class EvaluatedLoop:
         assembly = self.workspace.assemble(emit=self.ledger.assembly_done)
         # E-D9: now that the mode and current-file size are known, fix the per-call generation budget.
         self._num_predict = self._resolve_num_predict(assembly)
+        # T-114: with the mode known, fix the iteration budget (edit -> 1, greenfield -> 3).
+        self.max_iterations = self._resolve_max_iterations(assembly)
         worktree = assembly.worktree_path
         base_repo = assembly.base_repo
         target_rel = target_relpath(self.spec["deliverable"]["target"], base_repo)

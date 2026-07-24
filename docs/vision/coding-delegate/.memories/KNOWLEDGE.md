@@ -104,7 +104,9 @@ mode-selected constraints; the model returns the whole modified file; the unchan
 it. Mode = target committed at HEAD (E-D2, no spec field); an uncommitted target is a fail-loud
 `AssemblyError` (live: Failed in 1.3 s, zero GPU). Fence-strip moved to the loop's write step (the
 loop owns its write invariant); edit `num_predict` sizes to the file — `max(2048, ceil(chars/4)*2)`
-cap 8192, explicit budget wins — resolved post-assembly, passed per-call (E-D9). Live acceptance
+cap 8192, explicit budget wins — resolved post-assembly, passed per-call (E-D9). Iteration budget
+follows the same shape (T-114): an edit run defaults to 1 iteration (s127 5/5 — retries never saw
+their own residual defect), greenfield keeps 3, explicit always wins, resolved post-assembly in `run()`. Live acceptance
 (4 runs): a 246-line module delivered with diff 2+/2−, all 24 siblings byte-intact; the observed
 whole-file drift is ADDITIVE (unrequested annotations), not omissive; every run converged in
 iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run dropping sibling code

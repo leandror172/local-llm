@@ -546,3 +546,12 @@ my-python-q25c14-16k:
   num_ctx: 16384
   tier: full
   status: active
+
+my-go-q25c14-16k:
+  modelfile: modelfiles/go-q25c14-16k-qwen25c14.Modelfile
+  base_model: qwen2.5-coder:14b
+  role: Go developer specializing in idiomatic, concurrent, well-tested services and CLIs.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active

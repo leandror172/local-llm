@@ -7,6 +7,13 @@ they govern how code is shaped, not which tools are used.
 Query `ref:patterns-code-design-index` for a summary; drill into any
 `ref:patterns-code-*` key for details.
 
+**Related pattern-doc family** (each governs a different axis of "good code"):
+- `code-design-conventions.md` (this doc) — how code is **shaped**.
+- `docs/patterns/refactoring-conventions.md` — the **process** of changing code safely
+  (`ref:patterns-refactoring-characterize-first`, `ref:patterns-refactoring-duplicate-first`).
+- `docs/patterns/test-authoring-executable-spec.md` — how a test *body* is written
+  (`ref:test-executable-spec`).
+
 ---
 
 <!-- ref:patterns-code-design-index -->
