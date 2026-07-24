@@ -392,6 +392,23 @@ def given_an_edit_run(tmp_path, current_content=EXISTING_AREA):
     return run
 
 
+A_WRONG_AREA = "def area(w, h):\n    return w - h  # still wrong, and distinctively so\n"
+
+
+def then_the_repair_prompt_showed_a_diff_not_the_whole_attempt(run, attempt):
+    """T-120: the repair tail carries a unified diff against the committed file, and does NOT
+    replay `attempt` in full — which would pay for the file a second time in one prompt."""
+    prompt = then_the_prompt_at_iteration(run, 2)
+    assert "--- the committed file" in prompt and "+++ your last attempt" in prompt
+    # .strip() because build_prompt strips every segment — comparing raw bytes would make this
+    # negative assertion pass for the wrong reason (a trailing newline it was never going to keep).
+    assert attempt.strip() not in prompt
+
+
+def then_the_repair_prompt_said_nothing_changed(run):
+    assert "unchanged" in then_the_prompt_at_iteration(run, 2)
+
+
 def then_the_target_on_disk_is_unfenced(run):
     """Rule-3 boundary verb (a single filesystem assertion): the on-disk target the compile stage
     reads carries the code with markdown fences stripped (E-D5)."""
@@ -402,6 +419,39 @@ def then_the_target_on_disk_is_unfenced(run):
 def then_the_coder_saw_num_predict(run, expected, *, at=1):
     """The coder's per-call num_predict on iteration `at` (1-based) equals `expected` (E-D9)."""
     assert run.coder.num_predicts[at - 1] == expected
+
+
+def test_edit_run_shows_the_previous_attempt_as_a_diff(tmp_path):
+    """T-120: on an edit run the repair prompt carries a diff against the committed file, not a
+    second whole copy of it — the prompt already holds the file as CURRENT FILE."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[A_WRONG_AREA, GOOD_AREA],
+        and_evaluation_yields=[FAILS("a"), CLEAN], with_iterations=2,
+    )
+    then_the_repair_prompt_showed_a_diff_not_the_whole_attempt(run, A_WRONG_AREA)
+
+
+def test_greenfield_still_replays_the_whole_previous_attempt(tmp_path):
+    """T-120 is edit-mode only: a greenfield run has no committed baseline to diff against, so
+    its repair prompt keeps replaying the attempt in full, exactly as before."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[A_WRONG_AREA, GOOD_AREA],
+        and_evaluation_yields=[FAILS("a"), CLEAN], with_iterations=2,
+    )
+    assert A_WRONG_AREA.strip() in then_the_prompt_at_iteration(run, 2)
+
+
+def test_an_edit_attempt_identical_to_the_baseline_is_stated_not_silent(tmp_path):
+    """T-120: an attempt byte-identical to the committed file diffs to nothing, and an empty
+    segment is dropped from the prompt — so 'you changed nothing' is said out loud instead."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[EXISTING_AREA, GOOD_AREA],
+        and_evaluation_yields=[FAILS("a"), CLEAN], with_iterations=2,
+    )
+    then_the_repair_prompt_said_nothing_changed(run)
 
 
 def test_edit_run_prompt_carries_current_file_and_edit_constraints(tmp_path):

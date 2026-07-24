@@ -29,6 +29,7 @@ tokens are evicted, so the model silently loses the head of its own instructions
 
 from __future__ import annotations
 
+import difflib
 import math
 import time
 from dataclasses import dataclass, field
@@ -93,6 +94,23 @@ class LoopResult:
 def _signature(failures: List[ParsedFailure]) -> tuple:
     """P2-D7 repetition signature: the sorted set of normalized error_keys."""
     return tuple(sorted({"::".join(f.error_key) for f in failures}))
+
+
+def _attempt_as_diff(baseline: str, attempt: str) -> str:
+    """The coder's last attempt as a unified diff against the committed file (T-120).
+
+    An edit-run prompt already carries the committed file as ``current_file``, so replaying the
+    whole modified file would pay for that file twice in one prompt — and the whole-file write
+    pays for it a third time on the way out."""
+    return "".join(
+        difflib.unified_diff(
+            baseline.splitlines(keepends=True),
+            attempt.splitlines(keepends=True),
+            fromfile="the committed file",
+            tofile="your last attempt",
+            n=3,
+        )
+    )
 
 
 def _repair_feedback(failures: List[ParsedFailure]) -> str:
@@ -165,6 +183,9 @@ class EvaluatedLoop:
         # T-112: the input-fit guard (context window).
         self.context_limit_for = context_limit_for
         self._context_limit = None
+        # T-120: the committed target content on an edit run, None on greenfield. Set once at
+        # assembly; the previous attempt is shown as a diff against it rather than in full.
+        self._edit_baseline: Optional[str] = None
 
     def _stable_prompt_parts(self, assembly) -> Dict[str, str]:
         """The run-constant prompt parts (P2-D2): system + constraints + the assembled parts, with
@@ -255,8 +276,21 @@ class EvaluatedLoop:
         )
         return {
             "repair_feedback": f"You edited the tests ({', '.join(cheated)}). Never modify the tests; implement the target only.",
-            "previous_attempt": gen.content,
+            "previous_attempt": self._previous_attempt_view(gen.content),
         }
+
+    def _previous_attempt_view(self, content: str) -> str:
+        """What the model is shown of its own last attempt (T-120).
+
+        Greenfield replays the content, exactly as it always has. An edit run shows a diff
+        against the committed file instead — the same information at a fraction of the tokens.
+        An attempt identical to the baseline diffs to nothing, and an empty segment is dropped
+        from the prompt entirely, so that signal is stated rather than allowed to vanish."""
+        if self._edit_baseline is None:
+            return content
+        if content == self._edit_baseline:
+            return "You returned the committed file unchanged — nothing was modified."
+        return _attempt_as_diff(self._edit_baseline, content)
 
     def _track_best(
         self, gen: GenerationResult, attributable: List[ParsedFailure], snapshot: str
@@ -284,7 +318,7 @@ class EvaluatedLoop:
         self._signatures_seen.add(signature)
         return {
             "repair_feedback": _repair_feedback(attributable),
-            "previous_attempt": gen.content,
+            "previous_attempt": self._previous_attempt_view(gen.content),
         }
 
     def _result_from(
@@ -376,6 +410,8 @@ class EvaluatedLoop:
         self._num_predict = self._resolve_num_predict(assembly)
         # T-114: with the mode known, fix the iteration budget (edit -> 1, greenfield -> 3).
         self.max_iterations = self._resolve_max_iterations(assembly)
+        # T-120: remember the committed content (edit runs only) for the previous-attempt diff.
+        self._edit_baseline = assembly.stable_parts.get("current_file") or None
         worktree = assembly.worktree_path
         base_repo = assembly.base_repo
         target_rel = target_relpath(self.spec["deliverable"]["target"], base_repo)
