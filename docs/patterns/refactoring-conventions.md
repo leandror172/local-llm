@@ -1,9 +1,13 @@
 # Refactoring conventions
 
-**Status:** two proof-points (the `_run_script` extraction; the T-92 `LanguagePack`
-extraction, session 127 — see "Duplicate before you abstract" below). Promotion into
-`docs/patterns/code-design-conventions.md` is now warranted per the original criteria,
-mirroring the staging arrangement of `docs/patterns/test-authoring-executable-spec.md`.
+**Status:** stable — promoted (T-115, session 128). Two recorded proof-points: the
+`_run_script` extraction (characterize-first) and the T-92 `LanguagePack` extraction
+(duplicate-first, session 127 — see "Duplicate before you abstract" below), which met the
+original two-proof-point criterion. This is a first-class pattern-doc family, indexed in
+`ref:patterns-index` (`docs/patterns/technology-conventions.md`) alongside the code-design
+and technology conventions. Promotion was *graduate-in-place*: the content stays here (the
+process/shape/test-body split below is the reason it is its own file); only its index
+standing changed.
 
 These govern the **process** of changing code safely — the sequence of steps around a
 refactor — as distinct from `code-design-conventions.md` (how code is *shaped*) and

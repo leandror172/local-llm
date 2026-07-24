@@ -23,6 +23,7 @@ to file paths instead of anchor keys.
 | `patterns-persona-naming` | my-\<role\>[-model-suffix] | Registry as source of truth, naming rules | Non-Ollama backend, model ecosystem consolidation |
 | `patterns-licensing` | Check + honor + attribute | ATTRIBUTIONS.md for required attributions | — (hard requirement) |
 | `patterns-code-named-methods` | Named semantic methods | Public API names intent; private methods own generic dispatch | `docs/patterns/code-design-conventions.md` |
+| `patterns-refactoring-characterize-first` | Refactor process safety | Characterize-before-extract + duplicate-before-abstract; process (not shape) patterns | `docs/patterns/refactoring-conventions.md` |
 <!-- /ref:patterns-index -->
 
 ---
