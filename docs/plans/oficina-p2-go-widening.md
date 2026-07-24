@@ -1,9 +1,13 @@
 # oficina P2 — Go language widening (Axis A) — build plan
 
-**Status:** Plan, session 124 (2026-07-18). R1/R3/R4 SETTLED (see below); not built.
+**Status:** Plan, session 124 (2026-07-18). R1/R3/R4 SETTLED (see below). **Phase 1 BUILT
+session 124** (intake `language` plumbing; suite 279 then); Phases 2–5 open. **Amended session 127
+(2026-07-23) — see § Amendments:** post-T-110 deltas (A1), `-json` imposed (A2), `_parse_gotest`
+dogfood via oficina edit run (A3), ABSORB deferred to Phase 4 exit (A4). Suite baseline at
+amendment: 298.
 **Task:** T-92 (P2-D1 widening), Axis A = add a second language (Go).
-**Branch:** `feature/oficina-p2-go` — fresh from **master** (the current `docs/t102-…` branch is a
-clean docs PR; keep it separate).
+**Branch:** `feature/oficina-p2-go` — fresh from **master** (the s124 remark about keeping a live
+`docs/t102-…` branch separate is obsolete — branch estate is master-only since session 126).
 **Design notes + measured Go output shapes:** `docs/plans/oficina-language-widening-notes.md`
 (`ref:oficina-language-widening`, `ref:oficina-language-widening-warnings`).
 **Why Go, why first:** Axis A's result reshapes how we think about Axis B kinds (user, session
@@ -110,7 +114,12 @@ Only now, with real divergence in hand.
 - Reconsider the dead `acceptance.validators` field: is it the right registry key, or is
   `deliverable.language` sufficient? Decide from the concrete shape, do not inherit it.
 
-**Exit:** one algorithm, two packs, no duplication, suite green as characterization.
+**Exit:** one algorithm, two packs, no duplication, suite green as characterization. **Added
+session 127 (A4):** record the prediction-vs-reality delta (which predicted seam proved
+unnecessary, which unpredicted seam was forced — Warning 2's claim, now measurable), then execute
+the notes doc's deferred ABSORB: promote the two warnings into
+`docs/patterns/refactoring-conventions.md` as the second proof-point for
+`ref:patterns-refactoring-characterize-first`, with that measured delta as the evidence.
 
 ## Phase 5 — live acceptance
 
@@ -122,15 +131,103 @@ Only now, with real divergence in hand.
 - Confirm the anti-cheat/masking guards hold for Go (a Go test failure attributes to the right file
   via `-json`; a pre-existing wart in a context file is not blamed).
 
+- **Stretch goal (added session 127, runs only after the frozen greenfield gate passes):** one Go
+  **edit run** — an existing committed `.go` target with a seeded defect — exercising the T-110
+  edit machinery (`current_file`, `_EDIT_CONSTRAINTS`, derived `num_predict`) on the second
+  language. Not part of the acceptance gate; contributes evidence to E-D6's
+  production-runs-as-corpus stance.
+
 **Exit:** Go is a supported language; Axis A done. Feeds the Axis-B kinds reconsideration.
 
 ## Open sub-decisions to resolve in-flight (not blockers)
 
-- **Go test command ownership.** Does the caller supply `test_cmd = "go test -json ./..."`, or does
+- ~~**Go test command ownership.** Does the caller supply `test_cmd = "go test -json ./..."`, or does
   the Go test stage *impose* `-json`? Lean: impose (attribution depends on it; a caller's plain
-  `go test` would silently lose file resolution). Decide in Phase 3.
+  `go test` would silently lose file resolution). Decide in Phase 3.~~ **SETTLED session 127:
+  the Go test stage IMPOSES `-json` (A2, § Amendments).**
 - **Multi-file Go targets / package clause.** The first slice keeps one target file (as Python did).
   A Go target with its own real package (not `main`) is fine under `go build ./...` — no scaffolding,
   unlike `validate_go`. Confirm no `package main` assumption leaks in.
 - **`extract-code.py:infer_language`** exists (benchmark harness) — reference for the extension map,
   do not couple to it (off the loop path).
+
+---
+
+## Amendments (session 127, 2026-07-23)
+
+Additive, per the repo's amendment idiom (T-104 § AMENDMENT precedent). The frozen text above is
+untouched except the status header, the settled sub-decision strike, and the two exit-line
+additions marked "session 127". R1/R3/R4 and the governing discipline stand as frozen.
+
+### A1 — The plan predates edit mode (T-110, session 126); what Go inherits for free
+
+Edit mode (`docs/plans/oficina-p2-edit-mode.md`, E-D1–E-D9) shipped after this plan froze and is
+**language-agnostic by construction** — none of it needs a Go variant:
+
+- The `current_file` stable segment (E-D3), fence-strip composing `server._strip_code_fences`
+  (E-D5), and the chars-based edit `num_predict` derivation (E-D9) all operate on file content,
+  not syntax. A Go **edit** run works the moment Go compile/test stages exist.
+- `locate_unit` is **out of the predicted pack** — the code-anchored locator survives only as the
+  on-file fallback (T-104 § AMENDMENT, omission trigger), so no per-language span-location member
+  exists. This is the "simpler now" fact recorded in the s126 register, now recorded where the
+  build reads.
+- **Phase 3 item 4 correction: prompt selection is now two-axis (mode × language).** `loop.py`
+  already selects constraints by `Assembly.mode` (`_CONSTRAINTS` / `_EDIT_CONSTRAINTS`, both
+  language-neutral); the Go work adds a language axis (`DEFAULT_CODER_MODEL`, `_SYSTEM`) that
+  **composes with — does not replace — the mode axis**. All combinations remain stable prompt
+  segments, so the P2-D2 cache contract holds unchanged.
+
+### A2 — SETTLED: the Go test stage imposes `go test -json ./...`
+
+The stage owns the command; a caller-supplied `test_cmd` does not opt Go out of `-json`.
+Rationale: R4's file attribution depends **structurally** on the `Package` field, so a plain
+`go test` would *silently* degrade attribution — the P2-D12 masking hole reintroduced as a caller
+default. Same family as "a signal that fires unconditionally carries zero bits": a silent
+degradation path is not accepted as configuration.
+
+### A3 — SETTLED: `_parse_gotest` is dogfooded via an oficina EDIT RUN
+
+The frozen dogfood note predates edit mode and imagined `generate_code`-style delegation.
+Revised shape: hand-write the fixture tests first (unchanged — hand-written fixtures against the
+measured shapes), then `submit_run` with `kind: function` targeting `parser.py` at HEAD — a real
+edit run on a load-bearing module, async per the revised T-89 routing default, judged per-run via
+`run_result`. The 24 existing parser tests + the new fixtures are the regression net. Fallback
+per the recorded retry protocol: improve prompt + retry before any hand-write; a rejected run is
+itself wanted signal (the first production edit run after T6 acceptance). Session scope
+(settled this session): **Phases 2+3 in one session; Phases 4–5 the next.**
+
+### A4 — DEFERRED: the notes doc's ABSORB (warnings → refactoring-conventions)
+
+Deliberately not executed at amendment time: the warnings' central claim ("expect one predicted
+seam to prove unnecessary and one unpredicted to prove required") is a **prediction**, and its
+evidence only exists after Phase 4 extracts the pack from two working implementations. Promoting
+the staging pattern on an unverified prediction would be the anticipation-over-evidence failure
+the warnings themselves describe. Execution point: the Phase 4 exit item added above.
+**EXECUTED session 127** — see A5.
+
+### A5 — RESULT (session 127): Phases 2–4 built; the delta the discipline predicted
+
+Phases 2 and 3 shipped in one session (suite 298→329): language-derived prefixes, both Go
+parsers (`_parse_go_build`, `_parse_gotest`), flat categories, the loop language axis, the
+language-dispatched `evaluate()` with imposed `-json` (A2), and an empirically-pinned
+greenfield-C0 hardening (go<1.24 emits build failures under `go test -json` as *stderr in
+go-build shape* with no fail events — the test stage falls back to `_parse_go_build(stderr)`).
+Build mechanism: hand-written red pins gating **oficina edit runs on the very modules being
+widened** (parser.py ×2, evaluator.py ×2 incl. a stubs-then-retry recovery); every run
+delivered 90–95% in iteration 1 and none could see its own residual defect across repeated
+iterations — review-fix-inline beat iterations 2–3 every time.
+
+**Phase 4 extracted `LanguagePack` from the two working implementations** (evaluator.py;
+loop imports it): **4 members** `{compile_stage, test_stage, system_prompt, coder_model}`
+against the predicted 5–6. The full prediction-vs-reality delta is recorded as the pattern
+proof-point: `ref:patterns-refactoring-duplicate-first`. Suite green with **zero test
+edits** across the extraction. Coder models are the 16K ctx variants (measured VRAM
+decision — 32K cannot fit the card; rationale in the pack comment).
+
+**`acceptance.validators` reconsidered (Phase 4 exit item): the language field IS the
+registry key; the dead field is not it.** It stays in intake for now — deleting it would
+flip accepted-and-ignored into unknown-key REJECTION for any spec carrying it — and its
+removal is queued for the Axis-B kind-widening pass, which must touch the intake taxonomy
+anyway (same trigger as E-D8's rename).
+
+Phase 5 (live acceptance) is next; its stretch goal (a Go edit run) stands.

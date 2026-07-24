@@ -84,6 +84,22 @@ target → fail-loud AssemblyError. Suite 279→298; live acceptance PASSED (R1�
 per-run prefix-reuse report over calls.jsonl (duration-not-count rule; ledger-inline option B
 deferred, noted in-file).
 
+Session 127 (2026-07-23): **Go widening COMPLETE (T-92 Axis A, Phases 2–5 in one session; suite
+329).** Language-derived error_key prefixes (`_ERROR_KEY_PREFIX`), `_parse_go_build` +
+`_parse_gotest` beside the Python parsers, language-dispatched `evaluate()` (A2: Go test stage
+IMPOSES `go test -json ./...`; greenfield-C0 stderr fallback — go<1.24 emits build failures
+unwrapped), loop language axis, then **`LanguagePack` extracted** (evaluator.py; 4 members
+`{compile_stage, test_stage, system_prompt, coder_model}` vs 5–6 predicted — delta:
+`ref:patterns-refactoring-duplicate-first`; zero test edits). **Coder defaults = 16K-ctx
+personas** (`my-python-q25c14-16k`/`my-go-q25c14-16k`, via new `create-persona --num-ctx`):
+32K live footprint is 14.2 GiB → can never fit the card → 2.5 tok/s offload; 16K = 11.1 GiB
+VRAM-fit at 13–21 tok/s. No input-fit guard yet (flagged, T-81 P2 class). Live acceptance:
+greenfield Go Delivered 1-iter (auto-routed) + first Go EDIT run (surgical 1-line diff, doc
+comment preserved). Build = 5 dogfood edit runs on parser/evaluator incl. one stubs-then-retry
+recovery; pattern: iteration 1 lands 90–95%, model can't see its own residual defect —
+review-fix-inline beat iterations 2–3 every time. Module docstring deleted 4-for-4 (E-D6).
+T-111 filed (cooperative cancel can't interrupt an in-flight generation).
+
 ## Deeper Memory -> KNOWLEDGE.md
 
 - **Transport Choice** — stdio over HTTP, rationale

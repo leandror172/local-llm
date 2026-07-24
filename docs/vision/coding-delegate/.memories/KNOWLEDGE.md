@@ -111,6 +111,28 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
 → harden the corpus, revisit code-anchored. Plan + results: `docs/plans/oficina-p2-edit-mode.md`
 (`ref:oficina-edit-mode`, `ref:oficina-edit-mode-decisions`).
 
+## LanguagePack — the language axis contract (T-92 Phase 4) — 2026-07-23
+
+- **One algorithm, N packs.** `evaluate()`'s flow (target-presence rule, first-failing-stage
+  P2-D8) is invariant; a frozen `LanguagePack` in `evaluator.py` supplies the varying steps:
+  `{compile_stage, test_stage, system_prompt, coder_model}`. `LANGUAGES = {"python": PYTHON,
+  "go": GO}`; selection via `language_pack(spec)` → `resolve_language` (R1), Python fallback.
+- **Stage functions share one signature** `(worktree, base_repo, spec, timeout_s)` — each
+  adapter consumes what it needs. The member is the whole STAGE, not a parse function:
+  Go's test stage OWNS its command (imposes `go test -json ./...`, A2 — Package-field
+  attribution) while Python honors the caller's `test_cmd`. Do not "unify" that away.
+- **Go internals stay module-private, not pack surface:** `_go_binary` (`OFICINA_GO` env →
+  `which` → literal), `_read_go_module` (go.mod), and the go<1.24 stderr fallback (build
+  failures under `go test -json` arrive UNWRAPPED on stderr in go-build shape — every
+  greenfield C0 hits this; without the `_parse_go_build(stderr)` fallback, assembly dies).
+- **The pack lives in `evaluator.py`** (loop imports it) — a separate module would need
+  evaluator's stages AND be needed by `evaluate()` (cycle). The generation-side values
+  (system/persona) in an evaluation module are an accepted altitude wart, noted in-code.
+- **Coder defaults are the 16K-ctx personas** (`my-*-q25c14-16k`): 32K live footprint
+  14.2 GiB cannot fit the 12 GB card (2.5 tok/s offloaded); 16K = 11.1 GiB VRAM-fit at
+  13–21 tok/s. No input-fit guard yet (T-81 P2 overflow class, flagged in the pack comment).
+- Extraction delta vs the seam-map prediction: `ref:patterns-refactoring-duplicate-first`.
+
 ## P2 evaluated loop — validator-output parser contract (P2-T1) — 2026-07-15
 
 `oficina/parser.py` is the ONE place validator/evaluation output is parsed. `parse_validator_output(stage, payload)`

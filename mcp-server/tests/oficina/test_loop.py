@@ -64,10 +64,12 @@ class FakeCoder:
         self.contents = list(contents)
         self.prompts = []
         self.num_predicts = []
+        self.models = []
 
     def __call__(self, prompt, model, run_id, num_predict=None):
         self.prompts.append(prompt)
         self.num_predicts.append(num_predict)
+        self.models.append(model)
         content = self.contents.pop(0) if self.contents else "def area(w, h):\n    return w * h\n"
         return GenerationResult(content=content, model=model, eval_count=10, duration_ms=1.0)
 
@@ -416,3 +418,37 @@ def test_greenfield_num_predict_is_the_unchanged_default(tmp_path):
     run = given_a_function_run(tmp_path)
     when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
     then_the_coder_saw_num_predict(run, NUM_PREDICT)
+
+
+# --- language axis: persona + system per resolved language (T-92 Phase 3, A1) --
+# Structural tests (they vary the GIVEN — the target's extension — per the
+# taxonomy), reusing the when_/then_ vocabulary.
+
+A_GO_AREA = "package probe\n\nfunc Area(w, h int) int {\n\treturn w * h\n}\n"
+
+
+def given_a_go_function_run(tmp_path):
+    """A Go-target run: language resolves to 'go' from the .go extension (R1) —
+    nothing else about the world changes (evaluation stays injected)."""
+    run = _Run(tmp_path)
+    run.target = run.repo / "area.go"
+    return run
+
+
+def test_go_run_selects_go_system_and_go_coder_model(tmp_path):
+    """A .go target flips BOTH language values: the prompt's system segment names a
+    Go engineer, and model "auto" resolves to the Go coder persona. The language
+    axis composes with — never replaces — the mode axis (A1)."""
+    run = given_a_go_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[A_GO_AREA], and_evaluation_yields=[CLEAN])
+    assert "Go engineer" in run.coder.prompts[0]
+    assert run.coder.models == ["my-go-q25c14-16k"]
+
+
+def test_python_run_keeps_python_system_and_coder_model(tmp_path):
+    """Characterization: the default (.py target) run still sees the Python system
+    line and the Python coder persona — the language axis is purely additive."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+    assert "Python engineer" in run.coder.prompts[0]
+    assert run.coder.models == ["my-python-q25c14-16k"]

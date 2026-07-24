@@ -4,7 +4,7 @@
 here and nothing more (index split — same pattern as `docs/vision/coding-delegate/index.md`).
 
 **Source of truth is `registry.yaml`.** Every count in this file is a snapshot; re-derive
-rather than quoting. As of 2026-07-21: **59 personas — 51 active, 6 benchmark, 2 inactive —
+rather than quoting. As of 2026-07-23: **61 personas — 53 active, 6 benchmark, 2 inactive —
 across 14 distinct base models**, with 59 matching Modelfiles in `../modelfiles/`.
 
 ---

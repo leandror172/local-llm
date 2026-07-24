@@ -312,3 +312,309 @@ def test_scope_of_normalizes_path_spellings():
     """Dot-prefixed vs plain spellings of the same relative path still agree."""
     result = scope_of("./src/area.py", ["src/area.py"], [])
     assert result == SCOPE_TARGET
+
+
+# --- language-derived error_key prefix (T-92 Phase 2) ------------------------
+
+# validate-code.py emits the SAME JSON shape for Go (classify_go_error,
+# validate-code.py:115) — but parser.py hardcoded "py-" on every compile error
+# regardless of language, so a Go compile failure keyed as py-… and silently
+# corrupted the P2-D7 repetition signature (the T-92 Phase 2 bug).
+COMPILE_FAIL_GO = [
+    {
+        "file": "area.go",
+        "path": "/tmp/wt-abc/area.go",
+        "status": "fail",
+        "errors": [
+            {"type": "undefined_reference", "text": "undefined: mathutil.Volume", "line": 10}
+        ],
+        "warnings": [],
+        "error_count": 1,
+        "warning_count": 0,
+        "load_time_ms": 4,
+        "validated_at": "2026-07-23T00:00:00.000Z",
+    }
+]
+
+
+def test_compile_failure_under_go_keys_go_prefix():
+    """A compile failure parsed with language="go" keys ("go-<type>", …), never "py-…" —
+    the prefix is derived from the language the caller resolved (R1), not hardcoded."""
+    failures = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL_GO, language="go")
+    assert failures
+    assert failures[0].error_key[0] == "go-undefined_reference"
+
+
+def test_compile_failure_default_language_keys_py_prefix():
+    """Omitting language preserves today's py- prefix byte-identically — every
+    existing caller keeps its behavior with zero migration (the R1 default posture)."""
+    failures = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL)
+    assert failures[0].error_key[0] == "py-syntax_error"
+
+
+def test_compile_failure_under_full_language_name_keys_py_prefix():
+    """language="python" (the R1 identifier resolve_language returns) keys "py-…" —
+    the prefix spelling is mapped from the identifier, never echoed verbatim. Pins the
+    seam the dispatch will cross: callers speak R1 vocabulary, keys keep their spelling."""
+    failures = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL, language="python")
+    assert failures[0].error_key[0] == "py-syntax_error"
+
+
+def test_compile_error_key_detail_is_language_neutral():
+    """Only the prefix half varies by language; the normalized detail half is computed
+    from the message text alone, so the same text yields the same detail either way."""
+    default = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL)[0]
+    as_go = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL, language="go")[0]
+    assert default.error_key[1] == as_go.error_key[1]
+
+
+# --- _parse_gotest: go test -json event stream (T-92 Phase 3) ----------------
+
+# Accessed via the module (not the top import) so that BEFORE the function exists,
+# collection still succeeds and each test fails individually with a rich AttributeError —
+# a top-level `from ... import _parse_gotest` would collapse the whole file into one
+# thin `ERROR test_parser.py` collection error (the s126 repair-feedback gotcha).
+from ollama_mcp.oficina import parser as parser_mod
+
+# The module path of the worktree's go.mod — the parser strips it from the JSON
+# events' Package field to recover the worktree-relative package directory.
+GO_MODULE = "example.com/probe"
+
+# Measured `go test -json ./...` event stream (session-124 experiment): one failing
+# test in the module-root package. The authoritative failure signal is the
+# Action:"fail" event WITH a non-empty Test — the trailing package-level fail event
+# (no Test field) summarizes the package and must not double-count.
+GOTEST_FAIL = """\
+{"Action":"run","Package":"example.com/probe","Test":"TestArea"}
+{"Action":"output","Package":"example.com/probe","Test":"TestArea","Output":"=== RUN   TestArea\\n"}
+{"Action":"output","Package":"example.com/probe","Test":"TestArea","Output":"    area_test.go:11: Area(3,4) = 7, want 12\\n"}
+{"Action":"output","Package":"example.com/probe","Test":"TestArea","Output":"--- FAIL: TestArea (0.00s)\\n"}
+{"Action":"fail","Package":"example.com/probe","Test":"TestArea"}
+{"Action":"output","Package":"example.com/probe","Output":"FAIL\\n"}
+{"Action":"fail","Package":"example.com/probe"}
+"""
+
+# The SAME failure with the assertion moved to line 23 — line numbers are volatile
+# coordinates (P2-D7); error_key must be identical to GOTEST_FAIL's.
+GOTEST_FAIL_SHIFTED = """\
+{"Action":"output","Package":"example.com/probe","Test":"TestArea","Output":"    area_test.go:23: Area(3,4) = 7, want 12\\n"}
+{"Action":"output","Package":"example.com/probe","Test":"TestArea","Output":"--- FAIL: TestArea (0.00s)\\n"}
+{"Action":"fail","Package":"example.com/probe","Test":"TestArea"}
+{"Action":"fail","Package":"example.com/probe"}
+"""
+
+# A failure in a SUBPACKAGE: Package minus the module path names the package dir,
+# so the file resolves worktree-relative (T-98: never bare basenames).
+GOTEST_SUBPACKAGE_FAIL = """\
+{"Action":"output","Package":"example.com/probe/geo","Test":"TestVolume","Output":"    volume_test.go:7: Volume(2,3,4) = 0, want 24\\n"}
+{"Action":"output","Package":"example.com/probe/geo","Test":"TestVolume","Output":"--- FAIL: TestVolume (0.00s)\\n"}
+{"Action":"fail","Package":"example.com/probe/geo","Test":"TestVolume"}
+{"Action":"fail","Package":"example.com/probe/geo"}
+"""
+
+# Two distinct failing tests in one package — two failures, still no package-level
+# double-count.
+GOTEST_TWO_FAILURES = """\
+{"Action":"output","Package":"example.com/probe","Test":"TestArea","Output":"    area_test.go:11: Area(3,4) = 7, want 12\\n"}
+{"Action":"fail","Package":"example.com/probe","Test":"TestArea"}
+{"Action":"output","Package":"example.com/probe","Test":"TestPerimeter","Output":"    area_test.go:19: Perimeter(3,4) = 12, want 14\\n"}
+{"Action":"fail","Package":"example.com/probe","Test":"TestPerimeter"}
+{"Action":"fail","Package":"example.com/probe"}
+"""
+
+# All green: pass events only.
+GOTEST_PASS = """\
+{"Action":"run","Package":"example.com/probe","Test":"TestArea"}
+{"Action":"output","Package":"example.com/probe","Test":"TestArea","Output":"--- PASS: TestArea (0.00s)\\n"}
+{"Action":"pass","Package":"example.com/probe","Test":"TestArea"}
+{"Action":"output","Package":"example.com/probe","Output":"ok  \\texample.com/probe\\t0.002s\\n"}
+{"Action":"pass","Package":"example.com/probe"}
+"""
+
+# A PASSING test whose own output prints '--- FAIL: ...' (e.g. a t.Log of captured
+# text). The structural Action field is authoritative — text scraping would
+# fabricate a failure here (the phantom-failure hole, closed for free by -json).
+GOTEST_PASS_WITH_FAIL_TEXT = """\
+{"Action":"output","Package":"example.com/probe","Test":"TestLogsFailText","Output":"    area_test.go:30: saw: --- FAIL: TestArea (0.00s)\\n"}
+{"Action":"output","Package":"example.com/probe","Test":"TestLogsFailText","Output":"--- PASS: TestLogsFailText (0.00s)\\n"}
+{"Action":"pass","Package":"example.com/probe","Test":"TestLogsFailText"}
+{"Action":"pass","Package":"example.com/probe"}
+"""
+
+
+def test_gotest_fail_event_yields_one_test_stage_failure():
+    """GOTEST_FAIL holds two Action:"fail" events (test + package summary) but exactly
+    ONE is authoritative — the one with a non-empty Test. One ParsedFailure, stage test."""
+    failures = parser_mod._parse_gotest(GOTEST_FAIL, GO_MODULE)
+    assert len(failures) == 1
+    assert failures[0].stage == STAGE_TEST
+
+
+def test_gotest_failure_resolves_worktree_relative_file():
+    """A module-root-package failure resolves .file to the _test.go path relative to
+    the worktree root ('area_test.go') via the Package field + Output file:line."""
+    failures = parser_mod._parse_gotest(GOTEST_FAIL, GO_MODULE)
+    assert failures[0].file == "area_test.go"
+
+
+def test_gotest_subpackage_failure_resolves_subdir_path():
+    """A subpackage failure prefixes the package dir: Package 'example.com/probe/geo'
+    under module 'example.com/probe' resolves .file to 'geo/volume_test.go' (T-98:
+    worktree-relative, never a bare basename)."""
+    failures = parser_mod._parse_gotest(GOTEST_SUBPACKAGE_FAIL, GO_MODULE)
+    assert failures[0].file == "geo/volume_test.go"
+
+
+def test_gotest_error_key_names_the_failing_test():
+    """error_key kind is 'go-test-failed:' + the failing test's normalized identity, so
+    the same test failing twice keys identically for the P2-D7 repetition signature."""
+    failures = parser_mod._parse_gotest(GOTEST_FAIL, GO_MODULE)
+    kind = failures[0].error_key[0]
+    assert kind.startswith("go-test-failed:")
+    assert "testarea" in kind.lower()
+
+
+def test_gotest_error_key_stable_across_line_shift():
+    """The same failure at output line 11 vs 23 yields an identical error_key — line
+    numbers are volatile coordinates (P2-D7)."""
+    fail1 = parser_mod._parse_gotest(GOTEST_FAIL, GO_MODULE)[0]
+    fail2 = parser_mod._parse_gotest(GOTEST_FAIL_SHIFTED, GO_MODULE)[0]
+    assert fail1.error_key == fail2.error_key
+
+
+def test_gotest_two_failing_tests_yield_two_failures():
+    """Two Action:"fail" events with distinct Test names yield two ParsedFailures;
+    the package-level fail event still adds nothing."""
+    failures = parser_mod._parse_gotest(GOTEST_TWO_FAILURES, GO_MODULE)
+    assert len(failures) == 2
+    assert failures[0].error_key != failures[1].error_key
+
+
+def test_gotest_pass_yields_no_failures():
+    """An all-green event stream parses to an empty list."""
+    assert parser_mod._parse_gotest(GOTEST_PASS, GO_MODULE) == []
+
+
+def test_gotest_fail_text_inside_passing_output_is_ignored():
+    """A passing test whose OUTPUT text contains '--- FAIL: ...' yields no failures —
+    the structural Action field is authoritative, never a text scrape of the output
+    (the phantom-failure hole _summary_section exists for, closed for free by -json)."""
+    assert parser_mod._parse_gotest(GOTEST_PASS_WITH_FAIL_TEXT, GO_MODULE) == []
+
+
+def test_gotest_failure_preserves_raw_output():
+    """.raw retains the failing test's output detail ('want 12') for the diff report."""
+    failures = parser_mod._parse_gotest(GOTEST_FAIL, GO_MODULE)
+    assert "want 12" in failures[0].raw
+
+
+# --- _parse_go_build: go build stderr (T-92 Phase 3) -------------------------
+
+# Measured `go build ./...` stderr (session-124 experiment): `# pkg` banner lines
+# are non-failures; error lines are `./path:line:col: message` with a REAL
+# worktree-relative path — compile attribution needs no stamp (R4).
+GO_BUILD_FAIL = """\
+# example.com/probe
+./area.go:10:23: undefined: mathutil.Volume
+./area.go:5:1: syntax error: unexpected }, expected expression
+"""
+
+# The SAME undefined-reference error at a different line:col — volatile
+# coordinates must strip (P2-D7): error_key identical to GO_BUILD_FAIL's first.
+GO_BUILD_FAIL_SHIFTED = """\
+# example.com/probe
+./area.go:40:7: undefined: mathutil.Volume
+"""
+
+# Subpackage errors + the remaining message classes. Paths keep their package
+# dir (T-98: worktree-relative, never a bare basename).
+GO_BUILD_CLASSES = """\
+# example.com/probe/geo
+./geo/volume.go:3:5: cannot use x (variable of type string) as int value
+./geo/volume.go:7:2: "fmt" imported and not used
+./geo/volume.go:9:1: weird unclassifiable failure
+"""
+
+
+def test_gobuild_banner_lines_are_skipped_and_errors_parsed():
+    """The `# pkg` banner is not a failure; the two error lines each yield one
+    ParsedFailure with stage compile."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert len(failures) == 2
+    assert all(failure.stage == STAGE_COMPILE for failure in failures)
+
+
+def test_gobuild_file_is_worktree_relative_without_dot_slash():
+    """.file strips the leading './' but keeps the worktree-relative path."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert all(failure.file == "area.go" for failure in failures)
+
+
+def test_gobuild_subpackage_file_keeps_package_dir():
+    """A subpackage error's .file keeps its directory ('geo/volume.go') — T-98:
+    basename-only attribution flips scope on collisions."""
+    failures = parser_mod._parse_go_build(GO_BUILD_CLASSES)
+    assert all(failure.file == "geo/volume.go" for failure in failures)
+
+
+def test_gobuild_classifies_undefined_and_syntax():
+    """Message-tail classification mirrors classify_go_error (validate-code.py:115):
+    'undefined:' → go-undefined_reference; 'syntax error'/'expected' → go-syntax_error."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert failures[0].error_key[0] == "go-undefined_reference"
+    assert failures[1].error_key[0] == "go-syntax_error"
+
+
+def test_gobuild_classifies_type_unused_and_fallback():
+    """'cannot use'/'type ' → go-type_error; 'imported and not used' →
+    go-unused_import; anything unmatched falls back to go-compile_error."""
+    kinds = [f.error_key[0] for f in parser_mod._parse_go_build(GO_BUILD_CLASSES)]
+    assert kinds == ["go-type_error", "go-unused_import", "go-compile_error"]
+
+
+def test_gobuild_error_key_stable_across_line_shift():
+    """The same defect at 10:23 vs 40:7 keys identically — line:col are volatile
+    coordinates (P2-D7)."""
+    fail1 = parser_mod._parse_go_build(GO_BUILD_FAIL)[0]
+    fail2 = parser_mod._parse_go_build(GO_BUILD_FAIL_SHIFTED)[0]
+    assert fail1.error_key == fail2.error_key
+
+
+def test_gobuild_preserves_raw_line():
+    """.raw retains the original error line for the diff report."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert "undefined: mathutil.Volume" in failures[0].raw
+
+
+def test_gobuild_empty_or_banner_only_stderr_yields_no_failures():
+    """Empty stderr and banner-only stderr both parse to [] (a clean build)."""
+    assert parser_mod._parse_go_build("") == []
+    assert parser_mod._parse_go_build("# example.com/probe\n") == []
+
+
+def test_gobuild_failures_are_mechanical_category():
+    """Flat Go rule: every compile-stage failure is mechanical (asserted, not
+    inherited by accident — same pinning stance as the go-test half)."""
+    failures = parser_mod._parse_go_build(GO_BUILD_FAIL)
+    assert all(category_for(failure) == CATEGORY_MECHANICAL for failure in failures)
+
+
+# --- flat Go category rule (T-92 Phase 3; folded into the _parse_gotest run) --
+
+
+def test_go_compile_failure_is_mechanical_category():
+    """Flat Go rule, compile half: every go- compile-stage failure is mechanical.
+    (Already true structurally — category_for maps STAGE_COMPILE unconditionally —
+    pinned here so the flat rule is asserted, not inherited by accident.)"""
+    failures = parse_validator_output(STAGE_COMPILE, COMPILE_FAIL_GO, language="go")
+    assert all(category_for(failure) == CATEGORY_MECHANICAL for failure in failures)
+
+
+def test_gotest_failure_is_structural_category():
+    """Flat Go rule, test half: every go-test failure is structural — go build catches
+    the undefined-name/import class at compile time, so Go needs no ERROR/FAILED split.
+    The key must not fall through to category_for's ValueError crash path (which would
+    kill the loop at classify time)."""
+    failures = parser_mod._parse_gotest(GOTEST_FAIL, GO_MODULE)
+    assert failures
+    assert all(category_for(failure) == CATEGORY_STRUCTURAL for failure in failures)

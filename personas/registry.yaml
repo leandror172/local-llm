@@ -537,3 +537,12 @@ my-go-q3-14b:
   num_ctx: 32768
   tier: full
   status: active
+
+my-python-q25c14-16k:
+  modelfile: modelfiles/python-q25c14-16k-qwen25c14.Modelfile
+  base_model: qwen2.5-coder:14b
+  role: Python 3.11+ developer specializing in FastAPI, async/await, and CLI tools.
+  temperature: 0.3
+  num_ctx: 16384
+  tier: full
+  status: active

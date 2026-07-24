@@ -1,33 +1,43 @@
 """Shared validator-output parser (P2 build step T1; P2-D7/D8/D12).
 
 The evaluated loop runs the deliverable through evaluation *stages* in order
-(`ref:delegate-p2-decisions` P2-D8). Two of those stages emit wildly different
-raw output:
+(`ref:delegate-p2-decisions` P2-D8). The stages emit wildly different raw
+output:
 
-  - **compile** — ``benchmarks/lib/validate-code.py`` prints a JSON *array* of
-    per-file result dicts: ``{file, path, status, errors:[{type,text,line}],
-    warnings, error_count, warning_count, ...}`` (``validate-code.py:690``).
-  - **test** — ``pytest`` emits free-form text; the machine-readable signal is
-    the *short test summary* section, whose lines look like
-    ``FAILED path::nodeid - AssertionError: ...`` and
-    ``ERROR path::nodeid - ImportError: ...``.
+  - **compile (python)** — ``benchmarks/lib/validate-code.py`` prints a JSON
+    *array* of per-file result dicts: ``{file, path, status,
+    errors:[{type,text,line}], warnings, error_count, ...}``
+    (``validate-code.py:690``).
+  - **compile (go)** — ``go build ./...`` stderr: ``# pkg`` banner lines (not
+    failures) and ``./path:line:col: message`` error lines with real
+    worktree-relative paths (R4: compile is self-attributing).
+  - **test (pytest)** — free-form text; the machine-readable signal is the
+    *short test summary* section (``FAILED path::nodeid - ...``).
+  - **test (go)** — ``go test -json`` emits a JSON-Lines event stream; the
+    authoritative failures are the ``Action:"fail"`` events with a non-empty
+    ``Test`` field (never a text scrape of ``--- FAIL:`` output lines).
 
-``parse_validator_output`` folds both into ONE ``ParsedFailure`` shape so the
-three downstream readers never re-parse compiler text:
+The parsers fold everything into ONE ``ParsedFailure`` shape so the three
+downstream readers never re-parse compiler text:
 
   - **P2-D8** ``category_for`` reads ``.stage`` (+ ``.error_key`` for the
-    test-stage ERROR/FAILED split — the Python ``py_compile``-only caveat).
+    test-stage ERROR/FAILED split — the Python ``py_compile``-only caveat;
+    Go's rule is flat: compile→mechanical, test→structural).
   - **P2-D7** the repetition signature reads ``.error_key`` — the defect minus
     its volatile coordinates (line/col, abs paths, temp dirs, addresses), so a
     defect keys identically regardless of where in the file it lands.
   - **P2-D12** ``scope_of`` reads ``.file`` to decide in-target / in-test /
     out-of-scope, which drives delta-scoped subtraction.
 
-First slice (P2-D1) writes exactly one normalizer: Python.
+First slice (P2-D1) wrote exactly one normalizer: Python. T-92 Phase 2 made the
+compile error_key prefix language-derived (R1 identifiers in, prefix spelling
+out); Phase 3 added the Go parsers beside the Python ones (duplicated on
+purpose — the LanguagePack extraction is Phase 4).
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from dataclasses import dataclass
@@ -98,15 +108,22 @@ def _normalize(text: str) -> str:
 # --- per-stage parsers ------------------------------------------------------
 
 
-def _parse_compile(payload: list) -> list[ParsedFailure]:
+# error_key prefix per R1 language identifier. The "py-" spelling predates the
+# language field and is pinned by every recorded repetition signature, so
+# "python" maps down to it rather than renaming the key space.
+_ERROR_KEY_PREFIX = {"python": "py", "go": "go"}
+
+
+def _parse_compile(payload: list, language: str) -> list[ParsedFailure]:
     """One ParsedFailure per error across every failing file in the JSON array."""
+    prefix = _ERROR_KEY_PREFIX.get(language, language)
     failures: list[ParsedFailure] = []
     for result in payload:
         if result.get("status") != "fail":
             continue
         for error in result.get("errors", []):
             text = error["text"]
-            error_key = (f"py-{error['type']}", _normalize(text))
+            error_key = (f"{prefix}-{error['type']}", _normalize(text))
             failures.append(
                 ParsedFailure(
                     stage=STAGE_COMPILE,
@@ -190,7 +207,7 @@ def _parse_pytest(payload: str) -> list[ParsedFailure]:
 # --- public surface ---------------------------------------------------------
 
 
-def parse_validator_output(stage: str, payload: Any) -> list[ParsedFailure]:
+def parse_validator_output(stage: str, payload: Any, language: str = "python") -> list[ParsedFailure]:
     """Parse one stage's raw output into zero or more ``ParsedFailure``.
 
     Args:
@@ -200,12 +217,15 @@ def parse_validator_output(stage: str, payload: Any) -> list[ParsedFailure]:
             stage is explicit — never sniffed from the payload.
         payload: a ``list[dict]`` for the compile stage, a ``str`` for the test
             stage.
+        language: the R1 language identifier ("python" / "go") the caller resolved
+            via ``resolve_language`` — never a prefix spelling. The compile
+            error_key prefix derives from it through ``_ERROR_KEY_PREFIX``.
 
     Returns:
         A list of failures (empty when the stage passed).
     """
     if stage == STAGE_COMPILE:
-        return _parse_compile(payload)
+        return _parse_compile(payload, language)
     if stage == STAGE_TEST:
         return _parse_pytest(payload)
     raise ValueError(f"unknown stage: {stage!r}")
@@ -229,6 +249,8 @@ def category_for(failure: ParsedFailure) -> str:
             return CATEGORY_MECHANICAL
         if failure.error_key[0].startswith("pytest-failed"):
             return CATEGORY_STRUCTURAL
+    if failure.error_key[0].startswith("go-test-failed:"):
+        return CATEGORY_STRUCTURAL
     raise ValueError(f"uncategorizable failure: {failure!r}")
 
 
@@ -254,3 +276,103 @@ def scope_of(
     if any(os.path.normpath(f) == path for f in test_files):
         return SCOPE_TEST
     return SCOPE_OUT
+
+# --- go test -json event stream parser (T-92 Phase 3) ------------------------
+
+
+def _parse_gotest(payload: str, module: str) -> list[ParsedFailure]:
+    """Parse the stdout of `go test -json ./...` into zero or more ``ParsedFailure``.
+
+    Args:
+        payload: The JSON Lines output from `go test -json`.
+        module: The module path to strip from package paths.
+
+    Returns:
+        A list of failures (empty when no tests failed).
+    """
+    failures: list[ParsedFailure] = []
+    events = [json.loads(line) for line in payload.splitlines() if line.strip()]
+
+    test_outputs: dict[str, list[str]] = {}
+    for event in events:
+        if event.get("Action") == "output" and event.get("Test"):
+            test_outputs.setdefault(event["Test"], []).append(event["Output"])
+
+    for event in events:
+        if event.get("Action") != "fail" or not event.get("Test"):
+            continue  # package-level fail events (no Test) summarize, never count
+        test = event["Test"]
+        # The detail line is the Output carrying the file:line fragment — keying on
+        # it (not the join of all outputs) keeps error_key invariant to volatile
+        # output composition ('=== RUN' banners, extra logs), per P2-D7.
+        detail_line = next(
+            (o for o in test_outputs.get(test, []) if re.search(r"\S+_test\.go:\d+", o)),
+            None,
+        )
+        file_part = None
+        if detail_line is not None:
+            file_name = re.search(r"(\S+_test\.go):\d+", detail_line).group(1)
+            package_dir = (
+                "" if event["Package"] == module
+                else event["Package"].removeprefix(module + "/")
+            )
+            file_part = f"{package_dir}/{file_name}" if package_dir else file_name
+        raw = (detail_line or "\n".join(test_outputs.get(test, []))).strip()
+        failures.append(
+            ParsedFailure(
+                stage=STAGE_TEST,
+                file=file_part,
+                error_key=("go-test-failed:" + _normalize(test), _normalize(raw)),
+                raw=raw,
+            )
+        )
+
+    return failures
+
+# --- go build stderr parser (T-92 Phase 3) ------------------------
+
+
+def _parse_go_build(payload: str) -> list[ParsedFailure]:
+    """Parse the stderr of `go build ./...` into zero or more ``ParsedFailure``.
+
+    Args:
+        payload: The stderr output from `go build`.
+
+    Returns:
+        A list of failures (empty when no errors occurred).
+    """
+    failures: list[ParsedFailure] = []
+    lines = payload.splitlines()
+    for line in lines:
+        if line.startswith("#"):
+            continue  # Skip package banner lines
+        match = re.match(r"\./(\S+):(\d+):(\d+): (.*)", line)
+        if not match:
+            continue  # Skip non-error lines
+        file, line_num, col_num, message = match.groups()
+        kind = _classify_go_error(message)
+        error_key = (f"go-{kind}", _normalize(message))
+        failures.append(
+            ParsedFailure(
+                stage=STAGE_COMPILE,
+                file=file,  # the regex group already excludes the leading './'
+                error_key=error_key,
+                raw=line,
+            )
+        )
+    return failures
+
+
+def _classify_go_error(message: str) -> str:
+    """Classify a Go compiler error message into a kind."""
+    if "undefined:" in message or "undefined name" in message:
+        return "undefined_reference"
+    elif "syntax error" in message or "expected" in message:
+        return "syntax_error"
+    elif "cannot use" in message or "type " in message or "cannot convert" in message:
+        return "type_error"
+    elif "imported and not used" in message:
+        return "unused_import"
+    else:
+        return "compile_error"
+

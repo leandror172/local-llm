@@ -30,8 +30,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from .evaluator import attributable_failures, diff_touches_test_files
-from .intake import Budgets
+from .evaluator import LANGUAGES, attributable_failures, diff_touches_test_files
+from .intake import Budgets, resolve_language
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
@@ -43,11 +43,14 @@ from .worker import GenerationResult, _chat_generation, _cold_start_grace
 CoderFn = Callable[..., GenerationResult]
 
 # First slice defaults (P2-D1): single Python persona, bounded generation (T-91 / P2-D10).
-DEFAULT_CODER_MODEL = "my-python-q25c14"
+# Coder model + system line live in the per-language pack (T-92 Phase 4, in
+# .evaluator — incl. the measured 16K-variant rationale). These aliases keep the
+# established import surface (tests, non-loop fallbacks).
+DEFAULT_CODER_MODEL = LANGUAGES["python"].coder_model
 NUM_PREDICT = 2048  # floored so a function is never truncated; capped to bound runaway
 EDIT_NUM_PREDICT_CAP = 8192  # E-D9 ceiling for the file-size-derived edit-mode floor
 
-_SYSTEM = "You are a precise Python engineer. Implement the objective so every provided test passes."
+_SYSTEM = LANGUAGES["python"].system_prompt
 # No leading "CONSTRAINTS:" label in either variant — prompt.SEGMENTS already prepends that header
 # for the 'constraints' segment; embedding it again doubled the header in every prompt.
 # Greenfield (E-D4): generate the file from scratch. Kept BYTE-IDENTICAL (pinned in a test).
@@ -130,9 +133,16 @@ class EvaluatedLoop:
         # post-assembly (edit mode sizes to the current file). Set to the floor until run() knows.
         self._explicit_num_predict = budgets.num_predict
         self._num_predict = NUM_PREDICT
+        # R1: language is resolved once (declared wins, else target extension);
+        # None (no loop-language contract) falls back to the Python pack. The pack
+        # supplies the language axis (coder model + system line, A1/Phase 4);
+        # it composes with the mode axis (_CONSTRAINTS / _EDIT_CONSTRAINTS) —
+        # both selections are run-constant, so the P2-D2 cache contract holds.
+        self.language = resolve_language(spec.get("deliverable") or {}) or "python"
+        self._pack = LANGUAGES.get(self.language, LANGUAGES["python"])
         self.model = spec.get("model") or "auto"
         if self.model == "auto":
-            self.model = DEFAULT_CODER_MODEL
+            self.model = self._pack.coder_model
         # Loop-carried run state (one EvaluatedLoop instance == one run; set up by run()).
         self._branch = ""
         self._fresh_used = 0
@@ -146,11 +156,16 @@ class EvaluatedLoop:
         any pre-resolved refs block prepended to the context (docs/diagrams before file context).
 
         The constraints variant is selected by ``assembly.mode`` (E-D4): edit mode states the
-        preservation contract, greenfield keeps today's from-scratch constraints. ``_SYSTEM`` and
-        the ordering are shared, and constraints are stable within a run, so the cache holds.
+        preservation contract, greenfield keeps today's from-scratch constraints. The system
+        line is selected by ``self.language`` (A1) — both selections are run-constant, and the
+        ordering is shared, so the cache holds.
         """
         constraints = _EDIT_CONSTRAINTS if assembly.mode == "edit" else _CONSTRAINTS
-        parts = {"system": _SYSTEM, "constraints": constraints, **assembly.stable_parts}
+        parts = {
+            "system": self._pack.system_prompt,
+            "constraints": constraints,
+            **assembly.stable_parts,
+        }
         if self.refs_block:
             parts["context"] = "\n\n".join(
                 p for p in (self.refs_block, parts.get("context", "")) if p

@@ -83,9 +83,12 @@ state change is an event in the run's ledger, and any session holding the `run_i
 poll, cancel, or collect.
 
 - `submit_run(spec)` → `{run_id, watch_cmd, queue_position}` — returns in <1s, never
-  blocks on the GPU. Spec: `deliverable.kind: file|answer` (+ `target` for `file`),
-  `objective`, optional `context.files`/`refs`, `model`, `timeout_s`. Malformed specs
-  are rejected deterministically with a named rule (unknown keys fail loud).
+  blocks on the GPU. Spec: `deliverable.kind: file|answer|function` (+ `target`;
+  `function` runs the evaluated coder⇄evaluator loop — greenfield or edit mode by
+  target presence at HEAD, **Python or Go** via `deliverable.language` or the target
+  extension), `objective`, optional `context.files`/`refs`, `model` (default: the
+  language's 16K-ctx coder persona), `timeout_s`. Malformed specs are rejected
+  deterministically with a named rule (unknown keys fail loud).
 - `run_status(run_id, since_offset?)` → state/phase folds + the event narrative since
   your last poll.
 - `run_result(run_id)` → report + deliverable; errors discriminate unknown-id /
