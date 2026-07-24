@@ -58,7 +58,9 @@ class Budgets(BaseModel):
     """Loop budgets (P2-D10). Iterations steers; the rest are safety nets (enforced in the loop)."""
 
     model_config = ConfigDict(extra="forbid")
-    iterations: int = 3
+    # T-114: None → the loop resolves the default by mode post-assembly (edit 1, greenfield 3);
+    # an explicit value always wins. Mirrors num_predict's None-means-mode-resolved contract (E-D9).
+    iterations: Optional[int] = None
     fresh_starts: int = 1
     wall_clock_s: Optional[int] = 900  # 0/None disables the whole-run wall-clock net
     tokens: Optional[int] = None

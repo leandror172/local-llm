@@ -48,11 +48,15 @@ def _repo(tmp_path):
 
 
 def _spec(repo, iterations=3, fresh_starts=1):
+    # iterations=None omits the key so the loop resolves the mode default (edit 1, greenfield 3, T-114).
+    budgets = {"fresh_starts": fresh_starts}
+    if iterations is not None:
+        budgets["iterations"] = iterations
     return {
         "deliverable": {"kind": "function", "target": str(repo / "area.py")},
         "objective": "implement area(w, h) returning w*h",
         "acceptance": {"test_cmd": "true", "test_files": ["test_area.py"]},
-        "budgets": {"iterations": iterations, "fresh_starts": fresh_starts},
+        "budgets": budgets,
         "workspace": "worktree",
     }
 
@@ -136,14 +140,21 @@ def given_a_function_run_whose_target_is_a_test_file(tmp_path):
     return run
 
 
+_ITERATIONS_FROM_WRITING = object()  # sentinel (T-114): derive the iteration budget from len(writing)
+
+
 def when_the_coder_iterates(
-    *, on, writing, and_evaluation_yields, with_baseline=CLEAN, injecting="", with_num_predict=None
+    *, on, writing, and_evaluation_yields, with_baseline=CLEAN, injecting="",
+    with_num_predict=None, with_iterations=_ITERATIONS_FROM_WRITING,
 ):
     """Drive the loop over `on`: `writing` is the coder's per-iteration output, and
     `and_evaluation_yields` the per-iteration evaluations. The C0 baseline (`with_baseline`,
     CLEAN by default) is prepended automatically; `injecting` is a pre-resolved <refs> block;
-    `with_num_predict` sets an explicit budgets.num_predict (E-D9 explicit-override case)."""
-    spec = _spec(on.repo, iterations=len(writing) or 1)
+    `with_num_predict` sets an explicit budgets.num_predict (E-D9 explicit-override case).
+    `with_iterations` (T-114): default derives the budget from len(writing); None omits it so
+    the loop resolves the mode default (edit 1, greenfield 3); an int sets it explicitly."""
+    iterations = (len(writing) or 1) if with_iterations is _ITERATIONS_FROM_WRITING else with_iterations
+    spec = _spec(on.repo, iterations=iterations)
     spec["deliverable"]["target"] = str(on.target)
     if with_num_predict is not None:
         spec["budgets"]["num_predict"] = with_num_predict
@@ -418,6 +429,52 @@ def test_greenfield_num_predict_is_the_unchanged_default(tmp_path):
     run = given_a_function_run(tmp_path)
     when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
     then_the_coder_saw_num_predict(run, NUM_PREDICT)
+
+
+# --- iteration budget: mode-resolved default (T-114) ------------------------
+
+
+def then_it_exhausted_after_iterations(run, n):
+    """T-114: the loop ran its budget to exhaustion — exactly `n` iterations, no delivery."""
+    assert run.result.outcome == "exhausted" and run.result.iterations_used == n
+
+
+def test_edit_run_defaults_to_a_single_iteration(tmp_path):
+    """T-114: with no explicit budget, an edit run gets ONE iteration — s127 (5/5) showed a
+    retry never saw its own residual defect, so a reviewed edit run gets a single shot."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(
+        on=run,
+        writing=[GOOD_AREA, GOOD_AREA, GOOD_AREA],
+        and_evaluation_yields=[FAILS("a"), FAILS("b"), FAILS("c")],
+        with_iterations=None,
+    )
+    then_it_exhausted_after_iterations(run, 1)
+
+
+def test_greenfield_run_keeps_three_iterations(tmp_path):
+    """T-114: greenfield is unchanged — no explicit budget still means three attempts."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run,
+        writing=[GOOD_AREA, GOOD_AREA, GOOD_AREA],
+        and_evaluation_yields=[FAILS("a"), FAILS("b"), FAILS("c")],
+        with_iterations=None,
+    )
+    then_it_exhausted_after_iterations(run, 3)
+
+
+def test_explicit_iterations_budget_overrides_the_edit_default(tmp_path):
+    """T-114: an explicit budgets.iterations ALWAYS wins over the mode default — an edit run
+    told to iterate twice does, despite the edit default of one."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(
+        on=run,
+        writing=[GOOD_AREA, GOOD_AREA],
+        and_evaluation_yields=[FAILS("a"), FAILS("b")],
+        with_iterations=2,
+    )
+    then_it_exhausted_after_iterations(run, 2)
 
 
 # --- language axis: persona + system per resolved language (T-92 Phase 3, A1) --
