@@ -319,8 +319,9 @@ Full research → `.claude/archive/layer-1-research.md`
 
 **Moved → `personas/index.md`.** Every row of this table was a `personas/` (or
 persona-owned `modelfiles/`) path, so the whole map now lives with the code it describes.
-Snapshot: **59 personas — 51 active, 6 benchmark, 2 inactive**, across 14 base models,
-59 Modelfiles, 21 tests (2026-07-21; re-derive from `registry.yaml`, don't quote this).
+Snapshot: **61 personas — 53 active, 6 benchmark, 2 inactive**, across 14 base models,
+61 Modelfiles, 21 tests (2026-07-23; re-derive from `registry.yaml`, don't quote this —
+the s127 additions are the 16K-ctx coder variants, `create-persona --num-ctx`).
 
 ---
 
