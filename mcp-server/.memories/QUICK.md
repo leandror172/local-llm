@@ -97,7 +97,7 @@ VRAM-fit at 13–21 tok/s. No input-fit guard yet (flagged, T-81 P2 class). Live
 greenfield Go Delivered 1-iter (auto-routed) + first Go EDIT run (surgical 1-line diff, doc
 comment preserved). Build = 5 dogfood edit runs on parser/evaluator incl. one stubs-then-retry
 recovery; pattern: iteration 1 lands 90–95%, model can't see its own residual defect —
-review-fix-inline beat iterations 2–3 every time. Module docstring deleted 4-for-4 (E-D6).
+review-fix-inline beat iterations 2–3 every time (→ **T-114 shipped: edit runs default to 1 iteration**). Module docstring deleted 4-for-4 (E-D6).
 T-111 filed (cooperative cancel can't interrupt an in-flight generation).
 
 ## Deeper Memory -> KNOWLEDGE.md
