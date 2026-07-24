@@ -24,6 +24,7 @@ from ollama_mcp.oficina.loop import (
     _CONSTRAINTS,
     _EDIT_CONSTRAINTS,
 )
+from ollama_mcp.oficina.errors import ContextBudgetError
 from ollama_mcp.oficina.parser import STAGE_TEST, ParsedFailure
 from ollama_mcp.oficina.workspace import Workspace
 from ollama_mcp.oficina.worker import GenerationResult
@@ -106,6 +107,18 @@ CLEAN: list = []  # an evaluation that found no failures
 EVALUATION_NEVER_REACHED: list = []  # per-iteration evals the cheat short-circuits before consuming
 
 
+# Context windows (T-112). Sized so no test depends on the exact token count of a built
+# prompt: the generous window is far above anything these fixtures produce, the tiny one
+# is below anything at all, and the middle one sits between a normal prompt and one that
+# has swallowed A_HUGE_ATTEMPT as its previous-attempt tail.
+A_GENEROUS_WINDOW = 100_000
+A_WINDOW_TOO_SMALL_FOR_ANY_PROMPT = 10
+A_WINDOW_THAT_FITS_ONLY_THE_FIRST_PROMPT = 5_000
+AN_UNDETERMINABLE_WINDOW = None  # /api/show could not tell us — the guard cannot run
+
+A_HUGE_ATTEMPT = "x" * 40_000  # ~10K tokens; fed back as previous_attempt it grows iteration 2
+
+
 def FAILS(*keys, file="test_area.py"):
     """An evaluation yielding one in-scope test failure per key (realistic pytest-failed key)."""
     return [ParsedFailure(STAGE_TEST, file, (f"pytest-failed:{k}", "d"), f"boom:{k}") for k in keys]
@@ -125,6 +138,7 @@ class _Run:
         self.ledger = None
         self.result = None
         self.worktree = None  # the assembled worktree path, set by when_ (for on-disk assertions)
+        self.refusal = None  # a ContextBudgetError captured by when_the_coder_is_refused (T-112)
 
 
 def given_a_function_run(tmp_path):
@@ -146,6 +160,7 @@ _ITERATIONS_FROM_WRITING = object()  # sentinel (T-114): derive the iteration bu
 def when_the_coder_iterates(
     *, on, writing, and_evaluation_yields, with_baseline=CLEAN, injecting="",
     with_num_predict=None, with_iterations=_ITERATIONS_FROM_WRITING,
+    with_context_limit=A_GENEROUS_WINDOW,
 ):
     """Drive the loop over `on`: `writing` is the coder's per-iteration output, and
     `and_evaluation_yields` the per-iteration evaluations. The C0 baseline (`with_baseline`,
@@ -164,8 +179,20 @@ def when_the_coder_iterates(
     on.ledger = Ledger(on.tmp_path / "events.jsonl")
     on.coder = FakeCoder(writing)
     on.result = EvaluatedLoop(
-        spec, "rid1", workspace, evaluate, on.coder, on.ledger, refs_block=injecting
+        spec, "rid1", workspace, evaluate, on.coder, on.ledger, refs_block=injecting,
+        context_limit_for=lambda _model: with_context_limit,
     ).run()
+
+
+def when_the_coder_is_refused(**staging):
+    """Drive the loop expecting the input-fit guard (T-112) to refuse it outright.
+
+    Same vocabulary as ``when_the_coder_iterates`` — it delegates — but the refusal lands
+    on ``run.refusal`` instead of escaping, so a ``then_`` can read it."""
+    try:
+        when_the_coder_iterates(**staging)
+    except ContextBudgetError as exc:
+        staging["on"].refusal = exc
 
 
 def _iteration_payloads(run):
@@ -214,6 +241,22 @@ def then_the_post_fresh_start_prompt_dropped_the_repair_tail(run):
 def then_the_iteration_was_rejected_as_a_cheat(run):
     evaluated = _events(run.ledger, "IterationEvaluated")
     assert evaluated and evaluated[0]["payload"]["stage_failed"] == "anti_cheat"
+
+
+def then_it_refused_before_sending_anything_to_the_model(run):
+    assert isinstance(run.refusal, ContextBudgetError)
+    assert run.coder.prompts == []  # the guard fires before the coder is ever called
+
+
+def then_the_refusal_blamed_the_payload_at_generation(run):
+    triad = run.refusal.triad
+    assert triad["where"] == "generation" and triad["whose"] == "payload"
+    assert triad["what"]  # a human-readable reason, never blank
+
+
+def then_it_exhausted_on_the_context_budget(run):
+    assert run.result.outcome == "exhausted" and run.result.limit_hit == "context_budget"
+    assert run.result.content  # the best attempt is still attached (S11)
 
 
 # --- convergence ------------------------------------------------------------
@@ -509,3 +552,62 @@ def test_python_run_keeps_python_system_and_coder_model(tmp_path):
     when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
     assert "Python engineer" in run.coder.prompts[0]
     assert run.coder.models == ["my-python-q25c14-16k"]
+
+
+# --- input-fit guard (T-112) ------------------------------------------------
+
+
+def test_delivers_on_iteration1_when_inside_context_window(tmp_path):
+    """A run comfortably inside the window delivers as before, recording no unknown-window note."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN],
+        with_context_limit=A_GENEROUS_WINDOW,
+    )
+    then_it_delivered_on_iteration(run, 1)
+    then_it_emitted(run, "ContextLimitUnknown", times=0)
+
+
+def test_refuses_before_sending_anything_when_first_prompt_cannot_fit(tmp_path):
+    """A first prompt that cannot fit the window is refused before the model is called."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_is_refused(
+        on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN],
+        with_context_limit=A_WINDOW_TOO_SMALL_FOR_ANY_PROMPT,
+    )
+    then_it_refused_before_sending_anything_to_the_model(run)
+    then_the_refusal_blamed_the_payload_at_generation(run)
+
+
+def test_exhausts_on_context_budget_when_the_repair_prompt_outgrows_the_window(tmp_path):
+    """An iteration-2 prompt swollen by a huge previous attempt exhausts on the context budget."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[A_HUGE_ATTEMPT, GOOD_AREA], and_evaluation_yields=[FAILS("a")],
+        with_context_limit=A_WINDOW_THAT_FITS_ONLY_THE_FIRST_PROMPT,
+    )
+    then_it_exhausted_on_the_context_budget(run)
+
+
+def test_delivers_when_the_window_is_undeterminable(tmp_path):
+    """An unresolvable window leaves the guard off: the run delivers and says so once."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN],
+        with_context_limit=AN_UNDETERMINABLE_WINDOW,
+    )
+    then_it_delivered_on_iteration(run, 1)
+    then_it_emitted(run, "ContextLimitUnknown", times=1)
+
+
+def test_refuses_when_an_explicit_generation_budget_exceeds_the_window(tmp_path):
+    """The RESOLVED budget is counted, not assumed: a prompt that fits is still refused
+    when the explicitly requested generation budget will not fit beside it."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_is_refused(
+        on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN],
+        with_context_limit=A_WINDOW_THAT_FITS_ONLY_THE_FIRST_PROMPT,
+        with_num_predict=100_000,
+    )
+    then_it_refused_before_sending_anything_to_the_model(run)
+    then_the_refusal_blamed_the_payload_at_generation(run)

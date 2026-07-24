@@ -47,6 +47,7 @@ breaking P1 clients).
 | `FreshStart` | **frozen-P2** (T6, session 120) | Worker (loop) | `{iteration, signature, reason:"repetition"}` — P2-D7 |
 | `ModelEscalated` | frozen-P2 vocab (emitter exists; **not emitted in the first slice**, P2-D1 no ladder) | Worker (loop) | `{from_tier, to_tier, from_persona, to_persona, reason}` |
 | `Exhausted` | **frozen-P2** (T6, session 120) | Worker (loop) | `{spent, limit_hit, best_attempt_ref}` — maps to public `failed`, best attempt attached (NOT Delivered) |
+| `ContextLimitUnknown` | **frozen-P2** (T-112, session 129) | Worker (loop) | `{model}` — the input-fit guard could not resolve the model's `num_ctx`, so it is NOT running for this run. **Does not fold**: it is absent from `_STATE_BY_EVENT`, so state is unchanged (the documented unknown-name tolerance). Informational sibling of `RefsDropped`, but on the **run** ledger rather than the worker ledger, because the point is that the guard's absence is visible to whoever reads the run (`run_status`), never inferred |
 | `JudgePassed` / `JudgeFailed` | draft-P4 | Worker (packaging) | Phase-2 rubric judge at packaging (cadence per V-D7) |
 | `ApprovalRequested` | draft-P4 | Worker (post-assembly) | The approval gate (S14) → public state `input_required` |
 | `QuestionRaised` | draft-P5 | Worker (any model stage) | Model `blocked` escape → `input_required` |
@@ -58,6 +59,7 @@ breaking P1 clients).
 |---|---|---|---|
 | `WorkerStarted` / `WorkerStopped` | freeze-at-P1 | Worker | Crash forensics anchor |
 | `RetentionPruned` | freeze-at-P1 | Worker (retention pass) | V-D9 observability: what was removed, bytes freed, which policy fired. Silence = nothing pruned |
+| `RefsDropped` | freeze-at-P1 | Worker (refs resolution) | `{run_id, refs, reason}` — a requested `context.refs` block that could not be resolved; the run proceeds without it (T-96 fail-loud-by-record). *Was live in `ledger.py` from session 123 but undocumented here until session 129.* |
 
 ### Public state fold (MCP Tasks vocabulary, S6)
 

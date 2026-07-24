@@ -41,7 +41,16 @@ _STATE_BY_EVENT: dict[str, str] = {
 
 RUN_EVENTS: frozenset[str] = frozenset(_STATE_BY_EVENT)
 WORKER_EVENTS: frozenset[str] = frozenset(
-    {"WorkerStarted", "WorkerStopped", "RetentionPruned", "RefsDropped"}
+    {
+        "WorkerStarted",
+        "WorkerStopped",
+        "RetentionPruned",
+        "RefsDropped",
+        # T-112: the input-fit guard could not resolve the model's context ceiling, so
+        # it is not running for this run. Informational like RefsDropped — the run
+        # proceeds; the event exists so the guard's ABSENCE is visible, never inferred.
+        "ContextLimitUnknown",
+    }
 )
 
 
@@ -198,6 +207,9 @@ class Ledger:
 
     def refs_dropped(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("RefsDropped", payload)
+
+    def context_limit_unknown(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("ContextLimitUnknown", payload)
 
 
 def fold_state(events: List[Dict[str, Any]]) -> str:
