@@ -1,35 +1,45 @@
 # Session Log
 
 **Current Layer:** "Layer 5 — Expense Classifier (oficina P2 track active)"
-**Current Session:** 2026-07-24 — Session 128: T-114 edit-iteration default + T-115 refactoring-conventions promotion (PR #84)
+**Current Session:** 2026-07-25 — Session 129: T-112 input-fit guard + T-120 previous-attempt diff (PR #85); T-118/T-119/T-121 filed; run-provenance safety net + verdict corrections
 
 ---
-## 2026-07-24 - Session 128: T-114 edit-iteration default + T-115 refactoring-conventions promotion (PR #84)
+## 2026-07-25 - Session 129: T-112 input-fit guard + T-120 previous-attempt diff (PR #85); T-118/T-119/T-121 filed; run-provenance safety net + verdict corrections
 
 ### Context
 
-Continued from a compacted session; entry point was the choice "T-114 / T-115" after a next-steps discussion. Docs-first ordering, local-model delegation with convention refs, and VRAM checks were all user-directed.
+Resumed with PR #84 (T-114 + T-115) already merged. Discussed T-112's scope, settled its design questions with live evidence, built T-112 and the user's own T-120 proposal end-to-end via TDD + local-model delegation, and opened PR #85. After a compaction, closed out the session: confirmed PR #85's merge, hardened run provenance for the session's live-acceptance run branches, cleaned up stale branches, and corrected two under-reported verdicts the user flagged mid-session.
 
 ### What Was Done
 
-- T-115: promoted `refactoring-conventions` to a first-class pattern-doc family (graduate-in-place) — gateway row in the master `ref:patterns-index`, Status staging→stable, `.claude/index.md` row + a code-design cross-ref updated; zero new ref-integrity errors (36==36 stashed-vs-applied).
-- T-114: oficina **edit runs now default to a single iteration** (greenfield keeps 3; an explicit `budgets.iterations` always wins) — mirrors the E-D9 `num_predict` resolve-by-mode contract; +3 tests, suite 329→332.
-- Core T-114 resolver + constants delegated to the local 16K coder (`my-python-q25c14-16k`) with code-design convention refs injected server-side (verdict 2, accepted as-is).
-- De-staled memory: the "~3 iterations" lines in oficina QUICK + the KNOWLEDGE E-D9 sibling.
-- Opened PR #84 (3 commits); branch `feature/oficina-t114-t115`.
+- Merged PR #84 (T-114 edit-iteration default + T-115 refactoring-conventions promotion).
+- Settled T-112's open design questions with live evidence: probed that Ollama evicts the oldest prompt tokens rather than bounding generation at `num_ctx` (refuting a plausible-but-wrong story that overflow explained T-114's retry-blindness); wrote `docs/findings/oficina-ctx-overflow-2026-07-24.md`.
+- Built and shipped T-112 (input-fit guard — `_context_overflow`, `ContextBudgetError`, `ContextLimitUnknown`, `model_context_limit` reading the persona's live `/api/show` ctx) and T-120 (previous-attempt-as-diff — `_previous_attempt_view` + `difflib` against the committed edit baseline), through stubs-then-Ollama delegation after two rejected full-delegation attempts. Suite 332→340.
+- Live-accepted the guard both ways: refused a real overflow in 0.72s with zero GPU calls; a normal run's chars/4 size estimate landed within 1.3% of the true token count.
+- Found and filed T-119: a whole-file edit run pasted ~110 lines of the acceptance tests into the source module and still reported `passed`/`auto_verdict: 2`/Delivered — discovered by reading the diff of a run that reported green, not by trusting the signal.
+- Filed T-118 (run provenance — squash message + trailers + `refs/oficina/<run_id>`, R-D1–R-D6 proposed, not frozen) from a user question about what `submit_run`'s merges actually preserve, and T-121 (the `ref:KEY` marker grammar has five implementations and zero written spec).
+- Opened and merged PR #85 (T-112 + T-120).
+- Wrote the `feedback_verdicts_assess_patterns` memory after re-auditing this session's own verdicts and finding two that cited only functional defects while silently fixing pattern violations.
+- Corrected those two verdicts' `reason` fields in place in `calls.jsonl` (`19d4ddf0edac`, `144600f2d4e2`), pulling the pattern-violation detail from the pre-compaction transcript rather than reconstructing it; kept a `.bak-2026-07-25` copy.
+- Applied T-118's R-D2 in isolation: pinned the three live-acceptance run branches under `refs/oficina/<run_id>` before deleting them, so their bytes stay reachable outside `refs/heads/*`.
+- Deleted the stale, already-merged `feature/oficina-t114-t115` branch (local + origin) — a convention violation flagged at session start and left uncleaned until now.
 
 ### Decisions Made
 
-- T-115 promotion = **graduate-in-place**: content stays in its own file (the process/shape/test-body taxonomy is why it's separate). Promotion is *earning a master-index gateway row*, not relocating content — a staged doc's tell is the ABSENCE of that row (test-executable-spec still has none; T-100 open).
-- T-114 keyed on **mode** (edit→1, greenfield→3), resolved post-assembly like `num_predict` — mode isn't known at intake (decided at assembly by target-at-HEAD), so it can't be a schema default. Greenfield left at 3 (the 5/5 evidence is edit-only). The resolver is the single future home for an H2-forces-3 rule.
+- T-112 D3: fail loud, not downshift — downshifting would leave less room than the file needs, reopening exactly the mid-file truncation E-D9 already guards against.
+- T-112 D1: read the ctx ceiling live from `/api/show`, not `LanguagePack` or `registry.yaml` — Ollama is the source of truth for what a persona actually runs at; the registry records intent, not reality (the T-113 gap).
+- T-120 (the user's own proposal) supersedes the earlier "just drop `previous_attempt`" framing and doesn't reopen the s126 M2 reversal — a diff is produced deterministically and only read, so the model still never emits an edit language.
+- Verdicts must weigh pattern adherence alongside functional correctness — silently fixing a structural violation while the recorded reason cites only the bug teaches the DPO corpus the structure was fine.
+- Adopted R-D2 (pin `refs/oficina/<run_id>` before deleting a run branch) now, in isolation, ahead of R-D1/R-D3 (squash + trailers) — cheap and safety-critical on its own; the fuller convention can wait for a dedicated pass.
 
 ### Next
 
-- Merge PR #84.
-- **Axis B kinds reconsideration** — E-D8 `kind` rename + dead `acceptance.validators` removal ride one taxonomy pass.
-- Triage **T-112** (input-fit guard) + **T-113** (ctx-footprint re-probe) — they protect the 16K coder defaults now used on every run.
+- Decide T-119's detection mechanism (three candidates filed: reject `def test_` in a non-test target; diff against materialized test files for copied spans; size heuristic on insertions vs. objective size).
+- Decide T-118's remaining scope: adopt squash-for-message + trailers (R-D1/R-D3), or leave R-D2 (now live) as the whole fix.
+- Axis B kinds reconsideration (E-D8 `kind` rename + dead `acceptance.validators` removal) — carried over from session 128, still not started.
+- Triage T-113 (ctx-footprint re-probe) and T-116 (ref-integrity baseline note, stale since the session 126–127 drift).
 
 ### Gotchas
 
-- The 16K coder's VRAM footprint is fixed by `num_ctx` pre-reserving the KV cache at load (11.25 GiB VRAM + 0.64 GiB CPU, 95/5) — it does NOT grow with how much context you send; oversized input truncates silently at 16K rather than spilling VRAM (the T-112 risk).
-- The executable-spec DSL hard-codes `iterations=len(writing)`, so exercising a mode-*default* budget needed a `with_iterations=None` knob to OMIT the budget. Supply EXACTLY as many failing evals as iterations expected — `FakeEvaluate` returns `[]` (a pass) once exhausted, which would end the loop early and mask the count.
+- GitHub's server-side merge produces its own commit hash — a locally-created merge commit's oid will not appear on `origin/master` after the PR merges; verify by content (the code being present), not by hash equality.
+- `git branch -D` only removes the ref; the commit stays reachable (and un-GC'd) as long as any other ref points to it or a descendant — that is the entire mechanism behind pinning `refs/oficina/*` before deleting a run branch.
