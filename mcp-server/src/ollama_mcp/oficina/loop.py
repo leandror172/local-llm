@@ -21,21 +21,27 @@ Generation is bounded by ``num_predict`` (T-91): the sync path used to inherit t
 and truncate functions mid-body. Greenfield floors/caps at ``NUM_PREDICT``; edit mode sizes the
 budget to the current file (E-D9) so a whole-file rewrite of a large module is never truncated —
 an explicit ``budgets.num_predict`` always wins. Resolved post-assembly, when the file size is known.
+
+The input-fit guard (T-112) refuses a generation that cannot fit: Ollama's window holds the prompt
+AND the generated tokens, and an overrun is NOT rejected — generation proceeds while the oldest
+tokens are evicted, so the model silently loses the head of its own instructions.
 """
 
 from __future__ import annotations
 
+import difflib
 import math
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from .evaluator import LANGUAGES, attributable_failures, diff_touches_test_files
+from .errors import ContextBudgetError
 from .intake import Budgets, resolve_language
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
-from .worker import GenerationResult, _chat_generation, _cold_start_grace
+from .worker import GenerationResult, _chat_generation, _cold_start_grace, model_context_limit
 
 # (prompt, model, run_id, *, num_predict) -> GenerationResult. The coder writes nothing; the
 # loop places output. num_predict is passed per call (E-D9) because the edit-mode floor is only
@@ -90,6 +96,23 @@ def _signature(failures: List[ParsedFailure]) -> tuple:
     return tuple(sorted({"::".join(f.error_key) for f in failures}))
 
 
+def _attempt_as_diff(baseline: str, attempt: str) -> str:
+    """The coder's last attempt as a unified diff against the committed file (T-120).
+
+    An edit-run prompt already carries the committed file as ``current_file``, so replaying the
+    whole modified file would pay for that file twice in one prompt — and the whole-file write
+    pays for it a third time on the way out."""
+    return "".join(
+        difflib.unified_diff(
+            baseline.splitlines(keepends=True),
+            attempt.splitlines(keepends=True),
+            fromfile="the committed file",
+            tofile="your last attempt",
+            n=3,
+        )
+    )
+
+
 def _repair_feedback(failures: List[ParsedFailure]) -> str:
     """Behavioral feedback (what failed, not how to fix) for the next iteration."""
     lines = ["The previous attempt did not pass. Observed failures:"]
@@ -112,6 +135,7 @@ class EvaluatedLoop:
         ledger,
         is_cancelled: Optional[Callable[[], bool]] = None,
         refs_block: str = "",
+        context_limit_for: Callable[[str], Optional[int]] = model_context_limit,
     ) -> None:
         self.spec = spec
         self.run_id = run_id
@@ -156,6 +180,12 @@ class EvaluatedLoop:
         self._best: Optional[GenerationResult] = None
         self._best_failures: Optional[int] = None
         self._best_snapshot: Optional[str] = None
+        # T-112: the input-fit guard (context window).
+        self.context_limit_for = context_limit_for
+        self._context_limit = None
+        # T-120: the committed target content on an edit run, None on greenfield. Set once at
+        # assembly; the previous attempt is shown as a diff against it rather than in full.
+        self._edit_baseline: Optional[str] = None
 
     def _stable_prompt_parts(self, assembly) -> Dict[str, str]:
         """The run-constant prompt parts (P2-D2): system + constraints + the assembled parts, with
@@ -246,8 +276,21 @@ class EvaluatedLoop:
         )
         return {
             "repair_feedback": f"You edited the tests ({', '.join(cheated)}). Never modify the tests; implement the target only.",
-            "previous_attempt": gen.content,
+            "previous_attempt": self._previous_attempt_view(gen.content),
         }
+
+    def _previous_attempt_view(self, content: str) -> str:
+        """What the model is shown of its own last attempt (T-120).
+
+        Greenfield replays the content, exactly as it always has. An edit run shows a diff
+        against the committed file instead — the same information at a fraction of the tokens.
+        An attempt identical to the baseline diffs to nothing, and an empty segment is dropped
+        from the prompt entirely, so that signal is stated rather than allowed to vanish."""
+        if self._edit_baseline is None:
+            return content
+        if content == self._edit_baseline:
+            return "You returned the committed file unchanged — nothing was modified."
+        return _attempt_as_diff(self._edit_baseline, content)
 
     def _track_best(
         self, gen: GenerationResult, attributable: List[ParsedFailure], snapshot: str
@@ -275,7 +318,7 @@ class EvaluatedLoop:
         self._signatures_seen.add(signature)
         return {
             "repair_feedback": _repair_feedback(attributable),
-            "previous_attempt": gen.content,
+            "previous_attempt": self._previous_attempt_view(gen.content),
         }
 
     def _result_from(
@@ -326,11 +369,12 @@ class EvaluatedLoop:
     def _time_limit_reached(self, started_at) -> Any:
         return self.max_wall_clock_s and time.monotonic() - started_at > self.max_wall_clock_s
 
-    def _generate_with_snapshot(self, k, prev_sha, stable, target_rel, test_files, variable, worktree) -> Any:
+    def _generate_with_snapshot(self, k, prev_sha, prompt, target_rel, test_files, worktree) -> Any:
+        # The prompt is built by the caller (T-112): the input-fit guard has to weigh the real
+        # prompt before generating, and building it twice would be two sites to keep in sync.
         from ollama_mcp import server as srv  # lazy — compose the server's fence stripper (E-D5)
 
         self._emit_iteration_started(k)
-        prompt = build_prompt({**stable, **variable})
         gen = self.coder(prompt, self.model, self.run_id, num_predict=self._num_predict)
         # The loop owns its write invariant (E-D5): strip fences here so a fenced response never
         # lands on disk to mislead the compile stage — regardless of what the injected coder returns.
@@ -343,6 +387,22 @@ class EvaluatedLoop:
         cheated = diff_touches_test_files(worktree, prev_sha, snapshot, test_files)
         return cheated, gen, snapshot
 
+    def _context_overflow(self, prompt: str) -> Optional[str]:
+        """Why this generation cannot fit the model's window, or None when it can (T-112).
+
+        The window holds the prompt AND the generated tokens, so the resolved per-call budget
+        is counted beside the prompt estimate. An unresolvable ceiling disables the guard —
+        the caller was already told once, at resolve time."""
+        if self._context_limit is None:
+            return None
+        estimated = math.ceil(len(prompt) / 4)
+        if estimated + self._num_predict <= self._context_limit:
+            return None
+        return (
+            f"prompt ~{estimated} tokens + generation budget {self._num_predict} "
+            f"exceeds the model's {self._context_limit}-token context window"
+        )
+
     def run(self) -> LoopResult:
         """Assemble, then iterate generate→evaluate→classify→repair/fresh-start until terminal."""
         assembly = self.workspace.assemble(emit=self.ledger.assembly_done)
@@ -350,6 +410,8 @@ class EvaluatedLoop:
         self._num_predict = self._resolve_num_predict(assembly)
         # T-114: with the mode known, fix the iteration budget (edit -> 1, greenfield -> 3).
         self.max_iterations = self._resolve_max_iterations(assembly)
+        # T-120: remember the committed content (edit runs only) for the previous-attempt diff.
+        self._edit_baseline = assembly.stable_parts.get("current_file") or None
         worktree = assembly.worktree_path
         base_repo = assembly.base_repo
         target_rel = target_relpath(self.spec["deliverable"]["target"], base_repo)
@@ -364,6 +426,12 @@ class EvaluatedLoop:
         self._best_snapshot = prev_sha
         started_at = time.monotonic()
 
+        # T-112: resolve the window ONCE per run. An unresolvable ceiling is announced once,
+        # here — not per iteration — so the guard's absence is on the record exactly one time.
+        self._context_limit = self.context_limit_for(self.model)
+        if self._context_limit is None:
+            self.ledger.context_limit_unknown({"model": self.model})
+
         for k in range(1, self.max_iterations + 1):
             if self._time_limit_reached(started_at):
                 return self._exhausted(iterations_used=k - 1, limit_hit="timeout")
@@ -373,7 +441,16 @@ class EvaluatedLoop:
                     "cancelled", self._best, iterations_used=k - 1, snapshot=self._best_snapshot
                 )
 
-            cheated, gen, snapshot = self._generate_with_snapshot(k, prev_sha, stable, target_rel, test_files, variable, worktree)
+            # T-112: refuse before generating. Iteration 1 has nothing to salvage, so it is a
+            # fail-loud triad; later iterations already hold a best attempt, so they exhaust.
+            prompt = build_prompt({**stable, **variable})
+            overflow = self._context_overflow(prompt)
+            if overflow:
+                if k == 1:
+                    raise ContextBudgetError(overflow)
+                return self._exhausted(iterations_used=k - 1, limit_hit="context_budget")
+
+            cheated, gen, snapshot = self._generate_with_snapshot(k, prev_sha, prompt, target_rel, test_files, worktree)
             prev_sha = snapshot
             if cheated:
                 variable = self._record_cheat_and_feedback(k, gen, cheated)

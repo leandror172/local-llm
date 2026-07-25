@@ -396,6 +396,28 @@ class OllamaClient:
         response.raise_for_status()
         return response.json().get("models", [])
 
+    async def fetch_model_descriptor(self, model: str) -> dict:
+        """Fetch a model's descriptor from Ollama's /api/show endpoint.
+
+        Returns:
+            Decoded JSON object with model details — notably "parameters"
+            (the Modelfile PARAMETER lines as a text blob) and "model_info".
+
+        Raises:
+            OllamaConnectionError: Can't reach Ollama.
+        """
+        try:
+            response = await self._http.post(
+                "/api/show", json={"model": model}, timeout=10
+            )
+        except httpx.ConnectError:
+            raise OllamaConnectionError(
+                f"Cannot connect to Ollama at {self._base_url}. "
+                "Is Ollama running? Start it with: ollama serve"
+            )
+        response.raise_for_status()
+        return response.json()
+
     async def unload_model(self, model: str) -> None:
         """Unload a model from VRAM by sending keep_alive: 0.
 

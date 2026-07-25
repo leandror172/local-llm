@@ -286,8 +286,12 @@ def _run_go_test_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
 #
 # Model choice (s127, measured): 32K personas' live footprint (~14.2 GiB) cannot
 # fit the 12 GB card and CPU-offload to ~2.5 tok/s; the 16K variants fit VRAM
-# (11.1 GiB) at ~13+ tok/s. Loop prompts observed ≤ ~11K tok; no input-fit guard
-# exists yet (T-81 P2 overflow class — flagged).
+# (11.1 GiB) at ~13+ tok/s. The input-fit guard now EXISTS (T-112, s129): the loop
+# refuses a generation whose prompt estimate plus resolved num_predict exceeds the
+# model's window, read live from /api/show. Note the consequence of picking 16K:
+# a whole-file edit pays for the file twice (prompt + output), so files above
+# roughly (num_ctx - tests) / 2 cannot be edited whole on this persona at all —
+# loop.py itself is one. Findings: ref:oficina-ctx-overflow.
 
 _StageFn = Callable[[Path, Path, Dict[str, Any], int], List[ParsedFailure]]
 

@@ -101,12 +101,28 @@ label). Keep under 30 lines.*
   residual defect — review-fix-inline won every time** (argues for budgets.iterations=1 default
   on reviewed edit runs). Docstring deleted 4-for-4 (E-D6 systematic). **T-111** filed:
   cooperative cancel can't interrupt an in-flight generation (cancel latency = transport window).
+- 2026-07-24 (session 129): **INPUT-FIT GUARD SHIPPED (T-112) + previous-attempt diff (T-120);
+  suite 332→340.** A s127 production edit run was found to have **crossed its 16,384 window live**
+  (16,425 tokens; crossing verified by probe — Ollama does NOT stop generation at `num_ctx`, it
+  evicts). The loop now refuses what cannot fit: `_context_overflow` weighs prompt estimate +
+  resolved `num_predict` against the window read from `/api/show` via an injected seam; iteration 1
+  fails loud (`ContextBudgetError`, `whose="payload"`), later ones exhaust on `context_budget`, an
+  unresolvable ceiling emits `ContextLimitUnknown` once and runs unguarded. Live: refused in 0.72 s,
+  zero GPU calls; chars/4 landed within 1.3%. **Bound discovered:** a whole-file edit pays for the
+  file TWICE, so files above ~`(num_ctx − tests)/2` cannot be edited whole at all — `loop.py` on the
+  16K coder is one, which is why its own build ran on the 32K persona. T-120 removes the *third*
+  copy: an edit run's previous attempt is now a diff, so iteration 2 costs what iteration 1 costs.
+  **T-119 filed** — a whole-file edit pasted ~110 lines of the acceptance tests INTO the source and
+  still reported `passed`/`auto_verdict: 2`/Delivered; tests-green ≠ deliverable-good. **E-D6
+  corrected to 5-for-6** (a small-file run preserved the docstring; every deletion has been on a
+  large file). Findings: `ref:oficina-ctx-overflow`.
 - **Next:** (1) **Axis B kinds reconsideration** (fed by Axis A: language axis proven, taxonomy
-  trigger for E-D8 rename + dead `acceptance.validators` removal). (2) T-93 refs-diagram verdict;
+  trigger for E-D8 rename + dead `acceptance.validators` removal). (2) **T-119** contamination
+  check — decide which of the three candidate detections. (3) T-93 refs-diagram verdict;
   T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`/`OFICINA_GO`). Standing: T-102 gate
-  busy-check (G-D8); T-111 cancel gap; prefix-reuse tracking via
+  busy-check (G-D8); T-111 cancel gap; T-118 run-provenance convention; prefix-reuse tracking via
   `.claude/tools/ollama-cache-report.py`; harden write-model corpus IF a real edit run drops
-  sibling code (the E-D1 fallback trigger — 4-for-4 docstring deletions are DOC omissions, not
+  sibling code (the E-D1 fallback trigger — docstring deletions are DOC omissions, not
   code; trigger not fired).
 - **Name DECIDED (V-D1, 2026-07-11): `oficina`** (runner-up aprendiz). Identity = the
   delegation harness; the flywheel is a property, not the objective (user correction).

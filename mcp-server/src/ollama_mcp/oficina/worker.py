@@ -134,6 +134,56 @@ def _chat_generation(
     )
 
 
+def model_context_limit(model: str) -> Optional[int]:
+    """The model's effective context window in tokens, or None when undeterminable.
+
+    The window is the ``num_ctx`` PARAMETER Ollama reports for the model. Absence is
+    NOT "the architectural maximum" — the model would then run at Ollama's own unstated
+    default — so an absent or unreadable value yields None rather than a guess: guessing
+    high silently disables the caller's fit check, guessing low aborts valid work. Every
+    failure (transport, status, shape, parse) lands on the same None channel; the ceiling
+    is a value-or-absence, never a sentinel in the value channel (T-112).
+    """
+    descriptor = _fetch_model_descriptor(model)
+    if not descriptor:
+        return None
+    return _num_ctx_from_parameters(descriptor.get("parameters", ""))
+
+
+def _fetch_model_descriptor(model: str) -> Optional[Dict[str, Any]]:
+    """The model's /api/show descriptor, or None if it cannot be retrieved."""
+    import asyncio
+
+    from ollama_mcp.client import OllamaClient
+
+    async def _call() -> Any:
+        client = OllamaClient()
+        try:
+            return await client.fetch_model_descriptor(model)
+        finally:
+            await client.close()
+
+    try:
+        return asyncio.run(_call())
+    except Exception:  # noqa: BLE001 — an undeterminable ceiling is None, never a raise
+        return None
+
+
+def _num_ctx_from_parameters(parameters: str) -> Optional[int]:
+    """Read ``num_ctx`` out of Ollama's ``name<whitespace>value`` parameter blob.
+
+    The trailing space in the prefix match keeps a longer parameter that merely
+    starts with the same letters from being mistaken for it.
+    """
+    for line in parameters.splitlines():
+        if line.startswith("num_ctx "):
+            try:
+                return int(line.split()[1])
+            except (IndexError, ValueError):
+                return None
+    return None
+
+
 def _default_generate(spec: Dict[str, Any], run_id: str) -> GenerationResult:
     """Run one generation via the shared transport (imports server lazily)."""
     from ollama_mcp import server as srv
