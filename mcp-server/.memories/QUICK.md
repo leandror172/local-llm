@@ -100,6 +100,18 @@ recovery; pattern: iteration 1 lands 90–95%, model can't see its own residual 
 review-fix-inline beat iterations 2–3 every time (→ **T-114 shipped: edit runs default to 1 iteration**). Module docstring deleted 4-for-4 (E-D6).
 T-111 filed (cooperative cancel can't interrupt an in-flight generation).
 
+Session 129 (2026-07-24): **input-fit guard SHIPPED (T-112)** — supersedes "No input-fit guard yet"
+above. `loop._context_overflow` refuses a generation whose prompt estimate (`chars/4`) plus the
+resolved `num_predict` exceeds the model's window; the ceiling comes from new
+`client.fetch_model_descriptor` (POST `/api/show`) via `worker.model_context_limit()` →
+`Optional[int]`, injected into the loop as `context_limit_for` so the pure test path stays
+network-free. Iteration 1 over → `errors.ContextBudgetError` (new `TriadError` subclass,
+`whose="payload"`) → terminal Failed; later → `_exhausted(limit_hit="context_budget")`;
+undeterminable → new **run-ledger** event `ContextLimitUnknown` once, then unguarded. Live: refused
+in 0.72 s with zero GPU calls. **T-120:** an edit run's `previous_attempt` is now a `difflib` diff
+against the committed baseline, not a second whole copy. Suite 332→340. **T-119 filed:** a
+whole-file edit pasted the acceptance tests into the source module and still Delivered.
+
 ## Deeper Memory -> KNOWLEDGE.md
 
 - **Transport Choice** — stdio over HTTP, rationale
