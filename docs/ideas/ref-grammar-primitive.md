@@ -117,6 +117,30 @@ five implementations and zero written grammar. Even without extracting a library
 `overlays/ref-indexing/README.md` should state the grammar normatively — charset,
 marker forms, own-line rule, inline-tag form — so the next implementation has
 something to conform *to*. This is cheap and independent of R-D1–R-D4.
+
+**R-D5 inputs collected so far** (write these into the spec when it is drafted;
+both were measured 2026-07-25, not assumed):
+
+1. **Case is significant, and uppercase is the sanctioned escape.** Keys are
+   lowercase — `[a-z0-9-]+`. A key written with an uppercase FIRST character is
+   invisible to every implementation in the chain: the engine's mention,
+   inline-tag and block-marker forms all miss it, `ref-lookup.sh` greps
+   `[a-z0-9-]*`, and `check-ref-integrity.py` compiles `[a-z0-9-]+`. This is the
+   one behaviour all five implementations have always agreed on, and it is the
+   sanctioned way to write an illustrative or example key. **Caveat: the
+   uppercase must start at the first character** — `ref:patterns-INDEX` still
+   matches the stem `patterns-` and yields a truncated-key fragment. Rationale
+   and populations: [ref:ref-citation-convention].
+2. **The charset silently excludes keys people actually write.** A real block
+   `<!-- ref:ltg-phase2.5-corpus -->` existed in latent-topic-graph and was
+   invisible to the engine and to the checker, while `ref-lookup.sh` resolved it
+   on DIRECT lookup but omitted it from listings — partial visibility, which
+   hides itself. Its citations parsed as the stub key `ltg-phase2` and read as
+   dangling. Resolved there by RENAMING the key (commit `fce689b`), not by
+   widening the charset — but the spec must state the charset restriction
+   explicitly, because nothing currently warns an author that a `.` silently
+   deletes their block. Note this is a different failure class from the
+   divergences above: every tool agreed, and all were uniformly wrong.
 <!-- /ref:ref-grammar-primitive-decision -->
 
 ## Triggers
