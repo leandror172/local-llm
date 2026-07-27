@@ -2,10 +2,13 @@
 .claude/local/
 
 # Claude Code project settings (may contain permissions, hooks, allowed tools — machine-specific)
-.claude/settings.json
-.claude/settings.local.json
+# Patterns are `**/`-prefixed on purpose: a slash-bearing pattern is anchored to this
+# directory, so the bare `.claude/settings.json` form silently missed nested copies
+# (e.g. benchmarks/.claude/settings.json), which then showed up as untracked noise.
+**/.claude/settings.json
+**/.claude/settings.local.json
 # Cozempic guard daemon lockfile (ephemeral, process-local)
-.claude/.cozempic-init.lock
+**/.claude/.cozempic-init.lock
 
 # Session logs may contain sensitive paths or system details
 # Keep current session log tracked, archive older ones to local/ if sensitive
