@@ -229,6 +229,13 @@ def then_the_first_iteration_recorded_verdict_0(run):
     assert _iteration_payloads(run)[0]["auto_verdict"] == 0
 
 
+def then_the_result_reports_the_drift_of_what_was_written(run, lines_added, hunks):
+    """P4-D3: the mechanical layer surfaces magnitude on the terminal result, gating nothing."""
+    assert run.result.drift["lines_added"] == lines_added
+    assert run.result.drift["hunks"] == hunks
+    assert run.result.drift["max_verbatim_run_vs_tests"] == 0  # nothing leaked from the tests
+
+
 def then_each_iteration_names_the_call_that_produced_it(run):
     """The ledger↔calls.jsonl join is by identity, never by position (P4-T3)."""
     named = [p["call_id"] for p in _iteration_payloads(run)]
@@ -286,6 +293,14 @@ def test_iteration_evaluated_carries_auto_verdict_2_on_pass(tmp_path):
     run = given_a_function_run(tmp_path)
     when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
     then_the_last_iteration_recorded_a_passing_verdict(run)
+
+
+def test_the_delivered_result_carries_drift_metrics(tmp_path):
+    """A greenfield run wrote a 2-line function, so the whole file is one addition hunk and
+    nothing was shared with the acceptance tests — the negative control for A2."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+    then_the_result_reports_the_drift_of_what_was_written(run, lines_added=2, hunks=[[1, 2]])
 
 
 def test_each_iteration_names_its_generating_call(tmp_path):

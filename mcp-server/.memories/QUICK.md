@@ -112,6 +112,21 @@ in 0.72 s with zero GPU calls. **T-120:** an edit run's `previous_attempt` is no
 against the committed baseline, not a second whole copy. Suite 332→340. **T-119 filed:** a
 whole-file edit pasted the acceptance tests into the source module and still Delivered.
 
+Session 131 (2026-07-27): **P4 build started** (`feature/oficina-p4-judge-gate`; plan
+`docs/plans/oficina-p4-judge-gate.md`). **T3:** `call_id` is now minted by `client.chat` onto
+`ChatResponse` (not inside `_log_call`, where identity depended on logging being enabled AND
+succeeding) and threaded `GenerationResult.call_id` → the `IterationEvaluated` payload — making
+the ledger↔`calls.jsonl` join identity-based instead of order-based (closes T-99's deferred
+"revisit the join mechanics at P4"; the positional form is what T-105 banned). **T4:** new pure
+module `oficina/drift.py` — `measure(baseline, delivered, test_sources)` → `hunks` (1-based
+delivered-file ranges), `lines_added`/`lines_removed`, `max_verbatim_run_vs_tests`; surfaced on
+`LoopResult.drift` at the single `_result_from` seam so every terminal outcome carries it.
+Gates on NOTHING (T-119: the free layer surfaces, the judge classifies). `files_touched` was
+specified at freeze and **dropped at build time** — the loop writes exactly one file, so it
+would fire unconditionally (first principle 6). Gotcha found: `SequenceMatcher`'s `isjunk`
+stops junk anchoring a match but the winning block still **absorbs adjacent junk**, so blank
+lines must be filtered BEFORE matching, not marked junk. Suite 340→353.
+
 ## Deeper Memory -> KNOWLEDGE.md
 
 - **Transport Choice** — stdio over HTTP, rationale

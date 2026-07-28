@@ -166,9 +166,19 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
   | Metric | Covers | Mode |
   |---|---|---|
   | `lines_added` / `lines_removed` | gross magnitude | both |
-  | `files_touched` | an edit run touching >1 file is itself drift | both |
   | **`hunks` — count + line ranges** | E-D6 (removal hunk) *and* T-119 (addition hunk) | both |
   | `max_verbatim_run_vs_tests` | T-119, the leak specifically | both |
+  | ~~`files_touched`~~ | **DROPPED at build time — see below** | — |
+
+  **`files_touched` dropped (T4, session 131).** It was listed at freeze and removed when the
+  build reached it, because in the current write model it cannot discriminate: the loop writes
+  exactly one file (the target), and anti-cheat already rejects any iteration that touches a
+  declared test file — so the metric would read `1` on every non-cheating run. **First principle 6
+  is explicit** (`ref:delegate-first-principles`): *"A signal that fires unconditionally carries
+  zero bits. Every warning/verdict/status in this system must discriminate."* Shipping it would
+  also spend payload on nothing, and the D6 correction makes payload size a hard constraint.
+  **Revisit when multi-file deliverables exist** — that is the change that makes it discriminate,
+  and it is a countable trigger rather than a guessed one.
 
   **Why hunk locality rather than `siblings_intact`.** Three candidates were weighed: (A) parse
   both files and compare top-level definitions, reporting *names*; (B) count baseline lines absent

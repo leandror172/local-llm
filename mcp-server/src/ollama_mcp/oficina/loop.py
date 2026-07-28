@@ -38,6 +38,7 @@ from typing import Any, Callable, Dict, List, Optional
 from .evaluator import LANGUAGES, attributable_failures, diff_touches_test_files
 from .errors import ContextBudgetError
 from .intake import Budgets, resolve_language
+from .drift import measure
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
@@ -89,11 +90,31 @@ class LoopResult:
     best_snapshot: Optional[str]
     limit_hit: Optional[str] = None
     spent: Dict[str, Any] = field(default_factory=dict)
+    # Mechanical drift metrics for the delivered content (P4-D3) — surfaced in the delivery
+    # report, gating nothing. The judge classifies whether the drift was in scope; this only
+    # says how much there was and where.
+    drift: Dict[str, Any] = field(default_factory=dict)
 
 
 def _signature(failures: List[ParsedFailure]) -> tuple:
     """P2-D7 repetition signature: the sorted set of normalized error_keys."""
     return tuple(sorted({"::".join(f.error_key) for f in failures}))
+
+
+def _read_test_sources(worktree: Path, test_files: List[str]) -> List[str]:
+    """The declared acceptance tests' contents, for the P4-D3 drift comparison.
+
+    Best-effort by design: these feed a report, and a metric that cannot be computed must
+    never take a run down with it — the same posture `_log_call` takes toward observability.
+    An unreadable test simply does not contribute to the comparison.
+    """
+    sources = []
+    for rel in test_files:
+        try:
+            sources.append((worktree / rel).read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    return sources
 
 
 def _attempt_as_diff(baseline: str, attempt: str) -> str:
@@ -186,6 +207,9 @@ class EvaluatedLoop:
         # T-120: the committed target content on an edit run, None on greenfield. Set once at
         # assembly; the previous attempt is shown as a diff against it rather than in full.
         self._edit_baseline: Optional[str] = None
+        # The declared acceptance tests' contents, read once at assembly and compared against
+        # at packaging (P4-D3). Empty until then, and empty for a run that declares none.
+        self._test_sources: List[str] = []
 
     def _stable_prompt_parts(self, assembly) -> Dict[str, str]:
         """The run-constant prompt parts (P2-D2): system + constraints + the assembled parts, with
@@ -354,6 +378,14 @@ class EvaluatedLoop:
             best_snapshot=snapshot,
             limit_hit=limit_hit,
             spent=spent or {},
+            # Every terminal outcome flows through here, so measuring once at this seam covers
+            # delivered, exhausted and cancelled alike — an exhausted run's best attempt is
+            # exactly where drift is most worth seeing.
+            drift=measure(
+                self._edit_baseline,
+                attempt.content if attempt else "",
+                self._test_sources,
+            ),
         )
 
     def _exhausted(self, *, iterations_used: int, limit_hit: str) -> LoopResult:
@@ -427,6 +459,9 @@ class EvaluatedLoop:
         target_rel = target_relpath(self.spec["deliverable"]["target"], base_repo)
         target_files = [target_rel]
         test_files = (self.spec.get("acceptance") or {}).get("test_files") or []
+        # P4-D3: read once here, not per iteration — assembly has already guaranteed every
+        # declared test exists in the worktree, and they are run-constant by definition.
+        self._test_sources = _read_test_sources(worktree, test_files)
         baseline = assembly.baseline_failures
 
         stable = self._stable_prompt_parts(assembly)
