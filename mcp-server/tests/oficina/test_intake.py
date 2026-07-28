@@ -25,6 +25,7 @@ from ollama_mcp.oficina.intake import (
     RULE_UNSUPPORTED_LANGUAGE,
     RULE_WORKSPACE_UNSUPPORTED,
     RULE_WORKTREE_NOT_SUPPORTED,
+    RULE_APPROVAL_GATE_UNSUPPORTED,
     RULE_WORKTREE_REQUIRED,
     check_intake,
 )
@@ -286,6 +287,22 @@ def test_acceptance_rubric_key_accepted(tmp_path):
     schema's way of keeping P4 scope out — and P4-T5 is the phase that admits it."""
     spec = a_function_spec(tmp_path)
     spec["acceptance"]["rubric"] = "code-python"
+    accepts(spec)
+
+
+def test_approval_gate_true_is_rejected_until_p5(tmp_path):
+    """P4 decides the gate's policy but defers the STATE: only answer_run (P5) clears
+    input_required, so a gated run would enter a state nothing could leave. Recognized and
+    refused loudly beats silently ignored."""
+    spec = a_function_spec(tmp_path)
+    spec["approval_gate"] = True
+    rejects(spec, with_rule=RULE_APPROVAL_GATE_UNSUPPORTED)
+
+
+def test_approval_gate_false_changes_nothing(tmp_path):
+    """The default path must be untouched — the key is recognized, not required."""
+    spec = a_function_spec(tmp_path)
+    spec["approval_gate"] = False
     accepts(spec)
 
 

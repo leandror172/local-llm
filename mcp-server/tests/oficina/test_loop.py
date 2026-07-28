@@ -229,6 +229,14 @@ def then_the_first_iteration_recorded_verdict_0(run):
     assert _iteration_payloads(run)[0]["auto_verdict"] == 0
 
 
+def then_the_exhaustion_says_whose_fault_it_was(run, *, whose):
+    """P4-T7: Failed has carried the triad since P2-T3; Exhausted never did, so the terminal a
+    reader most needs to attribute was the one that stayed silent about it."""
+    payload = [e for e in run.ledger.read() if e["event"] == "Exhausted"][-1]["payload"]
+    assert payload["where"] == "loop" and payload["whose"] == whose
+    assert "drift" in payload  # the best attempt's drift rides the same report
+
+
 def then_the_result_reports_the_drift_of_what_was_written(run, lines_added, hunks):
     """P4-D3: the mechanical layer surfaces magnitude on the terminal result, gating nothing."""
     assert run.result.drift["lines_added"] == lines_added
@@ -327,6 +335,18 @@ def test_exhausts_with_distinct_failures_and_attaches_best(tmp_path):
     )
     then_it_exhausted_with_the_best_attempt_attached(run)
     then_it_emitted(run, "Exhausted", times=1)
+
+
+def test_exhaustion_attributes_the_failure_to_the_model(tmp_path):
+    """The coder had its full budget and did not converge — that is the model's, and the
+    report has to say so rather than leave a reader to infer it from `limit_hit`."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run,
+        writing=["try1", "try2", "try3"],
+        and_evaluation_yields=[FAILS("a"), FAILS("b"), FAILS("c")],
+    )
+    then_the_exhaustion_says_whose_fault_it_was(run, whose="model")
 
 
 def test_exhausted_iteration_evaluated_records_verdict_0(tmp_path):

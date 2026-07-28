@@ -81,6 +81,10 @@ class RunSpec(BaseModel):
     acceptance: Optional[Acceptance] = None
     budgets: Budgets = Field(default_factory=Budgets)
     workspace: str = "in_place"
+    # P4-D4 amendment (a): RECOGNIZED, not honoured. Declared here so the key is known to the
+    # derived unknown-key check — a caller asking for a gate gets told it is unsupported until
+    # P5, rather than having the request silently swallowed as a typo.
+    approval_gate: bool = False
     model: str = "auto"
     timeout_s: int = 1800
 
@@ -116,6 +120,7 @@ RULE_CONTEXT_FILE_MISSING = "context_file_missing"
 # P2 additions (P2-D13)
 RULE_ACCEPTANCE_REQUIRED = "acceptance_required"
 RULE_WORKTREE_REQUIRED = "worktree_required"
+RULE_APPROVAL_GATE_UNSUPPORTED = "approval_gate_unsupported"
 RULE_TARGET_NOT_GIT_REPO = "target_not_git_repo"
 RULE_ACCEPTANCE_NOT_SUPPORTED = "acceptance_not_supported"
 RULE_WORKTREE_NOT_SUPPORTED = "worktree_not_supported"
@@ -322,6 +327,24 @@ def _check_acceptance_required(spec: Dict[str, Any]) -> Optional[Rejection]:
     return None
 
 
+def _check_approval_gate_unsupported(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """`approval_gate: true` is recognized but not yet honoured (P4-D4, amendment (a)).
+
+    P4 decides the gate's POLICY — opt-in, and what it would display — but defers the STATE to
+    P5, because the only verb that clears `input_required` is `answer_run`, which is P5's. A
+    gate built here could enter a state nothing could leave. Rejecting loudly is the same
+    posture as `RefsDropped` (T-96) and `ContextBudgetError` (T-112): the system never quietly
+    does less than it was asked. Omitted or false is accepted and changes nothing.
+    """
+    if spec.get("approval_gate"):
+        return Rejection(
+            RULE_APPROVAL_GATE_UNSUPPORTED,
+            "approval_gate is not supported until P5 adds answer_run — a gated run would "
+            "enter input_required with nothing able to resume it",
+        )
+    return None
+
+
 def _check_worktree_required(spec: Dict[str, Any]) -> Optional[Rejection]:
     """A spec with a test_cmd must run in a worktree — tests need isolation (P2-D5)."""
     acceptance = spec.get("acceptance") or {}
@@ -372,6 +395,7 @@ _CHECKS = (
     _check_language_supported,
     _check_acceptance_required,
     _check_worktree_required,
+    _check_approval_gate_unsupported,
     _check_language_resolvable,
     _check_target_git_repo,
     _check_context_files,

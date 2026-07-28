@@ -101,6 +101,30 @@ def _signature(failures: List[ParsedFailure]) -> tuple:
     return tuple(sorted({"::".join(f.error_key) for f in failures}))
 
 
+def _exhaustion_triad(limit_hit: str) -> Dict[str, str]:
+    """where/whose/what for an exhausted run (P4-T7 — format only, no new classification).
+
+    `Failed` has carried the triad since P2-T3; `Exhausted` never did, so the one terminal a
+    reader most needs to attribute was the one that did not say whose fault it was. Attribution
+    follows the limit that fired, which is the only evidence available:
+
+    - ``exhausted``       — the coder had its budget and did not converge → the MODEL's
+    - ``timeout``         — wall-clock ran out around it → the ENVIRONMENT's
+    - ``context_budget``  — the target could not fit the window → the PAYLOAD's, matching the
+      attribution T-112 already chose for the same condition at iteration 1
+    """
+    whose = {
+        "exhausted": "model",
+        "timeout": "environment",
+        "context_budget": "payload",
+    }.get(limit_hit, "system")
+    return {
+        "where": "loop",
+        "whose": whose,
+        "what": f"budget exhausted: {limit_hit}",
+    }
+
+
 def _read_test_sources(worktree: Path, test_files: List[str]) -> List[str]:
     """The declared acceptance tests' contents, for the P4-D3 drift comparison.
 
@@ -389,17 +413,14 @@ class EvaluatedLoop:
         )
 
     def _exhausted(self, *, iterations_used: int, limit_hit: str) -> LoopResult:
-        """Emit Exhausted (budget out or wall-clock hit, P2-D10) with the best attempt (S11)."""
+        """Emit Exhausted (budget out or wall-clock hit, P2-D10) with the best attempt (S11).
+
+        The result is built BEFORE the event so the payload can carry its drift: an exhausted
+        run's best attempt is where drift is most worth seeing, and `Exhausted`'s payload IS
+        the report `run_result` returns on this path (P4-T6).
+        """
         spent = {"iterations": iterations_used, "fresh_starts": self._fresh_used}
-        self.ledger.exhausted(
-            {
-                "spent": spent,
-                "limit_hit": limit_hit,
-                "best_attempt_ref": self._best_snapshot,
-                "branch": self._branch,
-            }
-        )
-        return self._result_from(
+        result = self._result_from(
             "exhausted",
             self._best,
             iterations_used=iterations_used,
@@ -407,6 +428,17 @@ class EvaluatedLoop:
             limit_hit=limit_hit,
             spent=spent,
         )
+        self.ledger.exhausted(
+            {
+                "spent": spent,
+                "limit_hit": limit_hit,
+                "best_attempt_ref": self._best_snapshot,
+                "branch": self._branch,
+                "drift": result.drift,
+                **_exhaustion_triad(limit_hit),
+            }
+        )
+        return result
 
     def _time_limit_reached(self, started_at) -> Any:
         return self.max_wall_clock_s and time.monotonic() - started_at > self.max_wall_clock_s
