@@ -451,6 +451,36 @@ objective, not reacting to size. And on A1 the two criteria stayed **independent
 requested helper *and* pasted the tests. A single blended quality score would have averaged that
 into a pass; splitting the question is what makes the gate work.
 
+### A3–A6, run explicitly (session 131) — 20/20 checks
+
+A3/A4/A6 drive real runs through the real `Worker`/`Ledger`/`Store`/retention with injected
+coder/evaluate/judge seams. **A5 uses REAL model calls**, because its claim is that a ledger
+event and a `calls.jsonl` record join by identity — faking the generation would test the fake.
+
+| | checks | result |
+|---|---|---|
+| **A3** events fold, old clients survive | 3/3 | `Judged` lands, does **not** fold (run stays `completed`), and a fold given a forged unknown event name still returns `completed` — the envelope's forward-compatibility rule exercised, not assumed |
+| **A4** report outlives the workspace | 6/6 | Prune verified to actually fire and the artifacts verified **gone**, after which `run_result` still resolves and the report is **byte-identical** — drift and judge included |
+| **A5** S17 has something to gate on | 6/6 | `judge_verdict` present and a distinct field from `auto_verdict`; **the join holds on a live run** — the iteration's `call_id` names a real `calls.jsonl` record |
+| **A6** failure path | 5/5 | `Exhausted` carries where/whose/what (`whose=model`), best attempt attached, folds to `failed`, `Delivered` **not** emitted, drift present |
+
+**Two things the numbers do not show.**
+
+**A5 logged TWO call records — the coder's and the judge's.** That is the T-95 decision
+validating itself: had P4 composed `run_phase2` wholesale, the judge call would have used the
+evaluator's own transport and left no `calls.jsonl` record, no `run_id`, no `call_id`. The judge
+is inside the observability the DPO pipeline depends on because the transport was kept singular.
+
+**The whole A5 run took 7.2 s** — real coder call, real judge call, worktree, pytest, packaging.
+That is P4-D2's zero-swap reversal showing up as wall-clock: coder and judge share a base, so
+packaging cost no model load.
+
+**Two setup bugs found by running these rather than reasoning about them**, both mine and both
+worth recording because each would have produced a *false pass*: an **empty** artifacts dir is
+deliberately skipped by `_prune_artifacts` ("nothing to free"), so A4 initially "passed a prune"
+that never bit; and a `test_cmd` with a `cd` into the original repo tests a checkout where the
+target does not exist, since the evaluator already runs it with `cwd=worktree`.
+
 **Calibration note carried from T2's probe:** the pre-T9 probe scored a smaller synthetic leak
 **3**, which would have passed the ≥3 threshold. On the real leak with the diff prompt the score
 is **2**. The threshold survives this evidence but is not proven at the boundary — a leak scored
