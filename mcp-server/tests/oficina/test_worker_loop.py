@@ -168,6 +168,15 @@ def then_the_delivered_report_carries_drift_and_the_judge(on):
     assert report["judge"]["rubric"] == "tiny"
 
 
+def then_the_report_narrates_every_iteration(on, *, verdicts):
+    """P4-T6: the auto-verdict trail. `auto_verdict` is tests-green and binary — it cannot
+    express 1 (improved) — so the report must never present it as a quality judgment."""
+    trail = next(e for e in _events(on) if e["event"] == "Delivered")["payload"]["report"]["iterations_trail"]
+    assert [step["tests_passed"] for step in trail] == verdicts
+    assert [step["iteration"] for step in trail] == list(range(1, len(verdicts) + 1))
+    assert all("error_keys" not in step for step in trail)  # compact by construction (P4-D6)
+
+
 def then_no_judgement_was_recorded(on):
     """A run without a rubric is delivered exactly as it was before P4."""
     assert "Judged" not in _event_names(on)
@@ -219,6 +228,14 @@ def test_a_failing_judge_still_delivers(tmp_path, monkeypatch):
         judge_says=A_FAILING_VERDICT, monkeypatch=monkeypatch,
     )
     then_it_judged_the_deliverable_without_blocking_delivery(run, passed=False)
+
+
+def test_the_report_narrates_a_multi_iteration_run(tmp_path):
+    """A run that failed once then passed leaves a two-step trail — the narrative a reviewer
+    needs to see how the deliverable was reached, not just that it was."""
+    run = given_a_git_repo(tmp_path)
+    when_the_worker_runs_the_loop(run, evaluation_yields=[FAILS("a"), CLEAN])
+    then_the_report_narrates_every_iteration(run, verdicts=[False, True])
 
 
 def test_a_run_without_a_rubric_is_not_judged(tmp_path):

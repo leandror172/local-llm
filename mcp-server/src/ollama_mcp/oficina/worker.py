@@ -149,6 +149,38 @@ def _chat_generation(
     )
 
 
+def _iterations_trail(ledger: Ledger) -> List[Dict[str, Any]]:
+    """The delivery report's iteration narrative, folded from the run's own ledger (P4-T6).
+
+    Carries only what a reviewer acts on. This report lives inside the `Delivered` event
+    payload (P4-D6) and is paid for in the caller's context on every `run_result`, with no
+    pointer indirection to hide behind — so `error_keys` (unbounded) and `auto_verdict` are
+    deliberately omitted. `auto_verdict` is a binary restatement of `passed` on a 0/1/2 scale
+    that structurally cannot express "improved", which is exactly why presenting it as a
+    verdict misleads; the field is surfaced here as `tests_passed` instead, naming what it
+    actually knows.
+    """
+    return [
+        {
+            "iteration": payload.get("iteration"),
+            "tests_passed": payload.get("passed"),
+            "failure_class": payload.get("failure_class"),
+            # T-3: names the exact calls.jsonl record that produced this iteration.
+            "call_id": payload.get("call_id"),
+        }
+        for payload in _iteration_payloads(ledger)
+    ]
+
+
+def _iteration_payloads(ledger: Ledger) -> List[Dict[str, Any]]:
+    """Each IterationEvaluated payload, in order."""
+    return [
+        event.get("payload") or {}
+        for event in ledger.read()
+        if event.get("event") == "IterationEvaluated"
+    ]
+
+
 JUDGE_MODEL = "my-judge-q25c14-16k"
 JUDGE_TIMEOUT_S = 300
 
@@ -396,6 +428,8 @@ class Worker:
                 # P4-D3: magnitude, measured for free. Numbers and ranges only — this payload
                 # is paid for in Claude's context on every run_result (P4-D6).
                 "drift": result.drift,
+                # P4-T6: how the deliverable was reached, not just that it was.
+                "iterations_trail": _iterations_trail(ledger),
             }
             judged = self._judge_delivered(ledger, spec, result)
             if judged:
