@@ -170,6 +170,27 @@ def test_a_criterion_below_its_declared_cut_fails_the_gate():
     assert result["criteria"][0]["passing_score"] == 4  # the report explains its own verdict
 
 
+def test_a_rubric_with_nothing_to_judge_does_not_pass():
+    """The other half of P4-D8's "the number and the boolean cannot disagree".
+
+    `all([])` is True, so a rubric declaring no phase-2 criteria would report a pass having
+    judged nothing and made zero model calls — while `judge_verdict` correctly says 0. A gate
+    that never ran is not a gate that passed. Latent today (every shipped rubric has phase-2
+    criteria) but `acceptance.rubric` accepts any string and `OFICINA_RUBRICS` points anywhere.
+    """
+    chat = _FakeChat()
+    nothing_to_judge = {
+        "id": "phase1only",
+        "criteria": [{"name": "syntax_valid", "phase": 1, "description": "parses"}],
+    }
+
+    result = judge_deliverable(nothing_to_judge, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    assert result["passed"] is False
+    assert result["judge_verdict"] == 0
+    assert chat.calls == []  # it did not merely fail the gate, it never asked anything
+
+
 def test_a_criterion_at_its_declared_cut_passes_the_gate():
     """The negative control — a declared cut must be able to say yes, or it is not a cut."""
     chat = _FakeChat(_scored(4), _scored(4))

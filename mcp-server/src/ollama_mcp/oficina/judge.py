@@ -192,9 +192,18 @@ def _passing_score(criterion: Dict[str, Any]) -> int:
 
 
 def _all_criteria_pass(scored: List[Dict[str, Any]]) -> bool:
-    """The S17 signal. An unscoreable criterion withholds it — a gate that cannot see is not
-    a gate that passes."""
-    return all(c["score"] is not None and c["score"] >= c["passing_score"] for c in scored)
+    """The S17 signal — withheld unless every criterion was read AND cleared its own cut.
+
+    There are two ways a gate fails to see, and both withhold. An **unscoreable criterion**: a
+    gate that cannot see is not a gate that passes. An **empty criterion set**: `all([])` is
+    True, so a rubric declaring no phase-2 criteria would otherwise pass having judged nothing
+    and called no model — while `_min_score` reports 0 beside it. That is exactly the
+    number-vs-boolean disagreement P4-D8 exists to remove, so the emptiness check belongs here
+    rather than at the caller.
+    """
+    return bool(scored) and all(
+        c["score"] is not None and c["score"] >= c["passing_score"] for c in scored
+    )
 
 
 def _min_score(scored: List[Dict[str, Any]]) -> int:

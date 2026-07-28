@@ -144,7 +144,8 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   rung above its threshold. The verdict reduces the way the gate gates, and **any** unscoreable
   criterion yields `0`: reducing over only the criteria that *did* score is how the old mean
   reported **5** on a run whose gate withheld, and a min over the same filtered subset would have
-  too. `weight` is **deleted** from `oficina-edit.yaml` — no weighting can make an average agree
+  too. **An empty criterion set withholds as well** — `all([])` is True, so a rubric declaring no
+  phase-2 criteria would otherwise pass having judged nothing and called no model. `weight` is **deleted** from `oficina-edit.yaml` — no weighting can make an average agree
   with an AND (ranking `(5,3)` below `(4,4)` needs `w₁<w₂`; `(3,5)` needs `w₂<w₁`), so it was
   unusable here, not merely unused.
 - **Drift is surfaced, never gated** (`drift.py` → `LoopResult.drift` → the report):

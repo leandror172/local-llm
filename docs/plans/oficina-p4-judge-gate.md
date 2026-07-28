@@ -375,6 +375,15 @@ possible consumer of `weight`, and D9's per-criterion cut settled the ownership 
   subset.** `passed` already fails on any `None`, so the number agrees with it only if an unscored
   criterion drags the verdict below every cut. Same lesson as the tell above: the unscoreable case
   belongs in the rule, not in a docstring explaining it away.
+  **A SECOND gap of the same shape, found immediately after the first fix shipped:** `all([])` is
+  True while `_min_score([])` is 0, so a rubric with no phase-2 criteria reported `passed: True`
+  beside `judge_verdict: 0`, having judged nothing and called no model — **the invariant this entry
+  asserts, violated by the very commit asserting it.** The post-build review had filed this
+  separately as an ordinary defect; it is not separate, it is D8's other half, and
+  `_all_criteria_pass` now requires a non-empty criterion set. Worth recording as calibration: two
+  of the three holes in "the number and the boolean cannot disagree" were invisible from the
+  decision text and only appeared against the code — a frozen invariant is a claim to re-derive at
+  build time, not a conclusion to carry forward.
   *Rejected — drop the field entirely:* the per-criterion scores are already in the payload, so a min
   is derivable and the field is redundant. But P4's goal text keeps the three verdicts separate *"so
   P6 can gate DPO extraction on the judge **without re-deriving anything**"*, and dropping it forces
