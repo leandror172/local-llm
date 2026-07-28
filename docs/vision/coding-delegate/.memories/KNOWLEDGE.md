@@ -170,10 +170,15 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   budgets 1 iteration (T-114), so one anti-cheat rejection leaves no best attempt either.
   **A deletion's marker is clamped to the last delivered line** — at EOF there is no "line that
   follows the removal", so it pointed one past the end. Hunks are read by a human AND inlined into
-  the judge's prompt, so a range must be addressable in the file it describes. **Test sources are
-  decoded with `errors="replace"`**: `read_text` raises `UnicodeDecodeError` (a `ValueError`, not an
-  `OSError`), so a latin-1 test file used to kill a run via a report-only metric — and skipping it
-  instead would have silently weakened `max_verbatim_run_vs_tests` exactly where it was needed.
+  the judge's prompt, so a range must be addressable in the file it describes. **The declared tests are read
+  ONCE, at assembly, strictly** (`Assembly.test_sources`), and handed to BOTH consumers — the
+  prompt's tests-as-context block and this drift comparison. Two readers of the same files is how
+  their decoding policies drifted: assembly was strict while the loop tolerated replacement
+  characters, so the loop's tolerance could never fire — the run had already died. An undecodable
+  test file is a **named `AssemblyError` naming the file**, because under P2-D13 the tests ARE the
+  spec: mojibake in them would become the authoritative statement of required behaviour and the
+  coder would write against it with nothing downstream aware. Accepted cost: a
+  `# -*- coding: latin-1 -*-` test file is legal Python that pytest would run.
 - **The report is `Delivered`-payload-resident and compactness is a hard constraint** — it is paid
   for in the caller's context on every `run_result`, with no pointer indirection. `auto_verdict`
   is surfaced as `tests_passed`; `error_keys` are omitted. **Its variable-length parts are BOUNDED

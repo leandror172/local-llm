@@ -821,21 +821,13 @@ def test_the_trail_marks_an_iteration_the_anti_cheat_rejected(tmp_path):
     assert [step["cheated"] for step in _iterations_trail(run.ledger)] == [True]
 
 
-def test_a_non_utf8_test_file_does_not_take_the_run_down(tmp_path):
-    """`_read_test_sources` is best-effort by design — "a metric that cannot be computed must
-    never take a run down with it" — but it caught only `OSError`, and `read_text` raises
-    `UnicodeDecodeError` (a `ValueError`) on a latin-1 source. That escaped `run()`, and
-    `_run_loop`'s blanket handler turned it into a `Failed` event: a run that would otherwise
-    have delivered, killed by a REPORT-only metric.
+def test_the_drift_comparison_reads_the_tests_assembly_already_read(tmp_path):
+    """The declared tests have two consumers — the prompt's tests-as-context block and the drift
+    comparison — and one read at assembly is what stops them disagreeing (they had already
+    drifted on decoding). The loop takes what assembly read; it does not re-read the files."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN]
+    )
 
-    Decoded with replacement rather than skipped. Skipping would silently weaken
-    `max_verbatim_run_vs_tests`, so a leak out of that very file would stop being detectable —
-    the metric would go quiet exactly where it was needed."""
-    from ollama_mcp.oficina.loop import _read_test_sources  # the helper under test
-
-    (tmp_path / "test_latin1.py").write_bytes("# café\ndef test_x(): pass\n".encode("latin-1"))
-
-    sources = _read_test_sources(tmp_path, ["test_latin1.py", "absent.py"])
-
-    assert len(sources) == 1  # the unreadable one is skipped, the undecodable one is not
-    assert "def test_x" in sources[0]
+    assert run.result.drift["max_verbatim_run_vs_tests"] == 0  # computed, not skipped

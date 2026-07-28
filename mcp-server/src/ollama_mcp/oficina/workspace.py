@@ -63,6 +63,9 @@ class Assembly:
     stable_parts: Dict[str, str]
     test_files_materialized: List[str] = field(default_factory=list)
     mode: str = "greenfield"  # "edit" when the target is committed at HEAD (E-D2), else greenfield
+    # The declared tests' contents, read ONCE here so the prompt block and the drift comparison
+    # cannot disagree about decoding — which is exactly how they had already drifted.
+    test_sources: List[str] = field(default_factory=list)
 
 
 def target_relpath(target: str, base_repo: "Path | str") -> str:
@@ -121,7 +124,8 @@ class Workspace:
         materialized = self._materialize_test_files()
         c0_sha = self._commit(f"oficina C0 baseline ({self.run_id})")
         baseline_failures = self._evaluate(self.worktree_path, base_repo, self.spec)
-        stable_parts = self._build_stable_parts(current_file)
+        test_sources = self._read_test_sources()
+        stable_parts = self._build_stable_parts(current_file, test_sources)
 
         assembly = Assembly(
             worktree_path=self.worktree_path,
@@ -132,6 +136,7 @@ class Workspace:
             stable_parts=stable_parts,
             test_files_materialized=materialized,
             mode=mode,
+            test_sources=test_sources,
         )
         if emit is not None:
             emit(
@@ -250,7 +255,44 @@ class Workspace:
         _git(self.worktree_path, *_GIT_IDENTITY, "commit", "--allow-empty", "-m", message)
         return _git(self.worktree_path, "rev-parse", "HEAD")
 
-    def _build_stable_parts(self, current_file: str = "") -> Dict[str, str]:
+    def _declared_test_files(self) -> List[str]:
+        """The acceptance test paths the spec declares, worktree-relative."""
+        return ((self.spec.get("acceptance") or {}).get("test_files")) or []
+
+    def _read_test_sources(self) -> List[str]:
+        """Every declared test's content, read ONCE for both of its consumers.
+
+        The tests have two readers — the prompt's tests-as-context block (P2-D13) and the drift
+        comparison's `max_verbatim_run_vs_tests` (P4-D3). One read is what stops them disagreeing
+        about decoding, which is how they had already drifted: this side was strict while the
+        loop's own reader tolerated replacement characters, so the loop's tolerance could never
+        fire — assembly had already failed the run.
+
+        **Strict, and a decode failure is a NAMED `AssemblyError`** rather than a raw
+        `UnicodeDecodeError` escaping into a stack-trace-shaped `Failed`. Under P2-D13 the tests
+        ARE the spec: a file that cannot be decoded cannot be handed to the model as one, and
+        tolerating it would put mojibake into the authoritative statement of required behaviour
+        and let the coder write against it with nothing downstream aware. The cost is accepted and
+        real — a `# -*- coding: latin-1 -*-` test file is legal Python that pytest would run —
+        but the refusal is loud, names the file, and is one line for the caller to fix.
+
+        `_materialize_test_files` has already guaranteed each declared test exists.
+        """
+        sources: List[str] = []
+        for rel in self._declared_test_files():
+            try:
+                sources.append((self.worktree_path / rel).read_text(encoding="utf-8"))
+            except UnicodeDecodeError as exc:
+                raise AssemblyError(
+                    "assembling",
+                    f"declared test file is not valid utf-8: {rel} "
+                    f"({exc.reason} at byte {exc.start})",
+                ) from exc
+        return sources
+
+    def _build_stable_parts(
+        self, current_file: str = "", test_sources: Optional[List[str]] = None
+    ) -> Dict[str, str]:
         """The run-constant prompt parts (P2-D2): objective, tests-as-context, context files.
 
         System/constraints/refs are layered on in T6; this fills the parts that come from
@@ -266,10 +308,11 @@ class Workspace:
         if current_file:
             parts["current_file"] = current_file
 
-        test_files = ((self.spec.get("acceptance") or {}).get("test_files")) or []
+        if test_sources is None:
+            test_sources = self._read_test_sources()
         test_blocks = [
-            f"# {rel}\n{(self.worktree_path / rel).read_text(encoding='utf-8')}"
-            for rel in test_files
+            f"# {rel}\n{source}"
+            for rel, source in zip(self._declared_test_files(), test_sources)
         ]
         if test_blocks:
             parts["tests"] = "\n\n".join(test_blocks)

@@ -138,35 +138,6 @@ def _exhaustion_triad(limit_hit: str) -> Dict[str, str]:
     }
 
 
-def _read_test_sources(worktree: Path, test_files: List[str]) -> List[str]:
-    """The declared acceptance tests' contents, for the P4-D3 drift comparison.
-
-    Best-effort by design: these feed a report, and a metric that cannot be computed must
-    never take a run down with it — the same posture `_log_call` takes toward observability.
-    A test that cannot be OPENED simply does not contribute to the comparison.
-
-    A test that cannot be DECODED is different, and is decoded with replacement rather than
-    skipped: dropping it would silently weaken `max_verbatim_run_vs_tests`, so a leak out of
-    that very file would stop being detectable — the metric going quiet exactly where it was
-    needed.
-
-    **This is not the first reader of these files, and the decoding policy has two owners.**
-    `Workspace._build_stable_parts` reads the same declared `test_files` from the same worktree
-    during `assemble()`, with STRICT utf-8, to build the prompt's tests segment — so an
-    undecodable test file fails the run there, before this function is reached. The tolerance
-    here is therefore defence in depth, NOT a fix for that path. Resolving it properly means one
-    read at assembly feeding both (`Assembly.test_sources`), which is a workspace change rather
-    than a loop one.
-    """
-    sources = []
-    for rel in test_files:
-        try:
-            sources.append((worktree / rel).read_text(encoding="utf-8", errors="replace"))
-        except OSError:
-            continue
-    return sources
-
-
 def _attempt_as_diff(baseline: str, attempt: str) -> str:
     """The coder's last attempt as a unified diff against the committed file (T-120).
 
@@ -552,7 +523,9 @@ class EvaluatedLoop:
         test_files = (self.spec.get("acceptance") or {}).get("test_files") or []
         # P4-D3: read once here, not per iteration — assembly has already guaranteed every
         # declared test exists in the worktree, and they are run-constant by definition.
-        self._test_sources = _read_test_sources(worktree, test_files)
+        # Read once at assembly, for both consumers (the prompt's tests block and this drift
+        # comparison) — two readers of the same files is how their decoding policies drifted.
+        self._test_sources = assembly.test_sources
         baseline = assembly.baseline_failures
 
         stable = self._stable_prompt_parts(assembly)
