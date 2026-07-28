@@ -42,7 +42,13 @@ from .drift import measure
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
-from .worker import GenerationResult, _chat_generation, _cold_start_grace, model_context_limit
+from .worker import (
+    GenerationResult,
+    _chat_generation,
+    _cold_start_grace,
+    _iterations_trail,
+    model_context_limit,
+)
 
 # (prompt, model, run_id, *, num_predict) -> GenerationResult. The coder writes nothing; the
 # loop places output. num_predict is passed per call (E-D9) because the edit-mode floor is only
@@ -411,13 +417,20 @@ class EvaluatedLoop:
             # Every terminal outcome flows through here, so measuring once at this seam covers
             # delivered, exhausted and cancelled alike — an exhausted run's best attempt is
             # exactly where drift is most worth seeing.
-            drift=measure(
-                self._edit_baseline,
-                attempt.content if attempt else "",
-                self._test_sources,
+            #
+            # With NO attempt there is nothing to measure, and measuring `""` against an edit
+            # run's committed baseline reports the ENTIRE FILE as removed — a report telling the
+            # reader the run deleted their module when it in fact produced nothing at all.
+            # Absence is stated as absence rather than rendered as a deletion.
+            drift=(
+                measure(self._edit_baseline, attempt.content, self._test_sources)
+                if attempt
+                else {}
             ),
-            change=_attempt_as_diff(
-                self._edit_baseline or "", attempt.content if attempt else ""
+            change=(
+                _attempt_as_diff(self._edit_baseline or "", attempt.content)
+                if attempt
+                else ""
             ),
         )
 
@@ -444,6 +457,10 @@ class EvaluatedLoop:
                 "best_attempt_ref": self._best_snapshot,
                 "branch": self._branch,
                 "drift": result.drift,
+                # P4-T6: the trail was built only on the delivered path, but this payload IS
+                # the report on this one — and an exhausted run is where the narrative is most
+                # useful, since its reader is the one who has to work out what went wrong.
+                "iterations_trail": _iterations_trail(self.ledger),
                 **_exhaustion_triad(limit_hit),
             }
         )
@@ -522,10 +539,16 @@ class EvaluatedLoop:
             if self._time_limit_reached(started_at):
                 return self._exhausted(iterations_used=k - 1, limit_hit="timeout")
             if self.is_cancelled():
-                self.ledger.cancelled({"stage": "looping", "iteration": k})
-                return self._result_from(
+                # Result BEFORE the event, exactly as `_exhausted` does it: `service.result()`
+                # returns this payload verbatim as the report, so drift omitted here is drift no
+                # reader ever sees — whatever `LoopResult` happens to carry.
+                result = self._result_from(
                     "cancelled", self._best, iterations_used=k - 1, snapshot=self._best_snapshot
                 )
+                self.ledger.cancelled(
+                    {"stage": "looping", "iteration": k, "drift": result.drift}
+                )
+                return result
 
             # T-112: refuse before generating. Iteration 1 has nothing to salvage, so it is a
             # fail-loud triad; later iterations already hold a best attempt, so they exhaust.

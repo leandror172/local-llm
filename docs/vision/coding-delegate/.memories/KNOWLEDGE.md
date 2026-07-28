@@ -153,6 +153,12 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   specified at freeze and **dropped at build**: the loop writes exactly one file, so it would fire
   unconditionally (first principle 6). Blank lines are filtered BEFORE matching — `SequenceMatcher`'s
   `isjunk` stops junk anchoring a match but the winning block still absorbs adjacent junk.
+  **All three terminals carry it — delivered, exhausted AND cancelled.** `LoopResult` always had
+  it, but the `Cancelled` payload did not, and `service.result()` returns that payload verbatim as
+  the report, so on that path it was invisible to every reader. **With no attempt, drift is `{}`**:
+  measuring `""` against an edit run's baseline reports the whole file as removed, describing a run
+  that produced nothing as a run that deleted everything. Reachable beyond cancel — an edit run
+  budgets 1 iteration (T-114), so one anti-cheat rejection leaves no best attempt either.
 - **The report is `Delivered`-payload-resident and compactness is a hard constraint** — it is paid
   for in the caller's context on every `run_result`, with no pointer indirection. `auto_verdict`
   is surfaced as `tests_passed`; `error_keys` are omitted. **Its variable-length parts are BOUNDED
@@ -161,7 +167,10 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   carry no bits). Full fidelity survives in the `Judged` event and `LoopResult.drift`, which nobody
   pays for unless they look. Worst case measured ~750 → ~206 tokens. **`criteria[]` entries are
   shortened, never dropped** — each carries the `passing_score` its score was judged against, and a
-  report without them states a verdict it cannot explain.
+  report without them states a verdict it cannot explain. **The iterations trail rides the
+  exhausted payload too**, not only the delivered one — an exhausted run is where the narrative is
+  most useful — and each step carries `cheated`, since an anti-cheat rejection was otherwise
+  indistinguishable from an ordinary `structural` failure.
 
 ## LanguagePack — the language axis contract (T-92 Phase 4) — 2026-07-23
 

@@ -165,6 +165,10 @@ def _iterations_trail(ledger: Ledger) -> List[Dict[str, Any]]:
             "iteration": payload.get("iteration"),
             "tests_passed": payload.get("passed"),
             "failure_class": payload.get("failure_class"),
+            # The model editing its own acceptance criteria is the strongest single thing a
+            # reader acts on, and `failure_class: structural` alone leaves it indistinguishable
+            # from a compile error — so the anti-cheat rejection is named, not implied.
+            "cheated": payload.get("stage_failed") == "anti_cheat",
             # T-3: names the exact calls.jsonl record that produced this iteration.
             "call_id": payload.get("call_id"),
         }
