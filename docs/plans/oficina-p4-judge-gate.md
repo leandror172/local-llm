@@ -1,8 +1,8 @@
 # oficina P4 — Judge gate + delivery report (plan)
 
 **Status:** BUILT + ACCEPTED (session 131, 2026-07-27/28) — T1–T9 complete, acceptance A1–A6 all
-pass, PR #86 open. **P4-D1…P4-D10 frozen** — D8–D10 are three design forks raised by the
-post-build code review (2026-07-28) and decided the same day. Sequencing
+pass, PR #86 open. **P4-D1…P4-D11 frozen** — D8–D11 come from the post-build code review
+(2026-07-28) and were decided the same day; D11 is deferred with a named trigger. Sequencing
 decided in session 131: **P4 before P3**, see § "Why P4 before P3".
 
 **Two decisions were reversed during the walk-through, both by reading upstream docs rather than
@@ -485,6 +485,35 @@ possible consumer of `weight`, and D9's per-criterion cut settled the ownership 
   a new rubric file is *"the sanctioned extension — no code change was needed"*. P4 got its rubric
   without touching untested code; moving it now spends that advantage to restate what a comment
   already says.
+
+- **P4-D11 — Per-criterion `call_id` on judge calls. DEFERRED 2026-07-28 — not built, trigger
+  named. (`run_id` fixed the same day; that half was a defect, not a fork.)**
+  P4-T3 threaded `call_id` for the **coder** because the ledger↔`calls.jsonl` join would otherwise
+  be order-based — the positional fallback T-105 banned. The judge is the same fork one level down:
+  a run makes **N judge calls, one per criterion**, and `Judged` carries a `criteria[]` array with
+  no ids.
+  **What is already recoverable without it.** With `run_id` fixed, every judge call for a run is
+  findable, and each call's prompt *names its criterion* — `_judge_system_prompt` renders
+  `Criterion: {name}`, `_judge_user_prompt` ends *"Score the output on the criterion: **{name}**"*.
+  Within one run criterion names are unique, so **`(run_id, criterion_name)` is a genuine composite
+  key**, not a positional guess. Its weakness is that it is *content-derived*: recovering the name
+  means parsing prompt text, which breaks silently if the wording changes.
+  **No consumer needs it yet.** P6 gates DPO extraction on `passed`, not on judge-call identity,
+  and a DPO pair is (coder prompt, coder response) — **the judge call is the gating signal, not a
+  pair**. Judge-quality DPO (fine-tuning the judge itself) would need it, but no phase owns that,
+  so building for it now is designing from a prediction
+  (`ref:patterns-refactoring-duplicate-first`).
+  **The hazard — recorded because the cheap route is the banned one.** The seam is
+  `chat(system, prompt, schema) -> str`; there is no channel for an id to come back through.
+  Collecting ids side-band inside `default_judge` preserves the seam but then matches ids to
+  criteria **by order** — the exact fallback T-105 banned, reintroduced in the one module whose
+  docstring cites T-105 as its reason for existing. Doing it properly means changing the seam's
+  return type (`judge_deliverable`, `_score_criterion`, `_FakeChat`, `default_judge`).
+  **Trigger: the first consumer that needs to name an individual judge call.**
+  *Shipped instead:* `run_id` is now **required** on `default_judge` and threaded from `_run_loop`.
+  It had been `""` — worse than absent, because a value that looks like one silently merges every
+  run's judge calls into a single empty-string bucket for anything grouping by run. The module was
+  defeating the justification in its own docstring.
 <!-- /ref:delegate-p4-decisions -->
 
 ---

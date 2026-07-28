@@ -185,17 +185,26 @@ JUDGE_MODEL = "my-judge-q25c14-16k"
 JUDGE_TIMEOUT_S = 300
 
 
-def default_judge(model: str = JUDGE_MODEL, timeout: int = JUDGE_TIMEOUT_S):
+def default_judge(run_id: str, model: str = JUDGE_MODEL, timeout: int = JUDGE_TIMEOUT_S):
     """A `chat(system, prompt, schema) -> str` for the judge, on the shared transport.
 
     The judge persona shares the coder's base (P4-D2), so packaging costs no model swap
     (`ref:delegate-gpu-policy`). Fences are left alone: the reply is schema-constrained JSON,
     not code, and stripping is a codegen concern.
+
+    **`run_id` is required, never defaulted.** The reason this module owns its call rather than
+    composing the evaluator's transport is that the record must be *attributable*; it originally
+    passed `""`, which is worse than absent because it is a value that looks like one — anything
+    grouping `calls.jsonl` by run merged every run's judge calls into one empty-string bucket.
+    A default would let that return silently. **Per-criterion `call_id` is deliberately NOT
+    recorded (P4-D11):** a run makes one judge call per criterion, and matching ids to criteria
+    from an ordered list is the positional fallback T-105 banned. Whoever needs it must thread
+    the id back through the `chat` seam, not collect it side-band.
     """
 
     def _judge_chat(*, system: str, prompt: str, schema: Dict[str, Any]) -> str:
         return _chat_generation(
-            prompt, model, "", timeout=timeout, strip_fences=False,
+            prompt, model, run_id, timeout=timeout, strip_fences=False,
             system=system, schema=schema,
         ).content
 
@@ -357,7 +366,7 @@ class Worker:
         self.worker_ledger.refs_dropped({"run_id": run_id, "refs": refs, "reason": reason})
 
     def _judge_delivered(
-        self, ledger: Ledger, spec: Dict[str, Any], result: Any
+        self, ledger: Ledger, spec: Dict[str, Any], result: Any, run_id: str
     ) -> Dict[str, Any]:
         """Judge the packaged deliverable once (P4-D1), emit `Judged`, return the verdict.
 
@@ -371,7 +380,7 @@ class Worker:
         rubric_id = (spec.get("acceptance") or {}).get("rubric")
         if not rubric_id:
             return {}
-        judge = self._loop_judge or default_judge()
+        judge = self._loop_judge or default_judge(run_id)
         try:
             verdict = judge_deliverable(
                 load_rubric(rubric_id), spec.get("objective", ""),
@@ -431,7 +440,7 @@ class Worker:
                 # P4-T6: how the deliverable was reached, not just that it was.
                 "iterations_trail": _iterations_trail(ledger),
             }
-            judged = self._judge_delivered(ledger, spec, result)
+            judged = self._judge_delivered(ledger, spec, result, run_id)
             if judged:
                 report["judge"] = judged
             ledger.delivered(
