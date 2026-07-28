@@ -39,17 +39,32 @@ _STATE_BY_EVENT: dict[str, str] = {
     "Cancelled": "cancelled",
 }
 
-RUN_EVENTS: frozenset[str] = frozenset(_STATE_BY_EVENT)
+# Run events that carry information without moving the run's public state. Membership of
+# the fold map and membership of the run ledger are ORTHOGONAL, and conflating them put a
+# run event in the worker registry (see below) — so the two are named separately here.
+_NON_FOLDING_RUN_EVENTS: frozenset[str] = frozenset(
+    {
+        # T-112: the input-fit guard could not resolve the model's context ceiling, so it
+        # is not running for this run. The event exists so the guard's ABSENCE is visible
+        # to whoever reads the RUN (`run_status`), never inferred — which is why it is a
+        # run event despite having been filed under WORKER_EVENTS until session 131. It is
+        # emitted on the run ledger (`loop.py`, via `self.ledger`); the old classification
+        # was inert only because nothing asserted it.
+        "ContextLimitUnknown",
+        # P4-T5: the Phase-2 rubric judge's outcome at packaging. Does not fold — the run
+        # is `working` before and after, and a failing judge does NOT block `Delivered`
+        # (S17 gates DPO chosen labels, not delivery; H1 is Claude-gated by design).
+        "Judged",
+    }
+)
+
+RUN_EVENTS: frozenset[str] = frozenset(_STATE_BY_EVENT) | _NON_FOLDING_RUN_EVENTS
 WORKER_EVENTS: frozenset[str] = frozenset(
     {
         "WorkerStarted",
         "WorkerStopped",
         "RetentionPruned",
         "RefsDropped",
-        # T-112: the input-fit guard could not resolve the model's context ceiling, so
-        # it is not running for this run. Informational like RefsDropped — the run
-        # proceeds; the event exists so the guard's ABSENCE is visible, never inferred.
-        "ContextLimitUnknown",
     }
 )
 
@@ -210,6 +225,9 @@ class Ledger:
 
     def context_limit_unknown(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._append("ContextLimitUnknown", payload)
+
+    def judged(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._append("Judged", payload)
 
 
 def fold_state(events: List[Dict[str, Any]]) -> str:

@@ -281,12 +281,19 @@ def test_unknown_acceptance_key_rejected(tmp_path):
     rejects(spec, with_rule=RULE_UNKNOWN_KEY)
 
 
-def test_acceptance_rubric_key_rejected(tmp_path):
-    """acceptance.rubric is a P4 (Phase-2 judge) field, NOT in P2 — it is rejected as unknown,
-    which is how the schema keeps P4 scope out of P2."""
+def test_acceptance_rubric_key_accepted(tmp_path):
+    """acceptance.rubric names the Phase-2 judge rubric. It was REJECTED through P2 — the
+    schema's way of keeping P4 scope out — and P4-T5 is the phase that admits it."""
     spec = a_function_spec(tmp_path)
-    spec["acceptance"]["rubric"] = "x"
-    rejects(spec, with_rule=RULE_UNKNOWN_KEY)
+    spec["acceptance"]["rubric"] = "code-python"
+    accepts(spec)
+
+
+def test_a_run_without_a_rubric_is_still_accepted(tmp_path):
+    """The judge gate is opt-in: omitting the rubric must deliver exactly as it did before P4,
+    so the field's arrival cannot silently make every existing spec judged."""
+    spec = a_function_spec(tmp_path)
+    accepts(spec)
 
 
 def test_p2_rejection_carries_triad(tmp_path):

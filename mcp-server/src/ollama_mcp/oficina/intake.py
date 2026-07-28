@@ -45,13 +45,19 @@ class Context(BaseModel):
 
 
 class Acceptance(BaseModel):
-    """The evaluated-loop acceptance spec (P2). ``rubric`` (Phase-2 judge) is P4, not here."""
+    """The evaluated-loop acceptance spec (P2), plus the P4 judge gate.
+
+    ``rubric`` names an evaluator rubric by id (e.g. ``code-python``); its phase-2 criteria
+    are judged ONCE at packaging (P4-D1). Omitted means no judge runs — the gate is opt-in,
+    and a run without one is delivered exactly as it was before P4.
+    """
 
     model_config = ConfigDict(extra="forbid")
     test_cmd: Optional[str] = None
     test_files: List[str] = Field(default_factory=list)
     validators: List[str] = Field(default_factory=list)
     structural: Optional[str] = None
+    rubric: Optional[str] = None
 
 
 class Budgets(BaseModel):

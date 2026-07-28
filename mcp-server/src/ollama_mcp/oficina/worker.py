@@ -101,6 +101,11 @@ def _chat_generation(
     timeout: int,
     num_predict: Optional[int] = None,
     strip_fences: bool = True,
+    # P4-T5: the judge is the third caller of this one transport (T-95 — per-call transport
+    # is ONE spelling). It is the only one that needs a system prompt and a response schema,
+    # so both are opt-in seams rather than a second transport that would miss calls.jsonl.
+    system: Optional[str] = None,
+    schema: Optional[Dict[str, Any]] = None,
 ) -> GenerationResult:
     """One Ollama chat call → ``GenerationResult`` — the shared generation transport (T-95).
 
@@ -125,6 +130,8 @@ def _chat_generation(
                 timeout=timeout,
                 run_id=run_id,
                 num_predict=num_predict,
+                system=system,
+                format=schema,
                 # T-105: oficina does NOT route through the generate_code MCP tool —
                 # this seam goes straight to the client, so it must self-attribute.
                 # Verdicts for these are per-RUN (via run_result), not per-call.
@@ -140,6 +147,27 @@ def _chat_generation(
         eval_count=resp.eval_count, duration_ms=resp.total_duration_ms,
         call_id=resp.call_id,
     )
+
+
+JUDGE_MODEL = "my-judge-q25c14-16k"
+JUDGE_TIMEOUT_S = 300
+
+
+def default_judge(model: str = JUDGE_MODEL, timeout: int = JUDGE_TIMEOUT_S):
+    """A `chat(system, prompt, schema) -> str` for the judge, on the shared transport.
+
+    The judge persona shares the coder's base (P4-D2), so packaging costs no model swap
+    (`ref:delegate-gpu-policy`). Fences are left alone: the reply is schema-constrained JSON,
+    not code, and stripping is a codegen concern.
+    """
+
+    def _judge_chat(*, system: str, prompt: str, schema: Dict[str, Any]) -> str:
+        return _chat_generation(
+            prompt, model, "", timeout=timeout, strip_fences=False,
+            system=system, schema=schema,
+        ).content
+
+    return _judge_chat
 
 
 def model_context_limit(model: str) -> Optional[int]:
@@ -216,6 +244,7 @@ class Worker:
         proc: Optional[WorkerProc] = None,
         loop_coder=None,
         loop_evaluate=None,
+        loop_judge=None,
     ) -> None:
         self.root = Path(root)
         self.store = Store(root)
@@ -226,6 +255,7 @@ class Worker:
         # P2 loop seams (injected for tests); resolved to the real ones lazily in _run_loop.
         self._loop_coder = loop_coder
         self._loop_evaluate = loop_evaluate
+        self._loop_judge = loop_judge
 
     def _run_ledger(self, run_id: str) -> Ledger:
         """The ledger for one run (the worker owns it post-queue-pop, P1-D6)."""
@@ -294,6 +324,34 @@ class Worker:
         """Record a requested-but-unresolved refs block in the worker ledger (T-96)."""
         self.worker_ledger.refs_dropped({"run_id": run_id, "refs": refs, "reason": reason})
 
+    def _judge_delivered(
+        self, ledger: Ledger, spec: Dict[str, Any], result: Any
+    ) -> Dict[str, Any]:
+        """Judge the packaged deliverable once (P4-D1), emit `Judged`, return the verdict.
+
+        Opt-in: a spec without `acceptance.rubric` is delivered exactly as it was before P4.
+        A failing verdict does NOT block `Delivered` — S17 gates DPO chosen labels, not
+        delivery — and a judge that cannot run at all is reported, never raised, because by
+        this point the deliverable already exists.
+        """
+        from .judge import judge_deliverable, load_rubric
+
+        rubric_id = (spec.get("acceptance") or {}).get("rubric")
+        if not rubric_id:
+            return {}
+        judge = self._loop_judge or default_judge()
+        try:
+            verdict = judge_deliverable(
+                load_rubric(rubric_id), spec.get("objective", ""),
+                result.content, result.drift, judge,
+            )
+        except Exception as exc:  # noqa: BLE001 — the gate reports, it does not fail the run
+            verdict = {"rubric": rubric_id, "passed": False,
+                       "judge_verdict": 0, "criteria": [],
+                       "error": f"judge unavailable: {exc}"}
+        ledger.judged(verdict)
+        return verdict
+
     def _run_loop(self, ledger: Ledger, run_id: str, spec: Dict[str, Any]) -> None:
         """Run the evaluated loop (P2) for a code kind; emit terminal Delivered on success.
 
@@ -335,7 +393,13 @@ class Worker:
                 "iterations": result.iterations_used,
                 "branch": result.branch,
                 "commit": result.best_snapshot,
+                # P4-D3: magnitude, measured for free. Numbers and ranges only — this payload
+                # is paid for in Claude's context on every run_result (P4-D6).
+                "drift": result.drift,
             }
+            judged = self._judge_delivered(ledger, spec, result)
+            if judged:
+                report["judge"] = judged
             ledger.delivered(
                 {
                     "report": report,

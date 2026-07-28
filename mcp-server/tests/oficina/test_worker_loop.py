@@ -11,6 +11,7 @@ assertion kind — rule 3's boundary), and the answer-kind test varies the `give
 The loop path uses a real git repo + real Workspace/Ledger with injected fake coder/evaluate.
 """
 
+
 import subprocess
 
 from ollama_mcp.oficina.ledger import Ledger, fold_state
@@ -92,15 +93,31 @@ def given_a_git_repo(tmp_path):
     return _WorkerRun(tmp_path, _repo(tmp_path), Store(tmp_path / "store"))
 
 
-def when_the_worker_runs_the_loop(on, *, evaluation_yields, coder_writes=GOOD_AREA):
+A_RUBRIC_YAML = "id: tiny\ncriteria:\n  - name: scope\n    phase: 2\n    description: only what was asked\n    scoring:\n      5: yes\n      1: no\n"
+
+
+def when_the_worker_runs_the_loop(
+    on, *, evaluation_yields, coder_writes=GOOD_AREA,
+    judging_with=None, judge_says=None, monkeypatch=None,
+):
     """Submit a function run and let the worker route it through the loop. `evaluation_yields`
-    are the per-iteration evaluations (the C0 baseline, CLEAN, is prepended automatically)."""
+    are the per-iteration evaluations (the C0 baseline, CLEAN, is prepended automatically).
+    `judging_with` names a rubric written into a temp rubrics dir — omitted means no judge,
+    which is how every pre-P4 run behaves."""
+    spec = _function_spec(on.repo)
+    if judging_with:
+        rubrics = on.tmp_path / "rubrics"
+        rubrics.mkdir(exist_ok=True)
+        (rubrics / f"{judging_with}.yaml").write_text(A_RUBRIC_YAML, encoding="utf-8")
+        monkeypatch.setenv("OFICINA_RUBRICS", str(rubrics))
+        spec["acceptance"]["rubric"] = judging_with
     worker = Worker(
         on.tmp_path / "store",
         loop_coder=_coder(coder_writes),
         loop_evaluate=_Evaluate([CLEAN, *evaluation_yields]),
+        loop_judge=(lambda **kw: judge_says) if judge_says else None,
     )
-    on.run_id = _submit(on.store, worker, _function_spec(on.repo))
+    on.run_id = _submit(on.store, worker, spec)
     worker.process_run(on.run_id)
 
 
@@ -123,9 +140,40 @@ def then_it_exhausted_and_folded_to_failed(on):
     assert fold_state(_events(on)) == "failed"
 
 
+A_PASSING_VERDICT = '{"score": 5, "reasoning": "only the requested change"}'
+A_FAILING_VERDICT = '{"score": 1, "reasoning": "unrequested content added"}'
+
+
 def then_the_delivered_deliverable_names_the_run_branch(on):
     delivered = next(e for e in _events(on) if e["event"] == "Delivered")
     assert delivered["payload"]["deliverable"]["branch"] == f"oficina-run-{on.run_id}"
+
+
+def then_it_judged_the_deliverable_without_blocking_delivery(on, *, passed):
+    """P4-T5: Judged is emitted at packaging and Delivered still happens — S17 gates DPO
+    chosen labels, not delivery."""
+    names = _event_names(on)
+    assert "Judged" in names and "Delivered" in names
+    judged = next(e for e in _events(on) if e["event"] == "Judged")
+    assert judged["payload"]["passed"] is passed
+    assert fold_state(_events(on)) == "completed"  # Judged does not fold
+
+
+def then_the_delivered_report_carries_drift_and_the_judge(on):
+    """The report is Delivered-payload-resident (P4-D6), so both ride there or nowhere."""
+    report = next(e for e in _events(on) if e["event"] == "Delivered")["payload"]["report"]
+    assert set(report["drift"]) == {
+        "hunks", "lines_added", "lines_removed", "max_verbatim_run_vs_tests"
+    }
+    assert report["judge"]["rubric"] == "tiny"
+
+
+def then_no_judgement_was_recorded(on):
+    """A run without a rubric is delivered exactly as it was before P4."""
+    assert "Judged" not in _event_names(on)
+    assert "judge" not in next(
+        e for e in _events(on) if e["event"] == "Delivered"
+    )["payload"]["report"]
 
 
 def then_the_worktree_was_torn_down_leaving_the_branch(on):
@@ -149,6 +197,35 @@ def test_function_kind_routes_to_loop_and_delivers(tmp_path):
     run = given_a_git_repo(tmp_path)
     when_the_worker_runs_the_loop(run, evaluation_yields=[CLEAN])
     then_it_ran_the_loop_to_delivered(run)
+
+
+def test_a_rubric_bearing_run_is_judged_at_packaging(tmp_path, monkeypatch):
+    """The judge runs once at packaging and its verdict rides the Delivered report."""
+    run = given_a_git_repo(tmp_path)
+    when_the_worker_runs_the_loop(
+        run, evaluation_yields=[CLEAN], judging_with="tiny",
+        judge_says=A_PASSING_VERDICT, monkeypatch=monkeypatch,
+    )
+    then_it_judged_the_deliverable_without_blocking_delivery(run, passed=True)
+    then_the_delivered_report_carries_drift_and_the_judge(run)
+
+
+def test_a_failing_judge_still_delivers(tmp_path, monkeypatch):
+    """S17 gates DPO chosen labels, not delivery — H1 is Claude-gated, so a low score is
+    information, not a veto."""
+    run = given_a_git_repo(tmp_path)
+    when_the_worker_runs_the_loop(
+        run, evaluation_yields=[CLEAN], judging_with="tiny",
+        judge_says=A_FAILING_VERDICT, monkeypatch=monkeypatch,
+    )
+    then_it_judged_the_deliverable_without_blocking_delivery(run, passed=False)
+
+
+def test_a_run_without_a_rubric_is_not_judged(tmp_path):
+    """The gate is opt-in: P4 must not silently start judging every existing spec."""
+    run = given_a_git_repo(tmp_path)
+    when_the_worker_runs_the_loop(run, evaluation_yields=[CLEAN])
+    then_no_judgement_was_recorded(run)
 
 
 def test_function_kind_exhaustion_folds_to_failed(tmp_path):
