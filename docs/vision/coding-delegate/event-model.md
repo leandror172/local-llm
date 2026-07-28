@@ -37,8 +37,8 @@ breaking P1 clients).
 | `RunSubmitted` | freeze-at-P1 | MCP surface | Spec persisted, run queued (FIFO position in payload) |
 | `IntakeRejected` | freeze-at-P1 | Worker (intake) | Deterministic spec rejection; payload = which rule, terminal |
 | `GenerationStarted` | freeze-at-P1 | Worker | Model + persona resolved; cold-start grace applied here |
-| `GenerationFinished` | freeze-at-P1 | Worker | Payload: eval_count, duration (mirrors calls.jsonl fields) |
-| `Delivered` | freeze-at-P1 | Worker (packaging) | Terminal; payload points at report + deliverable location |
+| `GenerationFinished` | freeze-at-P1 | Worker | Payload: eval_count, duration (mirrors calls.jsonl fields). **+`call_id` (P4-T3, session 131)** — `calls.jsonl` gained `call_id` in T-105, and carrying it here makes the ledger↔calls join **identity-based**. Without it the join is per-`run_id` only, so per-iteration matching is order-based — the positional fallback T-105 banned (*"mislabeled is worse than missing"*). Closes T-99's "revisit the join mechanics at P4" |
+| `Delivered` | freeze-at-P1 | Worker (packaging) | Terminal; payload carries the **report inline** plus the deliverable location. The report is `Delivered`-payload-resident **by design, not in `artifacts/`** — that is what keeps `run_result` answerable after retention prunes the workspace (`service.result()` reads `delivered.get("report")`). **P4 extends the report additively** with the P4-D3 drift metrics (`hunks`, `lines_added`/`lines_removed`, `files_touched`, `max_verbatim_run_vs_tests`) and the judge outcome. Additive payload growth is not a wire break — readers use `dict.get()` — but **compactness is a hard constraint here**: this payload is paid for in Claude's context on every `run_result`, with no pointer indirection to hide behind, so metrics are numbers and ranges and the diff itself is never inlined (reconstructible from the run branch, pinned by `refs/oficina/<run_id>`, T-118 R-D2) |
 | `Failed` | freeze-at-P1 | Worker (any stage) | Terminal; payload = where/whose/what triad |
 | `Cancelled` | freeze-at-P1 | Worker (cooperative) | Terminal; checked between model calls |
 | `AssemblyDone` | **frozen-P2** (T6, session 120) | Worker (assembly) | `{worktree_path, base_commit, test_files_materialized, baseline_failure_count}` — repurposed for P2's non-trivial worktree assembly (P2-D13) |
@@ -48,8 +48,8 @@ breaking P1 clients).
 | `ModelEscalated` | frozen-P2 vocab (emitter exists; **not emitted in the first slice**, P2-D1 no ladder) | Worker (loop) | `{from_tier, to_tier, from_persona, to_persona, reason}` |
 | `Exhausted` | **frozen-P2** (T6, session 120) | Worker (loop) | `{spent, limit_hit, best_attempt_ref}` — maps to public `failed`, best attempt attached (NOT Delivered) |
 | `ContextLimitUnknown` | **frozen-P2** (T-112, session 129) | Worker (loop) | `{model}` — the input-fit guard could not resolve the model's `num_ctx`, so it is NOT running for this run. **Does not fold**: it is absent from `_STATE_BY_EVENT`, so state is unchanged (the documented unknown-name tolerance). Informational sibling of `RefsDropped`, but on the **run** ledger rather than the worker ledger, because the point is that the guard's absence is visible to whoever reads the run (`run_status`), never inferred |
-| `JudgePassed` / `JudgeFailed` | draft-P4 | Worker (packaging) | Phase-2 rubric judge at packaging (cadence per V-D7) |
-| `ApprovalRequested` | draft-P4 | Worker (post-assembly) | The approval gate (S14) → public state `input_required` |
+| `Judged` | **frozen-P4** (session 131) | Worker (packaging) | `{rubric, model, passed, judge_verdict, criteria:[{name, score}]}` — the Phase-2 rubric judge, run **once at packaging** (P4-D1; `ref:delegate-evidence-dpo` prices it there: *"one judge call per delivered run, not per iteration"*). **Renamed from the drafted `JudgePassed`/`JudgeFailed` pair** to match this file's own built precedent — `IterationEvaluated` carries `passed: bool` rather than splitting into two names, and a pair would need two fold rows doing identical work. **Does not fold** (like `ContextLimitUnknown`): the run is `working` before and after. **`passed: false` does NOT block `Delivered`** — S17 gates *DPO chosen labels*, not delivery, and H1 is Claude-gated by design (`ref:delegate-non-goals`: "not a replacement for Claude's judgment"). `judge_verdict` is the third verdict field, distinct from `auto_verdict` (ledger-only, binary) and `curated_verdict` (per-run, via `run_result`) |
+| `ApprovalRequested` | **draft-P5** (re-tagged session 131, was `draft-P4`) | Worker (post-assembly) | The approval gate (S14) → public state `input_required`. **Moved to P5 so it ships with the verb that resumes it:** `answer_run` is P5, so a P4-built gate could enter a state nothing could clear. P4 ships the `approval_gate` spec key and **rejects `true` at intake** naming P5 — recognized, never silently ignored |
 | `QuestionRaised` | draft-P5 | Worker (any model stage) | Model `blocked` escape → `input_required` |
 | `AnswerReceived` | draft-P5 | MCP surface (`answer_run`) | Resumes the run |
 
@@ -166,8 +166,38 @@ emit `Delivered`.
 > map, and the runs-scan hook. The degraded-delivery framing was a P2-draft idea that did not
 > survive the freeze.
 
-P3–P6 slices (assembly/context requests, judge + approval gate, question channel) are
-vocabulary-only for now — see the table; model them as slices when their phase plan opens.
+## Slice (P4 — modeled session 131, its plan is open)
+
+### Slice: package → measure → judge → deliver
+
+```mermaid
+eventmodeling
+
+tf 28 pcr Worker.DriftMeter
+tf 29 pcr Worker.Judge
+tf 30 evt Run.Judged
+tf 31 pcr Worker.Packager
+tf 32 evt Run.Delivered
+tf 33 rmo Ledger.RunResult
+```
+
+**The two processors are the whole point, and their order is load-bearing.** `DriftMeter` is the
+**mechanical** layer: it measures *magnitude* — hunk count and ranges, lines added/removed, files
+touched, longest verbatim run against the declared `test_files` — which is reference-checkable and
+costs nothing (`evaluator/README.md`: Phase 1 is deterministic, free, no model required). `Judge`
+is the **judging** layer: it classifies *scope* — whether the change matches what was asked — which
+has no reference to check against and is genuinely a judgment.
+
+That split is T-119's resolution (`ref:active-decisions`, session 130): **the free layer surfaces,
+the judging layer classifies.** The alternative — one mechanical detector per observed drift face —
+is a ratchet, because T-119 (content added) and E-D6 (docstring deleted) are two faces of one
+family, *unrequested change*. Measuring first also means the judge is handed numbers rather than
+asked to compute them, which matters on a 7–8B-class rubric judge.
+
+`Judged` does not change public state; `Delivered` remains the terminal the Packager owns (T7).
+
+P3, P5 and P6 slices (assembly/context requests, question channel, flywheel) stay vocabulary-only —
+see the table; model them as slices when their phase plans open.
 
 ---
 
@@ -187,11 +217,21 @@ working sessions); complement, not replacement. Costs: noisy JSON diffs, no buil
 fails git-versionability outright; user-heard complaints corroborated (seat/billing traps,
 AI-credit metering).
 
-**EventCatalog (event-catalog/eventcatalog): watch-item.** Markdown-native event *dictionary*
-(per-event pages: schema, producers, consumers → static docs site; markets itself as docs "for
-AI agents"). Wrong tool for the modeling timeline; plausibly the right tool for documenting
-the frozen vocabulary once P1 ships. Revisit at P4 (delivery-report format) or first external
-consumer.
+**EventCatalog (event-catalog/eventcatalog): watch-item — ANSWERED at P4, still no (session 131).**
+Markdown-native event *dictionary* (per-event pages: schema, producers, consumers → static docs
+site; markets itself as docs "for AI agents"). Wrong tool for the modeling timeline; plausibly the
+right tool for documenting the frozen vocabulary once P1 ships. The trigger fired — P4 is the
+delivery-report phase — so it is answered rather than left standing.
+
+**Verdict: no, and the trigger is re-armed rather than retired.** Three reasons. (1) The vocabulary
+is **17 events in one table** that fits on a screen; a static site per event would be a strictly
+worse index than the table plus this file's freeze-ladder column. (2) There is still **no external
+consumer** — the second half of the original trigger never fired, and every reader is either this
+repo or an agent that greps markdown. (3) The delivery report is a **per-run narrative**, not an
+event schema, so P4 did not create the need the tool serves.
+**Re-armed trigger, now the only one:** a **first external consumer** — a second repo or a
+non-Claude client reading this vocabulary. Volume alone should not re-open it; a bigger table is
+still a table.
 
 **evml (lgazo/event-modeling-tools): watch-item.** Purpose-built event-modeling DSL with VS
 Code/Obsidian plugins — exactly the right notation, but early-stage (13 stars, no releases);

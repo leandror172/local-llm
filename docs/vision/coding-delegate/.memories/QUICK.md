@@ -116,9 +116,23 @@ label). Keep under 30 lines.*
   still reported `passed`/`auto_verdict: 2`/Delivered; tests-green ≠ deliverable-good. **E-D6
   corrected to 5-for-6** (a small-file run preserved the docstring; every deletion has been on a
   large file). Findings: `ref:oficina-ctx-overflow`.
-- **Next:** (1) **Axis B kinds reconsideration** (fed by Axis A: language axis proven, taxonomy
-  trigger for E-D8 rename + dead `acceptance.validators` removal). (2) **T-119** contamination
-  check — decide which of the three candidate detections. (3) T-93 refs-diagram verdict;
+- 2026-07-27 (session 131): **P4 PLAN AUTHORED + REGISTER FROZEN** (`docs/plans/oficina-p4-judge-gate.md`,
+  P4-D1–D7); build started on `feature/oficina-p4-judge-gate`, **T1 = this file's revision**.
+  Sequencing decided **P4 before P3** (phasing permits it; T-119 has owner P4 and no other owner).
+  Judge = **once at packaging** on a **same-base** persona (`ref:delegate-gpu-policy` zero-swap beat
+  the roomier 8B/32K `my-codegen-q3`, whose fit advantage was 1 file in 27). `auto_verdict` **kept**
+  — a proposal to retire it as redundant with `passed` was reversed: first principle 8 and
+  `ref:delegate-evidence-dpo` make it *deliberately* the gameable signal S17 gates, and
+  `IterationEvaluated` is frozen wire format. **T-119 is the gate that was specified and never
+  built**, not a new mechanism. Events: `JudgePassed`/`JudgeFailed` collapsed to **`Judged{passed}`**
+  (matches `IterationEvaluated`'s built precedent); `ApprovalRequested` **re-tagged draft-P5** so it
+  ships with `answer_run`, the verb that resumes it. **Measured:** the delegate can edit only
+  **21/27** files on the 16K coder (optimistic) — `loop.py`/`parser.py`/`intake.py`/`evaluator.py`
+  are out of reach there (32K persona still reaches them, slowly); `ref:oficina-feasibility-band-measured`.
+- **Next:** (1) **P4 build** — T3 (`call_id` through `GenerationResult`, closing T-99's join
+  revisit), then T4 drift metrics → T5 judge → T6 report. (2) **Axis B kinds reconsideration**
+  (fed by Axis A: language axis proven, taxonomy trigger for E-D8 rename + dead
+  `acceptance.validators` removal). (3) T-93 refs-diagram verdict;
   T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`/`OFICINA_GO`). Standing: T-102 gate
   busy-check (G-D8); T-111 cancel gap; T-118 run-provenance convention; prefix-reuse tracking via
   `.claude/tools/ollama-cache-report.py`; harden write-model corpus IF a real edit run drops
