@@ -1,8 +1,9 @@
 # oficina P4 — Judge gate + delivery report (plan)
 
-**Status:** REGISTER FROZEN (session 131, 2026-07-27) — P4-D1…P4-D7 all decided with the user.
-Run spec delta, acceptance and build steps remain to be written. Sequencing decided this session:
-**P4 before P3**, see § "Why P4 before P3".
+**Status:** BUILT + ACCEPTED (session 131, 2026-07-27/28) — T1–T9 complete, acceptance A1–A6 all
+pass, PR #86 open. **P4-D1…P4-D7 frozen; P4-D8…P4-D10 OPEN** — three design forks raised by the
+post-build code review (2026-07-28), recorded at the end of the decision register. Sequencing
+decided in session 131: **P4 before P3**, see § "Why P4 before P3".
 
 **Two decisions were reversed during the walk-through, both by reading upstream docs rather than
 by new evidence** — recorded because the reversals are the plan's most useful content: **P4-D2**
@@ -101,7 +102,7 @@ actually blocks a decision.
 ---
 
 <!-- ref:delegate-p4-decisions -->
-## Decision register (P4-D) — ALL OPEN
+## Decision register (P4-D) — D1–D7 FROZEN, D8–D10 OPEN
 
 Each entry states the fork, the constraints that bound it, and a recommendation. Freeze on
 review with the user; house rule is reverse-only-with-new-evidence once frozen.
@@ -325,6 +326,96 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
   and is `freeze-at-P1` (`ref:delegate-event-model`), and P2 already ships rule-based failure
   classification. P4 formats what exists. Extending classification in the phase that owns
   *reporting* is how a reporting layer grows a second brain.
+
+### Post-build review (2026-07-28) — three findings that are DESIGN forks, not defects
+
+A full-branch review after T9 raised 13 findings. Ten are ordinary defects with obvious remedies
+and are tracked as build follow-ups. **Three are decisions this register never took** — recorded
+here rather than settled inside a fix commit, because a register amended silently by fixes stops
+recording what was decided and starts recording what survived. That is the drift P4-D6 already
+caught once. **All three are OPEN; P4-D8 must be resolved before P4-D10.**
+
+- **P4-D8 — The report's second number: `judge_verdict` as a mean, as a min, or not at all. OPEN.**
+  **The build shipped two summaries of one evidence set, computed by different rules.** `passed` is
+  `_all_criteria_pass` — every criterion ≥ `_PASSING_SCORE`, a **conjunction of gates**.
+  `judge_verdict` is `_mean_score` — an **unweighted arithmetic mean**. Both ride in the same
+  `Judged` payload and the same report, with nothing marking which is authoritative.
+  **Measured on the real criterion shapes:** `scope_adherence 2` beside `objective_met 5` →
+  `passed False`, **`judge_verdict 4`**; the worst expressible case, `scope_adherence 1` beside
+  `objective_met 5`, still yields **`judge_verdict 3`** — exactly `_PASSING_SCORE`. The mean cannot
+  fall below the cut however badly scope is violated, so long as one criterion is clean.
+  **This is the thing P4-D5's own argument rules out.** § RESULTS ¶3 states it directly: *"A single
+  blended quality score would have averaged that into a pass… splitting the question is what makes
+  the gate work."* The split was built — and a blended score was shipped beside it. The incoherence
+  is **test-pinned rather than accidental**:
+  `test_unparseable_output_scores_none_rather_than_guessing` asserts `judge_verdict == 5` on a run
+  whose gate withheld.
+  **Why this is live and not cosmetic:** S17 gates DPO *chosen* labels on judge-passed, and **P6 —
+  the consumer — does not exist yet**, so whichever field the report makes prominent is the one P6
+  will be written against. A P6 pass keying on `judge_verdict >= 3` inverts S17 silently, and
+  nothing in the payload would flag it.
+  *Recommendation:* **make `judge_verdict` the same min-reduction `passed` uses.** The two then
+  cannot disagree by construction, the split-questions property survives into the single number,
+  and payload cost is unchanged. Dropping the field is equally safe but forces P6 to name a
+  criterion set to reduce over; a min keeps the compact signal the report genuinely wants.
+  *Counter-argument, recorded so it is not re-raised:* a mean is the conventional "overall quality"
+  number and matches `evaluate.py`'s `percentage`. That is precisely the **greenfield** framing — an
+  aggregate over independent qualities. P4's question is a **conjunction**, and a conjunction has no
+  average.
+
+- **P4-D9 — The passing cut, and rung 3 of `scope_adherence`. OPEN — this is the plan's own
+  unresolved calibration note, now with a mechanism.**
+  `_PASSING_SCORE = 3`. Rung 3 of `scope_adherence` in `evaluator/rubrics/oficina-edit.yaml` reads:
+  *"The requested change plus a small unrequested edit a reviewer would ask to remove."* **A rung
+  whose own text describes something a reviewer would act on sits above the cut** — so the rubric
+  passes, by its own wording, a weaker instance of the defect class the gate exists to catch, and
+  S17 then marks it a DPO *chosen* label.
+  This is the mechanism behind § RESULTS' carried caveat (*"the pre-T9 probe scored a smaller
+  synthetic leak 3, which would have passed the ≥3 threshold… the threshold survives this evidence
+  but is not proven at the boundary"*). The caveat named the symptom; the review names the cause,
+  and it sits in the **scale text**, not in the number.
+  **The measured band is empty exactly where it matters:** the real leak scored **2**, the real
+  accepted edit **5**. No observed case sits at 3 or 4, so no existing evidence discriminates
+  between the forks below.
+  Forks: **(a)** `_PASSING_SCORE = 4` globally; **(b)** per-criterion cuts (4 for `scope_adherence`,
+  3 elsewhere); **(c)** rewrite rung 3 so it describes something that *should* pass, pushing "a
+  small unrequested edit a reviewer would ask to remove" down to 2.
+  *Recommendation:* **(c) — fix the scale, not the number.** The cut is one value applied to N
+  criteria of different character; the scale is per-criterion and is where the meaning lives. (a)
+  also raises `objective_met`'s bar, where 3 may be legitimately passing; (b) grows a per-criterion
+  table, which is P4-D10's problem rather than this one. (c) is also the only fork that makes the
+  rubric **self-consistent** — a rung describing a defect should not sit above the cut wherever the
+  cut is put.
+  **Cost that must be stated, not discovered later:** scoring-scale text *is* the prompt template
+  (`evaluator/.memories/KNOWLEDGE.md` § "Rubric YAML Format"), so (c) changes judge behaviour and
+  **re-opens A1/A2** — they must be re-measured, not assumed to still hold. That is a real cost. It
+  is not a reason to prefer a threshold tweak, which would leave the contradictory text sitting in
+  the prompt.
+
+- **P4-D10 — Who owns the cut and the weights: the rubric, or `judge.py`. OPEN — resolve *after*
+  P4-D8.**
+  Today the 1–5 scale, the criteria and a `weight: 3.0` per criterion live in the rubric YAML, while
+  the cut (`_PASSING_SCORE`) and the aggregation (`_mean_score`) live in Python — and **`judge.py`
+  never reads `weight` at all**, while `evaluator/lib/evaluate.py:75` *asserts* it is present and
+  aggregates via `weighted_average`. **The same YAML file means two different things to its two
+  readers**, and tuning a weight changes nothing on the oficina path, silently.
+  **This is `ref:corpus-divergence-pattern` in P4's own vocabulary** — two definitions with nothing
+  holding them together, no error possible inside either scope. It is also the one place the build
+  crossed the boundary it declared: *"compose the evaluator, do not reimplement it"* (T-104) was
+  honoured for rubric loading and for prompts, and **aggregation was re-derived with different
+  semantics.**
+  Forks: **(a)** keep the cut in code and **delete** the dead `weight` fields; **(b)** move the cut
+  into the rubric (`passing_score:`) and honour `weight` in `judge.py`; **(c)** honour `weight`,
+  keep the cut in code.
+  **P4-D8 collapses most of this fork.** If `judge_verdict` becomes a min, there is no weighted
+  aggregate anywhere on the oficina path, `weight` is unambiguously dead, and **(a)** is the answer
+  — delete the fields with an in-file note that `weight` is meaningful only to `evaluate.py`'s
+  benchmark path and that the oficina judge is a conjunction of gates, not a weighted average.
+  **Keeping a field no reader honours *is* the divergence.**
+  *Recorded against (b):* a `passing_score:` key is defensible in `oficina-edit.yaml`, which is
+  oficina-specific — but it would have to be **optional with a code default**, because `code-python`
+  is shared with the Layer-4 benchmark suite and must not grow a field it has no use for. That is
+  the same constraint that produced a separate rubric file in the first place.
 <!-- /ref:delegate-p4-decisions -->
 
 ---
