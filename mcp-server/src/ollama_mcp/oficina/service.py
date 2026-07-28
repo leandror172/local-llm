@@ -39,10 +39,28 @@ _PHASE_BY_EVENT = {
     "FreshStart": "looping",
     "ModelEscalated": "looping",
     "Exhausted": "failed",
+    # P4-T5: the judge runs at packaging, so reaching it means the loop is done and the
+    # deliverable is being wrapped. `Judged` fires when judging COMPLETES, so this names the
+    # phase the run reached, not a window during which it was judging — narrating that would
+    # need a `JudgeStarted`, i.e. new event vocabulary, which the event model owns.
+    "Judged": "packaging",
     "Delivered": "delivered",
     "Failed": "failed",
     "Cancelled": "cancelled",
 }
+
+# Run events that deliberately do NOT move the phase. Declared rather than merely absent: a
+# missing entry and an intentionally-neutral one look identical to `fold_phase`, which tolerates
+# unknown names silently — so without this the next event to be forgotten is forgotten quietly.
+# `_phase_map_covers_every_run_event` pins the two sets against `ledger.RUN_EVENTS`.
+_PHASE_NEUTRAL_EVENTS = frozenset(
+    {
+        # T-112: informational — it says the input-fit guard could not resolve a ceiling and is
+        # therefore off. It reports a capability, not progress, so the run's phase is whatever
+        # it already was.
+        "ContextLimitUnknown",
+    }
+)
 
 
 class SpecShapeError(Exception):

@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from .evaluator import LANGUAGES, attributable_failures, diff_touches_test_files
-from .errors import ContextBudgetError
+from .errors import WHOSE_BY_LIMIT, WHOSE_SYSTEM, ContextBudgetError, triad
 from .intake import Budgets, resolve_language
 from .drift import measure
 from .parser import ParsedFailure, category_for
@@ -123,19 +123,17 @@ def _exhaustion_triad(limit_hit: str) -> Dict[str, str]:
 
     - ``exhausted``       — the coder had its budget and did not converge → the MODEL's
     - ``timeout``         — wall-clock ran out around it → the ENVIRONMENT's
-    - ``context_budget``  — the target could not fit the window → the PAYLOAD's, matching the
-      attribution T-112 already chose for the same condition at iteration 1
+    - ``context_budget``  — the target could not fit the window → the PAYLOAD's
+
+    The mapping itself lives in `errors.py` beside `TriadError`, not here: `context_budget` is
+    the same condition `ContextBudgetError` names when iteration 1 raises rather than exhausts,
+    and the two used to state it independently — on adjacent lines of `run()`, in two modules.
     """
-    whose = {
-        "exhausted": "model",
-        "timeout": "environment",
-        "context_budget": "payload",
-    }.get(limit_hit, "system")
-    return {
-        "where": "loop",
-        "whose": whose,
-        "what": f"budget exhausted: {limit_hit}",
-    }
+    return triad(
+        "loop",
+        f"budget exhausted: {limit_hit}",
+        WHOSE_BY_LIMIT.get(limit_hit, WHOSE_SYSTEM),
+    )
 
 
 def _attempt_as_diff(baseline: str, attempt: str) -> str:

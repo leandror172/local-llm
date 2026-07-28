@@ -22,6 +22,7 @@ from typing import Any, Callable, Dict, Optional
 from ollama_mcp.client import OllamaTimeoutError
 
 from .config import default_root, load_retention_config
+from .errors import WHOSE_MODEL, WHOSE_SYSTEM, triad
 from .fifo import Fifo
 from .intake import LOOP_KINDS, check_intake
 from .ledger import Ledger
@@ -56,10 +57,14 @@ def worker_argv() -> list[str]:
 
 
 def _failure_triad(stage: str, exc: Exception) -> Dict[str, Any]:
-    """Build a where/whose/what triad for a Failed event."""
+    """A triad for an exception that does not carry one of its own.
+
+    A `TriadError` is forwarded verbatim by the caller; this classifies everything else, using
+    the vocabulary `errors.py` owns rather than a second spelling of it.
+    """
     model_faults = (OllamaTimeoutError,)
-    whose = "model" if isinstance(exc, model_faults) else "system"
-    return {"where": stage, "whose": whose, "what": f"{type(exc).__name__}: {exc}"}
+    whose = WHOSE_MODEL if isinstance(exc, model_faults) else WHOSE_SYSTEM
+    return triad(stage, f"{type(exc).__name__}: {exc}", whose)
 
 
 def _resolve_model(spec: Dict[str, Any], kind: str, srv) -> str:
