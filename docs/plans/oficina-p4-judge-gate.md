@@ -297,30 +297,100 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
 
 ## Run spec delta over `ref:delegate-run-spec`
 
-TO BE WRITTEN at freeze — depends on P4-D1 (cadence field), P4-D4 (gate/auto-proceed field) and
-P4-D5 (`judge_verdict` field).
+**Two fields, and one existing field becomes load-bearing.** P4 is mostly *activation*, not new
+surface: it plugs in two sockets P1/P2 deliberately left unplugged — `input_required` (zero
+occurrences in the oficina source) and `acceptance.rubric` (already in the draft run spec;
+`intake.py:48`'s docstring reads *"`rubric` (Phase-2 judge) is P4, not here"*).
 
-## Acceptance
+```yaml
+acceptance:
+  rubric: <evaluator rubric>   # EXISTING field, becomes load-bearing (P4-D1: runs once at packaging)
+judge_model: auto | <persona>  # NEW. `auto` derives the same-base judge for the resolved coder
+                               #      (P4-D2 zero-swap); mirrors the existing `model:` shape
+approval_gate: false | true    # NEW. Default false (P4-D4: opt-in, single-worker FIFO starvation)
+```
 
-TO BE WRITTEN at freeze, from `ref:delegate-phasing` § P4 made concrete. Anchor candidate: the
-T-119 run is replayable from `refs/oficina/dy-Bi1nMo5LIqnpzrtXRTw` (`cd852fa`), so P4's
-acceptance can be stated against a **real** defective deliverable rather than a synthetic one —
-the delivery report for that run must make the leak visible to a reader without a detector
-firing.
+**Cadence is deliberately NOT a field.** P4-D1 fixes it at once-at-packaging, and
+`ref:delegate-evidence-dpo` prices it there (*"integrity costs one judge call per delivered run,
+not per iteration"*). A knob would invite per-iteration judging, whose cost the evidence already
+rejected. **Design check for the build: if this delta grows, that is the signal P4 is designing
+past its phase.**
 
-## Build steps
+Nothing in P4-D3 (report metrics), P4-D5 (`judge_verdict`), P4-D6 (report location) or P4-D7
+(failure formatting) touches the spec — they are event, artifact and report concerns.
 
-TO BE WRITTEN at freeze (TDD-ordered, like P1's T1–T10 and P2's build steps). Two are already
-fixed by process rather than by choice:
+## Acceptance (from `ref:delegate-phasing` § P4, made concrete)
 
-- **T1 must be "revise `event-model.md`, then promote."** That file states its own protocol:
-  *"Each phase plan revises this artifact first, then promotes its events to frozen."* P4's
-  promotions are `JudgePassed` / `JudgeFailed` and `ApprovalRequested` (all currently `draft-P4`),
-  plus whatever payload P4-D3's metrics and P4-D5's `call_id` threading imply. Adding events is
-  safe by design — the envelope spec requires folds to tolerate unknown event names, which is
-  exactly what lets draft events land without breaking P1 clients.
-- **A `create-persona` step for the same-base judge** (P4-D2), `--num-ctx 16384` per the s127
-  VRAM finding.
+**A1 — the real defective deliverable, replayed.** The T-119 run is reachable at
+`refs/oficina/dy-Bi1nMo5LIqnpzrtXRTw` (`cd852fa`), so acceptance runs against a *measured* defect
+rather than a synthetic one. Required: the delivery report makes the leak legible to a reader —
+a large addition hunk and `max_verbatim_run_vs_tests` ≈ 77 against a legitimate baseline of 4 —
+**with no detector firing**, and the judge classifies the change as out of scope.
+
+**A2 — the negative control, and it is not optional.** On a clean run (s126's baseline: a
+246-line module, 2+/2− diff, 24 siblings byte-intact) the same metrics must be quiet and the
+judge must pass. This is first principle 6 made testable: *"A signal that fires unconditionally
+carries zero bits."* A1 without A2 would accept a report that always cries drift.
+
+**A3 — events fold, and old clients survive.** `JudgePassed`/`JudgeFailed` and
+`ApprovalRequested` appear in the ledger and fold to the right public state; a P1-era fold
+tolerating unknown event names is exercised, per the envelope's forward-compatibility rule.
+
+**A4 — the report outlives the workspace.** After a retention prune, `run_result` still resolves
+the report (`ref:delegate-event-model`'s `RunResult` constraint, V-D9). Guards the D6 split from
+a pruner that orphans `report.md`.
+
+**A5 — S17 has something to gate on.** The packaged iteration carries a `judge_verdict` distinct
+from `auto_verdict` and `curated_verdict`, and — per the T-99 revisit — the ledger↔calls join
+resolves by `call_id` rather than by order.
+
+**A6 — failure path.** An exhausted run's report states where/whose/what from the existing
+`Failed` payload, with the best attempt attached (`Exhausted` maps to public `failed`, **not**
+`Delivered` — the s124 correction in `ref:delegate-event-model`).
+
+### OPEN — surfaced while writing A3: the gate can pause but nothing can resume it
+
+P4-D4 builds `input_required`, but the only mechanism that clears it, `answer_run`, is **P5**
+(`ref:delegate-mcp-surface`). So as decided, P4 can enter a state it cannot leave. Three ways
+out, none chosen — **this needs a call before the gate is built**:
+
+- **(a) Ship the field, defer the state.** `approval_gate` is accepted and validated at intake but
+  rejected as unsupported until P5. Honest, keeps P4 small, and costs nothing since the default is
+  `false`. Leaves S14 unfulfilled another phase.
+- **(b) Pull a minimal resume forward** — an `approve_run(run_id)` narrower than `answer_run`
+  (no payload, just proceed/abort). Small, but it puts a second resume verb on the MCP surface
+  that P5 must then reconcile with `answer_run`.
+- **(c) Pull `answer_run` itself forward** from P5. Cleanest vocabulary, largest scope increase,
+  and it drags the `blocked` schema-union question with it.
+
+Leaning **(a)**: D4 already accepted that an opt-in gate may never be opted into, and the payload
+is thin until P3 makes assembly derive context. Building an unresumable state to satisfy a
+default-off flag is the worse trade.
+
+## Build steps (TDD-ordered — NOT started; awaiting explicit go-ahead)
+
+Two standing conventions govern the whole sequence:
+
+- **Compose the evaluator, do not reimplement it.** Phase 2 rubric judging already exists in
+  `evaluator/lib/benchmark.py` (one criterion per call). T-104's lesson is exactly this class of
+  mistake — *"oficina composes the ollama-bridge tools; it does not reimplement them"*, where
+  `loop.py`'s bespoke `write_text` silently dropped `patch_file`. The judge stage consumes the
+  evaluator as-is, per `ref:delegate-architecture`.
+- **Inject the judge behind a seam, like `GenerateFn`.** P2 made the coder an injected callable so
+  the loop is testable without a GPU, and T-112 did the same for `/api/show`. The judge gets the
+  same treatment, so every step below has network-free tests.
+
+| Step | Delivers | Notes |
+|---|---|---|
+| **T1** | Revise `event-model.md`; promote `JudgePassed` / `JudgeFailed` / `ApprovalRequested` from `draft-P4` | **Fixed by process, not choice** — that file states its own protocol: *"Each phase plan revises this artifact first, then promotes its events to frozen."* Adding events is safe by design: the envelope requires folds to tolerate unknown event names, which is what lets these land without breaking P1 clients |
+| **T2** | The same-base judge persona | `create-persona`, `--num-ctx 16384` per the s127 VRAM finding. Infra, not code; blocks live runs, not tests (T1 seam) |
+| **T3** | `call_id` threaded through `GenerationResult` | Small, independent, and it closes T-99's deferred join question + the T-105 positional-fallback hazard. Early because nothing depends on it and it de-risks A5 |
+| **T4** | The four P4-D3 metrics computed at packaging | `hunks`, `lines_added/removed`, `files_touched`, `max_verbatim_run_vs_tests`. Reuses `_previous_attempt_view`'s diff; inputs already in scope at `loop.py:384` |
+| **T5** | Judge invocation at packaging + `JudgePassed`/`JudgeFailed` + `judge_verdict` recorded | Depends on T1 (events) and T2 (persona for live runs) |
+| **T6** | `report.md` artifact + `RunResult` payload carrying T4's metrics and a pointer | Depends on T4 and T5. Must satisfy A4 (survives pruning) |
+| **T7** | Failure-report formatting from the existing `Failed` payload | Format only (P4-D7). No new classification |
+| **T8** | Approval gate (`input_required`, `ApprovalRequested`, `approval_gate` field) | **BLOCKED on the open acceptance question** — as decided, P4 can enter `input_required` and nothing can clear it (`answer_run` is P5). Resolve (a)/(b)/(c) before starting |
+| **T9** | Acceptance A1 + A2 against the replayed T-119 run | A2 (the negative control on a clean run) is not optional — first principle 6 |
 
 **Carried watch-item, due here:** `event-model.md`'s medium-decision record parks **EventCatalog**
 with *"Revisit at P4 (delivery-report format) or first external consumer."* P4 is that revisit.
