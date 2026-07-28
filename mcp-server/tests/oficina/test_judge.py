@@ -24,7 +24,7 @@ A_RUBRIC = {
 }
 
 AN_OBJECTIVE = "Add a double() helper. Change nothing else."
-A_DELIVERED_FILE = "def double(x):\n    return x * 2\n"
+A_CHANGE_DIFF = "--- committed\n+++ delivered\n@@ -1,0 +1,2 @@\n+def double(x):\n+    return x * 2\n"
 SOME_DRIFT = {"hunks": [[1, 2]], "lines_added": 2, "lines_removed": 0, "max_verbatim_run_vs_tests": 0}
 
 
@@ -71,7 +71,7 @@ def test_every_phase_2_criterion_gets_its_own_call():
     phase-1 criteria are the deterministic layer's job, never the judge's."""
     chat = _FakeChat(_scored(5), _scored(4))
 
-    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_DELIVERED_FILE, SOME_DRIFT, chat)
+    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert len(chat.calls) == 2  # the two phase-2 criteria, not the phase-1 one
     assert [c["name"] for c in result["criteria"]] == ["correctness", "scope"]
@@ -82,7 +82,7 @@ def test_the_judge_is_handed_the_drift_numbers():
     judge's context on arithmetic it is worse at than the deterministic pass."""
     chat = _FakeChat(_scored(5), _scored(5))
 
-    judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_DELIVERED_FILE, SOME_DRIFT, chat)
+    judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert "lines_added" in chat.calls[0]["prompt"]
     assert "max_verbatim_run_vs_tests" in chat.calls[0]["prompt"]
@@ -92,7 +92,7 @@ def test_a_low_score_fails_the_gate():
     """`passed` is the S17 signal. Any criterion below 3 withholds it."""
     chat = _FakeChat(_scored(5), _scored(2))
 
-    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_DELIVERED_FILE, SOME_DRIFT, chat)
+    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert result["passed"] is False
 
@@ -101,7 +101,7 @@ def test_all_criteria_at_or_above_three_pass_the_gate():
     """The negative control for the one above — the gate must be able to say yes."""
     chat = _FakeChat(_scored(3), _scored(5))
 
-    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_DELIVERED_FILE, SOME_DRIFT, chat)
+    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert result["passed"] is True
     assert result["judge_verdict"] == 4
@@ -112,7 +112,7 @@ def test_a_broken_judge_call_degrades_to_a_report():
     delivered by the time it speaks."""
     chat = _FakeChat(RuntimeError("model exploded"), _scored(5))
 
-    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_DELIVERED_FILE, SOME_DRIFT, chat)
+    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert result["criteria"][0]["score"] is None
     assert "model exploded" in result["criteria"][0]["reasoning"]
@@ -123,7 +123,7 @@ def test_unparseable_output_scores_none_rather_than_guessing():
     say so — the T-105 rule that mislabeled beats missing only in the wrong direction."""
     chat = _FakeChat("not json at all", _scored(5))
 
-    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_DELIVERED_FILE, SOME_DRIFT, chat)
+    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert result["criteria"][0]["score"] is None
     assert result["judge_verdict"] == 5  # the one criterion that did score

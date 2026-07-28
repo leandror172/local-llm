@@ -4,7 +4,7 @@
 
 ## Status
 
-Operational. 7 rubrics (Go, Python, Java, Shell, general, classification, writing),
+Operational. 8 rubrics (Go, Python, Java, Shell, general, classification, writing, oficina-edit),
 **5–6 weighted criteria each**, split across `phase: 1` / `phase: 2`.
 Phase 1 validators for Go, Shell, Python, Java, JSON schema. Phase 2 LLM judge working.
 Used in Layer 4 benchmark runs; results in `evaluator/results/`.

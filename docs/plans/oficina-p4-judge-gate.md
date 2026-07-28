@@ -408,7 +408,56 @@ so it ships in the same phase as the verb that resumes it. `event-model.md` exis
 this — *"the place where event vocabulary churns cheaply — BEFORE names hit the wire."*
 Accordingly **A3 covers the judge events only**, and the gate's acceptance moves to P5.
 
-## Build steps (TDD-ordered — NOT started; awaiting explicit go-ahead)
+<!-- ref:delegate-p4-results -->
+## RESULTS — T9 acceptance PASSED, and it changed the design (session 131)
+
+Run against the **real** defect, not a synthetic one: `refs/oficina/dy-Bi1nMo5LIqnpzrtXRTw`
+(`cd852fa`) was still reachable, and its run directory had survived retention — so the replay
+used the **actual objective**, which had said *"Keep every existing function, constant, import
+and comment byte for byte."*
+
+| | drift | `scope_adherence` | `passed` |
+|---|---|---|---|
+| **A1** — the T-119 leak | `max_verbatim_run_vs_tests: 78`, `+114/−1`, hunks `[[20,20],[72,184]]` | **2** — "substantial unrequested content added" | **False** ✅ |
+| **A2** — a real accepted edit (`r5qHxH2Cgh…`) | `max_verbatim_run_vs_tests: 1`, `+36/−26`, 7 hunks | **5** — "only the requested change" | **True** ✅ |
+
+**Three findings, in the order they arrived.**
+
+**1. T-119's prediction was exactly right: the unmodified `code-python` rubric PASSES the leak.**
+Scored **5/5 on every criterion**, `judge_verdict: 5`. Worse than missing it — `completeness: 5`
+justified itself as *"self-contained, runnable, and includes a usage example"*, where the "usage
+example" **is** the 78 lines of pasted acceptance tests. The rubric rewarded the defect. This is
+why `evaluator/rubrics/oficina-edit.yaml` exists: kept separate from `code-python` because that
+rubric is shared with the Layer-4 benchmark suite, where a greenfield output has no prior scope
+to adhere to, so adding the criterion there would retroactively change benchmark scoring.
+
+**2. The judge must be shown the CHANGE, not the RESULT — measured, not assumed.** With a scope
+criterion added but the *delivered file* in the prompt, the judge still scored **5** and wrote
+*"contains only the requested change"* about a file with 114 added lines. The drift metrics were
+present and ignored. Shown the **unified diff** instead — same judge, same persona, same metrics,
+same criterion — it scored **2**. A comparative question is unanswerable from one side of the
+comparison: the model reasons about the artifact it can see, which looks perfectly fine, and
+treats the numbers as background. **The diff is also ~33% cheaper** (1,312 vs 2,293 tokens), so
+accuracy and cost point the same way — the same trade T-120 found for the coder's previous
+attempt, rediscovered for a different consumer.
+*This invalidated a P4 assumption made at freeze:* that handing the judge measured numbers could
+substitute for the second artifact (T-119 §(iii) had flagged the context cost of both files;
+the answer turned out to be a diff, which is neither).
+
+**3. The gate discriminates, which is what A2 is for.** A2 is not a trivial change — 36
+insertions, 26 deletions, 7 hunks — and still scored 5. The judge is reading the diff against the
+objective, not reacting to size. And on A1 the two criteria stayed **independent**:
+`scope_adherence: 2` alongside `objective_met: 5`, because the run *did* correctly add the
+requested helper *and* pasted the tests. A single blended quality score would have averaged that
+into a pass; splitting the question is what makes the gate work.
+
+**Calibration note carried from T2's probe:** the pre-T9 probe scored a smaller synthetic leak
+**3**, which would have passed the ≥3 threshold. On the real leak with the diff prompt the score
+is **2**. The threshold survives this evidence but is not proven at the boundary — a leak scored
+3 would still pass, so the next real drift incident is worth checking against it.
+<!-- /ref:delegate-p4-results -->
+
+## Build steps (TDD-ordered — T1–T9 COMPLETE, session 131)
 
 Two standing conventions govern the whole sequence:
 

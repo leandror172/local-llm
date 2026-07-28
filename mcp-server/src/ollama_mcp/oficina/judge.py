@@ -56,18 +56,21 @@ def _rubrics_dir() -> Path:
 def judge_deliverable(
     rubric: Dict[str, Any],
     objective: str,
-    delivered: str,
+    change: str,
     drift: Dict[str, Any],
     chat: Callable[..., str],
 ) -> Dict[str, Any]:
     """Score every phase-2 criterion of `rubric`, one model call each.
+
+    ``change`` is the run's unified diff, NOT the delivered file — see `_judge_user_prompt`
+    for the measurement that decided it.
 
     One criterion per call is the evaluator's own design for reliability at this tier.
     ``chat`` is injected so the pure path needs no GPU: it is called as
     ``chat(system=..., prompt=..., schema=...)`` and returns the model's raw text.
     """
     scored = [
-        _score_criterion(criterion, objective, delivered, drift, chat)
+        _score_criterion(criterion, objective, change, drift, chat)
         for criterion in _phase_2_criteria(rubric)
     ]
     return {
@@ -86,7 +89,7 @@ def _phase_2_criteria(rubric: Dict[str, Any]) -> List[Dict[str, Any]]:
 def _score_criterion(
     criterion: Dict[str, Any],
     objective: str,
-    delivered: str,
+    change: str,
     drift: Dict[str, Any],
     chat: Callable[..., str],
 ) -> Dict[str, Any]:
@@ -94,7 +97,7 @@ def _score_criterion(
     try:
         reply = chat(
             system=_judge_system_prompt(criterion),
-            prompt=_judge_user_prompt(objective, delivered, drift, criterion),
+            prompt=_judge_user_prompt(objective, change, drift, criterion),
             schema=VERDICT_SCHEMA,
         )
         parsed = _parsed_verdict(reply)
@@ -132,17 +135,26 @@ def _judge_system_prompt(criterion: Dict[str, Any]) -> str:
 
 
 def _judge_user_prompt(
-    objective: str, delivered: str, drift: Dict[str, Any], criterion: Dict[str, Any]
+    objective: str, change: str, drift: Dict[str, Any], criterion: Dict[str, Any]
 ) -> str:
-    """What the judge reads: the ask, what came back, and the drift already measured.
+    """What the judge reads: the ask, the CHANGE as a unified diff, and the measured drift.
 
-    The metrics are handed over as NUMBERS rather than recomputed here. The mechanical layer
-    produced them for free (`drift.py`), and this tier reads a number far more reliably than
-    it derives one — which is also why the judge is asked to classify scope, not to measure it.
+    **The diff, not the delivered file — measured, not assumed (P4-T9).** Replaying the real
+    T-119 leak: shown the delivered file plus these same metrics, the judge scored
+    `scope_adherence` **5** and wrote "contains only the requested change" about a file with
+    114 added lines, 78 of them verbatim from its own tests. Shown the diff instead, the same
+    judge, same metrics, same persona scored **2** — "substantial unrequested content added".
+    A comparative question is unanswerable from one side of the comparison; the model reasons
+    about the file it can see, which looks fine, and treats the numbers as background. The diff
+    is also ~33% fewer tokens than the file, so accuracy and cost point the same way (the same
+    trade T-120 found for the coder's previous attempt).
+
+    The metrics stay, as NUMBERS rather than something to recompute: the mechanical layer
+    produced them for free, and this tier reads a number more reliably than it derives one.
     """
     return (
         f"## Objective\n{objective}\n\n"
-        f"## Delivered file\n{delivered}\n\n"
+        f"## What the run actually changed (unified diff)\n{change}\n\n"
         "## Drift already measured (do not recompute)\n"
         f"- hunks: {drift.get('hunks', [])}\n"
         f"- lines_added: {drift.get('lines_added', 0)}\n"

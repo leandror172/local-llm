@@ -94,6 +94,12 @@ class LoopResult:
     # report, gating nothing. The judge classifies whether the drift was in scope; this only
     # says how much there was and where.
     drift: Dict[str, Any] = field(default_factory=dict)
+    # The run's change as a unified diff (P4-T9). Fed to the judge INSTEAD of the delivered
+    # file: shown the after-state it scored a 78-line test leak 5/5 ("contains only the
+    # requested change"); shown the diff it scored the same run 2 ("substantial unrequested
+    # content"). A comparative question needs the comparison — and the diff is ~33% cheaper
+    # than the file. Not put in the report: the payload carries numbers only (P4-D6).
+    change: str = ""
 
 
 def _signature(failures: List[ParsedFailure]) -> tuple:
@@ -409,6 +415,9 @@ class EvaluatedLoop:
                 self._edit_baseline,
                 attempt.content if attempt else "",
                 self._test_sources,
+            ),
+            change=_attempt_as_diff(
+                self._edit_baseline or "", attempt.content if attempt else ""
             ),
         )
 

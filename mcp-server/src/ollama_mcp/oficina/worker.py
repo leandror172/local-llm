@@ -375,7 +375,7 @@ class Worker:
         try:
             verdict = judge_deliverable(
                 load_rubric(rubric_id), spec.get("objective", ""),
-                result.content, result.drift, judge,
+                result.change, result.drift, judge,
             )
         except Exception as exc:  # noqa: BLE001 — the gate reports, it does not fail the run
             verdict = {"rubric": rubric_id, "passed": False,
