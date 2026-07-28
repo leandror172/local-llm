@@ -185,6 +185,56 @@ oficina never becomes a consumer of the registry *shape* — leaving
 undeterminable, since fail-open on a guard forfeits its purpose.
 <!-- /ref:oficina-ctx-overflow-guard -->
 
+<!-- ref:oficina-feasibility-band-measured -->
+## The band, measured across the estate (session 131, T-122)
+
+The section above derives the band and demonstrates it on one file. T-122 asked for the number
+instead of the formula: **what fraction of the estate can the delegate actually edit?**
+
+Method: `.claude/tools/judge-window-sweep.py --pair-tests mcp-server/tests --num-predict 4096`,
+over 27 Python source files (`mcp-server/src/ollama_mcp/**`, `evaluator/lib/*`). It reuses
+`loop.py:_context_overflow`'s arithmetic verbatim — `ceil(len(prompt)/4) + num_predict ≤
+ceiling` — against **live `/api/show` ceilings** rather than `models.yaml`, because the recorded
+numbers drifted (T-113). So a file it calls unreachable is one the shipped guard would refuse.
+
+**Result on the `my-python-q25c14-16k` default: 21/27 reachable — 77.8%.**
+
+That figure is **optimistic**. Thirteen of the 27 files have no paired `test_<stem>.py` and were
+charged a zero tests term; since it is the tests that close the band, every one of those is
+priced below its true cost. Among the 14 files that *do* carry paired tests, 4 are blocked.
+
+```
+15401 tok                 server.py        (size alone, no pairing needed)
+ 6506 tok                 benchmark.py     (size alone)
+ 6220 tok  + tests  7173  loop.py
+ 4020 tok  + tests  4036  evaluator.py
+ 3908 tok  + tests  4200  intake.py
+ 3717 tok  + tests  6777  parser.py
+```
+
+**The blocked set is the finding, not the percentage.** `loop.py`, `parser.py`, `intake.py` and
+`evaluator.py` are oficina's own core modules — **the delegate cannot edit itself where it
+matters.** This retro-explains a pattern nobody had named: every production edit run since s126
+targeted a smaller module, so the envelope has been silently *selecting the work* rather than
+constraining a visible subset of it. The guard (T-112) made the refusal loud; it did not make
+the selection visible, because a run that is never submitted produces no refusal.
+
+**What it re-prices.** T-122's remedy (c) — accept the band, route large edits to Claude — reads
+cheap while the band is a formula. Measured, it concedes roughly a fifth to a quarter of the
+estate *including the delegate's spine*, which is a materially different bargain than "a few big
+files". Remedy (a) (code-anchored for large targets) halves the cost of exactly the blocked set,
+since code-anchoring pays for the file once; the s126 reversal reasoning still applies
+undiminished, so this is a trade, not a free win. Remedy (b) stays blocked on T-113.
+
+**Contrast — the judge side is unconstrained.** The same sweep in judge mode (both artifacts +
+one rubric criterion) fits **27/27** on `my-codegen-q3` (8.2B, 32,768 ctx). The band is a
+*coder* problem specifically, and P4's judge gate does not inherit it (`ref:delegate-p4-decisions`
+§ P4-D2).
+
+**Re-run after T-113** — the sweep reads ceilings live, so the re-probe changes its answer
+without any edit to the tool.
+<!-- /ref:oficina-feasibility-band-measured -->
+
 ## RESULTS — the guard shipped and was accepted live (session 129)
 
 Built as `EvaluatedLoop._context_overflow` + an injected `context_limit_for` seam, fed by
