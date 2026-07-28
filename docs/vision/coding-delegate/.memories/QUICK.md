@@ -129,8 +129,19 @@ label). Keep under 30 lines.*
   ships with `answer_run`, the verb that resumes it. **Measured:** the delegate can edit only
   **21/27** files on the 16K coder (optimistic) — `loop.py`/`parser.py`/`intake.py`/`evaluator.py`
   are out of reach there (32K persona still reaches them, slowly); `ref:oficina-feasibility-band-measured`.
-- **Next:** (1) **P4 build** — T3 (`call_id` through `GenerationResult`, closing T-99's join
-  revisit), then T4 drift metrics → T5 judge → T6 report. (2) **Axis B kinds reconsideration**
+- 2026-07-28 (session 131 cont.): **P4 BUILT + ACCEPTED — T1–T9, suite 340→369, branch
+  `feature/oficina-p4-judge-gate` (unmerged).** T-119 RESOLVED: the gate it was owed exists.
+  Acceptance ran against the **real** leak (the pinned ref AND its run dir survived, so the actual
+  objective was replayed): A1 scores `scope_adherence` 2 / `passed False`, A2 a real accepted edit
+  scores 5 / True — the signal discriminates. A3–A6 run explicitly, 20/20, A5 on live model calls.
+  **Two findings the fix depended on, neither predicted:** the unmodified `code-python` rubric
+  scored the leak **5/5**, its `completeness` criterion calling the pasted tests *"a usage
+  example"* (it rewarded the defect → new `evaluator/rubrics/oficina-edit.yaml`); and **the judge
+  must be shown the DIFF, not the delivered file** — with the file plus metrics it still said
+  "contains only the requested change" (`ref:judge-sees-the-change`). Filed en route: T-125, T-126,
+  T-127, T-128.
+- **Next:** (1) **PR for the P4 branch** (unmerged; consider `/simplify` first). (2) **P3** —
+  context & prompt assembly, now the phase in front. (3) **Axis B kinds reconsideration**
   (fed by Axis A: language axis proven, taxonomy trigger for E-D8 rename + dead
   `acceptance.validators` removal). (3) T-93 refs-diagram verdict;
   T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`/`OFICINA_GO`). Standing: T-102 gate

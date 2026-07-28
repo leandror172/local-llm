@@ -433,16 +433,17 @@ to adhere to, so adding the criterion there would retroactively change benchmark
 
 **2. The judge must be shown the CHANGE, not the RESULT — measured, not assumed.** With a scope
 criterion added but the *delivered file* in the prompt, the judge still scored **5** and wrote
-*"contains only the requested change"* about a file with 114 added lines. The drift metrics were
+*"contains only the requested change"* about a file with 114 added lines; the drift metrics were
 present and ignored. Shown the **unified diff** instead — same judge, same persona, same metrics,
-same criterion — it scored **2**. A comparative question is unanswerable from one side of the
-comparison: the model reasons about the artifact it can see, which looks perfectly fine, and
-treats the numbers as background. **The diff is also ~33% cheaper** (1,312 vs 2,293 tokens), so
-accuracy and cost point the same way — the same trade T-120 found for the coder's previous
-attempt, rediscovered for a different consumer.
+same criterion — it scored **2**, at ~33% fewer tokens.
 *This invalidated a P4 assumption made at freeze:* that handing the judge measured numbers could
-substitute for the second artifact (T-119 §(iii) had flagged the context cost of both files;
-the answer turned out to be a diff, which is neither).
+substitute for the second artifact.
+**Full three-condition measurement and the generalization — which is not about P4 and applies to
+any model asked to review work — extracted to
+`docs/findings/judge-must-see-the-change-2026-07-28.md` ([ref:judge-sees-the-change]).** The
+short form: a diff is a *representation of the change*, metrics are a *summary of the
+representation*; the coder needed the change (T-120) and so does the judge. Neither needed the
+file.
 
 **3. The gate discriminates, which is what A2 is for.** A2 is not a trivial change — 36
 insertions, 26 deletions, 7 hunks — and still scored 5. The judge is reading the diff against the

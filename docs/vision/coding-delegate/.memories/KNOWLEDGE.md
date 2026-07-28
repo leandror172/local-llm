@@ -113,6 +113,39 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
 → harden the corpus, revisit code-anchored. Plan + results: `docs/plans/oficina-p2-edit-mode.md`
 (`ref:oficina-edit-mode`, `ref:oficina-edit-mode-decisions`).
 
+## P4 judge gate — what the code now guarantees (T1–T9) — 2026-07-28
+
+- **The judge runs ONCE at packaging and gates nothing.** `Judged{rubric, model, passed,
+  judge_verdict, criteria[]}` is a **non-folding run event** — the run is `working` before and
+  after, and `passed: false` does NOT block `Delivered`. S17 gates DPO *chosen labels*, not
+  delivery; H1 is Claude-gated by design. A judge that errors, times out or returns unparseable
+  output degrades to a report, because by packaging the deliverable already exists.
+- **Opt-in by `acceptance.rubric`.** No rubric → no judge, and the run delivers exactly as it did
+  before P4. `approval_gate` is recognized but **refused** until P5 supplies `answer_run`; a gate
+  built now could enter `input_required` with nothing able to clear it.
+- **The judge is fed the run's DIFF, not the delivered file** (`LoopResult.change`). Measured,
+  not assumed: with the file plus drift metrics it scored a 78-line acceptance-test leak **5**
+  and wrote "contains only the requested change"; with the diff, **2** — at ~33% fewer tokens.
+  A comparative question is unanswerable from one side of the comparison, and metrics are read as
+  background when they contradict the artifact in view. `ref:judge-sees-the-change`.
+- **oficina composes the RUBRIC and owns the CALL.** The rubric YAML is read as-is; the model call
+  goes through `_chat_generation` (extended with optional `system=`/`schema=`) because per-call
+  transport is ONE spelling (T-95). Composing the evaluator's `run_phase2` would have used its own
+  transport, leaving the judge call with no `calls.jsonl` record, no `run_id` and no `call_id`.
+  Verified: an accepted run logs **two** call records, coder and judge.
+- **A rubric written for greenfield can REWARD an edit defect.** Unmodified `code-python` scored
+  the leaked file 5/5, its `completeness` criterion calling the pasted tests "a usage example".
+  `evaluator/rubrics/oficina-edit.yaml` exists for edit runs and is kept separate, since
+  `code-python` is shared with the Layer-4 benchmark suite where output has no prior scope.
+- **Drift is surfaced, never gated** (`drift.py` → `LoopResult.drift` → the report):
+  `hunks`, `lines_added`/`lines_removed`, `max_verbatim_run_vs_tests`. `files_touched` was
+  specified at freeze and **dropped at build**: the loop writes exactly one file, so it would fire
+  unconditionally (first principle 6). Blank lines are filtered BEFORE matching — `SequenceMatcher`'s
+  `isjunk` stops junk anchoring a match but the winning block still absorbs adjacent junk.
+- **The report is `Delivered`-payload-resident and compactness is a hard constraint** — it is paid
+  for in the caller's context on every `run_result`, with no pointer indirection. `auto_verdict`
+  is surfaced as `tests_passed`; `error_keys` are omitted.
+
 ## LanguagePack — the language axis contract (T-92 Phase 4) — 2026-07-23
 
 - **One algorithm, N packs.** `evaluate()`'s flow (target-presence rule, first-failing-stage

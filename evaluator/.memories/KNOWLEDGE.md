@@ -27,6 +27,25 @@ not code changes.
 **Implication:** Rubric authoring is accessible to non-programmers. The scoring scale
 descriptions are the "prompt template" — they directly influence judge behavior.
 
+## A Greenfield Rubric Can Reward an Edit Defect (2026-07-28, oficina P4-T9)
+
+`code-python` scored a file **5/5 on every criterion** when that file contained 114 unrequested
+added lines, 78 of them copied verbatim out of its own acceptance tests. Its `completeness`
+criterion justified the 5 as *"self-contained, runnable, and includes a usage example"* — the
+"usage example" being the pasted tests.
+
+**Rationale:** the rubric was written to judge *generated* code, which has no prior state, so it
+has no vocabulary for **unrequested** content; extra material reads as thoroughness. Judging an
+**edit** is a different question — did this change only what was asked — and no criterion asked it.
+**Implication:** `evaluator/rubrics/oficina-edit.yaml` judges edit deliverables and is kept
+SEPARATE from `code-python` on purpose: that rubric is shared with the Layer-4 benchmark suite,
+where adding a scope criterion would retroactively change benchmark scoring. A new rubric file is
+the sanctioned extension (see "Rubric YAML Format") — no code change was needed.
+**Second implication, measured the same day:** a judge shown the delivered FILE plus measured
+drift metrics still scored the leak 5; shown the unified DIFF it scored 2, at ~33% fewer tokens.
+Scoring-scale text is the prompt template, but it cannot compensate for the wrong artifact being
+in the prompt. `ref:judge-sees-the-change`.
+
 ## Temperature 0.1 for Deterministic Judging (2026-02)
 
 The LLM judge runs at temperature 0.1 (not 0.0, which some models handle poorly).

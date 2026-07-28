@@ -127,6 +127,18 @@ would fire unconditionally (first principle 6). Gotcha found: `SequenceMatcher`'
 stops junk anchoring a match but the winning block still **absorbs adjacent junk**, so blank
 lines must be filtered BEFORE matching, not marked junk. Suite 340→353.
 
+Session 131 (cont.): **P4 BUILT + ACCEPTED (T1–T9, suite 340→369).** New modules
+`oficina/drift.py` (mechanical metrics) and `oficina/judge.py` (Phase-2 rubric judge at
+packaging, emitting the `Judged` run event). `acceptance.rubric` is now a real schema field
+(rejected through P2 to keep P4's scope out); `approval_gate` is **recognized but refused** until
+P5 adds `answer_run`. `_chat_generation` gained optional `system=`/`schema=` seams so the judge
+uses the ONE transport (T-95) — verified live: an accepted run logs **two** `calls.jsonl` records,
+coder and judge. Ledger registry corrected: `_NON_FOLDING_RUN_EVENTS` now holds
+`ContextLimitUnknown` (which was misfiled under `WORKER_EVENTS` despite being emitted to the run
+ledger) and `Judged`. **The judge is fed the DIFF, not the delivered file** — with the file it
+scored a 78-line test leak 5/5; with the diff, 2, at ~33% fewer tokens
+([ref:judge-sees-the-change]). Acceptance A1–A6 all pass, A5 on real model calls.
+
 ## Deeper Memory -> KNOWLEDGE.md
 
 - **Transport Choice** — stdio over HTTP, rationale
