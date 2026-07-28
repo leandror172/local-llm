@@ -117,14 +117,26 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
   contended (T-102). Against that, T-119 §(ii) records that the existing rubric judge is
   designed for the **7–8B tier, one criterion per call, "for reliability at 7-8B"** — a
   different model class with a different prompt discipline.
-  **The measurement this needs** (the relocated T-122 sweep, scoped): a packaging judge must
-  hold **both** artifacts — the baseline and the delivered file — plus its rubric criterion.
-  Context is the binding constraint on this hardware (T-112, T-122), so the question "does the
-  judge fit?" is answerable and unanswered. Sweep real source files against the candidate judge
-  persona's live `/api/show` ceiling, reusing the `_context_overflow` arithmetic from T-112
-  rather than re-deriving it.
-  *Recommendation:* measure first, then choose. Prior leans same-base-14B on zero-swap grounds,
-  but not before the window number exists.
+  **MEASURED session 131** (`.claude/tools/judge-window-sweep.py`, 27-file Python estate,
+  `loop.py:_context_overflow` arithmetic, live `/api/show` ceilings):
+
+  | Judge candidate | Size | Ceiling | Holds both artifacts + criterion |
+  |---|---|---|---|
+  | `my-codegen-q3` (today's `DEFAULT_JUDGE_MODEL`) | 8.2B Q4 | 32768 | **27/27 — 100%** |
+  | `my-python-q25c14-16k` (same-base, zero-swap) | 14.8B Q4 | 16384 | 26/27 — 96.3% |
+
+  **The fork the phasing doc framed does not survive the numbers.** It assumed the zero-swap
+  same-base judge would be the cheaper resident; in fact the 8B judge carries **twice the
+  window** of the 16K coder default and roughly half the weight footprint, so it is both roomier
+  and lighter. The only file the 14B judge cannot hold (`server.py`, 15,401 tokens) is one the
+  8B holds comfortably. Zero-swap remains a real cost — but it is now a cost paid for a
+  *strictly smaller* window, which inverts the argument phasing made for it.
+  Also relevant: `my-codegen-q3` is a **7–8B-tier model, matching the rubric's own
+  one-criterion-per-call design** (T-119 §(ii)), so the two positions were never actually in
+  tension — they only appeared to be while the tier and the window were conflated.
+  *Recommendation:* **`my-codegen-q3`**, judged at packaging. It is already
+  `evaluator/lib/benchmark.py:58`'s default, so P4 wires an existing declared judge rather than
+  introducing a model role.
 
 - **P4-D3 — What the mechanical layer surfaces. OPEN.**
   The free half of the s130 split. Candidates for the diff summary: lines added/removed, files
