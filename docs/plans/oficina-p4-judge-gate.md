@@ -675,6 +675,35 @@ target does not exist, since the evaluator already runs it with `cwd=worktree`.
 **3**, which would have passed the ≥3 threshold. On the real leak with the diff prompt the score
 is **2**. The threshold survives this evidence but is not proven at the boundary — a leak scored
 3 would still pass, so the next real drift incident is worth checking against it.
+**CLOSED 2026-07-28 by P4-D9:** the cut moved into the rubric as a per-criterion `passing_score`
+of 4, so a leak scoring 3 now **fails**. Re-verified against the real rubric file: `(3, 5)` →
+`passed False`.
+
+### Post-review re-verification of A1–A6 (2026-07-28)
+
+The post-build review changed the gate's arithmetic underneath its own acceptance, so the six
+criteria were re-checked rather than assumed to survive. Suite **369 → 387**.
+
+- **A1 / A2 — re-run against the REAL rubric file**, not the test fixture: A1 `passed False` /
+  `judge_verdict` **2**; A2 `passed True` / **5**. They hold for a stronger reason than arithmetic:
+  `passing_score` never reaches the model (`_judge_system_prompt` renders only `name`,
+  `description` and `scoring`), so **P4-D9 changed zero prompt bytes** — the judge was asked a
+  byte-identical question. The one change that *could* have moved a score, the EOF hunk clamp,
+  only affects deletion markers past the delivered EOF, and A1's markers (`[[20,20],[72,184]]`)
+  all sit inside a 185-line file, so its prompt is byte-identical too.
+- **A3 / A4 / A5 / A6** — event folding, report survival past a prune, the `call_id` join and the
+  failure path are unchanged in mechanism, and their suite forms are green. **A5's claim is
+  strengthened rather than preserved:** judge calls now carry a real `run_id` where they carried
+  `""`, so the join it asserts covers the judge's own records too.
+- **Two behaviours A1–A6 never covered are now pinned:** every terminal reports drift (the
+  `Cancelled` payload did not, and `service.result()` returns that payload verbatim), and an
+  exhausted run narrates its iterations.
+
+**What was NOT re-run: the live model pass.** A5 originally drove real model calls; this
+verification used the suite plus the real rubric file with canned scores. That is sufficient for
+the arithmetic and the wiring, and **structurally blind to prompt content** — a fake `chat` never
+reads the prompt. Neither the judge persona nor the rubric's scale text changed here, which is why
+it was not required; **a live replay is the right gate if either changes again.**
 <!-- /ref:delegate-p4-results -->
 
 ## Build steps (TDD-ordered — T1–T9 COMPLETE, session 131)
