@@ -203,10 +203,16 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
   anti-cheat, which is **the same rule in the opposite direction** (it catches content flowing
   source→tests; the leak flows tests→source).
 
-- **P4-D4 — Approval gate. DECIDED 2026-07-27 — build `input_required`, auto-proceed default ON,
-  gate opt-in per run.**
-  **P4 builds the state, it does not configure an existing one:** `input_required` occurs **zero
-  times** in the oficina source — P2's "declared-but-unreachable" is literal.
+- **P4-D4 — Approval gate. DECIDED 2026-07-27, then AMENDED the same day — the *policy* is
+  decided here, the *state* defers to P5.**
+  **AMENDMENT (a), from writing acceptance A3:** the original decision was "build `input_required`,
+  auto-proceed default ON, gate opt-in per run". Writing A3 exposed that nothing could clear the
+  state — `answer_run` is P5 — so P4 would have built a state it could not exit. P4 now ships
+  `approval_gate` as a recognized key, rejects `true` at intake naming P5, and re-tags
+  `ApprovalRequested` to `draft-P5`. Everything below stands as the *reasoning that fixes the
+  policy* for whenever the state is built; only the build scope shrank.
+  **The state genuinely does not exist yet:** `input_required` occurs **zero times** in the
+  oficina source — P2's "declared-but-unreachable" is literal.
 
   **The binding constraint is queue starvation, not mode.** Assembly runs inside `run()`
   (`loop.py:408`), the FIFO is claim-and-remove (`fifo.py:58`), and there is one worker — so a run
@@ -307,7 +313,9 @@ acceptance:
   rubric: <evaluator rubric>   # EXISTING field, becomes load-bearing (P4-D1: runs once at packaging)
 judge_model: auto | <persona>  # NEW. `auto` derives the same-base judge for the resolved coder
                                #      (P4-D2 zero-swap); mirrors the existing `model:` shape
-approval_gate: false | true    # NEW. Default false (P4-D4: opt-in, single-worker FIFO starvation)
+approval_gate: false           # NEW, recognized-but-not-honoured. `true` is REJECTED at intake
+                               #      naming P5 (P4-D4 amendment (a): the state has no resume verb
+                               #      until answer_run). Fail loud, never silently ignore.
 ```
 
 **Cadence is deliberately NOT a field.** P4-D1 fixes it at once-at-packaging, and
@@ -348,24 +356,27 @@ resolves by `call_id` rather than by order.
 `Failed` payload, with the best attempt attached (`Exhausted` maps to public `failed`, **not**
 `Delivered` — the s124 correction in `ref:delegate-event-model`).
 
-### OPEN — surfaced while writing A3: the gate can pause but nothing can resume it
+### RESOLVED 2026-07-27 — (a) ship the field, defer the state
 
-P4-D4 builds `input_required`, but the only mechanism that clears it, `answer_run`, is **P5**
-(`ref:delegate-mcp-surface`). So as decided, P4 can enter a state it cannot leave. Three ways
-out, none chosen — **this needs a call before the gate is built**:
+Surfaced while writing A3: P4-D4 as frozen would build `input_required`, but the only mechanism
+that clears it — `answer_run` — is **P5** (`ref:delegate-mcp-surface`). P4 would have been able to
+enter a state it could not leave.
 
-- **(a) Ship the field, defer the state.** `approval_gate` is accepted and validated at intake but
-  rejected as unsupported until P5. Honest, keeps P4 small, and costs nothing since the default is
-  `false`. Leaves S14 unfulfilled another phase.
-- **(b) Pull a minimal resume forward** — an `approve_run(run_id)` narrower than `answer_run`
-  (no payload, just proceed/abort). Small, but it puts a second resume verb on the MCP surface
-  that P5 must then reconcile with `answer_run`.
-- **(c) Pull `answer_run` itself forward** from P5. Cleanest vocabulary, largest scope increase,
-  and it drags the `blocked` schema-union question with it.
+**Decision (a):** `approval_gate` ships as a **recognized** spec key. `false` (the default) is
+accepted; `true` is **rejected at intake** with an explicit message naming P5 — so a caller asking
+for a gate is told, rather than having the request silently ignored. That is the same fail-loud
+posture as T-96's `RefsDropped` and T-112's `ContextBudgetError`: the system never quietly does
+less than it was asked.
 
-Leaning **(a)**: D4 already accepted that an opt-in gate may never be opted into, and the payload
-is thin until P3 makes assembly derive context. Building an unresumable state to satisfy a
-default-off flag is the worse trade.
+Rejected: **(b)** a minimal `approve_run` — it puts a second resume verb on the MCP surface that
+P5 must then reconcile with `answer_run`; **(c)** pulling `answer_run` forward — cleanest
+vocabulary but it drags P5's `blocked` schema-union along with it.
+
+**Consequence for T1, recorded in the event model rather than only here:** P4 promotes
+`JudgePassed` / `JudgeFailed` only. **`ApprovalRequested` is re-tagged `draft-P4` → `draft-P5`**,
+so it ships in the same phase as the verb that resumes it. `event-model.md` exists precisely for
+this — *"the place where event vocabulary churns cheaply — BEFORE names hit the wire."*
+Accordingly **A3 covers the judge events only**, and the gate's acceptance moves to P5.
 
 ## Build steps (TDD-ordered — NOT started; awaiting explicit go-ahead)
 
@@ -382,14 +393,14 @@ Two standing conventions govern the whole sequence:
 
 | Step | Delivers | Notes |
 |---|---|---|
-| **T1** | Revise `event-model.md`; promote `JudgePassed` / `JudgeFailed` / `ApprovalRequested` from `draft-P4` | **Fixed by process, not choice** — that file states its own protocol: *"Each phase plan revises this artifact first, then promotes its events to frozen."* Adding events is safe by design: the envelope requires folds to tolerate unknown event names, which is what lets these land without breaking P1 clients |
+| **T1** | Revise `event-model.md`; promote `JudgePassed` / `JudgeFailed`; **re-tag `ApprovalRequested` `draft-P4` → `draft-P5`** | **Fixed by process, not choice** — that file states its own protocol: *"Each phase plan revises this artifact first, then promotes its events to frozen."* Adding events is safe by design: the envelope requires folds to tolerate unknown event names, which is what lets these land without breaking P1 clients. The re-tag is the gate deferral (a) made structural rather than only narrative |
 | **T2** | The same-base judge persona | `create-persona`, `--num-ctx 16384` per the s127 VRAM finding. Infra, not code; blocks live runs, not tests (T1 seam) |
 | **T3** | `call_id` threaded through `GenerationResult` | Small, independent, and it closes T-99's deferred join question + the T-105 positional-fallback hazard. Early because nothing depends on it and it de-risks A5 |
 | **T4** | The four P4-D3 metrics computed at packaging | `hunks`, `lines_added/removed`, `files_touched`, `max_verbatim_run_vs_tests`. Reuses `_previous_attempt_view`'s diff; inputs already in scope at `loop.py:384` |
 | **T5** | Judge invocation at packaging + `JudgePassed`/`JudgeFailed` + `judge_verdict` recorded | Depends on T1 (events) and T2 (persona for live runs) |
 | **T6** | `report.md` artifact + `RunResult` payload carrying T4's metrics and a pointer | Depends on T4 and T5. Must satisfy A4 (survives pruning) |
 | **T7** | Failure-report formatting from the existing `Failed` payload | Format only (P4-D7). No new classification |
-| **T8** | Approval gate (`input_required`, `ApprovalRequested`, `approval_gate` field) | **BLOCKED on the open acceptance question** — as decided, P4 can enter `input_required` and nothing can clear it (`answer_run` is P5). Resolve (a)/(b)/(c) before starting |
+| **T8** | `approval_gate` recognized at intake; `true` **rejected** naming P5 | Reduced by decision (a): the *state* is not built here. Intake-only, no worker change, no new event — the smallest step in the plan. The gate's own acceptance moves to P5 with `answer_run` |
 | **T9** | Acceptance A1 + A2 against the replayed T-119 run | A2 (the negative control on a clean run) is not optional — first principle 6 |
 
 **Carried watch-item, due here:** `event-model.md`'s medium-decision record parks **EventCatalog**
