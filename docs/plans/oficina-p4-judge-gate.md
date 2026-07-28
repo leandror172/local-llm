@@ -362,10 +362,19 @@ possible consumer of `weight`, and D9's per-criterion cut settled the ownership 
   and nothing in the payload would flag it.
   **DECIDED — the min.** It cannot disagree with `passed` by construction, it carries the
   split-questions property into the single number, it stays on the rubric's own 1–5 scale (legible
-  to a human reading the report), and payload cost is unchanged. **`0` when nothing scored:** 0 is
-  already this codebase's "no verdict" sentinel (the judge-error path sets it), it sits provably
-  outside the 1–5 value space — the condition `ref:patterns-code-value-or-error` requires before a
-  sentinel is legitimate — and it matches T-105's *when identity is unknown, stay silent*.
+  to a human reading the report), and payload cost is unchanged. **`0` when ANY criterion is
+  unscored:** 0 is already this codebase's "no verdict" sentinel (the judge-error path sets it), it
+  sits provably outside the 1–5 value space — the condition `ref:patterns-code-value-or-error`
+  requires before a sentinel is legitimate — and it matches T-105's *when identity is unknown, stay
+  silent*.
+  **SHARPENED AT BUILD TIME — the freeze wording would have left the hole open.** This entry first
+  read *"0 when **none** scored"*. `test_unparseable_output_scores_none_rather_than_guessing` shows
+  that is one rung too narrow: with one criterion unparseable and one scoring 5, a min over *the
+  criteria that actually scored* is `min([5]) == 5` — the same 5 the mean reported, on a run whose
+  gate withheld. **The defect was never mean-vs-min; it was that both reduce over a FILTERED
+  subset.** `passed` already fails on any `None`, so the number agrees with it only if an unscored
+  criterion drags the verdict below every cut. Same lesson as the tell above: the unscoreable case
+  belongs in the rule, not in a docstring explaining it away.
   *Rejected — drop the field entirely:* the per-criterion scores are already in the payload, so a min
   is derivable and the field is redundant. But P4's goal text keeps the three verdicts separate *"so
   P6 can gate DPO extraction on the judge **without re-deriving anything**"*, and dropping it forces

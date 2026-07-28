@@ -13,6 +13,13 @@ validators:
   - type: code
     extensions: [.py]
 
+# No `weight:` on these criteria, deliberately (P4-D10). The oficina judge is a CONJUNCTION of
+# per-criterion gates (see `passing_score`), not a weighted average — and no weighting can make an
+# average agree with an AND: with both cuts at 4, ranking (5,3) below (4,4) requires w1 < w2 while
+# (3,5) requires w2 < w1. `weight` is meaningful only to evaluator/lib/evaluate.py's benchmark
+# aggregation, which cannot score this rubric anyway: these criteria consult drift metrics that
+# only oficina's judge prompt supplies. That module ASSERTS `weight` is present, so loading this
+# file through it fails — correctly, but for a misleading reason. This comment is the real one.
 criteria:
   # The T-119 criterion. Measured evidence for the scale below: the run that motivated it
   # shared 78 consecutive verbatim lines with its own acceptance tests, against a legitimate
@@ -28,7 +35,9 @@ criteria:
       max_verbatim_run_vs_tests means acceptance-test content was copied into the source file,
       which is never requested. A hunk far from the requested change, or lines_removed above
       what the objective asked for, means existing content was dropped.
-    weight: 3.0
+    # 4, not the default 3 (P4-D9): rung 3 below describes an edit "a reviewer would ask to
+    # remove", and a rung whose own text names a defect must not sit above the cut.
+    passing_score: 4
     scoring:
       5: "Only the requested change is present; everything else is byte-for-byte intact"
       4: "The requested change plus a trivial incidental edit (whitespace, an import ordering)"
@@ -42,7 +51,8 @@ criteria:
       Does the delivered file actually do what the objective asked, correctly? Scope adherence
       and doing the job are independent — a file can preserve everything and still not implement
       the ask, or implement it perfectly amid unrequested noise.
-    weight: 3.0
+    # 4 for the same reason: rung 3 is "a major stated requirement is missing or wrong".
+    passing_score: 4
     scoring:
       5: "Fully implements the objective, in the file's existing style"
       4: "Implements the objective; a minor stated requirement is missing"

@@ -27,6 +27,18 @@ AN_OBJECTIVE = "Add a double() helper. Change nothing else."
 A_CHANGE_DIFF = "--- committed\n+++ delivered\n@@ -1,0 +1,2 @@\n+def double(x):\n+    return x * 2\n"
 SOME_DRIFT = {"hunks": [[1, 2]], "lines_added": 2, "lines_removed": 0, "max_verbatim_run_vs_tests": 0}
 
+# P4-D9: the cut lives beside the scale it judges. `A_RUBRIC` above declares none, so it
+# exercises the default; this one exercises a rubric that raises its own bar.
+A_RUBRIC_DECLARING_ITS_CUTS = {
+    "id": "oficina-edit",
+    "criteria": [
+        {"name": "scope_adherence", "phase": 2, "description": "only what was asked",
+         "passing_score": 4, "scoring": {5: "yes", 1: "no"}},
+        {"name": "objective_met", "phase": 2, "description": "does the job",
+         "passing_score": 4, "scoring": {5: "yes", 1: "no"}},
+    ],
+}
+
 
 class _FakeChat:
     """Returns canned replies in order and records what it was asked."""
@@ -97,14 +109,14 @@ def test_a_low_score_fails_the_gate():
     assert result["passed"] is False
 
 
-def test_all_criteria_at_or_above_three_pass_the_gate():
+def test_all_criteria_at_or_above_the_cut_pass_the_gate():
     """The negative control for the one above — the gate must be able to say yes."""
     chat = _FakeChat(_scored(3), _scored(5))
 
     result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert result["passed"] is True
-    assert result["judge_verdict"] == 4
+    assert result["judge_verdict"] == 3  # the worst criterion, not their average (P4-D8)
 
 
 def test_a_broken_judge_call_degrades_to_a_report():
@@ -126,4 +138,43 @@ def test_unparseable_output_scores_none_rather_than_guessing():
     result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
 
     assert result["criteria"][0]["score"] is None
-    assert result["judge_verdict"] == 5  # the one criterion that did score
+    # P4-D8: a partial reading is not a verdict of the deliverable. Reducing over only the
+    # criteria that DID score is how the old mean reported 5 on a run whose gate withheld —
+    # and a min over the same filtered subset would have reported 5 too.
+    assert result["judge_verdict"] == 0
+    assert result["passed"] is False
+
+
+def test_the_verdict_is_the_worst_criterion_not_their_average():
+    """P4-D8. `passed` is a conjunction, so the number shipped beside it must reduce the same
+    way or the report carries two answers. This is the T-119 shape: a violated scope criterion
+    next to a clean one averages to 4 — above any cut the rubric could set — while the gate
+    itself correctly withholds."""
+    chat = _FakeChat(_scored(5), _scored(2))
+
+    result = judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    assert result["passed"] is False
+    assert result["judge_verdict"] == 2
+
+
+def test_a_criterion_below_its_declared_cut_fails_the_gate():
+    """P4-D9. The same score is a pass or a fail depending on the rubric: 3 clears the default
+    of 3 and misses a declared 4. Without this the new field would be the second per-criterion
+    number in that YAML that nothing reads (see `weight`, deleted in P4-D10)."""
+    chat = _FakeChat(_scored(3), _scored(5))
+
+    result = judge_deliverable(A_RUBRIC_DECLARING_ITS_CUTS, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    assert result["passed"] is False
+    assert result["criteria"][0]["passing_score"] == 4  # the report explains its own verdict
+
+
+def test_a_criterion_at_its_declared_cut_passes_the_gate():
+    """The negative control — a declared cut must be able to say yes, or it is not a cut."""
+    chat = _FakeChat(_scored(4), _scored(4))
+
+    result = judge_deliverable(A_RUBRIC_DECLARING_ITS_CUTS, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    assert result["passed"] is True
+    assert result["judge_verdict"] == 4

@@ -11,6 +11,11 @@ deliberately, and only the strings.
 **Nothing here can fail a run.** S17 gates DPO *chosen labels*, not `Delivered`; H1 is
 Claude-gated by design (`ref:delegate-non-goals`: not a replacement for Claude's judgment). A
 judge that errors, times out, or returns nonsense degrades to a report saying so.
+
+**The cut lives in the rubric, not here (P4-D9).** A criterion may declare a `passing_score`
+beside its own 1-5 scale; `_DEFAULT_PASSING_SCORE` covers those that do not. A cut is a claim
+*about* a scale, and keeping the two in different files is exactly how a coherent severity
+ladder came to sit one rung above a threshold nobody had re-read against it.
 """
 
 import json
@@ -30,7 +35,8 @@ VERDICT_SCHEMA: Dict[str, Any] = {
     "required": ["score", "reasoning"],
 }
 
-_PASSING_SCORE = 3
+# The cut for a criterion that does not declare its own `passing_score` (P4-D9).
+_DEFAULT_PASSING_SCORE = 3
 
 
 def load_rubric(rubric_id: str) -> Dict[str, Any]:
@@ -76,7 +82,7 @@ def judge_deliverable(
     return {
         "rubric": rubric.get("id"),
         "passed": _all_criteria_pass(scored),
-        "judge_verdict": _mean_score(scored),
+        "judge_verdict": _min_score(scored),
         "criteria": scored,
     }
 
@@ -93,7 +99,12 @@ def _score_criterion(
     drift: Dict[str, Any],
     chat: Callable[..., str],
 ) -> Dict[str, Any]:
-    """One criterion's verdict; an unscoreable criterion reports why instead of raising."""
+    """One criterion's verdict; an unscoreable criterion reports why instead of raising.
+
+    The verdict carries its own `passing_score`, so the gate and the reader resolve the cut
+    from one place, and the report can explain why a 3 failed rather than merely stating it.
+    """
+    cut = _passing_score(criterion)
     try:
         reply = chat(
             system=_judge_system_prompt(criterion),
@@ -104,10 +115,16 @@ def _score_criterion(
         return {
             "name": criterion["name"],
             "score": int(parsed["score"]),
+            "passing_score": cut,
             "reasoning": str(parsed.get("reasoning", "")),
         }
     except Exception as exc:  # a judge failure is a report, never a dead run
-        return {"name": criterion["name"], "score": None, "reasoning": f"judge error: {exc}"}
+        return {
+            "name": criterion["name"],
+            "score": None,
+            "passing_score": cut,
+            "reasoning": f"judge error: {exc}",
+        }
 
 
 def _parsed_verdict(reply: str) -> Dict[str, Any]:
@@ -164,13 +181,32 @@ def _judge_user_prompt(
     )
 
 
+def _passing_score(criterion: Dict[str, Any]) -> int:
+    """The cut for one criterion — declared beside the scale it judges, else the default.
+
+    Rubrics that declare none keep `_DEFAULT_PASSING_SCORE`: the other shipped rubrics'
+    ladders have not been read, so imposing a raised cut on them would be the same unexamined
+    assumption, pointed the other way.
+    """
+    return criterion.get("passing_score", _DEFAULT_PASSING_SCORE)
+
+
 def _all_criteria_pass(scored: List[Dict[str, Any]]) -> bool:
     """The S17 signal. An unscoreable criterion withholds it — a gate that cannot see is not
     a gate that passes."""
-    return all(c["score"] is not None and c["score"] >= _PASSING_SCORE for c in scored)
+    return all(c["score"] is not None and c["score"] >= c["passing_score"] for c in scored)
 
 
-def _mean_score(scored: List[Dict[str, Any]]) -> int:
-    """The rounded mean of the criteria that actually scored; 0 when none did."""
-    scores: List[int] = [c["score"] for c in scored if c["score"] is not None]
-    return round(sum(scores) / len(scores)) if scores else 0
+def _min_score(scored: List[Dict[str, Any]]) -> int:
+    """The worst criterion's score; 0 when any criterion could not be scored.
+
+    Reduced the way `_all_criteria_pass` gates, so the number and the boolean cannot disagree
+    (P4-D8). The mean this replaced got both halves wrong. **A conjunction has no average** — a
+    clean criterion must never offset a violated one, and a mean let `scope_adherence 2` beside
+    `objective_met 5` report 4. And **an unscoreable criterion is not a low score, it is the
+    absence of a verdict** — reducing over only the criteria that *did* score reported 5 on a
+    run whose gate withheld, which a min over the same filtered subset would have done too.
+    """
+    if not scored or any(c["score"] is None for c in scored):
+        return 0
+    return min(c["score"] for c in scored)

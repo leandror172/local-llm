@@ -137,6 +137,16 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   the leaked file 5/5, its `completeness` criterion calling the pasted tests "a usage example".
   `evaluator/rubrics/oficina-edit.yaml` exists for edit runs and is kept separate, since
   `code-python` is shared with the Layer-4 benchmark suite where output has no prior scope.
+- **`passed` is a CONJUNCTION and `judge_verdict` is its MIN — never an average (P4-D8/D9/D10).**
+  Each criterion's cut is declared in the rubric as `passing_score`, beside the scale it judges
+  (`oficina-edit` = 4 on both criteria; `_DEFAULT_PASSING_SCORE = 3` for rubrics declaring none) —
+  a cut kept in code against a scale kept in data is how a coherent severity ladder came to sit one
+  rung above its threshold. The verdict reduces the way the gate gates, and **any** unscoreable
+  criterion yields `0`: reducing over only the criteria that *did* score is how the old mean
+  reported **5** on a run whose gate withheld, and a min over the same filtered subset would have
+  too. `weight` is **deleted** from `oficina-edit.yaml` — no weighting can make an average agree
+  with an AND (ranking `(5,3)` below `(4,4)` needs `w₁<w₂`; `(3,5)` needs `w₂<w₁`), so it was
+  unusable here, not merely unused.
 - **Drift is surfaced, never gated** (`drift.py` → `LoopResult.drift` → the report):
   `hunks`, `lines_added`/`lines_removed`, `max_verbatim_run_vs_tests`. `files_touched` was
   specified at freeze and **dropped at build**: the loop writes exactly one file, so it would fire
