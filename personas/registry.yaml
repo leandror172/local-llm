@@ -555,3 +555,12 @@ my-go-q25c14-16k:
   num_ctx: 16384
   tier: full
   status: active
+
+my-judge-q25c14-16k:
+  modelfile: modelfiles/judge-q25c14-16k-qwen25c14.Modelfile
+  base_model: qwen2.5-coder:14b
+  role: Impartial code-evaluation judge for the oficina delivery gate; scores one rubric criterion per call against caller-supplied criteria
+  temperature: 0.1
+  num_ctx: 16384
+  tier: bare
+  status: active
