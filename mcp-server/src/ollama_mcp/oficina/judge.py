@@ -56,7 +56,9 @@ def _rubrics_dir() -> Path:
     override = os.environ.get("OFICINA_RUBRICS")
     if override:
         return Path(override)
-    return Path(__file__).resolve().parents[4] / "evaluator" / "rubrics"
+    from ollama_mcp.config import repo_root  # one owner for "where the repo is"
+
+    return Path(repo_root()) / "evaluator" / "rubrics"
 
 
 def judge_deliverable(

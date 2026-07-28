@@ -6,6 +6,7 @@ or mcp here to keep it dependency-free and fast to load.
 """
 
 import os
+import pathlib
 
 # ---------------------------------------------------------------------------
 # Ollama connection
@@ -65,6 +66,28 @@ TEMPS: dict[str, float] = {
 # locate repo-level resources (persona registry, scripts) without fragile
 # relative-path traversal from within the installed package.
 REPO_ROOT: str | None = os.environ.get("LLM_REPO_ROOT")
+
+
+def repo_root() -> str:
+    """The llm repo root, resolved at CALL time — `LLM_REPO_ROOT`, else package-relative.
+
+    The call-time sibling of `REPO_ROOT` above, and the one every asset resolver should use.
+    The snapshot cannot serve them: a detached oficina worker is spawned without the server's
+    environment (T-96), so what the server read at import says nothing about the worker's, and
+    it is `None` whenever the variable is unset rather than falling back to the package.
+
+    **Why it is shared rather than per-module.** Three resolvers had grown their own copy of
+    "env override, else repo-relative" — `_ref_lookup_script`, `_validate_code_script`,
+    `_rubrics_dir` — with `parents[N]` depths that differed by module and only ONE of the three
+    honouring `LLM_REPO_ROOT`. So a worker started with the variable set but the package
+    relocated resolved refs and failed to resolve rubrics and the validator, for no stated
+    reason. Each caller keeps its own asset-specific override as the explicit seam
+    (`ref:patterns-code-extract-keep-divergence`); only the root is shared.
+    """
+    override = os.environ.get("LLM_REPO_ROOT")
+    if override:
+        return override
+    return str(pathlib.Path(__file__).resolve().parents[3])
 
 # Path to the persona registry YAML file. None if REPO_ROOT is not set.
 REGISTRY_PATH: str | None = (

@@ -169,3 +169,35 @@ def test_refs_dropped_is_a_worker_event_not_a_run_event():
     import ollama_mcp.oficina.ledger as ledger
     assert "RefsDropped" in WORKER_EVENTS
     assert "RefsDropped" not in ledger.RUN_EVENTS
+
+
+def test_every_repo_relative_asset_honours_llm_repo_root(monkeypatch, tmp_path):
+    """Three resolvers had grown their own copy of "env override, else repo-relative", with
+    `parents[N]` depths that differed by module and only ONE — ref-lookup — honouring
+    LLM_REPO_ROOT. A detached worker started with the variable set but the package relocated
+    therefore resolved refs while failing to resolve rubrics and the validator, for no stated
+    reason. They now share `config.repo_root()`."""
+    from ollama_mcp.oficina.evaluator import _validate_code_script
+    from ollama_mcp.oficina.judge import _rubrics_dir
+    from ollama_mcp.server import _ref_lookup_script
+
+    monkeypatch.setenv("LLM_REPO_ROOT", str(tmp_path))
+    for var in ("OFICINA_REF_LOOKUP", "OFICINA_VALIDATE_CODE", "OFICINA_RUBRICS"):
+        monkeypatch.delenv(var, raising=False)
+
+    assert str(tmp_path) in _ref_lookup_script()
+    assert str(tmp_path) in _validate_code_script()
+    assert str(tmp_path) in str(_rubrics_dir())
+
+
+def test_each_asset_keeps_its_own_override(monkeypatch, tmp_path):
+    """The shared root is the only thing shared: each asset's own env override still wins, and
+    still points somewhere entirely different from the others (the seam, per
+    ref:patterns-code-extract-keep-divergence — the root is the mechanism, the overrides are
+    the divergence)."""
+    from ollama_mcp.oficina.judge import _rubrics_dir
+
+    monkeypatch.setenv("LLM_REPO_ROOT", str(tmp_path / "root"))
+    monkeypatch.setenv("OFICINA_RUBRICS", str(tmp_path / "elsewhere"))
+
+    assert str(_rubrics_dir()) == str(tmp_path / "elsewhere")

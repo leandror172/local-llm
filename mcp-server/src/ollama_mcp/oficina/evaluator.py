@@ -114,8 +114,9 @@ def _validate_code_script() -> str:
     override = os.environ.get("OFICINA_VALIDATE_CODE")
     if override:
         return override
-    repo_root = Path(__file__).resolve().parents[4]
-    return str(repo_root / "benchmarks" / "lib" / "run-validate-code.sh")
+    from ollama_mcp.config import repo_root  # one owner for "where the repo is"
+
+    return str(Path(repo_root()) / "benchmarks" / "lib" / "run-validate-code.sh")
 
 
 # A single evaluation subprocess (compile or one test run) may never outlast this many
