@@ -282,15 +282,33 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
   `model`, `eval_count`, `duration_ms` and no identity, while `client.py:324` mints a fresh
   `call_id` per record), making the join identity-based.
 
-- **P4-D6 — Delivery report: artifact + pointer. DECIDED 2026-07-27 — largely pre-decided upstream.**
-  Not a genuine fork: `ref:delegate-architecture`'s run store is already
-  `runs/<id>/{spec.json, events.jsonl, iters/NN/*, report.md, workspace ref}`, and
-  `ref:delegate-event-model` defines `RunResult` as the read model behind `run_result` — *"report
-  + deliverable location"* — with a constraint neither the phasing doc nor this plan had recorded:
-  **it stays resolvable after workspace artifacts are pruned (V-D9).** So the report is a durable
-  artifact and the pruner must not orphan it.
-  **P4-D3's four metrics ride in the `RunResult` payload; the full diff stays in the artifact** —
-  which is what makes the summary cheap to read in Claude's context and complete on disk.
+- **P4-D6 — Delivery report location. CORRECTED 2026-07-27 against the as-built code — the report
+  lives in the `Delivered` event payload. There is no report artifact.**
+  **The original decision here was wrong.** It read `ref:delegate-architecture`'s run-store sketch
+  (`runs/<id>/{… report.md …}`) as the built shape and chose "artifact + pointer". That sketch is a
+  vision draft. The invariant is recorded in the vision folder's `KNOWLEDGE.md`:
+
+  > **Report location:** the delivery report lives in the `Delivered` event payload
+  > (`events.jsonl`, `ledger: forever`) — **NOT** in `artifacts/`. This is what keeps `run_result`
+  > answerable after retention prunes the workspace.
+
+  **Verified in code, not taken on trust:** `service.result()` reads `delivered.get("report")`
+  directly from the `Delivered` payload (`service.py:148-153`), and `artifacts_pruned` is a flag on
+  the very same result — because artifacts are exactly the thing that does *not* survive.
+  So the goal I derived independently for A4 (survive pruning) was right, and the mechanism I chose
+  was the opposite of the one already built and already justified.
+
+  **What this settles:** P4-D3's four metrics ride in the **`Delivered` payload's report**. No new
+  storage, no pruner coordination.
+  **What survives from the original reasoning:** the context-cost concern. A payload-resident report
+  is paid for in Claude's context on every `run_result`, and there is no pointer indirection to hide
+  behind — so **compactness is a hard content constraint, not a preference.** Metrics are numbers
+  and ranges; the diff itself is never inlined (it is reconstructible from the run branch, which
+  `refs/oficina/<run_id>` now pins — T-118 R-D2).
+
+  **Process note:** three documents (phasing, architecture, the event model) were consulted and all
+  three left this wrong; the folder's `KNOWLEDGE.md` had it right. As-built truth lives in the
+  memory files — read them before editing, not after.
 
 - **P4-D7 — Failure report: format only. DECIDED 2026-07-27.**
   Also narrower than drafted: the `Failed` event payload is **already** the where/whose/what triad
@@ -345,8 +363,10 @@ carries zero bits."* A1 without A2 would accept a report that always cries drift
 tolerating unknown event names is exercised, per the envelope's forward-compatibility rule.
 
 **A4 — the report outlives the workspace.** After a retention prune, `run_result` still resolves
-the report (`ref:delegate-event-model`'s `RunResult` constraint, V-D9). Guards the D6 split from
-a pruner that orphans `report.md`.
+the report *including P4's new metrics*. **Reduced to a regression guard by the D6 correction:**
+because the report is `Delivered`-payload-resident, survival is already guaranteed by
+construction — so A4 no longer proves a new capability, it pins that P4's additions did not
+migrate any part of the report into prunable storage.
 
 **A5 — S17 has something to gate on.** The packaged iteration carries a `judge_verdict` distinct
 from `auto_verdict` and `curated_verdict`, and — per the T-99 revisit — the ledger↔calls join
