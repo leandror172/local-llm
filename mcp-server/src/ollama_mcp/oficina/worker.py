@@ -422,11 +422,12 @@ class Worker:
         delivery — and a judge that cannot run at all is reported, never raised, because by
         this point the deliverable already exists.
         """
-        from .judge import judge_deliverable, load_rubric
-
         rubric_id = (spec.get("acceptance") or {}).get("rubric")
         if not rubric_id:
             return {}
+
+        from .judge import judge_deliverable, load_rubric, unavailable_verdict
+
         judge = self._loop_judge or default_judge(run_id)
         try:
             verdict = judge_deliverable(
@@ -434,9 +435,7 @@ class Worker:
                 result.change, result.drift, judge,
             )
         except Exception as exc:  # noqa: BLE001 — the gate reports, it does not fail the run
-            verdict = {"rubric": rubric_id, "passed": False,
-                       "judge_verdict": 0, "criteria": [],
-                       "error": f"judge unavailable: {exc}"}
+            verdict = unavailable_verdict(rubric_id, f"judge unavailable: {exc}")
         ledger.judged(verdict)
         return verdict
 

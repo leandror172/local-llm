@@ -21,7 +21,7 @@ ladder came to sit one rung above a threshold nobody had re-read against it.
 import json
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 import yaml
 
@@ -87,6 +87,27 @@ def judge_deliverable(
     }
 
 
+def unavailable_verdict(rubric_id: str, reason: str) -> Dict[str, Any]:
+    """The verdict for a judge that could not run at all — the same shape a scored one has.
+
+    Lives here rather than at the call site because this module owns the invariant that
+    `judge_verdict` and `passed` agree (P4-D8). A second literal elsewhere is a second place
+    that agreement is hand-typed rather than derived, and a second place to forget a new key —
+    on the path a report reader most needs to be well-formed.
+
+    `rubric_id` is the caller's requested NAME, not the `id` declared inside the YAML that
+    `judge_deliverable` reports: when the load itself failed there is no parsed rubric to read
+    an id from. The two coincide whenever a rubric file is named after its own id.
+    """
+    return {
+        "rubric": rubric_id,
+        "passed": False,
+        "judge_verdict": 0,
+        "criteria": [],
+        "error": reason,
+    }
+
+
 def _phase_2_criteria(rubric: Dict[str, Any]) -> List[Dict[str, Any]]:
     """The criteria a model judges — phase 1 belongs to the deterministic layer."""
     return [c for c in rubric.get("criteria", []) if c.get("phase") == 2]
@@ -104,7 +125,7 @@ def _score_criterion(
     The verdict carries its own `passing_score`, so the gate and the reader resolve the cut
     from one place, and the report can explain why a 3 failed rather than merely stating it.
     """
-    cut = _passing_score(criterion)
+    identity = {"name": criterion["name"], "passing_score": _passing_score(criterion)}
     try:
         reply = chat(
             system=_judge_system_prompt(criterion),
@@ -112,19 +133,13 @@ def _score_criterion(
             schema=VERDICT_SCHEMA,
         )
         parsed = _parsed_verdict(reply)
-        return {
-            "name": criterion["name"],
-            "score": int(parsed["score"]),
-            "passing_score": cut,
-            "reasoning": str(parsed.get("reasoning", "")),
-        }
+        # The coercions stay INSIDE the try deliberately: a non-integer score degrades to ONE
+        # criterion reporting a judge error, whereas hoisting them out would escape to the
+        # caller's blanket handler and poison the whole verdict as "judge unavailable".
+        return {**identity, "score": int(parsed["score"]),
+                "reasoning": str(parsed.get("reasoning", ""))}
     except Exception as exc:  # a judge failure is a report, never a dead run
-        return {
-            "name": criterion["name"],
-            "score": None,
-            "passing_score": cut,
-            "reasoning": f"judge error: {exc}",
-        }
+        return {**identity, "score": None, "reasoning": f"judge error: {exc}"}
 
 
 def _parsed_verdict(reply: str) -> Dict[str, Any]:

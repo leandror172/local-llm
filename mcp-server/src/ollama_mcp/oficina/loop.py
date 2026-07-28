@@ -46,6 +46,7 @@ from .worker import (
     GenerationResult,
     _chat_generation,
     _cold_start_grace,
+    _compact_drift,
     _iterations_trail,
     model_context_limit,
 )
@@ -147,9 +148,15 @@ def _read_test_sources(worktree: Path, test_files: List[str]) -> List[str]:
     A test that cannot be DECODED is different, and is decoded with replacement rather than
     skipped: dropping it would silently weaken `max_verbatim_run_vs_tests`, so a leak out of
     that very file would stop being detectable — the metric going quiet exactly where it was
-    needed. (`errors="replace"` also closes the original hole: `read_text` raises
-    `UnicodeDecodeError`, a `ValueError`, which `except OSError` never caught, so a latin-1
-    test file took down a run that would otherwise have delivered.)
+    needed.
+
+    **This is not the first reader of these files, and the decoding policy has two owners.**
+    `Workspace._build_stable_parts` reads the same declared `test_files` from the same worktree
+    during `assemble()`, with STRICT utf-8, to build the prompt's tests segment — so an
+    undecodable test file fails the run there, before this function is reached. The tolerance
+    here is therefore defence in depth, NOT a fix for that path. Resolving it properly means one
+    read at assembly feeding both (`Assembly.test_sources`), which is a workspace change rather
+    than a loop one.
     """
     sources = []
     for rel in test_files:
@@ -441,6 +448,23 @@ class EvaluatedLoop:
             ),
         )
 
+    def _cancelled(self, k: int) -> LoopResult:
+        """Emit Cancelled with the best attempt's drift, in the same shape as `_exhausted`.
+
+        A named terminal rather than an inline block for the reason `_exhausted` is one: the
+        result must exist BEFORE the event, because `service.result()` returns this payload
+        verbatim as the report — so drift omitted here is drift no reader ever sees, whatever
+        `LoopResult` happens to carry. Stated as structure, it cannot be forgotten by the next
+        terminal; stated as a comment pointing at `_exhausted`, it could only be copied.
+        """
+        result = self._result_from(
+            "cancelled", self._best, iterations_used=k - 1, snapshot=self._best_snapshot
+        )
+        self.ledger.cancelled(
+            {"stage": "looping", "iteration": k, "drift": _compact_drift(result.drift)}
+        )
+        return result
+
     def _exhausted(self, *, iterations_used: int, limit_hit: str) -> LoopResult:
         """Emit Exhausted (budget out or wall-clock hit, P2-D10) with the best attempt (S11).
 
@@ -463,7 +487,9 @@ class EvaluatedLoop:
                 "limit_hit": limit_hit,
                 "best_attempt_ref": self._best_snapshot,
                 "branch": self._branch,
-                "drift": result.drift,
+                # Bounded exactly as the delivered report's is: this payload is the report on
+                # this path, so it is paid for in the caller's context identically (P4-D6).
+                "drift": _compact_drift(result.drift),
                 # P4-T6: the trail was built only on the delivered path, but this payload IS
                 # the report on this one — and an exhausted run is where the narrative is most
                 # useful, since its reader is the one who has to work out what went wrong.
@@ -546,16 +572,7 @@ class EvaluatedLoop:
             if self._time_limit_reached(started_at):
                 return self._exhausted(iterations_used=k - 1, limit_hit="timeout")
             if self.is_cancelled():
-                # Result BEFORE the event, exactly as `_exhausted` does it: `service.result()`
-                # returns this payload verbatim as the report, so drift omitted here is drift no
-                # reader ever sees — whatever `LoopResult` happens to carry.
-                result = self._result_from(
-                    "cancelled", self._best, iterations_used=k - 1, snapshot=self._best_snapshot
-                )
-                self.ledger.cancelled(
-                    {"stage": "looping", "iteration": k, "drift": result.drift}
-                )
-                return result
+                return self._cancelled(k)
 
             # T-112: refuse before generating. Iteration 1 has nothing to salvage, so it is a
             # fail-loud triad; later iterations already hold a best attempt, so they exhaust.

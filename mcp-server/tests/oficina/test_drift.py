@@ -133,3 +133,14 @@ def test_a_deletion_at_end_of_file_points_inside_the_delivered_file():
 
     assert result["lines_removed"] == 2
     assert result["hunks"] == [[2, 2]]  # the last delivered line, not the phantom line 3
+
+
+def test_an_empty_delivered_file_has_nowhere_to_point():
+    """The other endpoint of the same rule, decided rather than left to arithmetic: no line is
+    addressable in a file with no lines, so the marker is `[0, 0]` — deliberately outside the
+    1-based scheme, so a reader sees "a deletion, nowhere to point" rather than a line number
+    that cannot be opened. Clamping only the upper bound would have let a 0 out the other side."""
+    result = measure("a\nb\n", "", [])
+
+    assert result["lines_removed"] == 2
+    assert result["hunks"] == [[0, 0]]

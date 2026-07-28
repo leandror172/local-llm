@@ -66,12 +66,30 @@ def _changed_regions(
         if j2 > j1:
             hunks.append([j1 + 1, j2])
         else:
-            marker = min(j1 + 1, len(delivered_lines))
-            hunks.append([marker, marker])
+            hunks.append(_deletion_marker(j1, len(delivered_lines)))
         lines_added += j2 - j1
         lines_removed += i2 - i1
 
     return hunks, lines_added, lines_removed
+
+
+def _deletion_marker(j1: int, delivered_length: int) -> List[int]:
+    """Where a deletion points, as a range inside the delivered file.
+
+    A deletion produced no delivered lines, so it is marked at the line that now FOLLOWS the
+    removal — clamped into `[1, delivered_length]`, because at EOF there is no following line and
+    an unaddressable range is precisely what this representation must not emit.
+
+    The empty delivered file is decided here rather than left to fall out of the arithmetic: no
+    line is addressable in a file with no lines, so the marker is `[0, 0]` — deliberately outside
+    the 1-based scheme, so a reader sees "a deletion, nowhere to point" instead of a line number
+    that cannot be opened. Stating both endpoints keeps this one rule rather than a clamp per
+    boundary case discovered later.
+    """
+    if delivered_length == 0:
+        return [0, 0]
+    marker = min(j1 + 1, delivered_length)
+    return [marker, marker]
 
 
 def _longest_run_shared_with_tests(

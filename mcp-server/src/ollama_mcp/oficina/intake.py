@@ -120,14 +120,15 @@ RULE_CONTEXT_FILE_MISSING = "context_file_missing"
 # P2 additions (P2-D13)
 RULE_ACCEPTANCE_REQUIRED = "acceptance_required"
 RULE_WORKTREE_REQUIRED = "worktree_required"
-RULE_APPROVAL_GATE_UNSUPPORTED = "approval_gate_unsupported"
-RULE_RUBRIC_NOT_FOUND = "rubric_not_found"
 RULE_TARGET_NOT_GIT_REPO = "target_not_git_repo"
 RULE_ACCEPTANCE_NOT_SUPPORTED = "acceptance_not_supported"
 RULE_WORKTREE_NOT_SUPPORTED = "worktree_not_supported"
 # Language rules (Axis A widening, R1) — mirror the acceptance _supported/_required pair.
 RULE_LANGUAGE_NOT_SUPPORTED = "language_not_supported"
 RULE_UNSUPPORTED_LANGUAGE = "unsupported_language"
+# P4 additions (judge gate)
+RULE_APPROVAL_GATE_UNSUPPORTED = "approval_gate_unsupported"
+RULE_RUBRIC_NOT_FOUND = "rubric_not_found"
 
 
 @dataclass
@@ -358,7 +359,11 @@ def _check_rubric_exists(spec: Dict[str, Any]) -> Optional[Rejection]:
     rubric_id = (spec.get("acceptance") or {}).get("rubric")
     if not rubric_id:
         return None
-    from .judge import load_rubric  # lazy: judge pulls in yaml, and intake is the submit path
+    # Lazy because of the guard above, not because the import is expensive: a spec that declares
+    # no rubric never reaches the judging layer at all. (`yaml` is already in every submit
+    # process — `registry.py` and `cli.py` both import it — so "it pulls in yaml" would be a
+    # justification with nothing behind it.)
+    from .judge import load_rubric
 
     try:
         load_rubric(rubric_id)
@@ -421,12 +426,12 @@ _CHECKS = (
     _check_acceptance_required,
     _check_worktree_required,
     _check_approval_gate_unsupported,
-    # Late in the order deliberately: it touches the filesystem, so the cheap structural
-    # rejections get to fire first.
-    _check_rubric_exists,
     _check_language_resolvable,
     _check_target_git_repo,
     _check_context_files,
+    # Last deliberately: it is the only check that reads AND parses a file, so every cheaper
+    # rejection — structural, then a stat — gets to fire before this one is paid for.
+    _check_rubric_exists,
 )
 
 
