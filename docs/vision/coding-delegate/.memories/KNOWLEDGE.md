@@ -120,7 +120,10 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   after, and `passed: false` does NOT block `Delivered`. S17 gates DPO *chosen labels*, not
   delivery; H1 is Claude-gated by design. A judge that errors, times out or returns unparseable
   output degrades to a report, because by packaging the deliverable already exists.
-- **Opt-in by `acceptance.rubric`.** No rubric → no judge, and the run delivers exactly as it did
+- **Opt-in by `acceptance.rubric`, and the name is validated at INTAKE** (`rubric_not_found`), not
+  at packaging — a typo would otherwise survive the whole loop and surface through the judge's
+  degrade-to-a-report path as `passed: False` on a perfectly good deliverable, blaming the work for
+  a defect in the request. No rubric → no judge, and the run delivers exactly as it did
   before P4. `approval_gate` is recognized but **refused** until P5 supplies `answer_run`; a gate
   built now could enter `input_required` with nothing able to clear it.
 - **The judge is fed the run's DIFF, not the delivered file** (`LoopResult.change`). Measured,
@@ -159,6 +162,12 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   measuring `""` against an edit run's baseline reports the whole file as removed, describing a run
   that produced nothing as a run that deleted everything. Reachable beyond cancel — an edit run
   budgets 1 iteration (T-114), so one anti-cheat rejection leaves no best attempt either.
+  **A deletion's marker is clamped to the last delivered line** — at EOF there is no "line that
+  follows the removal", so it pointed one past the end. Hunks are read by a human AND inlined into
+  the judge's prompt, so a range must be addressable in the file it describes. **Test sources are
+  decoded with `errors="replace"`**: `read_text` raises `UnicodeDecodeError` (a `ValueError`, not an
+  `OSError`), so a latin-1 test file used to kill a run via a report-only metric — and skipping it
+  instead would have silently weakened `max_verbatim_run_vs_tests` exactly where it was needed.
 - **The report is `Delivered`-payload-resident and compactness is a hard constraint** — it is paid
   for in the caller's context on every `run_result`, with no pointer indirection. `auto_verdict`
   is surfaced as `tests_passed`; `error_keys` are omitted. **Its variable-length parts are BOUNDED

@@ -121,3 +121,15 @@ def test_no_declared_tests_means_nothing_to_compare():
     result = measure(AN_AREA_MODULE, THE_SAME_MODULE_WITH_ONE_LINE_CHANGED, [])
 
     assert result["max_verbatim_run_vs_tests"] == 0
+
+
+def test_a_deletion_at_end_of_file_points_inside_the_delivered_file():
+    """A deletion produced no delivered lines, so it is reported as a marker at the line that
+    now FOLLOWS the removal — but at EOF there is no following line, and the marker pointed one
+    line past the end, naming somewhere the reader cannot open. These ranges are read by a human
+    scanning the report AND inlined into the judge's prompt, so a range must be addressable in
+    the file it claims to describe."""
+    result = measure("a\nb\nc\nd\n", "a\nb\n", [])
+
+    assert result["lines_removed"] == 2
+    assert result["hunks"] == [[2, 2]]  # the last delivered line, not the phantom line 3

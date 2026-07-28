@@ -121,6 +121,7 @@ RULE_CONTEXT_FILE_MISSING = "context_file_missing"
 RULE_ACCEPTANCE_REQUIRED = "acceptance_required"
 RULE_WORKTREE_REQUIRED = "worktree_required"
 RULE_APPROVAL_GATE_UNSUPPORTED = "approval_gate_unsupported"
+RULE_RUBRIC_NOT_FOUND = "rubric_not_found"
 RULE_TARGET_NOT_GIT_REPO = "target_not_git_repo"
 RULE_ACCEPTANCE_NOT_SUPPORTED = "acceptance_not_supported"
 RULE_WORKTREE_NOT_SUPPORTED = "worktree_not_supported"
@@ -345,6 +346,30 @@ def _check_approval_gate_unsupported(spec: Dict[str, Any]) -> Optional[Rejection
     return None
 
 
+def _check_rubric_exists(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """A named `acceptance.rubric` must resolve NOW, not at packaging.
+
+    A rubric name is caller-supplied, exactly like a context file — and intake already fails
+    fast on a missing one of those. Deferred to packaging, a typo survives the entire loop and
+    then surfaces through the judge's degrade-to-a-report path as `passed: False` on a perfectly
+    good deliverable: a report blaming the WORK for a defect in the REQUEST. The judge is opt-in,
+    so a spec without a rubric is untouched.
+    """
+    rubric_id = (spec.get("acceptance") or {}).get("rubric")
+    if not rubric_id:
+        return None
+    from .judge import load_rubric  # lazy: judge pulls in yaml, and intake is the submit path
+
+    try:
+        load_rubric(rubric_id)
+    except Exception as exc:  # noqa: BLE001 — missing, malformed or unreadable are all the caller's
+        return Rejection(
+            RULE_RUBRIC_NOT_FOUND,
+            f"acceptance.rubric {rubric_id!r} does not resolve: {exc}",
+        )
+    return None
+
+
 def _check_worktree_required(spec: Dict[str, Any]) -> Optional[Rejection]:
     """A spec with a test_cmd must run in a worktree — tests need isolation (P2-D5)."""
     acceptance = spec.get("acceptance") or {}
@@ -396,6 +421,9 @@ _CHECKS = (
     _check_acceptance_required,
     _check_worktree_required,
     _check_approval_gate_unsupported,
+    # Late in the order deliberately: it touches the filesystem, so the cheap structural
+    # rejections get to fire first.
+    _check_rubric_exists,
     _check_language_resolvable,
     _check_target_git_repo,
     _check_context_files,

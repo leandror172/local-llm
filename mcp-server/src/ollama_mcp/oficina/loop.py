@@ -142,12 +142,19 @@ def _read_test_sources(worktree: Path, test_files: List[str]) -> List[str]:
 
     Best-effort by design: these feed a report, and a metric that cannot be computed must
     never take a run down with it — the same posture `_log_call` takes toward observability.
-    An unreadable test simply does not contribute to the comparison.
+    A test that cannot be OPENED simply does not contribute to the comparison.
+
+    A test that cannot be DECODED is different, and is decoded with replacement rather than
+    skipped: dropping it would silently weaken `max_verbatim_run_vs_tests`, so a leak out of
+    that very file would stop being detectable — the metric going quiet exactly where it was
+    needed. (`errors="replace"` also closes the original hole: `read_text` raises
+    `UnicodeDecodeError`, a `ValueError`, which `except OSError` never caught, so a latin-1
+    test file took down a run that would otherwise have delivered.)
     """
     sources = []
     for rel in test_files:
         try:
-            sources.append((worktree / rel).read_text(encoding="utf-8"))
+            sources.append((worktree / rel).read_text(encoding="utf-8", errors="replace"))
         except OSError:
             continue
     return sources

@@ -454,3 +454,30 @@ def test_function_with_already_existing_target_accepted(tmp_path):
     target_path = Path(spec["deliverable"]["target"])
     target_path.write_text("existing content")
     assert accepts(spec)
+
+
+def test_unresolvable_rubric_rejected(tmp_path):
+    """A rubric name is caller-supplied, exactly like a context file — and intake already fails
+    fast on a missing one of those. Deferred to packaging, a typo survives the whole loop and
+    then surfaces as `passed: False` on a perfectly good deliverable: a report blaming the WORK
+    for a defect in the REQUEST, which is the most expensive kind of wrong answer here."""
+    from ollama_mcp.oficina.intake import RULE_RUBRIC_NOT_FOUND
+
+    spec = a_function_spec(tmp_path)
+    spec["acceptance"]["rubric"] = "code-pyton"  # the typo that motivated this
+
+    rejects(spec, with_rule=RULE_RUBRIC_NOT_FOUND)
+
+
+def test_resolvable_rubric_accepted(tmp_path):
+    """The negative control — a real shipped rubric must pass, or the check is a wall."""
+    spec = a_function_spec(tmp_path)
+    spec["acceptance"]["rubric"] = "oficina-edit"
+
+    assert accepts(spec)
+
+
+def test_a_spec_without_a_rubric_is_still_accepted(tmp_path):
+    """The judge is opt-in (P4). No rubric means no judge, and intake must not invent a
+    requirement the gate itself does not have."""
+    assert accepts(a_function_spec(tmp_path))

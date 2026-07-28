@@ -50,6 +50,11 @@ def _changed_regions(
     the removal — a range must never come out empty or inverted, and this is the case that
     surfaces E-D6 (a whole-file edit dropping the module docstring), where the reader needs to
     know *where* something vanished, not merely that the count fell.
+
+    At **end of file there is no following line**, so the marker is clamped to the last
+    delivered line. These ranges are read by a human scanning the report AND inlined into the
+    judge's prompt, so a range must be addressable in the file it claims to describe; unclamped,
+    deleting the tail of a 4-line file named line 3 of a 2-line result.
     """
     hunks: List[List[int]] = []
     lines_added = 0
@@ -58,7 +63,11 @@ def _changed_regions(
     for tag, i1, i2, j1, j2 in SequenceMatcher(None, baseline_lines, delivered_lines).get_opcodes():
         if tag == "equal":
             continue
-        hunks.append([j1 + 1, j2 if j2 > j1 else j1 + 1])
+        if j2 > j1:
+            hunks.append([j1 + 1, j2])
+        else:
+            marker = min(j1 + 1, len(delivered_lines))
+            hunks.append([marker, marker])
         lines_added += j2 - j1
         lines_removed += i2 - i1
 
