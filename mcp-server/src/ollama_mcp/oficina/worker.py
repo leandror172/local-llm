@@ -181,6 +181,49 @@ def _iteration_payloads(ledger: Ledger) -> List[Dict[str, Any]]:
     ]
 
 
+# The report is `Delivered`-payload-resident and is paid for in the caller's context on EVERY
+# `run_result`, with no pointer indirection to hide behind (P4-D6). So its variable-length parts
+# are BOUNDED here rather than trusted to stay small. Full fidelity survives in the events they
+# were taken from (`Judged`; the loop's own drift), which nobody pays for unless they go looking.
+_MAX_REASONING_CHARS = 200
+_MAX_REPORTED_HUNKS = 10
+
+
+def _compact_judge(verdict: Dict[str, Any]) -> Dict[str, Any]:
+    """The judge verdict as the REPORT carries it — a trimmed copy; the original is untouched.
+
+    Only the prose is clipped. `criteria[]` entries are never dropped or reshaped: each carries
+    the `passing_score` its score was judged against (P4-D9), and a report without them states a
+    verdict it cannot explain. The system prompt asks for one concise sentence — but a prompt is
+    a request, not a bound, and this payload cannot afford to find that out in production.
+    """
+    return {
+        **verdict,
+        "criteria": [
+            {**c, "reasoning": _clipped(str(c.get("reasoning", "")), _MAX_REASONING_CHARS)}
+            for c in verdict.get("criteria", [])
+        ],
+    }
+
+
+def _compact_drift(drift: Dict[str, Any]) -> Dict[str, Any]:
+    """Drift as the REPORT carries it: at most `_MAX_REPORTED_HUNKS` ranges.
+
+    `hunks_total` appears ONLY when ranges were dropped, so its presence means "there were more"
+    and its absence means "this is all of them". Emitted unconditionally it would carry no bits —
+    first principle 6, the rule that dropped `files_touched` at build time.
+    """
+    hunks = drift.get("hunks") or []
+    if len(hunks) <= _MAX_REPORTED_HUNKS:
+        return drift
+    return {**drift, "hunks": hunks[:_MAX_REPORTED_HUNKS], "hunks_total": len(hunks)}
+
+
+def _clipped(text: str, limit: int) -> str:
+    """`text` bounded to `limit` characters, ellipsised when it had to give."""
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
 JUDGE_MODEL = "my-judge-q25c14-16k"
 JUDGE_TIMEOUT_S = 300
 
@@ -435,14 +478,17 @@ class Worker:
                 "branch": result.branch,
                 "commit": result.best_snapshot,
                 # P4-D3: magnitude, measured for free. Numbers and ranges only — this payload
-                # is paid for in Claude's context on every run_result (P4-D6).
-                "drift": result.drift,
+                # is paid for in Claude's context on every run_result (P4-D6), so the hunk list
+                # is bounded; the loop's own `drift` keeps every range.
+                "drift": _compact_drift(result.drift),
                 # P4-T6: how the deliverable was reached, not just that it was.
                 "iterations_trail": _iterations_trail(ledger),
             }
             judged = self._judge_delivered(ledger, spec, result, run_id)
             if judged:
-                report["judge"] = judged
+                # The `Judged` event already holds the full verdict; the report gets the clipped
+                # copy. Criteria entries are shortened, never dropped — they carry the cuts.
+                report["judge"] = _compact_judge(judged)
             ledger.delivered(
                 {
                     "report": report,

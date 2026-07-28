@@ -17,7 +17,14 @@ import subprocess
 from ollama_mcp.oficina.ledger import Ledger, fold_state
 from ollama_mcp.oficina.parser import STAGE_TEST, ParsedFailure
 from ollama_mcp.oficina.store import Store
-from ollama_mcp.oficina.worker import GenerationResult, Worker
+from ollama_mcp.oficina.worker import (
+    _MAX_REASONING_CHARS,
+    _MAX_REPORTED_HUNKS,
+    GenerationResult,
+    Worker,
+    _compact_drift,
+    _compact_judge,
+)
 
 
 # --- low-level machinery ----------------------------------------------------
@@ -304,3 +311,61 @@ def test_answer_kind_still_uses_single_shot(tmp_path):
     worker.process_run(run_id)
     names = [e["event"] for e in Ledger(store.events_path(run_id)).read()]
     assert names == ["RunSubmitted", "GenerationStarted", "GenerationFinished", "Delivered"]
+
+
+# --- report compaction ------------------------------------------------------
+# Pure functions (payload in → trimmed payload out), so these stay imperative rather than
+# borrowing the DSL above: no sequence to narrate (`ref:test-executable-spec` rules 5 and 6).
+
+
+def test_a_rambling_judge_reasoning_is_clipped_in_the_report():
+    """The report rides in the Delivered payload and is paid for in the caller's context on
+    EVERY `run_result` (P4-D6), so compactness is a constraint rather than a preference. The
+    system prompt asks the judge for one concise sentence — but nothing makes a model obey a
+    prompt, so the bound is enforced here instead of hoped for. The FULL text still survives in
+    the `Judged` event, which nobody pays for unless they go looking."""
+    verdict = {"passed": True, "criteria": [
+        {"name": "scope_adherence", "score": 5, "passing_score": 4, "reasoning": "x" * 400},
+    ]}
+
+    compact = _compact_judge(verdict)
+
+    assert len(compact["criteria"][0]["reasoning"]) <= _MAX_REASONING_CHARS
+    assert verdict["criteria"][0]["reasoning"] == "x" * 400  # the original is left alone
+
+
+def test_compaction_keeps_the_cut_that_explains_the_verdict():
+    """`criteria[]` is not free-form report prose: each entry carries the `passing_score` its
+    score was judged against (P4-D9). Entries may be SHORTENED, never dropped or reshaped — a
+    report that loses them states a verdict it cannot explain."""
+    verdict = {"passed": False, "criteria": [
+        {"name": "scope_adherence", "score": 2, "passing_score": 4, "reasoning": "short"},
+        {"name": "objective_met", "score": 5, "passing_score": 4, "reasoning": "short"},
+    ]}
+
+    compact = _compact_judge(verdict)
+
+    assert [c["name"] for c in compact["criteria"]] == ["scope_adherence", "objective_met"]
+    assert compact["criteria"][0]["passing_score"] == 4
+    assert compact["criteria"][0]["score"] == 2
+
+
+def test_a_scattered_diff_reports_bounded_hunks_and_says_how_many_there_were():
+    """A plausible scattered rename on the 580-line loop.py measures ~60 ranges, and a
+    2000-line target scales linearly. Truncating silently would read as "that was all of
+    them", so the total rides along."""
+    drift = {"hunks": [[i, i] for i in range(1, 61)], "lines_added": 60, "lines_removed": 60}
+
+    compact = _compact_drift(drift)
+
+    assert len(compact["hunks"]) == _MAX_REPORTED_HUNKS
+    assert compact["hunks_total"] == 60
+
+
+def test_an_untruncated_hunk_list_carries_no_total():
+    """The negative control, and the reason `hunks_total` is conditional: present means "there
+    were more", absent means "this is all of them". Emitted unconditionally it would carry no
+    bits — first principle 6, the rule that dropped `files_touched` at build time."""
+    drift = {"hunks": [[1, 2], [9, 9]], "lines_added": 3, "lines_removed": 1}
+
+    assert _compact_drift(drift) == drift

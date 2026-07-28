@@ -155,7 +155,13 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   `isjunk` stops junk anchoring a match but the winning block still absorbs adjacent junk.
 - **The report is `Delivered`-payload-resident and compactness is a hard constraint** — it is paid
   for in the caller's context on every `run_result`, with no pointer indirection. `auto_verdict`
-  is surfaced as `tests_passed`; `error_keys` are omitted.
+  is surfaced as `tests_passed`; `error_keys` are omitted. **Its variable-length parts are BOUNDED
+  at the report seam, not trusted to stay small:** judge `reasoning` clips at 200 chars and `hunks`
+  at 10 ranges, with `hunks_total` present **iff** ranges were dropped (unconditional it would
+  carry no bits). Full fidelity survives in the `Judged` event and `LoopResult.drift`, which nobody
+  pays for unless they look. Worst case measured ~750 → ~206 tokens. **`criteria[]` entries are
+  shortened, never dropped** — each carries the `passing_score` its score was judged against, and a
+  report without them states a verdict it cannot explain.
 
 ## LanguagePack — the language axis contract (T-92 Phase 4) — 2026-07-23
 
