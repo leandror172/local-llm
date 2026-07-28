@@ -215,6 +215,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | `mcp-server/Makefile` | Test + diagnostic targets: `make test` (full pytest suite), `make test-oficina` (oficina only), `ARGS='-k x'` passes pytest filters; `make logs`/`logs-raw`/`bridges` for live-bridge observation | Running mcp-server tests; diagnosing a live bridge |
 | `mcp-server/run-server.sh` | Launch Ollama MCP server (stdio transport) | Claude Code MCP config, testing |
 | `mcp-server/watch-run.sh` | Tail an oficina run to terminal state (`watch-run.sh <run_id>`) — 3-line wrapper over `oficina watch` (P1-D10 whitelisting seam) | Backgrounding a watch on a submitted oficina run |
+| `mcp-server/run-acceptance-p4.sh` → `mcp-server/scripts/acceptance_p4.py` | **Live** P4 judge-gate acceptance, real Ollama calls (~1 min); also `make accept-p4`. **A1/A2 replay pinned runs** — base commit from each run's own `AssemblyDone`, delivered bytes from `refs/oficina/<run_id>` (T-118 R-D2), so the leak judged is the measured one and not a synthetic; **A5 drives a real end-to-end run** and requires the ledger↔`calls.jsonl` join to hold by `call_id`. A3/A4/A6 are deterministic and stay in the suite | Before merging any change to `judge.py`, the rubric's scale text, or the judge persona — the suite fakes `chat`, so it is structurally blind to what the judge is actually asked |
 
 ### Setup & Infrastructure Scripts
 | Script | Purpose | When to Use |

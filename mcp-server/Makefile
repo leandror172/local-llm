@@ -5,7 +5,7 @@
 LOG_FILE ?= /tmp/ollama-bridge.jsonl
 SCRIPTS  := scripts
 
-.PHONY: help logs logs-raw bridges test test-oficina
+.PHONY: help logs logs-raw bridges test test-oficina accept-p4
 
 help:
 	@echo "ollama-bridge — diagnostic + test targets"
@@ -13,6 +13,9 @@ help:
 	@echo "  make test                  Run the full pytest suite (uv run pytest tests/)"
 	@echo "  make test-oficina          Run only the oficina suite (tests/oficina/)"
 	@echo "  make test ARGS='-k refs'   Pass pytest args through (any test target)"
+	@echo
+	@echo "  make accept-p4             Live P4 judge-gate acceptance (real Ollama calls, ~1 min)"
+	@echo "  make accept-p4 CASES='A1'  Narrow it to named cases (A1 A2 A5)"
 	@echo
 	@echo "  make logs                  Tail $(LOG_FILE) with pretty formatting"
 	@echo "  make logs CLIENT=abcd1234  Tail filtered to one bridge's client_id"
@@ -26,6 +29,9 @@ test:
 
 test-oficina:
 	uv run pytest tests/oficina/ $(ARGS)
+
+accept-p4:
+	@./run-acceptance-p4.sh $(CASES)
 
 logs:
 	@OLLAMA_BRIDGE_LOG_FILE=$(LOG_FILE) $(SCRIPTS)/watch-logs.sh $(CLIENT)

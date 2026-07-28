@@ -126,6 +126,12 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   a defect in the request. No rubric → no judge, and the run delivers exactly as it did
   before P4. `approval_gate` is recognized but **refused** until P5 supplies `answer_run`; a gate
   built now could enter `input_required` with nothing able to clear it.
+- **The gate's live acceptance is a durable harness, not a session artefact.**
+  `mcp-server/run-acceptance-p4.sh` (`make accept-p4`) replays A1/A2 against the **pinned** runs —
+  base commit from each run's own `AssemblyDone`, delivered bytes from `refs/oficina/<run_id>` — and
+  drives A5 as a real end-to-end run. **Run it before merging any change to `judge.py`, the rubric's
+  scale text, or the judge persona:** the suite fakes `chat`, so it is structurally blind to what the
+  judge is actually asked, which is the one thing these cases exist to check.
 - **The judge is fed the run's DIFF, not the delivered file** (`LoopResult.change`). Measured,
   not assumed: with the file plus drift metrics it scored a 78-line acceptance-test leak **5**
   and wrote "contains only the requested change"; with the diff, **2** — at ~33% fewer tokens.

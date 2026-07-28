@@ -699,11 +699,39 @@ criteria were re-checked rather than assumed to survive. Suite **369 → 387**.
   `Cancelled` payload did not, and `service.result()` returns that payload verbatim), and an
   exhausted run narrates its iterations.
 
-**What was NOT re-run: the live model pass.** A5 originally drove real model calls; this
-verification used the suite plus the real rubric file with canned scores. That is sufficient for
-the arithmetic and the wiring, and **structurally blind to prompt content** — a fake `chat` never
-reads the prompt. Neither the judge persona nor the rubric's scale text changed here, which is why
-it was not required; **a live replay is the right gate if either changes again.**
+**RE-RUN LIVE 2026-07-28, after the simplify pass** — `make accept-p4`, real Ollama calls against
+the pinned runs:
+
+| | drift | `scope_adherence` | `objective_met` | `passed` | `judge_verdict` |
+|---|---|---|---|---|---|
+| **A1** — the T-119 leak | `+114/−1`, verbatim **78** | **2** (cut 4) | 5 | **False** ✅ | **2** |
+| **A2** — a real in-scope edit | `+36/−26`, verbatim 1 | **5** | 5 | **True** ✅ | 5 |
+
+Both reproduce session 131's recorded numbers exactly, and on A1 the two criteria stay
+**independent** — `scope_adherence 2` beside `objective_met 5`, which is the split the gate depends
+on. The `judge_verdict` column is P4-D8 visible live: the mean reported **4** on A1; the min
+reports **2**.
+
+**A5 was re-run end-to-end rather than replayed.** A real run emitted
+`RunSubmitted → AssemblyDone → IterationStarted → IterationEvaluated → Judged → Delivered` in
+14.0 s; `judge_verdict 5` sat beside `auto_verdict 2` as distinct fields; the iteration's `call_id`
+named a real `calls.jsonl` record; and **three records carried the run_id** — the coder's call and
+*both* judge calls. That last number is the `run_id` fix validated end-to-end: before it, the two
+judge records would have landed under `""` and only one would have matched.
+
+**The harness is now durable** — `mcp-server/run-acceptance-p4.sh` / `make accept-p4`, indexed in
+`.claude/index.md`. It had been authored ad hoc twice and reconstructed from scratch both times.
+A3/A4/A6 stay in the suite: they are deterministic, need no model, and gain nothing from a live
+pass.
+
+**Measured en route, and recorded because two estimates were wrong before it.** The judge's
+per-criterion calls do **not** reuse Ollama's prefix cache: `prompt_eval_duration_ms` is 2439 →
+2310 ms across A1's two calls and 3140 → 3054 ms across A2's — the second call saves ~4%, which is
+noise. The cause is structural: the criterion block sits in the **system** message and
+`client.chat` places system before user, so the varying text heads every call and the run-constant
+diff is re-evaluated cold. Cost is **~2.4–3.1 s per judged run** on a 2-criterion rubric (~15–20%
+of judge wall-clock), scaling with criterion count. Deferred rather than fixed here — it changes a
+prompt this phase calibrated — but the harness above is now the A/B that settles it cheaply.
 <!-- /ref:delegate-p4-results -->
 
 ## Build steps (TDD-ordered — T1–T9 COMPLETE, session 131)
