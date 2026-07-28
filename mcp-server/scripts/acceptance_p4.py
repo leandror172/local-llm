@@ -43,11 +43,11 @@ RUBRIC = "oficina-edit"
 sys.path.insert(0, str(REPO / "mcp-server" / "src"))
 
 from ollama_mcp.oficina.drift import measure  # noqa: E402
-from ollama_mcp.oficina.judge import judge_deliverable, load_rubric  # noqa: E402
+from ollama_mcp.oficina.judge import default_judge, judge_deliverable, load_rubric  # noqa: E402
 from ollama_mcp.oficina.ledger import Ledger  # noqa: E402
 from ollama_mcp.oficina.loop import _attempt_as_diff  # noqa: E402
 from ollama_mcp.oficina.store import Store  # noqa: E402
-from ollama_mcp.oficina.worker import Worker, default_judge  # noqa: E402
+from ollama_mcp.oficina.worker import Worker  # noqa: E402
 
 REPLAYS = [
     {

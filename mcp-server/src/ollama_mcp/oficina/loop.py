@@ -42,12 +42,11 @@ from .drift import measure
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
-from .worker import (
+from .report import _compact_drift, _iterations_trail
+from .transport import (
     GenerationResult,
     _chat_generation,
     _cold_start_grace,
-    _compact_drift,
-    _iterations_trail,
     model_context_limit,
 )
 

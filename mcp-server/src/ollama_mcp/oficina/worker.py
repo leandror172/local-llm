@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
@@ -26,26 +25,16 @@ from .errors import WHOSE_MODEL, WHOSE_SYSTEM, triad
 from .fifo import Fifo
 from .intake import LOOP_KINDS, check_intake
 from .ledger import Ledger
+from .report import _compact_drift, _compact_judge, _iterations_trail
 from .retention import sweep
 from .store import Store
+from .transport import (
+    GenerationResult,
+    _chat_generation,
+    _cold_start_grace,
+    model_context_limit,
+)
 from .workerproc import WorkerProc
-
-
-@dataclass
-class GenerationResult:
-    """Outcome of one generation stage."""
-
-    content: str
-    model: str
-    eval_count: int
-    duration_ms: float
-    # The identity of the underlying chat call, echoed from ChatResponse (P4-T3).
-    # This is what makes the ledger↔calls.jsonl join identity-based: without it the
-    # only shared key is run_id, which is per-RUN, so matching an iteration to the call
-    # that produced it would be ORDER-based — the positional fallback T-105 banned
-    # (and anti-cheat iterations record a verdict without an evaluation, so the
-    # positions do not even line up). Defaulted so injected fakes stay valid.
-    call_id: str = ""
 
 
 GenerateFn = Callable[[Dict[str, Any], str], GenerationResult]
@@ -83,234 +72,6 @@ def _build_prompt(spec: Dict[str, Any], srv) -> str:
         block = srv._build_context_block([srv.ContextFile(path=f) for f in files])
         prompt = f"{block}\n\n{prompt}"
     return prompt
-
-
-def _cold_start_grace(call: Callable[[], GenerationResult]) -> GenerationResult:
-    """Run ``call``, retrying ONCE on a cold-start timeout (conventions doc).
-
-    A first-call timeout is usually the model loading into VRAM — the retry hits a warm
-    model. The single shared spelling of the grace convention (T-95): the worker's
-    ``GenerateFn`` seam and every loop iteration's coder call both route through it.
-    """
-    try:
-        return call()
-    except OllamaTimeoutError:
-        return call()
-
-
-def _chat_generation(
-    prompt: str,
-    model: str,
-    run_id: str,
-    *,
-    timeout: int,
-    num_predict: Optional[int] = None,
-    strip_fences: bool = True,
-    # P4-T5: the judge is the third caller of this one transport (T-95 — per-call transport
-    # is ONE spelling). It is the only one that needs a system prompt and a response schema,
-    # so both are opt-in seams rather than a second transport that would miss calls.jsonl.
-    system: Optional[str] = None,
-    schema: Optional[Dict[str, Any]] = None,
-) -> GenerationResult:
-    """One Ollama chat call → ``GenerationResult`` — the shared generation transport (T-95).
-
-    Owns the call convention for BOTH the single-shot default and the loop's per-iteration
-    coder: client lifecycle, ``think=False``, ``run_id`` tagging (calls.jsonl), bounded
-    ``num_predict`` (T-91), fence stripping. Deliberately emits NO events — the single-shot
-    path narrates via GenerationStarted/Finished, the loop via IterationStarted/Evaluated,
-    and per-call telemetry lives in calls.jsonl joined on run_id (T-99 decision (b)).
-    """
-    import asyncio
-
-    from ollama_mcp import server as srv
-    from ollama_mcp.client import OllamaClient
-
-    async def _call() -> Any:
-        client = OllamaClient()
-        try:
-            return await client.chat(
-                prompt=prompt,
-                model=model,
-                think=False,
-                timeout=timeout,
-                run_id=run_id,
-                num_predict=num_predict,
-                system=system,
-                format=schema,
-                # T-105: oficina does NOT route through the generate_code MCP tool —
-                # this seam goes straight to the client, so it must self-attribute.
-                # Verdicts for these are per-RUN (via run_result), not per-call.
-                tool="oficina",
-            )
-        finally:
-            await client.close()
-
-    resp = asyncio.run(_call())
-    content = srv._strip_code_fences(resp.content) if strip_fences else resp.content
-    return GenerationResult(
-        content=content, model=resp.model,
-        eval_count=resp.eval_count, duration_ms=resp.total_duration_ms,
-        call_id=resp.call_id,
-    )
-
-
-def _iterations_trail(ledger: Ledger) -> List[Dict[str, Any]]:
-    """The delivery report's iteration narrative, folded from the run's own ledger (P4-T6).
-
-    Carries only what a reviewer acts on. This report lives inside the `Delivered` event
-    payload (P4-D6) and is paid for in the caller's context on every `run_result`, with no
-    pointer indirection to hide behind — so `error_keys` (unbounded) and `auto_verdict` are
-    deliberately omitted. `auto_verdict` is a binary restatement of `passed` on a 0/1/2 scale
-    that structurally cannot express "improved", which is exactly why presenting it as a
-    verdict misleads; the field is surfaced here as `tests_passed` instead, naming what it
-    actually knows.
-    """
-    return [
-        {
-            "iteration": payload.get("iteration"),
-            "tests_passed": payload.get("passed"),
-            "failure_class": payload.get("failure_class"),
-            # The model editing its own acceptance criteria is the strongest single thing a
-            # reader acts on, and `failure_class: structural` alone leaves it indistinguishable
-            # from a compile error — so the anti-cheat rejection is named, not implied.
-            "cheated": payload.get("stage_failed") == "anti_cheat",
-            # T-3: names the exact calls.jsonl record that produced this iteration.
-            "call_id": payload.get("call_id"),
-        }
-        for payload in _iteration_payloads(ledger)
-    ]
-
-
-def _iteration_payloads(ledger: Ledger) -> List[Dict[str, Any]]:
-    """Each IterationEvaluated payload, in order."""
-    return [
-        event.get("payload") or {}
-        for event in ledger.read()
-        if event.get("event") == "IterationEvaluated"
-    ]
-
-
-# The report is `Delivered`-payload-resident and is paid for in the caller's context on EVERY
-# `run_result`, with no pointer indirection to hide behind (P4-D6). So its variable-length parts
-# are BOUNDED here rather than trusted to stay small. Full fidelity survives in the events they
-# were taken from (`Judged`; the loop's own drift), which nobody pays for unless they go looking.
-_MAX_REASONING_CHARS = 200
-_MAX_REPORTED_HUNKS = 10
-
-
-def _compact_judge(verdict: Dict[str, Any]) -> Dict[str, Any]:
-    """The judge verdict as the REPORT carries it — a trimmed copy; the original is untouched.
-
-    Only the prose is clipped. `criteria[]` entries are never dropped or reshaped: each carries
-    the `passing_score` its score was judged against (P4-D9), and a report without them states a
-    verdict it cannot explain. The system prompt asks for one concise sentence — but a prompt is
-    a request, not a bound, and this payload cannot afford to find that out in production.
-    """
-    return {
-        **verdict,
-        "criteria": [
-            {**c, "reasoning": _clipped(str(c.get("reasoning", "")), _MAX_REASONING_CHARS)}
-            for c in verdict.get("criteria", [])
-        ],
-    }
-
-
-def _compact_drift(drift: Dict[str, Any]) -> Dict[str, Any]:
-    """Drift as the REPORT carries it: at most `_MAX_REPORTED_HUNKS` ranges.
-
-    `hunks_total` appears ONLY when ranges were dropped, so its presence means "there were more"
-    and its absence means "this is all of them". Emitted unconditionally it would carry no bits —
-    first principle 6, the rule that dropped `files_touched` at build time.
-    """
-    hunks = drift.get("hunks") or []
-    if len(hunks) <= _MAX_REPORTED_HUNKS:
-        return drift
-    return {**drift, "hunks": hunks[:_MAX_REPORTED_HUNKS], "hunks_total": len(hunks)}
-
-
-def _clipped(text: str, limit: int) -> str:
-    """`text` bounded to `limit` characters, ellipsised when it had to give."""
-    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
-
-
-JUDGE_MODEL = "my-judge-q25c14-16k"
-JUDGE_TIMEOUT_S = 300
-
-
-def default_judge(run_id: str, model: str = JUDGE_MODEL, timeout: int = JUDGE_TIMEOUT_S):
-    """A `chat(system, prompt, schema) -> str` for the judge, on the shared transport.
-
-    The judge persona shares the coder's base (P4-D2), so packaging costs no model swap
-    (`ref:delegate-gpu-policy`). Fences are left alone: the reply is schema-constrained JSON,
-    not code, and stripping is a codegen concern.
-
-    **`run_id` is required, never defaulted.** The reason this module owns its call rather than
-    composing the evaluator's transport is that the record must be *attributable*; it originally
-    passed `""`, which is worse than absent because it is a value that looks like one — anything
-    grouping `calls.jsonl` by run merged every run's judge calls into one empty-string bucket.
-    A default would let that return silently. **Per-criterion `call_id` is deliberately NOT
-    recorded (P4-D11):** a run makes one judge call per criterion, and matching ids to criteria
-    from an ordered list is the positional fallback T-105 banned. Whoever needs it must thread
-    the id back through the `chat` seam, not collect it side-band.
-    """
-
-    def _judge_chat(*, system: str, prompt: str, schema: Dict[str, Any]) -> str:
-        return _chat_generation(
-            prompt, model, run_id, timeout=timeout, strip_fences=False,
-            system=system, schema=schema,
-        ).content
-
-    return _judge_chat
-
-
-def model_context_limit(model: str) -> Optional[int]:
-    """The model's effective context window in tokens, or None when undeterminable.
-
-    The window is the ``num_ctx`` PARAMETER Ollama reports for the model. Absence is
-    NOT "the architectural maximum" — the model would then run at Ollama's own unstated
-    default — so an absent or unreadable value yields None rather than a guess: guessing
-    high silently disables the caller's fit check, guessing low aborts valid work. Every
-    failure (transport, status, shape, parse) lands on the same None channel; the ceiling
-    is a value-or-absence, never a sentinel in the value channel (T-112).
-    """
-    descriptor = _fetch_model_descriptor(model)
-    if not descriptor:
-        return None
-    return _num_ctx_from_parameters(descriptor.get("parameters", ""))
-
-
-def _fetch_model_descriptor(model: str) -> Optional[Dict[str, Any]]:
-    """The model's /api/show descriptor, or None if it cannot be retrieved."""
-    import asyncio
-
-    from ollama_mcp.client import OllamaClient
-
-    async def _call() -> Any:
-        client = OllamaClient()
-        try:
-            return await client.fetch_model_descriptor(model)
-        finally:
-            await client.close()
-
-    try:
-        return asyncio.run(_call())
-    except Exception:  # noqa: BLE001 — an undeterminable ceiling is None, never a raise
-        return None
-
-
-def _num_ctx_from_parameters(parameters: str) -> Optional[int]:
-    """Read ``num_ctx`` out of Ollama's ``name<whitespace>value`` parameter blob.
-
-    The trailing space in the prefix match keeps a longer parameter that merely
-    starts with the same letters from being mistaken for it.
-    """
-    for line in parameters.splitlines():
-        if line.startswith("num_ctx "):
-            try:
-                return int(line.split()[1])
-            except (IndexError, ValueError):
-                return None
-    return None
 
 
 def _default_generate(spec: Dict[str, Any], run_id: str) -> GenerationResult:
@@ -431,7 +192,12 @@ class Worker:
         if not rubric_id:
             return {}
 
-        from .judge import judge_deliverable, load_rubric, unavailable_verdict
+        from .judge import (
+            default_judge,
+            judge_deliverable,
+            load_rubric,
+            unavailable_verdict,
+        )
 
         judge = self._loop_judge or default_judge(run_id)
         try:

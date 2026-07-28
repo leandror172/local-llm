@@ -27,7 +27,7 @@ from ollama_mcp.oficina.loop import (
 from ollama_mcp.oficina.errors import ContextBudgetError
 from ollama_mcp.oficina.parser import STAGE_TEST, ParsedFailure
 from ollama_mcp.oficina.workspace import Workspace
-from ollama_mcp.oficina.worker import GenerationResult
+from ollama_mcp.oficina.transport import GenerationResult
 
 
 # --- low-level fakes + git fixture (the machinery the vocabulary sits on) ----
@@ -811,7 +811,7 @@ def test_the_trail_marks_an_iteration_the_anti_cheat_rejected(tmp_path):
     acts on, and the trail rendered it as an ordinary `structural` failure — indistinguishable
     from a compile error. `stage_failed: anti_cheat` was in the ledger the whole time; the
     projection simply dropped it."""
-    from ollama_mcp.oficina.worker import _iterations_trail  # the projection under test
+    from ollama_mcp.oficina.report import _iterations_trail  # the projection under test
 
     run = given_a_function_run_whose_target_is_a_test_file(tmp_path)
     when_the_coder_iterates(

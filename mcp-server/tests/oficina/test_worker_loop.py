@@ -17,14 +17,14 @@ import subprocess
 from ollama_mcp.oficina.ledger import Ledger, fold_state
 from ollama_mcp.oficina.parser import STAGE_TEST, ParsedFailure
 from ollama_mcp.oficina.store import Store
-from ollama_mcp.oficina.worker import (
+from ollama_mcp.oficina.report import (
     _MAX_REASONING_CHARS,
     _MAX_REPORTED_HUNKS,
-    GenerationResult,
-    Worker,
     _compact_drift,
     _compact_judge,
 )
+from ollama_mcp.oficina.transport import GenerationResult
+from ollama_mcp.oficina.worker import Worker
 
 
 # --- low-level machinery ----------------------------------------------------

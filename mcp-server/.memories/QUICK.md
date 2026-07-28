@@ -127,6 +127,17 @@ would fire unconditionally (first principle 6). Gotcha found: `SequenceMatcher`'
 stops junk anchoring a match but the winning block still **absorbs adjacent junk**, so blank
 lines must be filtered BEFORE matching, not marked junk. Suite 340→353.
 
+Session 132 (2026-07-28): **P4 reviewed, simplified and re-accepted live (suite 369→393).**
+Two new modules split out of `worker.py`, which was half transport and report code by accident of
+being their first caller: **`transport.py`** (`GenerationResult`, `_chat_generation`,
+`_cold_start_grace`, `model_context_limit`) — the ONE per-call transport (T-95) has three callers,
+and importing it from the worker dragged `Store`/`Fifo`/`WorkerProc`/retention into anything that
+wanted one model call; and **`report.py`** (the iterations trail + the `Delivered`-payload size
+bounds), because a bound that holds only where someone remembers to call it has no owner — the
+`Exhausted` and `Cancelled` payloads had escaped it. `JUDGE_MODEL`/`JUDGE_TIMEOUT_S`/`default_judge`
+moved into `judge.py`, whose docstring already claimed it owned the model call. **`loop.py` no
+longer imports from `worker.py` at all.** Live acceptance is now durable: `make accept-p4`.
+
 Session 131 (cont.): **P4 BUILT + ACCEPTED (T1–T9, suite 340→369).** New modules
 `oficina/drift.py` (mechanical metrics) and `oficina/judge.py` (Phase-2 rubric judge at
 packaging, emitting the `Judged` run event). `acceptance.rubric` is now a real schema field

@@ -13,7 +13,8 @@ import pytest
 
 from ollama_mcp.client import OllamaTimeoutError
 from ollama_mcp.oficina.loop import NUM_PREDICT, default_coder
-from ollama_mcp.oficina.worker import GenerationResult, _cold_start_grace, default_judge
+from ollama_mcp.oficina.judge import default_judge
+from ollama_mcp.oficina.transport import GenerationResult, _cold_start_grace
 
 
 # --- _cold_start_grace: the single-retry convention --------------------------

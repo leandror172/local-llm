@@ -25,6 +25,8 @@ from typing import Any, Callable, Dict, List
 
 import yaml
 
+from .transport import _chat_generation
+
 # The judge answers one criterion at a time; this is the shape it must answer in.
 VERDICT_SCHEMA: Dict[str, Any] = {
     "type": "object",
@@ -236,3 +238,33 @@ def _min_score(scored: List[Dict[str, Any]]) -> int:
     if not scored or any(c["score"] is None for c in scored):
         return 0
     return min(c["score"] for c in scored)
+
+
+JUDGE_MODEL = "my-judge-q25c14-16k"
+JUDGE_TIMEOUT_S = 300
+
+
+def default_judge(run_id: str, model: str = JUDGE_MODEL, timeout: int = JUDGE_TIMEOUT_S):
+    """A `chat(system, prompt, schema) -> str` for the judge, on the shared transport.
+
+    The judge persona shares the coder's base (P4-D2), so packaging costs no model swap
+    (`ref:delegate-gpu-policy`). Fences are left alone: the reply is schema-constrained JSON,
+    not code, and stripping is a codegen concern.
+
+    **`run_id` is required, never defaulted.** The reason this module owns its call rather than
+    composing the evaluator's transport is that the record must be *attributable*; it originally
+    passed `""`, which is worse than absent because it is a value that looks like one — anything
+    grouping `calls.jsonl` by run merged every run's judge calls into one empty-string bucket.
+    A default would let that return silently. **Per-criterion `call_id` is deliberately NOT
+    recorded (P4-D11):** a run makes one judge call per criterion, and matching ids to criteria
+    from an ordered list is the positional fallback T-105 banned. Whoever needs it must thread
+    the id back through the `chat` seam, not collect it side-band.
+    """
+
+    def _judge_chat(*, system: str, prompt: str, schema: Dict[str, Any]) -> str:
+        return _chat_generation(
+            prompt, model, run_id, timeout=timeout, strip_fences=False,
+            system=system, schema=schema,
+        ).content
+
+    return _judge_chat
