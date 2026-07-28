@@ -57,6 +57,14 @@ class ChatResponse:
     # here: a longer prompt sharing a cached prefix costs LESS prompt-eval time than a
     # shorter cold one (oficina P2-D2 cache proof; Ollama reports full token COUNT anyway).
     prompt_eval_duration_ms: float = 0.0
+    # This call's identity, minted by `chat` and echoed into calls.jsonl (P4-T3).
+    # Carrying it on the RESPONSE is what lets a caller join its own record back to the
+    # log by identity. Without it the only shared key is run_id, which is per-RUN — so
+    # per-iteration matching would be positional, the fallback T-105 banned outright
+    # ("when identity is unknown, stay silent; mislabeled is worse than missing").
+    # Minted in `chat`, not in `_log_call`, so identity does not depend on logging being
+    # enabled or succeeding — that function swallows its own failures by design.
+    call_id: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +264,11 @@ class OllamaClient:
 
         # Parse the response JSON into our structured dataclass.
         data = response.json()
+        # Identity is a property of the CALL, not of the log record (P4-T3) — mint it
+        # here so it survives logging being disabled or failing.
+        call_id = uuid.uuid4().hex[:12]
         result = ChatResponse(
+            call_id=call_id,
             content=data["message"]["content"],
             model=data.get("model", model),
             prompt_eval_count=data.get("prompt_eval_count", 0),
@@ -321,7 +333,11 @@ class OllamaClient:
                 # covered 24 calls across 8 models in a compare-models sweep), so it
                 # cannot identify a call or carry a verdict unambiguously.
                 # Lowercase hex only: the verdict-capture regex matches [a-f0-9]+.
-                "call_id": uuid.uuid4().hex[:12],
+                # P4-T3: minted by `chat` and passed in, so the SAME id reaches both
+                # this record and the caller's ChatResponse — that shared value is the
+                # join key. Minting here would have made identity contingent on
+                # logging, which this function is explicitly allowed to fail at.
+                "call_id": response.call_id,
                 # T-105: which MCP tool produced this call. Without it the verdict
                 # denominator is unmeasurable — "coverage" silently mixes calls the
                 # harness never intended to prompt for (summarize/translate/sweeps).

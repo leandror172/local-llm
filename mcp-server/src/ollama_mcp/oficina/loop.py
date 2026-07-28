@@ -246,9 +246,17 @@ class EvaluatedLoop:
         )
 
     def _emit_iteration_evaluated(
-        self, k: int, passed: bool, attributable: List[ParsedFailure]
+        self, k: int, passed: bool, attributable: List[ParsedFailure], call_id: str = ""
     ) -> None:
-        """Record the evaluation verdict; ``auto_verdict`` is the DPO seam (S17)."""
+        """Record the evaluation verdict; ``auto_verdict`` is the DPO seam (S17).
+
+        ``call_id`` names the exact ``calls.jsonl`` record this verdict judges (P4-T3,
+        closing T-99's deferred "revisit the join mechanics at P4"). The two logs
+        otherwise share only ``run_id``, which is per-RUN — so pairing an iteration with
+        its generation would be positional, and positions do not even line up (an
+        anti-cheat iteration records a verdict without an evaluation). T-105's rule:
+        when identity is unknown, stay silent, because mislabeled beats missing only in
+        the wrong direction."""
         self.ledger.iteration_evaluated(
             {
                 "iteration": k,
@@ -257,6 +265,7 @@ class EvaluatedLoop:
                 "failure_class": category_for(attributable[0]) if attributable else None,
                 "error_keys": [list(f.error_key) for f in attributable],
                 "auto_verdict": 2 if passed else 0,
+                "call_id": call_id,
             }
         )
 
@@ -271,6 +280,7 @@ class EvaluatedLoop:
                 "failure_class": "structural",
                 "error_keys": [],
                 "auto_verdict": 0,
+                "call_id": gen.call_id,
                 "cheat_touched": cheated,
             }
         )
@@ -459,7 +469,7 @@ class EvaluatedLoop:
             current = self.evaluate(worktree, base_repo, self.spec)
             attributable = attributable_failures(current, baseline, target_files, test_files)
             passed = not attributable
-            self._emit_iteration_evaluated(k, passed, attributable)
+            self._emit_iteration_evaluated(k, passed, attributable, gen.call_id)
             if passed:
                 return self._result_from("delivered", gen, iterations_used=k, snapshot=snapshot)
 

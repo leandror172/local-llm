@@ -67,6 +67,7 @@ class _FakeResponse:
     model = "model-used"
     eval_count = 7
     total_duration_ms = 12.5
+    call_id = "abc123def456"  # P4-T3: real ChatResponses always carry one
 
 
 class _FakeClient:
@@ -98,6 +99,9 @@ def test_default_coder_call_convention(monkeypatch):
     assert isinstance(gen, GenerationResult)
     assert "```" not in gen.content and "x = 1" in gen.content  # fences stripped
     assert gen.model == "model-used" and gen.eval_count == 7
+    # P4-T3: the chat call's identity reaches the loop, so an iteration's ledger event
+    # can name the exact calls.jsonl record that produced it instead of guessing by order.
+    assert gen.call_id == "abc123def456"
 
 
 def test_default_coder_explicit_num_predict_wins(monkeypatch):

@@ -76,7 +76,12 @@ class FakeCoder:
         self.num_predicts.append(num_predict)
         self.models.append(model)
         content = self.contents.pop(0) if self.contents else "def area(w, h):\n    return w * h\n"
-        return GenerationResult(content=content, model=model, eval_count=10, duration_ms=1.0)
+        # A real chat call mints a fresh call_id per call (P4-T3); the fake mirrors that
+        # so a test can tell WHICH call an iteration's ledger event names.
+        return GenerationResult(
+            content=content, model=model, eval_count=10, duration_ms=1.0,
+            call_id=f"call{len(self.prompts)}",
+        )
 
 
 class FakeEvaluate:
@@ -224,6 +229,12 @@ def then_the_first_iteration_recorded_verdict_0(run):
     assert _iteration_payloads(run)[0]["auto_verdict"] == 0
 
 
+def then_each_iteration_names_the_call_that_produced_it(run):
+    """The ledger↔calls.jsonl join is by identity, never by position (P4-T3)."""
+    named = [p["call_id"] for p in _iteration_payloads(run)]
+    assert named == [f"call{i + 1}" for i in range(len(named))]
+
+
 def then_the_prompt_at_iteration(run, n):
     """Return the prompt the coder saw on iteration `n` (1-based), for the caller to assert on."""
     return run.coder.prompts[n - 1]
@@ -275,6 +286,17 @@ def test_iteration_evaluated_carries_auto_verdict_2_on_pass(tmp_path):
     run = given_a_function_run(tmp_path)
     when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
     then_the_last_iteration_recorded_a_passing_verdict(run)
+
+
+def test_each_iteration_names_its_generating_call(tmp_path):
+    """Every IterationEvaluated names the call_id that produced it, so the DPO pass joins
+    ledger↔calls.jsonl by identity. Two iterations, so a positional join would still look
+    right if the ids were absent — the point is that each verdict names its OWN call."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=["try1", GOOD_AREA], and_evaluation_yields=[FAILS("a"), CLEAN]
+    )
+    then_each_iteration_names_the_call_that_produced_it(run)
 
 
 # --- exhaustion -------------------------------------------------------------

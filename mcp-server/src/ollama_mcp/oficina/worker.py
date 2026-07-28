@@ -38,6 +38,13 @@ class GenerationResult:
     model: str
     eval_count: int
     duration_ms: float
+    # The identity of the underlying chat call, echoed from ChatResponse (P4-T3).
+    # This is what makes the ledger↔calls.jsonl join identity-based: without it the
+    # only shared key is run_id, which is per-RUN, so matching an iteration to the call
+    # that produced it would be ORDER-based — the positional fallback T-105 banned
+    # (and anti-cheat iterations record a verdict without an evaluation, so the
+    # positions do not even line up). Defaulted so injected fakes stay valid.
+    call_id: str = ""
 
 
 GenerateFn = Callable[[Dict[str, Any], str], GenerationResult]
@@ -131,6 +138,7 @@ def _chat_generation(
     return GenerationResult(
         content=content, model=resp.model,
         eval_count=resp.eval_count, duration_ms=resp.total_duration_ms,
+        call_id=resp.call_id,
     )
 
 
