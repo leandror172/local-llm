@@ -187,6 +187,13 @@ class Worker:
         A failing verdict does NOT block `Delivered` — S17 gates DPO chosen labels, not
         delivery — and a judge that cannot run at all is reported, never raised, because by
         this point the deliverable already exists.
+
+        **The run's MODE is handed over here (T-130).** Only the loop knows it — the workspace
+        derives it from target presence at HEAD (E-D2) and no spec field carries it — and the
+        judge needs it twice: to name the artifact `result.change` actually holds, and to check
+        a rubric's declared `applies_to`. Without this hand-off that precondition is
+        unenforceable, and a greenfield run judged on an edit ladder returns a confident number
+        from rungs that all presuppose a file which never existed.
         """
         rubric_id = (spec.get("acceptance") or {}).get("rubric")
         if not rubric_id:
@@ -203,7 +210,7 @@ class Worker:
         try:
             verdict = judge_deliverable(
                 load_rubric(rubric_id), spec.get("objective", ""),
-                result.change, result.drift, judge,
+                result.change, result.drift, judge, result.mode,
             )
         except Exception as exc:  # noqa: BLE001 — the gate reports, it does not fail the run
             verdict = unavailable_verdict(rubric_id, f"judge unavailable: {exc}")

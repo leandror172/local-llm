@@ -38,7 +38,13 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 RUNS = Path.home() / ".local/share/oficina/runs"
 CALLS = Path.home() / ".local/share/ollama-bridge/calls.jsonl"
-RUBRIC = "oficina-edit"
+# One rubric per run mode (T-130). A1/A2 replay real EDIT runs; A5 drives a real GREENFIELD
+# one, and judging that with the edit rubric is what made its verdict meaningless — every rung
+# of that ladder presupposes a prior state. The run mode is not a parameter here, it is a
+# property of each case.
+EDIT_RUBRIC = "oficina-edit"
+GREENFIELD_RUBRIC = "oficina-greenfield"
+AN_EDIT_RUN = "edit"
 
 sys.path.insert(0, str(REPO / "mcp-server" / "src"))
 
@@ -108,7 +114,9 @@ def run_replay(case, rubric):
 
     objective = json.loads((RUNS / run_id / "spec.json").read_text()).get("objective", "")
     started = time.monotonic()
-    verdict = judge_deliverable(rubric, objective, change, drift, default_judge(run_id))
+    verdict = judge_deliverable(
+        rubric, objective, change, drift, default_judge(run_id), AN_EDIT_RUN
+    )
     elapsed = time.monotonic() - started
 
     for crit in verdict["criteria"]:
@@ -132,13 +140,18 @@ def _seed_repo(root: Path) -> dict:
         subprocess.run(["git", "-C", str(root)] + args, check=True)
     python = REPO / "mcp-server" / ".venv" / "bin" / "python"
     return {
-        "objective": "Write a function area(w, h) that returns w * h. One line, with a docstring.",
+        # "One line, with a docstring" until s133 — two requirements that cannot both hold, so
+        # `objective_met` could never reach its cut of 4 and the judge said so verbatim ("does
+        # not meet the one-line requirement"). Latent since A5 was written, because the old
+        # assertion only checked that a verdict FIELD was present. A fixture whose objective is
+        # unsatisfiable measures the fixture, not the gate.
+        "objective": "Write a function area(w, h) that returns w * h, with a docstring.",
         "deliverable": {"kind": "function", "target": str(root / "area.py"), "language": "python"},
         "workspace": "worktree",
         "acceptance": {
             "test_cmd": f"{python} -m pytest -q test_area.py",
             "test_files": ["test_area.py"],
-            "rubric": RUBRIC,
+            "rubric": GREENFIELD_RUBRIC,
         },
     }
 
@@ -168,10 +181,27 @@ def run_a5():
 
         iteration = payload.get("IterationEvaluated", {})
         judged = payload.get("Judged", {})
+        # A5's store lives in a tempdir that is gone by the time anyone reads a failure, so
+        # unlike A1/A2 — which replay pinned refs and can always be re-examined — whatever this
+        # case does not print is unrecoverable. The reasoning is what says whether a low score
+        # is the judge disagreeing or the fixture being unanswerable.
+        for crit in judged.get("criteria", []):
+            print(f"      {crit['name']:18} {crit['score']} (cut {crit['passing_score']})  "
+                  f"{str(crit['reasoning'])[:96]}")
         ok &= _check(
             "judge_verdict is a field distinct from auto_verdict",
             "judge_verdict" in judged and "auto_verdict" in iteration,
             f"judge_verdict={judged.get('judge_verdict')} auto_verdict={iteration.get('auto_verdict')}",
+        )
+        # T-130: the check above passes on ANY number, which is how it stayed green while this
+        # very run returned 5 and then 1 an hour apart on identical code. A rubric that fits the
+        # run's mode makes the verdict mean something, so it can now be asserted rather than
+        # merely counted — the deliverable is a correct one-line `area()` with a docstring.
+        ok &= _check(
+            "the greenfield verdict is a PASS, not just a present field",
+            judged.get("passed") is True,
+            f"rubric={judged.get('rubric')} judge_verdict={judged.get('judge_verdict')} "
+            f"criteria={[(c['name'], c['score']) for c in judged.get('criteria', [])]}",
         )
 
         call_id = iteration.get("call_id")
@@ -198,9 +228,12 @@ def main():
     if not os.environ.get("OFICINA_RUBRICS") and not (REPO / "evaluator" / "rubrics").exists():
         raise SystemExit("cannot find evaluator/rubrics — set OFICINA_RUBRICS")
 
-    rubric = load_rubric(RUBRIC)
-    cuts = ", ".join(f"{c['name']}={c.get('passing_score')}" for c in rubric["criteria"])
-    print(f"rubric {rubric['id']}  cuts: {cuts}\n")
+    for rubric_id in (EDIT_RUBRIC, GREENFIELD_RUBRIC):
+        loaded = load_rubric(rubric_id)
+        cuts = ", ".join(f"{c['name']}={c.get('passing_score')}" for c in loaded["criteria"])
+        print(f"rubric {loaded['id']:20} applies_to={loaded.get('applies_to')}  cuts: {cuts}")
+    print()
+    rubric = load_rubric(EDIT_RUBRIC)
 
     ok = True
     for case in REPLAYS:

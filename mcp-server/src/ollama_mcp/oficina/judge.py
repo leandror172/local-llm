@@ -69,18 +69,40 @@ def judge_deliverable(
     change: str,
     drift: Dict[str, Any],
     chat: Callable[..., str],
+    mode: str,
 ) -> Dict[str, Any]:
     """Score every phase-2 criterion of `rubric`, one model call each.
 
-    ``change`` is the run's unified diff, NOT the delivered file — see `_judge_user_prompt`
-    for the measurement that decided it.
+    On an edit run ``change`` is the run's unified diff, NOT the delivered file — see
+    `_judge_user_prompt` for the measurement that decided it. On a greenfield run there is no
+    prior file to diff against, so it is the delivered content itself (T-130).
+
+    ``mode`` is the run's mode as DETECTED at assembly (`Workspace._detect_mode` — target
+    presence at HEAD, E-D2), and it is required rather than defaulted for the reason
+    `default_judge` requires `run_id`: a default here would be a value that looks like one, and
+    it would silently decide which question this rubric is allowed to ask.
+
+    **A rubric may declare the one mode it can answer about (T-130).** An `applies_to` naming a
+    different mode is refused outright, with no model call: every rung of the edit ladder
+    presupposes a prior state, so a greenfield run has no answer to give — and a judge asked an
+    unanswerable question still returns a number (the same greenfield deliverable scored 5 and
+    then 1, an hour apart). This is a PRECONDITION, not a filter; a rubric ships for each mode.
+    Checked here rather than at intake because unlike the rubric NAME the mode is not knowable
+    until assembly. An ABSENT `applies_to` means no restriction, never "matches nothing" — the
+    seven benchmark rubrics declare none and are shared with the Layer-4 suite, so reading
+    absence as a mismatch would silently stop judging every run that names one.
 
     One criterion per call is the evaluator's own design for reliability at this tier.
     ``chat`` is injected so the pure path needs no GPU: it is called as
     ``chat(system=..., prompt=..., schema=...)`` and returns the model's raw text.
     """
+    if "applies_to" in rubric and rubric["applies_to"] != mode:
+        return unavailable_verdict(
+            rubric.get("id", ""), f"rubric does not apply to a {mode} run"
+        )
+
     scored = [
-        _score_criterion(criterion, objective, change, drift, chat)
+        _score_criterion(criterion, objective, change, drift, chat, mode)
         for criterion in _phase_2_criteria(rubric)
     ]
     return {
@@ -123,17 +145,21 @@ def _score_criterion(
     change: str,
     drift: Dict[str, Any],
     chat: Callable[..., str],
+    mode: str,
 ) -> Dict[str, Any]:
     """One criterion's verdict; an unscoreable criterion reports why instead of raising.
 
     The verdict carries its own `passing_score`, so the gate and the reader resolve the cut
     from one place, and the report can explain why a 3 failed rather than merely stating it.
+
+    ``mode`` is carried through solely so the prompt can name the artifact it is showing; this
+    function makes no decision with it.
     """
     identity = {"name": criterion["name"], "passing_score": _passing_score(criterion)}
     try:
         reply = chat(
             system=_judge_system_prompt(),
-            prompt=_judge_user_prompt(objective, change, drift, criterion),
+            prompt=_judge_user_prompt(objective, change, drift, criterion, mode),
             schema=VERDICT_SCHEMA,
         )
         parsed = _parsed_verdict(reply)
@@ -181,6 +207,21 @@ def _judge_system_prompt() -> str:
     )
 
 
+def _change_heading(mode: str) -> str:
+    """What to call the artifact the judge is about to read (T-130).
+
+    An edit run's `change` is a unified diff; a greenfield run's is the delivered file, because
+    there was no prior file to diff it against. Named rather than inlined so the two spellings
+    sit side by side: they are a pair, and a change to one that forgets the other reintroduces
+    the mismatch this exists to remove.
+    """
+    return (
+        "## What the run actually changed (unified diff)"
+        if mode == "edit"
+        else "## The file the run produced"
+    )
+
+
 def _scoring_scale(criterion: Dict[str, Any]) -> str:
     """The criterion's rungs, highest first.
 
@@ -195,7 +236,11 @@ def _scoring_scale(criterion: Dict[str, Any]) -> str:
 
 
 def _judge_user_prompt(
-    objective: str, change: str, drift: Dict[str, Any], criterion: Dict[str, Any]
+    objective: str,
+    change: str,
+    drift: Dict[str, Any],
+    criterion: Dict[str, Any],
+    mode: str
 ) -> str:
     """What the judge reads: the ask, the CHANGE as a unified diff, and the measured drift.
 
@@ -217,10 +262,18 @@ def _judge_user_prompt(
     sits behind it where re-evaluation costs only its own tokens. The judge still scores one
     criterion per call — the evaluator's Phase-2 design for reliability at this tier — it just
     reads which one at the end.
+
+    **The heading names the artifact, and the artifact depends on the mode (T-130).** All of the
+    above is true of an EDIT run. A greenfield run has no committed file to diff against, so
+    ``change`` holds the delivered content and announcing a unified diff would describe
+    something the model is not looking at. The measurement above is exactly why that matters:
+    handed a conflict between what it is told and what it can see, this tier trusts what it can
+    see and reads the rest as background — so a false heading is not a cosmetic inaccuracy, it
+    is a claim the judge will quietly resolve against the truth.
     """
     return (
         f"## Objective\n{objective}\n\n"
-        f"## What the run actually changed (unified diff)\n{change}\n\n"
+        f"{_change_heading(mode)}\n{change}\n\n"
         "## Drift already measured (do not recompute)\n"
         f"- hunks: {drift.get('hunks', [])}\n"
         f"- lines_added: {drift.get('lines_added', 0)}\n"
