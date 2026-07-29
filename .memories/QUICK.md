@@ -62,6 +62,29 @@ the requested change"; with the unified diff it caught it, at 33% fewer tokens
 the 16K coder, and the blocked set is oficina's own core — the envelope had been silently
 *selecting* the work. Also: first llm-side **LTG usage guide**; T-125/126/127/128 filed.
 
+Session 132 (2026-07-28): **P4 REVIEWED, SIMPLIFIED and RE-ACCEPTED LIVE — suite 369→393, PR #86
+ready.** A 13-finding code review closed in full, then a four-angle `/simplify` pass, then the
+acceptance re-run against the *real* pinned evidence. **Three design forks were escalated to the
+decision register rather than settled inside fix commits (P4-D8/D9/D10; D11 deferred):**
+`judge_verdict` is now the **MIN** of the criteria, not their mean — a conjunction has no average,
+and the mean reported **4** on the T-119 leak while `passed` correctly withheld; the passing cut
+moved **into the rubric** as a per-criterion `passing_score: 4`, which **closes the plan's own
+unresolved calibration note** (a leak scoring 3 used to pass) and changed **zero prompt bytes**, so
+the acceptance held without re-measurement; and `weight` was **deleted** from `oficina-edit.yaml`,
+because no weighting can make an average agree with an AND. **Live acceptance is now a durable
+harness** (`make accept-p4`) — A1/A2 replay the pinned runs (`refs/oficina/<run_id>`, T-118 R-D2
+paying for itself a fourth time) and A5 drives a real end-to-end run; it had been authored ad hoc
+twice and reconstructed from scratch both times. **`worker.py` was half other people's code:**
+`transport.py` (the ONE T-95 per-call transport, three callers) and `report.py` (the
+`Delivered`-payload bounds, which had held on only ONE of three terminals) split out, and `loop.py`
+no longer imports from `worker.py` at all. Also one call-time `repo_root()` (`LLM_REPO_ROOT` was
+honoured by 1 of 4 resolvers), `errors.py` given ownership of the `whose` vocabulary, and the event
+phase-registry pinned by a test. **Calibration worth carrying: five findings identified their
+MECHANISM correctly and got their MAGNITUDE wrong** — "tens of seconds" measured 2.4–3.1 s, "tens
+of ms" measured 0.37 ms, and a latin-1 fix hardened a function on a path the failure never reached
+because assembly read the same files strictly first. Mechanism is derivable by reading; magnitude
+and reachability are not.
+
 ## Repo Structure
 
 ```

@@ -5,7 +5,11 @@
 ## Status
 
 Operational. 8 rubrics (Go, Python, Java, Shell, general, classification, writing, oficina-edit),
-**5–6 weighted criteria each**, split across `phase: 1` / `phase: 2`.
+split across `phase: 1` / `phase: 2`. The seven benchmark rubrics carry **5–6 weighted criteria
+each**; **`oficina-edit` is the exception on both counts** — 2 phase-2 criteria, and **no
+`weight:` at all**, because its consumer is a conjunction of per-criterion gates rather than a
+weighted average (P4-D10). It instead declares **`passing_score: 4`** per criterion, a key only
+the oficina judge reads. See KNOWLEDGE.md § "A Greenfield Rubric Can Reward an Edit Defect".
 Phase 1 validators for Go, Shell, Python, Java, JSON schema. Phase 2 LLM judge working.
 Used in Layer 4 benchmark runs; results in `evaluator/results/`.
 

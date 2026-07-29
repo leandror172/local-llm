@@ -140,7 +140,23 @@ label). Keep under 30 lines.*
   must be shown the DIFF, not the delivered file** — with the file plus metrics it still said
   "contains only the requested change" (`ref:judge-sees-the-change`). Filed en route: T-125, T-126,
   T-127, T-128.
-- **Next:** (1) **PR for the P4 branch** (unmerged; consider `/simplify` first). (2) **P3** —
+- 2026-07-28 (session 132): **P4 REVIEWED, SIMPLIFIED, RE-ACCEPTED LIVE — suite 369→393; PR #86
+  ready.** 13 review findings closed, a four-angle `/simplify` pass applied, acceptance re-run
+  against the real pinned evidence. **Three design forks escalated to the register rather than
+  settled in fix commits (P4-D8/D9/D10; D11 deferred with a trigger):** `judge_verdict` is the
+  **MIN**, not the mean — a conjunction has no average, and the mean reported **4** on the leak
+  while `passed` withheld; the cut moved **into the rubric** as per-criterion `passing_score: 4`,
+  which **closes the carried calibration note** (a leak scoring 3 used to pass) and changed **zero
+  prompt bytes**, so acceptance held without re-measuring; `weight` **deleted** from
+  `oficina-edit.yaml` (no weighting makes an average agree with an AND). **Acceptance is now
+  durable — `make accept-p4`** (A1/A2 replay the pinned runs, A5 drives a real end-to-end run);
+  it had been ad hoc and rebuilt from scratch twice. **`worker.py` split**: `transport.py` (the ONE
+  T-95 transport, three callers) + `report.py` (the payload bounds, which had held on one of three
+  terminals); `loop.py` no longer imports `worker.py`. **Calibration: five findings got the
+  mechanism right and the MAGNITUDE wrong** — "tens of seconds" → 2.4–3.1 s; "tens of ms" →
+  0.37 ms; and a latin-1 fix hardened a function on a path the failure never reached. Mechanism is
+  readable; magnitude and reachability must be measured.
+- **Next:** (1) **merge PR #86** (393 green, live acceptance passing). (2) **P3** —
   context & prompt assembly, now the phase in front. (3) **Axis B kinds reconsideration**
   (fed by Axis A: language axis proven, taxonomy trigger for E-D8 rename + dead
   `acceptance.validators` removal). (3) T-93 refs-diagram verdict;

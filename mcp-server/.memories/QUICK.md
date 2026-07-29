@@ -6,7 +6,8 @@
 
 Operational, system-wide availability. **18 tools** exposed to Claude Code (verified
 2026-07-21 by decorator site, not by `grep -c "@mcp.tool"` — that returns 19 because one
-hit is a docstring). 279 tests green.
+hit is a docstring). **393 tests green** (`make test`); live P4 judge-gate acceptance is a
+separate, deliberate non-test target — `make accept-p4`, real Ollama calls.
 All tools verified, call logging active. Server is the integration layer for all 3 repos.
 
 ## Architecture
