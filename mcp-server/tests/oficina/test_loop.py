@@ -27,7 +27,7 @@ from ollama_mcp.oficina.loop import (
 from ollama_mcp.oficina.errors import ContextBudgetError
 from ollama_mcp.oficina.parser import STAGE_TEST, ParsedFailure
 from ollama_mcp.oficina.workspace import Workspace
-from ollama_mcp.oficina.worker import GenerationResult
+from ollama_mcp.oficina.transport import GenerationResult
 
 
 # --- low-level fakes + git fixture (the machinery the vocabulary sits on) ----
@@ -76,7 +76,12 @@ class FakeCoder:
         self.num_predicts.append(num_predict)
         self.models.append(model)
         content = self.contents.pop(0) if self.contents else "def area(w, h):\n    return w * h\n"
-        return GenerationResult(content=content, model=model, eval_count=10, duration_ms=1.0)
+        # A real chat call mints a fresh call_id per call (P4-T3); the fake mirrors that
+        # so a test can tell WHICH call an iteration's ledger event names.
+        return GenerationResult(
+            content=content, model=model, eval_count=10, duration_ms=1.0,
+            call_id=f"call{len(self.prompts)}",
+        )
 
 
 class FakeEvaluate:
@@ -224,6 +229,27 @@ def then_the_first_iteration_recorded_verdict_0(run):
     assert _iteration_payloads(run)[0]["auto_verdict"] == 0
 
 
+def then_the_exhaustion_says_whose_fault_it_was(run, *, whose):
+    """P4-T7: Failed has carried the triad since P2-T3; Exhausted never did, so the terminal a
+    reader most needs to attribute was the one that stayed silent about it."""
+    payload = [e for e in run.ledger.read() if e["event"] == "Exhausted"][-1]["payload"]
+    assert payload["where"] == "loop" and payload["whose"] == whose
+    assert "drift" in payload  # the best attempt's drift rides the same report
+
+
+def then_the_result_reports_the_drift_of_what_was_written(run, lines_added, hunks):
+    """P4-D3: the mechanical layer surfaces magnitude on the terminal result, gating nothing."""
+    assert run.result.drift["lines_added"] == lines_added
+    assert run.result.drift["hunks"] == hunks
+    assert run.result.drift["max_verbatim_run_vs_tests"] == 0  # nothing leaked from the tests
+
+
+def then_each_iteration_names_the_call_that_produced_it(run):
+    """The ledger↔calls.jsonl join is by identity, never by position (P4-T3)."""
+    named = [p["call_id"] for p in _iteration_payloads(run)]
+    assert named == [f"call{i + 1}" for i in range(len(named))]
+
+
 def then_the_prompt_at_iteration(run, n):
     """Return the prompt the coder saw on iteration `n` (1-based), for the caller to assert on."""
     return run.coder.prompts[n - 1]
@@ -277,6 +303,25 @@ def test_iteration_evaluated_carries_auto_verdict_2_on_pass(tmp_path):
     then_the_last_iteration_recorded_a_passing_verdict(run)
 
 
+def test_the_delivered_result_carries_drift_metrics(tmp_path):
+    """A greenfield run wrote a 2-line function, so the whole file is one addition hunk and
+    nothing was shared with the acceptance tests — the negative control for A2."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+    then_the_result_reports_the_drift_of_what_was_written(run, lines_added=2, hunks=[[1, 2]])
+
+
+def test_each_iteration_names_its_generating_call(tmp_path):
+    """Every IterationEvaluated names the call_id that produced it, so the DPO pass joins
+    ledger↔calls.jsonl by identity. Two iterations, so a positional join would still look
+    right if the ids were absent — the point is that each verdict names its OWN call."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=["try1", GOOD_AREA], and_evaluation_yields=[FAILS("a"), CLEAN]
+    )
+    then_each_iteration_names_the_call_that_produced_it(run)
+
+
 # --- exhaustion -------------------------------------------------------------
 
 
@@ -290,6 +335,18 @@ def test_exhausts_with_distinct_failures_and_attaches_best(tmp_path):
     )
     then_it_exhausted_with_the_best_attempt_attached(run)
     then_it_emitted(run, "Exhausted", times=1)
+
+
+def test_exhaustion_attributes_the_failure_to_the_model(tmp_path):
+    """The coder had its full budget and did not converge — that is the model's, and the
+    report has to say so rather than leave a reader to infer it from `limit_hit`."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run,
+        writing=["try1", "try2", "try3"],
+        and_evaluation_yields=[FAILS("a"), FAILS("b"), FAILS("c")],
+    )
+    then_the_exhaustion_says_whose_fault_it_was(run, whose="model")
 
 
 def test_exhausted_iteration_evaluated_records_verdict_0(tmp_path):
@@ -661,3 +718,116 @@ def test_refuses_when_an_explicit_generation_budget_exceeds_the_window(tmp_path)
     )
     then_it_refused_before_sending_anything_to_the_model(run)
     then_the_refusal_blamed_the_payload_at_generation(run)
+
+
+# --- terminal reporting: cancellation, no-attempt, the trail ----------------
+# Structural: these vary an injected CONTROL SIGNAL or read a ledger projection rather than
+# varying an input sequence, so they keep bespoke staging (`ref:test-executable-spec` rule 4).
+
+
+class _CancelAfter:
+    """An `is_cancelled` answering False for the first `n` checks, then True.
+
+    The loop checks once per iteration at the top, so `_CancelAfter(0)` cancels before any work
+    happens and `_CancelAfter(1)` cancels after iteration 1 has produced an attempt.
+    """
+
+    def __init__(self, n):
+        self.n, self.seen = n, 0
+
+    def __call__(self):
+        self.seen += 1
+        return self.seen > self.n
+
+
+def when_the_run_is_cancelled(*, on, after, writing, and_evaluation_yields, with_baseline=CLEAN):
+    """Drive the loop with cancellation armed — otherwise the same staging as
+    `when_the_coder_iterates`, but the cancel seam is the point here, so it is spelled out."""
+    spec = _spec(on.repo, iterations=3)
+    spec["deliverable"]["target"] = str(on.target)
+    evaluate = FakeEvaluate([with_baseline, *and_evaluation_yields])
+    workspace = Workspace(spec, "rid1", on.tmp_path / "run", evaluate)
+    on.worktree = workspace.worktree_path
+    on.ledger = Ledger(on.tmp_path / "events.jsonl")
+    on.coder = FakeCoder(writing)
+    on.result = EvaluatedLoop(
+        spec, "rid1", workspace, evaluate, on.coder, on.ledger,
+        context_limit_for=lambda _model: A_GENEROUS_WINDOW,
+        is_cancelled=_CancelAfter(after),
+    ).run()
+
+
+def test_a_cancelled_run_reports_its_drift(tmp_path):
+    """P4-D3 surfaces drift on every terminal, and `service.result()` returns the `Cancelled`
+    payload verbatim as the report — so a terminal omitting it has no drift at all as far as any
+    reader is concerned. Two of the three terminals carried it; this is the third."""
+    run = given_a_function_run(tmp_path)
+
+    when_the_run_is_cancelled(
+        on=run, after=1, writing=[GOOD_AREA], and_evaluation_yields=[FAILS("a")]
+    )
+
+    assert run.result.outcome == "cancelled"
+    assert _events(run.ledger, "Cancelled")[-1]["payload"]["drift"]["lines_added"] > 0
+
+
+def test_a_run_with_no_attempt_reports_no_drift_rather_than_a_deletion(tmp_path):
+    """With no attempt the delivered content is `""`, so measuring it against an EDIT run's
+    committed baseline reports the whole file as removed — telling the reader the run deleted
+    their module when it in fact produced nothing at all.
+
+    Not reachable only via cancel: an edit run budgets 1 iteration (T-114), so a single
+    anti-cheat rejection also leaves `_best` unset and falls through to `_exhausted`."""
+    run = given_an_edit_run(tmp_path)
+
+    when_the_run_is_cancelled(
+        on=run, after=0, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN]
+    )
+
+    assert run.result.content == ""
+    assert run.result.drift == {}  # not lines_removed=<the whole file>
+    assert run.result.change == ""
+
+
+def test_an_exhausted_run_narrates_its_iterations_too(tmp_path):
+    """P4-T6 is "the delivery report narrates its iterations", and `_exhausted`'s own docstring
+    says its payload IS the report `run_result` returns on that path — but the trail was built
+    only on the delivered path. An exhausted run is where the narrative is most useful: its
+    reader is the one who has to work out what went wrong."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[GOOD_AREA, GOOD_AREA, GOOD_AREA],
+        and_evaluation_yields=[FAILS("a"), FAILS("b"), FAILS("c")],
+    )
+
+    trail = _events(run.ledger, "Exhausted")[-1]["payload"]["iterations_trail"]
+
+    assert [step["iteration"] for step in trail] == [1, 2, 3]
+    assert all(step["tests_passed"] is False for step in trail)
+
+
+def test_the_trail_marks_an_iteration_the_anti_cheat_rejected(tmp_path):
+    """The model editing its own acceptance criteria is the single strongest thing a reader
+    acts on, and the trail rendered it as an ordinary `structural` failure — indistinguishable
+    from a compile error. `stage_failed: anti_cheat` was in the ledger the whole time; the
+    projection simply dropped it."""
+    from ollama_mcp.oficina.report import _iterations_trail  # the projection under test
+
+    run = given_a_function_run_whose_target_is_a_test_file(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[A_TAMPERED_TEST], and_evaluation_yields=EVALUATION_NEVER_REACHED
+    )
+
+    assert [step["cheated"] for step in _iterations_trail(run.ledger)] == [True]
+
+
+def test_the_drift_comparison_reads_the_tests_assembly_already_read(tmp_path):
+    """The declared tests have two consumers — the prompt's tests-as-context block and the drift
+    comparison — and one read at assembly is what stops them disagreeing (they had already
+    drifted on decoding). The loop takes what assembly read; it does not re-read the files."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(
+        on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN]
+    )
+
+    assert run.result.drift["max_verbatim_run_vs_tests"] == 0  # computed, not skipped

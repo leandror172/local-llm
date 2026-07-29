@@ -116,9 +116,50 @@ label). Keep under 30 lines.*
   still reported `passed`/`auto_verdict: 2`/Delivered; tests-green ≠ deliverable-good. **E-D6
   corrected to 5-for-6** (a small-file run preserved the docstring; every deletion has been on a
   large file). Findings: `ref:oficina-ctx-overflow`.
-- **Next:** (1) **Axis B kinds reconsideration** (fed by Axis A: language axis proven, taxonomy
-  trigger for E-D8 rename + dead `acceptance.validators` removal). (2) **T-119** contamination
-  check — decide which of the three candidate detections. (3) T-93 refs-diagram verdict;
+- 2026-07-27 (session 131): **P4 PLAN AUTHORED + REGISTER FROZEN** (`docs/plans/oficina-p4-judge-gate.md`,
+  P4-D1–D7); build started on `feature/oficina-p4-judge-gate`, **T1 = this file's revision**.
+  Sequencing decided **P4 before P3** (phasing permits it; T-119 has owner P4 and no other owner).
+  Judge = **once at packaging** on a **same-base** persona (`ref:delegate-gpu-policy` zero-swap beat
+  the roomier 8B/32K `my-codegen-q3`, whose fit advantage was 1 file in 27). `auto_verdict` **kept**
+  — a proposal to retire it as redundant with `passed` was reversed: first principle 8 and
+  `ref:delegate-evidence-dpo` make it *deliberately* the gameable signal S17 gates, and
+  `IterationEvaluated` is frozen wire format. **T-119 is the gate that was specified and never
+  built**, not a new mechanism. Events: `JudgePassed`/`JudgeFailed` collapsed to **`Judged{passed}`**
+  (matches `IterationEvaluated`'s built precedent); `ApprovalRequested` **re-tagged draft-P5** so it
+  ships with `answer_run`, the verb that resumes it. **Measured:** the delegate can edit only
+  **21/27** files on the 16K coder (optimistic) — `loop.py`/`parser.py`/`intake.py`/`evaluator.py`
+  are out of reach there (32K persona still reaches them, slowly); `ref:oficina-feasibility-band-measured`.
+- 2026-07-28 (session 131 cont.): **P4 BUILT + ACCEPTED — T1–T9, suite 340→369, branch
+  `feature/oficina-p4-judge-gate` (unmerged).** T-119 RESOLVED: the gate it was owed exists.
+  Acceptance ran against the **real** leak (the pinned ref AND its run dir survived, so the actual
+  objective was replayed): A1 scores `scope_adherence` 2 / `passed False`, A2 a real accepted edit
+  scores 5 / True — the signal discriminates. A3–A6 run explicitly, 20/20, A5 on live model calls.
+  **Two findings the fix depended on, neither predicted:** the unmodified `code-python` rubric
+  scored the leak **5/5**, its `completeness` criterion calling the pasted tests *"a usage
+  example"* (it rewarded the defect → new `evaluator/rubrics/oficina-edit.yaml`); and **the judge
+  must be shown the DIFF, not the delivered file** — with the file plus metrics it still said
+  "contains only the requested change" (`ref:judge-sees-the-change`). Filed en route: T-125, T-126,
+  T-127, T-128.
+- 2026-07-28 (session 132): **P4 REVIEWED, SIMPLIFIED, RE-ACCEPTED LIVE — suite 369→393; PR #86
+  ready.** 13 review findings closed, a four-angle `/simplify` pass applied, acceptance re-run
+  against the real pinned evidence. **Three design forks escalated to the register rather than
+  settled in fix commits (P4-D8/D9/D10; D11 deferred with a trigger):** `judge_verdict` is the
+  **MIN**, not the mean — a conjunction has no average, and the mean reported **4** on the leak
+  while `passed` withheld; the cut moved **into the rubric** as per-criterion `passing_score: 4`,
+  which **closes the carried calibration note** (a leak scoring 3 used to pass) and changed **zero
+  prompt bytes**, so acceptance held without re-measuring; `weight` **deleted** from
+  `oficina-edit.yaml` (no weighting makes an average agree with an AND). **Acceptance is now
+  durable — `make accept-p4`** (A1/A2 replay the pinned runs, A5 drives a real end-to-end run);
+  it had been ad hoc and rebuilt from scratch twice. **`worker.py` split**: `transport.py` (the ONE
+  T-95 transport, three callers) + `report.py` (the payload bounds, which had held on one of three
+  terminals); `loop.py` no longer imports `worker.py`. **Calibration: five findings got the
+  mechanism right and the MAGNITUDE wrong** — "tens of seconds" → 2.4–3.1 s; "tens of ms" →
+  0.37 ms; and a latin-1 fix hardened a function on a path the failure never reached. Mechanism is
+  readable; magnitude and reachability must be measured.
+- **Next:** (1) **merge PR #86** (393 green, live acceptance passing). (2) **P3** —
+  context & prompt assembly, now the phase in front. (3) **Axis B kinds reconsideration**
+  (fed by Axis A: language axis proven, taxonomy trigger for E-D8 rename + dead
+  `acceptance.validators` removal). (3) T-93 refs-diagram verdict;
   T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`/`OFICINA_GO`). Standing: T-102 gate
   busy-check (G-D8); T-111 cancel gap; T-118 run-provenance convention; prefix-reuse tracking via
   `.claude/tools/ollama-cache-report.py`; harden write-model corpus IF a real edit run drops

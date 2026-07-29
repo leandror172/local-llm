@@ -13,7 +13,8 @@ import pytest
 
 from ollama_mcp.client import OllamaTimeoutError
 from ollama_mcp.oficina.loop import NUM_PREDICT, default_coder
-from ollama_mcp.oficina.worker import GenerationResult, _cold_start_grace
+from ollama_mcp.oficina.judge import default_judge
+from ollama_mcp.oficina.transport import GenerationResult, _cold_start_grace
 
 
 # --- _cold_start_grace: the single-retry convention --------------------------
@@ -67,6 +68,7 @@ class _FakeResponse:
     model = "model-used"
     eval_count = 7
     total_duration_ms = 12.5
+    call_id = "abc123def456"  # P4-T3: real ChatResponses always carry one
 
 
 class _FakeClient:
@@ -98,6 +100,28 @@ def test_default_coder_call_convention(monkeypatch):
     assert isinstance(gen, GenerationResult)
     assert "```" not in gen.content and "x = 1" in gen.content  # fences stripped
     assert gen.model == "model-used" and gen.eval_count == 7
+    # P4-T3: the chat call's identity reaches the loop, so an iteration's ledger event
+    # can name the exact calls.jsonl record that produced it instead of guessing by order.
+    assert gen.call_id == "abc123def456"
+
+
+def test_default_judge_tags_its_calls_with_the_run(monkeypatch):
+    """The judge's calls carry the same `run_id` the coder's do.
+
+    They shipped with `""`, which is worse than absent: it is a value that LOOKS like one, so
+    anything grouping `calls.jsonl` by run silently merges every run's judge calls into a single
+    empty-string bucket. `judge.py`'s docstring names exactly this — a call "carrying no run_id"
+    — as the reason the module owns its call instead of composing the evaluator's transport, so
+    the module was defeating its own justification.
+    """
+    monkeypatch.setattr("ollama_mcp.client.OllamaClient", _FakeClient)
+
+    reply = default_judge("run-7")(system="sys", prompt="p", schema={"type": "object"})
+
+    assert _FakeClient.captured["run_id"] == "run-7"
+    # Fences are left alone here, unlike the coder: the reply is schema-constrained JSON, not
+    # code, and stripping is a codegen concern.
+    assert "```" in reply
 
 
 def test_default_coder_explicit_num_predict_wins(monkeypatch):

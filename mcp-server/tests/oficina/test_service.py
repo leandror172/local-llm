@@ -211,3 +211,23 @@ def test_status_phase_reflects_loop_events(tmp_path):
     out = service.status(tmp_path, run_id)
     assert out["state"] == "working"
     assert out["phase"] == "looping"
+
+
+def test_the_phase_map_covers_every_run_event():
+    """Event registration has three registries across two modules — `_STATE_BY_EVENT` and
+    `_NON_FOLDING_RUN_EVENTS` in `ledger.py`, `_PHASE_BY_EVENT` here — and nothing checked that a
+    new event reached all of them. `fold_phase` tolerates unknown names SILENTLY, so a miss can
+    only be noticed by someone wondering why a phase looks stale: `Judged` was omitted, and a run
+    reported `looping` through its whole judging window.
+
+    This pins the registries against each other. An event that genuinely should not move the
+    phase goes in `_PHASE_NEUTRAL_EVENTS` — declared, so "neutral" and "forgotten" stop looking
+    identical."""
+    from ollama_mcp.oficina.ledger import RUN_EVENTS
+    from ollama_mcp.oficina.service import _PHASE_BY_EVENT, _PHASE_NEUTRAL_EVENTS
+
+    declared = set(_PHASE_BY_EVENT) | set(_PHASE_NEUTRAL_EVENTS)
+    assert declared == set(RUN_EVENTS), (
+        f"undeclared: {set(RUN_EVENTS) - declared}; "
+        f"not a run event: {declared - set(RUN_EVENTS)}"
+    )

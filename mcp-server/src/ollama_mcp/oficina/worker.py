@@ -15,29 +15,26 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from ollama_mcp.client import OllamaTimeoutError
 
 from .config import default_root, load_retention_config
+from .errors import WHOSE_MODEL, WHOSE_SYSTEM, triad
 from .fifo import Fifo
 from .intake import LOOP_KINDS, check_intake
 from .ledger import Ledger
+from .report import _compact_drift, _compact_judge, _iterations_trail
 from .retention import sweep
 from .store import Store
+from .transport import (
+    GenerationResult,
+    _chat_generation,
+    _cold_start_grace,
+    model_context_limit,
+)
 from .workerproc import WorkerProc
-
-
-@dataclass
-class GenerationResult:
-    """Outcome of one generation stage."""
-
-    content: str
-    model: str
-    eval_count: int
-    duration_ms: float
 
 
 GenerateFn = Callable[[Dict[str, Any], str], GenerationResult]
@@ -49,10 +46,14 @@ def worker_argv() -> list[str]:
 
 
 def _failure_triad(stage: str, exc: Exception) -> Dict[str, Any]:
-    """Build a where/whose/what triad for a Failed event."""
+    """A triad for an exception that does not carry one of its own.
+
+    A `TriadError` is forwarded verbatim by the caller; this classifies everything else, using
+    the vocabulary `errors.py` owns rather than a second spelling of it.
+    """
     model_faults = (OllamaTimeoutError,)
-    whose = "model" if isinstance(exc, model_faults) else "system"
-    return {"where": stage, "whose": whose, "what": f"{type(exc).__name__}: {exc}"}
+    whose = WHOSE_MODEL if isinstance(exc, model_faults) else WHOSE_SYSTEM
+    return triad(stage, f"{type(exc).__name__}: {exc}", whose)
 
 
 def _resolve_model(spec: Dict[str, Any], kind: str, srv) -> str:
@@ -71,117 +72,6 @@ def _build_prompt(spec: Dict[str, Any], srv) -> str:
         block = srv._build_context_block([srv.ContextFile(path=f) for f in files])
         prompt = f"{block}\n\n{prompt}"
     return prompt
-
-
-def _cold_start_grace(call: Callable[[], GenerationResult]) -> GenerationResult:
-    """Run ``call``, retrying ONCE on a cold-start timeout (conventions doc).
-
-    A first-call timeout is usually the model loading into VRAM — the retry hits a warm
-    model. The single shared spelling of the grace convention (T-95): the worker's
-    ``GenerateFn`` seam and every loop iteration's coder call both route through it.
-    """
-    try:
-        return call()
-    except OllamaTimeoutError:
-        return call()
-
-
-def _chat_generation(
-    prompt: str,
-    model: str,
-    run_id: str,
-    *,
-    timeout: int,
-    num_predict: Optional[int] = None,
-    strip_fences: bool = True,
-) -> GenerationResult:
-    """One Ollama chat call → ``GenerationResult`` — the shared generation transport (T-95).
-
-    Owns the call convention for BOTH the single-shot default and the loop's per-iteration
-    coder: client lifecycle, ``think=False``, ``run_id`` tagging (calls.jsonl), bounded
-    ``num_predict`` (T-91), fence stripping. Deliberately emits NO events — the single-shot
-    path narrates via GenerationStarted/Finished, the loop via IterationStarted/Evaluated,
-    and per-call telemetry lives in calls.jsonl joined on run_id (T-99 decision (b)).
-    """
-    import asyncio
-
-    from ollama_mcp import server as srv
-    from ollama_mcp.client import OllamaClient
-
-    async def _call() -> Any:
-        client = OllamaClient()
-        try:
-            return await client.chat(
-                prompt=prompt,
-                model=model,
-                think=False,
-                timeout=timeout,
-                run_id=run_id,
-                num_predict=num_predict,
-                # T-105: oficina does NOT route through the generate_code MCP tool —
-                # this seam goes straight to the client, so it must self-attribute.
-                # Verdicts for these are per-RUN (via run_result), not per-call.
-                tool="oficina",
-            )
-        finally:
-            await client.close()
-
-    resp = asyncio.run(_call())
-    content = srv._strip_code_fences(resp.content) if strip_fences else resp.content
-    return GenerationResult(
-        content=content, model=resp.model,
-        eval_count=resp.eval_count, duration_ms=resp.total_duration_ms,
-    )
-
-
-def model_context_limit(model: str) -> Optional[int]:
-    """The model's effective context window in tokens, or None when undeterminable.
-
-    The window is the ``num_ctx`` PARAMETER Ollama reports for the model. Absence is
-    NOT "the architectural maximum" — the model would then run at Ollama's own unstated
-    default — so an absent or unreadable value yields None rather than a guess: guessing
-    high silently disables the caller's fit check, guessing low aborts valid work. Every
-    failure (transport, status, shape, parse) lands on the same None channel; the ceiling
-    is a value-or-absence, never a sentinel in the value channel (T-112).
-    """
-    descriptor = _fetch_model_descriptor(model)
-    if not descriptor:
-        return None
-    return _num_ctx_from_parameters(descriptor.get("parameters", ""))
-
-
-def _fetch_model_descriptor(model: str) -> Optional[Dict[str, Any]]:
-    """The model's /api/show descriptor, or None if it cannot be retrieved."""
-    import asyncio
-
-    from ollama_mcp.client import OllamaClient
-
-    async def _call() -> Any:
-        client = OllamaClient()
-        try:
-            return await client.fetch_model_descriptor(model)
-        finally:
-            await client.close()
-
-    try:
-        return asyncio.run(_call())
-    except Exception:  # noqa: BLE001 — an undeterminable ceiling is None, never a raise
-        return None
-
-
-def _num_ctx_from_parameters(parameters: str) -> Optional[int]:
-    """Read ``num_ctx`` out of Ollama's ``name<whitespace>value`` parameter blob.
-
-    The trailing space in the prefix match keeps a longer parameter that merely
-    starts with the same letters from being mistaken for it.
-    """
-    for line in parameters.splitlines():
-        if line.startswith("num_ctx "):
-            try:
-                return int(line.split()[1])
-            except (IndexError, ValueError):
-                return None
-    return None
 
 
 def _default_generate(spec: Dict[str, Any], run_id: str) -> GenerationResult:
@@ -208,6 +98,7 @@ class Worker:
         proc: Optional[WorkerProc] = None,
         loop_coder=None,
         loop_evaluate=None,
+        loop_judge=None,
     ) -> None:
         self.root = Path(root)
         self.store = Store(root)
@@ -218,6 +109,7 @@ class Worker:
         # P2 loop seams (injected for tests); resolved to the real ones lazily in _run_loop.
         self._loop_coder = loop_coder
         self._loop_evaluate = loop_evaluate
+        self._loop_judge = loop_judge
 
     def _run_ledger(self, run_id: str) -> Ledger:
         """The ledger for one run (the worker owns it post-queue-pop, P1-D6)."""
@@ -286,6 +178,38 @@ class Worker:
         """Record a requested-but-unresolved refs block in the worker ledger (T-96)."""
         self.worker_ledger.refs_dropped({"run_id": run_id, "refs": refs, "reason": reason})
 
+    def _judge_delivered(
+        self, ledger: Ledger, spec: Dict[str, Any], result: Any, run_id: str
+    ) -> Dict[str, Any]:
+        """Judge the packaged deliverable once (P4-D1), emit `Judged`, return the verdict.
+
+        Opt-in: a spec without `acceptance.rubric` is delivered exactly as it was before P4.
+        A failing verdict does NOT block `Delivered` — S17 gates DPO chosen labels, not
+        delivery — and a judge that cannot run at all is reported, never raised, because by
+        this point the deliverable already exists.
+        """
+        rubric_id = (spec.get("acceptance") or {}).get("rubric")
+        if not rubric_id:
+            return {}
+
+        from .judge import (
+            default_judge,
+            judge_deliverable,
+            load_rubric,
+            unavailable_verdict,
+        )
+
+        judge = self._loop_judge or default_judge(run_id)
+        try:
+            verdict = judge_deliverable(
+                load_rubric(rubric_id), spec.get("objective", ""),
+                result.change, result.drift, judge,
+            )
+        except Exception as exc:  # noqa: BLE001 — the gate reports, it does not fail the run
+            verdict = unavailable_verdict(rubric_id, f"judge unavailable: {exc}")
+        ledger.judged(verdict)
+        return verdict
+
     def _run_loop(self, ledger: Ledger, run_id: str, spec: Dict[str, Any]) -> None:
         """Run the evaluated loop (P2) for a code kind; emit terminal Delivered on success.
 
@@ -327,7 +251,18 @@ class Worker:
                 "iterations": result.iterations_used,
                 "branch": result.branch,
                 "commit": result.best_snapshot,
+                # P4-D3: magnitude, measured for free. Numbers and ranges only — this payload
+                # is paid for in Claude's context on every run_result (P4-D6), so the hunk list
+                # is bounded; the loop's own `drift` keeps every range.
+                "drift": _compact_drift(result.drift),
+                # P4-T6: how the deliverable was reached, not just that it was.
+                "iterations_trail": _iterations_trail(ledger),
             }
+            judged = self._judge_delivered(ledger, spec, result, run_id)
+            if judged:
+                # The `Judged` event already holds the full verdict; the report gets the clipped
+                # copy. Criteria entries are shortened, never dropped — they carry the cuts.
+                report["judge"] = _compact_judge(judged)
             ledger.delivered(
                 {
                     "report": report,

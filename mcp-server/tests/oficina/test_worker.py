@@ -10,7 +10,8 @@ import pytest
 from ollama_mcp.client import OllamaTimeoutError
 from ollama_mcp.oficina.ledger import Ledger, fold_state
 from ollama_mcp.oficina.store import Store
-from ollama_mcp.oficina.worker import GenerationResult, Worker
+from ollama_mcp.oficina.transport import GenerationResult
+from ollama_mcp.oficina.worker import Worker
 from ollama_mcp.oficina.workerproc import WorkerProc
 
 

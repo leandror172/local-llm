@@ -48,6 +48,43 @@ Session 98 (2026-06-30): **`my-go-qcoder` HTTP 500 = host-RAM ENOMEM, NOT VRAM.*
 
 Session 125 (2026-07-21): **Verdict harness repaired (T-105). Coverage 9.6% → 18.7% (106/566).** *(One measurement, three published numbers — reconcile before citing: **9.6%** = 54/562 at investigation start · **10.2%** = 58/566 in the archived pre-backfill snapshot · **18.7%** = 106/566 post-repair. **48** prose verdicts were recovered; the findings doc's "49 recoverable" counts one whose subagent transcript had already been collected.)* Every durable doc taught an inline phrase (`2 — ~300 est. …`) while the capture regex accepted only a `[VERDICT …]` block **taught nowhere durable**; the harness worked, it was never fed (live probe captured cleanly). **Judgeable set NARROWED — supersedes "0/1/2 on every local model output" above:** `generate_code` + `ask_ollama` per-call; **oficina per-RUN** via `run_result` (it bypasses the MCP tools via the `GenerateFn` seam); NOT summarize/translate/classify_text. **`call_id` replaces `prompt_hash` as verdict identity** — `prompt_hash` is a content address and collided (1 hash = 24 calls / 8 models), so a sweep could record exactly one verdict. The hook now injects **only on a confirmed response-content match, with no positional fallback** — a stale id mislabels, which is worse than a miss. **81.4% of calls carry no judgment at all**: format was the minority of the gap; gate deferred pending measurement. Findings `docs/findings/verdict-coverage-collapse-2026-07-21.md`, plan `docs/plans/verdict-capture-repair.md`.
 
+Session 131 (2026-07-27/28): **P3-vs-P4 sequencing decided (P4 first) and P4 BUILT + ACCEPTED** —
+judge gate + delivery report, T1–T9 on `feature/oficina-p4-judge-gate` (unmerged), suite 340→369.
+**T-119 RESOLVED**: acceptance ran against the *real* leak (pinned ref + its run dir both survived,
+so the actual objective was replayed) — the leak now scores `scope_adherence` **2** / `passed
+False`, a real accepted edit **5** / True; A3–A6 20/20, A5 on live model calls. **Two findings the
+fix depended on:** the unmodified `code-python` rubric scored the leak **5/5**, calling the pasted
+tests *"a usage example"* — a greenfield rubric has no vocabulary for *unrequested* content, hence
+the separate `evaluator/rubrics/oficina-edit.yaml`; and **a reviewing model must be shown the
+CHANGE, not the RESULT** — with the delivered file plus drift metrics it still said "contains only
+the requested change"; with the unified diff it caught it, at 33% fewer tokens
+(`ref:judge-sees-the-change`). **T-122 measured:** the delegate can edit only **21/27** files on
+the 16K coder, and the blocked set is oficina's own core — the envelope had been silently
+*selecting* the work. Also: first llm-side **LTG usage guide**; T-125/126/127/128 filed.
+
+Session 132 (2026-07-28): **P4 REVIEWED, SIMPLIFIED and RE-ACCEPTED LIVE — suite 369→393, PR #86
+ready.** A 13-finding code review closed in full, then a four-angle `/simplify` pass, then the
+acceptance re-run against the *real* pinned evidence. **Three design forks were escalated to the
+decision register rather than settled inside fix commits (P4-D8/D9/D10; D11 deferred):**
+`judge_verdict` is now the **MIN** of the criteria, not their mean — a conjunction has no average,
+and the mean reported **4** on the T-119 leak while `passed` correctly withheld; the passing cut
+moved **into the rubric** as a per-criterion `passing_score: 4`, which **closes the plan's own
+unresolved calibration note** (a leak scoring 3 used to pass) and changed **zero prompt bytes**, so
+the acceptance held without re-measurement; and `weight` was **deleted** from `oficina-edit.yaml`,
+because no weighting can make an average agree with an AND. **Live acceptance is now a durable
+harness** (`make accept-p4`) — A1/A2 replay the pinned runs (`refs/oficina/<run_id>`, T-118 R-D2
+paying for itself a fourth time) and A5 drives a real end-to-end run; it had been authored ad hoc
+twice and reconstructed from scratch both times. **`worker.py` was half other people's code:**
+`transport.py` (the ONE T-95 per-call transport, three callers) and `report.py` (the
+`Delivered`-payload bounds, which had held on only ONE of three terminals) split out, and `loop.py`
+no longer imports from `worker.py` at all. Also one call-time `repo_root()` (`LLM_REPO_ROOT` was
+honoured by 1 of 4 resolvers), `errors.py` given ownership of the `whose` vocabulary, and the event
+phase-registry pinned by a test. **Calibration worth carrying: five findings identified their
+MECHANISM correctly and got their MAGNITUDE wrong** — "tens of seconds" measured 2.4–3.1 s, "tens
+of ms" measured 0.37 ms, and a latin-1 fix hardened a function on a path the failure never reached
+because assembly read the same files strictly first. Mechanism is derivable by reading; magnitude
+and reachability are not.
+
 ## Repo Structure
 
 ```

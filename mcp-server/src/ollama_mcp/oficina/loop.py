@@ -36,12 +36,19 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from .evaluator import LANGUAGES, attributable_failures, diff_touches_test_files
-from .errors import ContextBudgetError
+from .errors import WHOSE_BY_LIMIT, WHOSE_SYSTEM, ContextBudgetError, triad
 from .intake import Budgets, resolve_language
+from .drift import measure
 from .parser import ParsedFailure, category_for
 from .prompt import build_prompt
 from .workspace import Workspace, target_relpath
-from .worker import GenerationResult, _chat_generation, _cold_start_grace, model_context_limit
+from .report import _compact_drift, _iterations_trail
+from .transport import (
+    GenerationResult,
+    _chat_generation,
+    _cold_start_grace,
+    model_context_limit,
+)
 
 # (prompt, model, run_id, *, num_predict) -> GenerationResult. The coder writes nothing; the
 # loop places output. num_predict is passed per call (E-D9) because the edit-mode floor is only
@@ -89,11 +96,43 @@ class LoopResult:
     best_snapshot: Optional[str]
     limit_hit: Optional[str] = None
     spent: Dict[str, Any] = field(default_factory=dict)
+    # Mechanical drift metrics for the delivered content (P4-D3) — surfaced in the delivery
+    # report, gating nothing. The judge classifies whether the drift was in scope; this only
+    # says how much there was and where.
+    drift: Dict[str, Any] = field(default_factory=dict)
+    # The run's change as a unified diff (P4-T9). Fed to the judge INSTEAD of the delivered
+    # file: shown the after-state it scored a 78-line test leak 5/5 ("contains only the
+    # requested change"); shown the diff it scored the same run 2 ("substantial unrequested
+    # content"). A comparative question needs the comparison — and the diff is ~33% cheaper
+    # than the file. Not put in the report: the payload carries numbers only (P4-D6).
+    change: str = ""
 
 
 def _signature(failures: List[ParsedFailure]) -> tuple:
     """P2-D7 repetition signature: the sorted set of normalized error_keys."""
     return tuple(sorted({"::".join(f.error_key) for f in failures}))
+
+
+def _exhaustion_triad(limit_hit: str) -> Dict[str, str]:
+    """where/whose/what for an exhausted run (P4-T7 — format only, no new classification).
+
+    `Failed` has carried the triad since P2-T3; `Exhausted` never did, so the one terminal a
+    reader most needs to attribute was the one that did not say whose fault it was. Attribution
+    follows the limit that fired, which is the only evidence available:
+
+    - ``exhausted``       — the coder had its budget and did not converge → the MODEL's
+    - ``timeout``         — wall-clock ran out around it → the ENVIRONMENT's
+    - ``context_budget``  — the target could not fit the window → the PAYLOAD's
+
+    The mapping itself lives in `errors.py` beside `TriadError`, not here: `context_budget` is
+    the same condition `ContextBudgetError` names when iteration 1 raises rather than exhausts,
+    and the two used to state it independently — on adjacent lines of `run()`, in two modules.
+    """
+    return triad(
+        "loop",
+        f"budget exhausted: {limit_hit}",
+        WHOSE_BY_LIMIT.get(limit_hit, WHOSE_SYSTEM),
+    )
 
 
 def _attempt_as_diff(baseline: str, attempt: str) -> str:
@@ -186,6 +225,9 @@ class EvaluatedLoop:
         # T-120: the committed target content on an edit run, None on greenfield. Set once at
         # assembly; the previous attempt is shown as a diff against it rather than in full.
         self._edit_baseline: Optional[str] = None
+        # The declared acceptance tests' contents, read once at assembly and compared against
+        # at packaging (P4-D3). Empty until then, and empty for a run that declares none.
+        self._test_sources: List[str] = []
 
     def _stable_prompt_parts(self, assembly) -> Dict[str, str]:
         """The run-constant prompt parts (P2-D2): system + constraints + the assembled parts, with
@@ -246,9 +288,17 @@ class EvaluatedLoop:
         )
 
     def _emit_iteration_evaluated(
-        self, k: int, passed: bool, attributable: List[ParsedFailure]
+        self, k: int, passed: bool, attributable: List[ParsedFailure], call_id: str = ""
     ) -> None:
-        """Record the evaluation verdict; ``auto_verdict`` is the DPO seam (S17)."""
+        """Record the evaluation verdict; ``auto_verdict`` is the DPO seam (S17).
+
+        ``call_id`` names the exact ``calls.jsonl`` record this verdict judges (P4-T3,
+        closing T-99's deferred "revisit the join mechanics at P4"). The two logs
+        otherwise share only ``run_id``, which is per-RUN — so pairing an iteration with
+        its generation would be positional, and positions do not even line up (an
+        anti-cheat iteration records a verdict without an evaluation). T-105's rule:
+        when identity is unknown, stay silent, because mislabeled beats missing only in
+        the wrong direction."""
         self.ledger.iteration_evaluated(
             {
                 "iteration": k,
@@ -257,6 +307,7 @@ class EvaluatedLoop:
                 "failure_class": category_for(attributable[0]) if attributable else None,
                 "error_keys": [list(f.error_key) for f in attributable],
                 "auto_verdict": 2 if passed else 0,
+                "call_id": call_id,
             }
         )
 
@@ -271,6 +322,7 @@ class EvaluatedLoop:
                 "failure_class": "structural",
                 "error_keys": [],
                 "auto_verdict": 0,
+                "call_id": gen.call_id,
                 "cheat_touched": cheated,
             }
         )
@@ -344,20 +396,52 @@ class EvaluatedLoop:
             best_snapshot=snapshot,
             limit_hit=limit_hit,
             spent=spent or {},
+            # Every terminal outcome flows through here, so measuring once at this seam covers
+            # delivered, exhausted and cancelled alike — an exhausted run's best attempt is
+            # exactly where drift is most worth seeing.
+            #
+            # With NO attempt there is nothing to measure, and measuring `""` against an edit
+            # run's committed baseline reports the ENTIRE FILE as removed — a report telling the
+            # reader the run deleted their module when it in fact produced nothing at all.
+            # Absence is stated as absence rather than rendered as a deletion.
+            drift=(
+                measure(self._edit_baseline, attempt.content, self._test_sources)
+                if attempt
+                else {}
+            ),
+            change=(
+                _attempt_as_diff(self._edit_baseline or "", attempt.content)
+                if attempt
+                else ""
+            ),
         )
 
-    def _exhausted(self, *, iterations_used: int, limit_hit: str) -> LoopResult:
-        """Emit Exhausted (budget out or wall-clock hit, P2-D10) with the best attempt (S11)."""
-        spent = {"iterations": iterations_used, "fresh_starts": self._fresh_used}
-        self.ledger.exhausted(
-            {
-                "spent": spent,
-                "limit_hit": limit_hit,
-                "best_attempt_ref": self._best_snapshot,
-                "branch": self._branch,
-            }
+    def _cancelled(self, k: int) -> LoopResult:
+        """Emit Cancelled with the best attempt's drift, in the same shape as `_exhausted`.
+
+        A named terminal rather than an inline block for the reason `_exhausted` is one: the
+        result must exist BEFORE the event, because `service.result()` returns this payload
+        verbatim as the report — so drift omitted here is drift no reader ever sees, whatever
+        `LoopResult` happens to carry. Stated as structure, it cannot be forgotten by the next
+        terminal; stated as a comment pointing at `_exhausted`, it could only be copied.
+        """
+        result = self._result_from(
+            "cancelled", self._best, iterations_used=k - 1, snapshot=self._best_snapshot
         )
-        return self._result_from(
+        self.ledger.cancelled(
+            {"stage": "looping", "iteration": k, "drift": _compact_drift(result.drift)}
+        )
+        return result
+
+    def _exhausted(self, *, iterations_used: int, limit_hit: str) -> LoopResult:
+        """Emit Exhausted (budget out or wall-clock hit, P2-D10) with the best attempt (S11).
+
+        The result is built BEFORE the event so the payload can carry its drift: an exhausted
+        run's best attempt is where drift is most worth seeing, and `Exhausted`'s payload IS
+        the report `run_result` returns on this path (P4-T6).
+        """
+        spent = {"iterations": iterations_used, "fresh_starts": self._fresh_used}
+        result = self._result_from(
             "exhausted",
             self._best,
             iterations_used=iterations_used,
@@ -365,6 +449,23 @@ class EvaluatedLoop:
             limit_hit=limit_hit,
             spent=spent,
         )
+        self.ledger.exhausted(
+            {
+                "spent": spent,
+                "limit_hit": limit_hit,
+                "best_attempt_ref": self._best_snapshot,
+                "branch": self._branch,
+                # Bounded exactly as the delivered report's is: this payload is the report on
+                # this path, so it is paid for in the caller's context identically (P4-D6).
+                "drift": _compact_drift(result.drift),
+                # P4-T6: the trail was built only on the delivered path, but this payload IS
+                # the report on this one — and an exhausted run is where the narrative is most
+                # useful, since its reader is the one who has to work out what went wrong.
+                "iterations_trail": _iterations_trail(self.ledger),
+                **_exhaustion_triad(limit_hit),
+            }
+        )
+        return result
 
     def _time_limit_reached(self, started_at) -> Any:
         return self.max_wall_clock_s and time.monotonic() - started_at > self.max_wall_clock_s
@@ -417,6 +518,11 @@ class EvaluatedLoop:
         target_rel = target_relpath(self.spec["deliverable"]["target"], base_repo)
         target_files = [target_rel]
         test_files = (self.spec.get("acceptance") or {}).get("test_files") or []
+        # P4-D3: read once here, not per iteration — assembly has already guaranteed every
+        # declared test exists in the worktree, and they are run-constant by definition.
+        # Read once at assembly, for both consumers (the prompt's tests block and this drift
+        # comparison) — two readers of the same files is how their decoding policies drifted.
+        self._test_sources = assembly.test_sources
         baseline = assembly.baseline_failures
 
         stable = self._stable_prompt_parts(assembly)
@@ -436,10 +542,7 @@ class EvaluatedLoop:
             if self._time_limit_reached(started_at):
                 return self._exhausted(iterations_used=k - 1, limit_hit="timeout")
             if self.is_cancelled():
-                self.ledger.cancelled({"stage": "looping", "iteration": k})
-                return self._result_from(
-                    "cancelled", self._best, iterations_used=k - 1, snapshot=self._best_snapshot
-                )
+                return self._cancelled(k)
 
             # T-112: refuse before generating. Iteration 1 has nothing to salvage, so it is a
             # fail-loud triad; later iterations already hold a best attempt, so they exhaust.
@@ -459,7 +562,7 @@ class EvaluatedLoop:
             current = self.evaluate(worktree, base_repo, self.spec)
             attributable = attributable_failures(current, baseline, target_files, test_files)
             passed = not attributable
-            self._emit_iteration_evaluated(k, passed, attributable)
+            self._emit_iteration_evaluated(k, passed, attributable, gen.call_id)
             if passed:
                 return self._result_from("delivered", gen, iterations_used=k, snapshot=snapshot)
 

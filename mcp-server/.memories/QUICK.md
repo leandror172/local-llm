@@ -6,7 +6,8 @@
 
 Operational, system-wide availability. **18 tools** exposed to Claude Code (verified
 2026-07-21 by decorator site, not by `grep -c "@mcp.tool"` — that returns 19 because one
-hit is a docstring). 279 tests green.
+hit is a docstring). **393 tests green** (`make test`); live P4 judge-gate acceptance is a
+separate, deliberate non-test target — `make accept-p4`, real Ollama calls.
 All tools verified, call logging active. Server is the integration layer for all 3 repos.
 
 ## Architecture
@@ -111,6 +112,44 @@ undeterminable → new **run-ledger** event `ContextLimitUnknown` once, then ung
 in 0.72 s with zero GPU calls. **T-120:** an edit run's `previous_attempt` is now a `difflib` diff
 against the committed baseline, not a second whole copy. Suite 332→340. **T-119 filed:** a
 whole-file edit pasted the acceptance tests into the source module and still Delivered.
+
+Session 131 (2026-07-27): **P4 build started** (`feature/oficina-p4-judge-gate`; plan
+`docs/plans/oficina-p4-judge-gate.md`). **T3:** `call_id` is now minted by `client.chat` onto
+`ChatResponse` (not inside `_log_call`, where identity depended on logging being enabled AND
+succeeding) and threaded `GenerationResult.call_id` → the `IterationEvaluated` payload — making
+the ledger↔`calls.jsonl` join identity-based instead of order-based (closes T-99's deferred
+"revisit the join mechanics at P4"; the positional form is what T-105 banned). **T4:** new pure
+module `oficina/drift.py` — `measure(baseline, delivered, test_sources)` → `hunks` (1-based
+delivered-file ranges), `lines_added`/`lines_removed`, `max_verbatim_run_vs_tests`; surfaced on
+`LoopResult.drift` at the single `_result_from` seam so every terminal outcome carries it.
+Gates on NOTHING (T-119: the free layer surfaces, the judge classifies). `files_touched` was
+specified at freeze and **dropped at build time** — the loop writes exactly one file, so it
+would fire unconditionally (first principle 6). Gotcha found: `SequenceMatcher`'s `isjunk`
+stops junk anchoring a match but the winning block still **absorbs adjacent junk**, so blank
+lines must be filtered BEFORE matching, not marked junk. Suite 340→353.
+
+Session 132 (2026-07-28): **P4 reviewed, simplified and re-accepted live (suite 369→393).**
+Two new modules split out of `worker.py`, which was half transport and report code by accident of
+being their first caller: **`transport.py`** (`GenerationResult`, `_chat_generation`,
+`_cold_start_grace`, `model_context_limit`) — the ONE per-call transport (T-95) has three callers,
+and importing it from the worker dragged `Store`/`Fifo`/`WorkerProc`/retention into anything that
+wanted one model call; and **`report.py`** (the iterations trail + the `Delivered`-payload size
+bounds), because a bound that holds only where someone remembers to call it has no owner — the
+`Exhausted` and `Cancelled` payloads had escaped it. `JUDGE_MODEL`/`JUDGE_TIMEOUT_S`/`default_judge`
+moved into `judge.py`, whose docstring already claimed it owned the model call. **`loop.py` no
+longer imports from `worker.py` at all.** Live acceptance is now durable: `make accept-p4`.
+
+Session 131 (cont.): **P4 BUILT + ACCEPTED (T1–T9, suite 340→369).** New modules
+`oficina/drift.py` (mechanical metrics) and `oficina/judge.py` (Phase-2 rubric judge at
+packaging, emitting the `Judged` run event). `acceptance.rubric` is now a real schema field
+(rejected through P2 to keep P4's scope out); `approval_gate` is **recognized but refused** until
+P5 adds `answer_run`. `_chat_generation` gained optional `system=`/`schema=` seams so the judge
+uses the ONE transport (T-95) — verified live: an accepted run logs **two** `calls.jsonl` records,
+coder and judge. Ledger registry corrected: `_NON_FOLDING_RUN_EVENTS` now holds
+`ContextLimitUnknown` (which was misfiled under `WORKER_EVENTS` despite being emitted to the run
+ledger) and `Judged`. **The judge is fed the DIFF, not the delivered file** — with the file it
+scored a 78-line test leak 5/5; with the diff, 2, at ~33% fewer tokens
+([ref:judge-sees-the-change]). Acceptance A1–A6 all pass, A5 on real model calls.
 
 ## Deeper Memory -> KNOWLEDGE.md
 

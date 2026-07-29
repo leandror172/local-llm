@@ -288,19 +288,28 @@ The bash wrapper uses `uv run` to manage the virtual environment and dependencie
 mcp-server/
 ├── run-server.sh                    # Bash wrapper (project convention)
 ├── watch-run.sh                     # Tail an oficina run to terminal state
+├── run-acceptance-p4.sh             # Live P4 judge-gate acceptance (`make accept-p4`)
 ├── pyproject.toml                   # uv project config (+ `oficina` entry point)
 ├── scripts/
-│   └── which-bridge.sh              # List live bridge processes with banner info
+│   ├── which-bridge.sh              # List live bridge processes with banner info
+│   └── acceptance_p4.py             # A1/A2 replay pinned runs + A5 drives a real one
 └── src/ollama_mcp/
     ├── __main__.py                  # Entry point (stdio transport)
-    ├── config.py                    # Defaults + env var overrides
+    ├── config.py                    # Defaults + env overrides (+ call-time `repo_root()`)
     ├── client.py                    # Async Ollama HTTP client
     ├── debug_log.py                 # Optional structured JSONL logging
     ├── server.py                    # FastMCP server + all tool definitions
-    └── oficina/                     # Async deliverable-run substrate (P1)
+    └── oficina/                     # Async deliverable-run substrate (P1–P4)
         ├── service.py               # One impl layer under MCP tools + CLI
         ├── worker.py                # Detached lazy-daemon run loop
-        ├── ledger.py                # Event-sourced JSONL run ledger
+        ├── transport.py             # The ONE per-call generation transport (T-95)
+        ├── loop.py                  # The evaluated coder⇄evaluator loop (P2)
+        ├── workspace.py             # Per-run git worktree + C0 baseline
+        ├── evaluator.py             # Staged evaluation + the LanguagePack axis
+        ├── parser.py / prompt.py    # Validator-output parsing / cache-safe prompt layout
+        ├── judge.py / drift.py      # Phase-2 rubric judge / mechanical drift metrics (P4)
+        ├── report.py                # Delivery-report projection + its size bounds (P4-D6)
+        ├── ledger.py / errors.py    # Event-sourced run ledger / the where-whose-what triad
         ├── intake.py                # Deterministic spec validation
         ├── fifo.py / workerproc.py  # Disk queue / pidfile + detached spawn
         ├── store.py / ids.py        # Run-dir layout / run-ID minting

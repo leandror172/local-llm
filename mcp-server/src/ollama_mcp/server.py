@@ -25,7 +25,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 
 from ollama_mcp.client import OllamaClient, OllamaConnectionError, OllamaModelNotFoundError, OllamaTimeoutError
-from ollama_mcp.config import DEFAULT_MODEL, MODELS, REGISTRY_PATH, REPO_ROOT, TEMPS
+from ollama_mcp.config import DEFAULT_MODEL, MODELS, REGISTRY_PATH, REPO_ROOT, TEMPS, repo_root
 from ollama_mcp import debug_log
 from ollama_mcp import registry
 from ollama_mcp.oficina import config as oficina_config
@@ -99,17 +99,16 @@ def _build_context_block(context_files: list[ContextFile]) -> str:
 def _ref_lookup_script() -> str:
     """Resolve ref-lookup.sh: ``OFICINA_REF_LOOKUP`` env, else ``LLM_REPO_ROOT``, else package-relative.
 
-    Env is read at CALL time (not config.REPO_ROOT's import-time snapshot) so a
-    detached oficina worker spawned without the server's env still resolves refs
-    (T-96). Mirrors ``evaluator._validate_code_script``.
+    Env is read at CALL time (not ``config.REPO_ROOT``'s import-time snapshot) so a detached
+    oficina worker spawned without the server's env still resolves refs (T-96). The root itself
+    comes from ``config.repo_root()``, shared with ``evaluator._validate_code_script`` and
+    ``judge._rubrics_dir`` — this docstring used to claim it "mirrors" the first of those while
+    honouring an env var the other two did not.
     """
     override = os.environ.get("OFICINA_REF_LOOKUP")
     if override:
         return override
-    repo_root = os.environ.get("LLM_REPO_ROOT") or str(
-        pathlib.Path(__file__).resolve().parents[3]
-    )
-    return os.path.join(repo_root, ".claude", "tools", "ref-lookup.sh")
+    return os.path.join(repo_root(), ".claude", "tools", "ref-lookup.sh")
 
 
 async def _run_script(

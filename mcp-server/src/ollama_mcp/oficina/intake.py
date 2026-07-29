@@ -45,13 +45,19 @@ class Context(BaseModel):
 
 
 class Acceptance(BaseModel):
-    """The evaluated-loop acceptance spec (P2). ``rubric`` (Phase-2 judge) is P4, not here."""
+    """The evaluated-loop acceptance spec (P2), plus the P4 judge gate.
+
+    ``rubric`` names an evaluator rubric by id (e.g. ``code-python``); its phase-2 criteria
+    are judged ONCE at packaging (P4-D1). Omitted means no judge runs — the gate is opt-in,
+    and a run without one is delivered exactly as it was before P4.
+    """
 
     model_config = ConfigDict(extra="forbid")
     test_cmd: Optional[str] = None
     test_files: List[str] = Field(default_factory=list)
     validators: List[str] = Field(default_factory=list)
     structural: Optional[str] = None
+    rubric: Optional[str] = None
 
 
 class Budgets(BaseModel):
@@ -75,6 +81,10 @@ class RunSpec(BaseModel):
     acceptance: Optional[Acceptance] = None
     budgets: Budgets = Field(default_factory=Budgets)
     workspace: str = "in_place"
+    # P4-D4 amendment (a): RECOGNIZED, not honoured. Declared here so the key is known to the
+    # derived unknown-key check — a caller asking for a gate gets told it is unsupported until
+    # P5, rather than having the request silently swallowed as a typo.
+    approval_gate: bool = False
     model: str = "auto"
     timeout_s: int = 1800
 
@@ -116,6 +126,9 @@ RULE_WORKTREE_NOT_SUPPORTED = "worktree_not_supported"
 # Language rules (Axis A widening, R1) — mirror the acceptance _supported/_required pair.
 RULE_LANGUAGE_NOT_SUPPORTED = "language_not_supported"
 RULE_UNSUPPORTED_LANGUAGE = "unsupported_language"
+# P4 additions (judge gate)
+RULE_APPROVAL_GATE_UNSUPPORTED = "approval_gate_unsupported"
+RULE_RUBRIC_NOT_FOUND = "rubric_not_found"
 
 
 @dataclass
@@ -316,6 +329,52 @@ def _check_acceptance_required(spec: Dict[str, Any]) -> Optional[Rejection]:
     return None
 
 
+def _check_approval_gate_unsupported(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """`approval_gate: true` is recognized but not yet honoured (P4-D4, amendment (a)).
+
+    P4 decides the gate's POLICY — opt-in, and what it would display — but defers the STATE to
+    P5, because the only verb that clears `input_required` is `answer_run`, which is P5's. A
+    gate built here could enter a state nothing could leave. Rejecting loudly is the same
+    posture as `RefsDropped` (T-96) and `ContextBudgetError` (T-112): the system never quietly
+    does less than it was asked. Omitted or false is accepted and changes nothing.
+    """
+    if spec.get("approval_gate"):
+        return Rejection(
+            RULE_APPROVAL_GATE_UNSUPPORTED,
+            "approval_gate is not supported until P5 adds answer_run — a gated run would "
+            "enter input_required with nothing able to resume it",
+        )
+    return None
+
+
+def _check_rubric_exists(spec: Dict[str, Any]) -> Optional[Rejection]:
+    """A named `acceptance.rubric` must resolve NOW, not at packaging.
+
+    A rubric name is caller-supplied, exactly like a context file — and intake already fails
+    fast on a missing one of those. Deferred to packaging, a typo survives the entire loop and
+    then surfaces through the judge's degrade-to-a-report path as `passed: False` on a perfectly
+    good deliverable: a report blaming the WORK for a defect in the REQUEST. The judge is opt-in,
+    so a spec without a rubric is untouched.
+    """
+    rubric_id = (spec.get("acceptance") or {}).get("rubric")
+    if not rubric_id:
+        return None
+    # Lazy because of the guard above, not because the import is expensive: a spec that declares
+    # no rubric never reaches the judging layer at all. (`yaml` is already in every submit
+    # process — `registry.py` and `cli.py` both import it — so "it pulls in yaml" would be a
+    # justification with nothing behind it.)
+    from .judge import load_rubric
+
+    try:
+        load_rubric(rubric_id)
+    except Exception as exc:  # noqa: BLE001 — missing, malformed or unreadable are all the caller's
+        return Rejection(
+            RULE_RUBRIC_NOT_FOUND,
+            f"acceptance.rubric {rubric_id!r} does not resolve: {exc}",
+        )
+    return None
+
+
 def _check_worktree_required(spec: Dict[str, Any]) -> Optional[Rejection]:
     """A spec with a test_cmd must run in a worktree — tests need isolation (P2-D5)."""
     acceptance = spec.get("acceptance") or {}
@@ -366,9 +425,13 @@ _CHECKS = (
     _check_language_supported,
     _check_acceptance_required,
     _check_worktree_required,
+    _check_approval_gate_unsupported,
     _check_language_resolvable,
     _check_target_git_repo,
     _check_context_files,
+    # Last deliberately: it is the only check that reads AND parses a file, so every cheaper
+    # rejection — structural, then a stat — gets to fire before this one is paid for.
+    _check_rubric_exists,
 )
 
 

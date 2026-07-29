@@ -38,10 +38,24 @@ the quality signal. Passive collection during normal work.
 **Implication:** Logging failures are silently swallowed — never break a tool call
 for observability. Full content toggleable via `OLLAMA_LOG_FULL_CONTENT`.
 
-**`call_id` + `tool` (T-105, 2026-07-21).** `_log_call` also writes `call_id`
-(`uuid4().hex[:12]`) and `tool` (the originating MCP tool, or `"oficina"` set in
-`worker._chat_generation`, which reaches the client directly and never passes through an MCP
-tool). Both are threaded like `run_id` — an explicit kwarg on `client.chat`.
+**`call_id` + `tool` (T-105, 2026-07-21; `call_id` mint site MOVED P4-T3, 2026-07-27).**
+The record carries `call_id` (`uuid4().hex[:12]`) and `tool` (the originating MCP tool, or
+`"oficina"` set in `worker._chat_generation`, which reaches the client directly and never
+passes through an MCP tool). `tool` is threaded like `run_id` — an explicit kwarg on
+`client.chat`.
+
+**`call_id` is minted by `chat`, not by `_log_call` (P4-T3).** It lives on `ChatResponse`
+and `_log_call` echoes `response.call_id` into the record, so **one value reaches both the
+caller and the log — that shared value IS the join key.** Two reasons the mint site matters:
+(a) minting inside `_log_call` put identity behind the `if not CALL_LOG_PATH: return` guard
+and inside its swallow-all `try`, making a call's identity contingent on observability being
+enabled *and* succeeding — the one thing that function is explicitly allowed to fail at;
+(b) without a caller-visible id, the ledger and `calls.jsonl` share only `run_id`, which is
+per-RUN, so the P4 DPO join would match iterations to calls **by order** — the positional
+fallback T-105 banned, and the positions do not even line up (an anti-cheat iteration
+records a verdict without an evaluation). Threaded onward as
+`GenerationResult.call_id` → the `IterationEvaluated` payload, beside `auto_verdict`.
+Closes T-99's deferred *"revisit the join mechanics at P4"*.
 
 - **`call_id` exists because `prompt_hash` is a CONTENT address, not an identity.** Identical
   prompts collide by design: one hash covered **24 calls across 8 models** (a `compare-models`

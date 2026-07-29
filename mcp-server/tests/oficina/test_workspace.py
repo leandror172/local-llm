@@ -132,6 +132,40 @@ def test_stable_parts_include_objective_and_tests(tmp_path):
     assert "def test_area" in assembly.stable_parts["tests"]
 
 
+def test_the_tests_are_read_once_for_both_consumers(tmp_path):
+    """The declared tests feed the prompt's tests-as-context block AND the drift comparison's
+    max_verbatim_run_vs_tests. Two readers of the same files is how their decoding policies
+    drifted, so assembly reads them once and hands the same content to both."""
+    repo = _make_repo(tmp_path)
+    assembly = _workspace(tmp_path, repo).assemble()
+
+    assert len(assembly.test_sources) == 1
+    assert "def test_area" in assembly.test_sources[0]
+    assert assembly.test_sources[0] in assembly.stable_parts["tests"]  # one read, both consumers
+
+
+def test_a_test_file_that_is_not_utf8_is_refused_by_name(tmp_path):
+    """Under P2-D13 the tests ARE the spec, so a file that cannot be decoded cannot be handed to
+    the model as one — tolerating it would put mojibake in the authoritative statement of
+    required behaviour and let the coder write against it, with nothing downstream aware.
+
+    Refused as a NAMED AssemblyError rather than a raw UnicodeDecodeError escaping into a
+    stack-trace-shaped Failed. The cost is accepted and real: a `# -*- coding: latin-1 -*-` test
+    file is legal Python that pytest would run happily."""
+    repo = _make_repo(tmp_path)
+    (repo / "tests" / "test_area.py").write_bytes(
+        "# café na esquina\ndef test_area():\n    assert True\n".encode("latin-1")
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.email=a@b", "-c", "user.name=t", "commit", "-qm", "latin1")
+
+    with pytest.raises(AssemblyError) as excinfo:
+        _workspace(tmp_path, repo).assemble()
+
+    assert "test_area.py" in str(excinfo.value)  # the remedy is the caller's, so name the file
+    assert set(excinfo.value.triad) == {"where", "whose", "what"}
+
+
 # --- edit mode (T-110, E-D2) ------------------------------------------------
 
 

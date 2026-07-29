@@ -1,8 +1,9 @@
 # oficina P4 — Judge gate + delivery report (plan)
 
-**Status:** REGISTER FROZEN (session 131, 2026-07-27) — P4-D1…P4-D7 all decided with the user.
-Run spec delta, acceptance and build steps remain to be written. Sequencing decided this session:
-**P4 before P3**, see § "Why P4 before P3".
+**Status:** BUILT + ACCEPTED (session 131, 2026-07-27/28) — T1–T9 complete, acceptance A1–A6 all
+pass, PR #86 open. **P4-D1…P4-D11 frozen** — D8–D11 come from the post-build code review
+(2026-07-28) and were decided the same day; D11 is deferred with a named trigger. Sequencing
+decided in session 131: **P4 before P3**, see § "Why P4 before P3".
 
 **Two decisions were reversed during the walk-through, both by reading upstream docs rather than
 by new evidence** — recorded because the reversals are the plan's most useful content: **P4-D2**
@@ -101,7 +102,7 @@ actually blocks a decision.
 ---
 
 <!-- ref:delegate-p4-decisions -->
-## Decision register (P4-D) — ALL OPEN
+## Decision register (P4-D) — D1–D10 FROZEN
 
 Each entry states the fork, the constraints that bound it, and a recommendation. Freeze on
 review with the user; house rule is reverse-only-with-new-evidence once frozen.
@@ -166,9 +167,19 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
   | Metric | Covers | Mode |
   |---|---|---|
   | `lines_added` / `lines_removed` | gross magnitude | both |
-  | `files_touched` | an edit run touching >1 file is itself drift | both |
   | **`hunks` — count + line ranges** | E-D6 (removal hunk) *and* T-119 (addition hunk) | both |
   | `max_verbatim_run_vs_tests` | T-119, the leak specifically | both |
+  | ~~`files_touched`~~ | **DROPPED at build time — see below** | — |
+
+  **`files_touched` dropped (T4, session 131).** It was listed at freeze and removed when the
+  build reached it, because in the current write model it cannot discriminate: the loop writes
+  exactly one file (the target), and anti-cheat already rejects any iteration that touches a
+  declared test file — so the metric would read `1` on every non-cheating run. **First principle 6
+  is explicit** (`ref:delegate-first-principles`): *"A signal that fires unconditionally carries
+  zero bits. Every warning/verdict/status in this system must discriminate."* Shipping it would
+  also spend payload on nothing, and the D6 correction makes payload size a hard constraint.
+  **Revisit when multi-file deliverables exist** — that is the change that makes it discriminate,
+  and it is a countable trigger rather than a guessed one.
 
   **Why hunk locality rather than `siblings_intact`.** Three candidates were weighed: (A) parse
   both files and compare top-level definitions, reporting *names*; (B) count baseline lines absent
@@ -282,21 +293,227 @@ review with the user; house rule is reverse-only-with-new-evidence once frozen.
   `model`, `eval_count`, `duration_ms` and no identity, while `client.py:324` mints a fresh
   `call_id` per record), making the join identity-based.
 
-- **P4-D6 — Delivery report: artifact + pointer. DECIDED 2026-07-27 — largely pre-decided upstream.**
-  Not a genuine fork: `ref:delegate-architecture`'s run store is already
-  `runs/<id>/{spec.json, events.jsonl, iters/NN/*, report.md, workspace ref}`, and
-  `ref:delegate-event-model` defines `RunResult` as the read model behind `run_result` — *"report
-  + deliverable location"* — with a constraint neither the phasing doc nor this plan had recorded:
-  **it stays resolvable after workspace artifacts are pruned (V-D9).** So the report is a durable
-  artifact and the pruner must not orphan it.
-  **P4-D3's four metrics ride in the `RunResult` payload; the full diff stays in the artifact** —
-  which is what makes the summary cheap to read in Claude's context and complete on disk.
+- **P4-D6 — Delivery report location. CORRECTED 2026-07-27 against the as-built code — the report
+  lives in the `Delivered` event payload. There is no report artifact.**
+  **The original decision here was wrong.** It read `ref:delegate-architecture`'s run-store sketch
+  (`runs/<id>/{… report.md …}`) as the built shape and chose "artifact + pointer". That sketch is a
+  vision draft. The invariant is recorded in the vision folder's `KNOWLEDGE.md`:
+
+  > **Report location:** the delivery report lives in the `Delivered` event payload
+  > (`events.jsonl`, `ledger: forever`) — **NOT** in `artifacts/`. This is what keeps `run_result`
+  > answerable after retention prunes the workspace.
+
+  **Verified in code, not taken on trust:** `service.result()` reads `delivered.get("report")`
+  directly from the `Delivered` payload (`service.py:148-153`), and `artifacts_pruned` is a flag on
+  the very same result — because artifacts are exactly the thing that does *not* survive.
+  So the goal I derived independently for A4 (survive pruning) was right, and the mechanism I chose
+  was the opposite of the one already built and already justified.
+
+  **What this settles:** P4-D3's four metrics ride in the **`Delivered` payload's report**. No new
+  storage, no pruner coordination.
+  **What survives from the original reasoning:** the context-cost concern. A payload-resident report
+  is paid for in Claude's context on every `run_result`, and there is no pointer indirection to hide
+  behind — so **compactness is a hard content constraint, not a preference.** Metrics are numbers
+  and ranges; the diff itself is never inlined (it is reconstructible from the run branch, which
+  `refs/oficina/<run_id>` now pins — T-118 R-D2).
+
+  **Process note:** three documents (phasing, architecture, the event model) were consulted and all
+  three left this wrong; the folder's `KNOWLEDGE.md` had it right. As-built truth lives in the
+  memory files — read them before editing, not after.
 
 - **P4-D7 — Failure report: format only. DECIDED 2026-07-27.**
   Also narrower than drafted: the `Failed` event payload is **already** the where/whose/what triad
   and is `freeze-at-P1` (`ref:delegate-event-model`), and P2 already ships rule-based failure
   classification. P4 formats what exists. Extending classification in the phase that owns
   *reporting* is how a reporting layer grows a second brain.
+
+### Post-build review (2026-07-28) — three findings that are DESIGN forks, not defects
+
+A full-branch review after T9 raised 13 findings. Ten are ordinary defects with obvious remedies
+and are tracked as build follow-ups. **Three are decisions this register never took** — recorded
+here rather than settled inside a fix commit, because a register amended silently by fixes stops
+recording what was decided and starts recording what survived. That is the drift P4-D6 already
+caught once. **All three DECIDED 2026-07-28 with the user, walked in the order D8 → D9 → D10** —
+each one collapsed part of the next, which is why the order mattered: D8's min removed the only
+possible consumer of `weight`, and D9's per-criterion cut settled the ownership half of D10.
+
+- **P4-D8 — The report's second number. DECIDED 2026-07-28 — `judge_verdict` is the MIN of the
+  scored criteria; `0` when none scored.**
+  **The build shipped two summaries of one evidence set, computed by different rules.** `passed` is
+  `_all_criteria_pass` — every criterion ≥ its cut, a **conjunction of gates** — and it handles the
+  unscoreable case correctly (*"a gate that cannot see is not a gate that passes"*). `judge_verdict`
+  was `_mean_score` — an **unweighted arithmetic mean over the criteria that actually scored**. Both
+  rode in the same `Judged` payload with nothing marking which was authoritative.
+  **Measured on the real criterion shapes:** `scope_adherence 2` beside `objective_met 5` →
+  `passed False`, **`judge_verdict 4`**; the worst expressible case, `scope_adherence 1` beside
+  `objective_met 5`, still yields **3**. The mean cannot fall below a cut of 3 however badly scope is
+  violated, so long as one criterion is clean. Worse, one *unparseable* criterion beside a 5 yields
+  **`judge_verdict 5`** on a run whose gate withheld — pinned today by
+  `test_unparseable_output_scores_none_rather_than_guessing`. Note the tell: `_mean_score`'s
+  docstring has to *explain away* the unscoreable case ("the criteria that actually scored"), while
+  `_all_criteria_pass` twelve lines below absorbs it into the rule — `None` simply is not `>= 3`.
+  A special-case comment is the residue of an accident, not its justification.
+  **This is the thing P4-D5's own argument rules out.** § RESULTS ¶3: *"A single blended quality
+  score would have averaged that into a pass; splitting the question is what makes the gate work."*
+  The split was built — and a blended score shipped beside it.
+  **Why it was live and not cosmetic:** S17 gates DPO *chosen* labels on judge-passed, and **P6 —
+  the consumer — does not exist yet**, so whichever field the report makes prominent is the one P6
+  would have been written against. A P6 pass keying on `judge_verdict >= 3` inverts S17 silently,
+  and nothing in the payload would flag it.
+  **DECIDED — the min.** It cannot disagree with `passed` by construction, it carries the
+  split-questions property into the single number, it stays on the rubric's own 1–5 scale (legible
+  to a human reading the report), and payload cost is unchanged. **`0` when ANY criterion is
+  unscored:** 0 is already this codebase's "no verdict" sentinel (the judge-error path sets it), it
+  sits provably outside the 1–5 value space — the condition `ref:patterns-code-value-or-error`
+  requires before a sentinel is legitimate — and it matches T-105's *when identity is unknown, stay
+  silent*.
+  **SHARPENED AT BUILD TIME — the freeze wording would have left the hole open.** This entry first
+  read *"0 when **none** scored"*. `test_unparseable_output_scores_none_rather_than_guessing` shows
+  that is one rung too narrow: with one criterion unparseable and one scoring 5, a min over *the
+  criteria that actually scored* is `min([5]) == 5` — the same 5 the mean reported, on a run whose
+  gate withheld. **The defect was never mean-vs-min; it was that both reduce over a FILTERED
+  subset.** `passed` already fails on any `None`, so the number agrees with it only if an unscored
+  criterion drags the verdict below every cut. Same lesson as the tell above: the unscoreable case
+  belongs in the rule, not in a docstring explaining it away.
+  **A SECOND gap of the same shape, found immediately after the first fix shipped:** `all([])` is
+  True while `_min_score([])` is 0, so a rubric with no phase-2 criteria reported `passed: True`
+  beside `judge_verdict: 0`, having judged nothing and called no model — **the invariant this entry
+  asserts, violated by the very commit asserting it.** The post-build review had filed this
+  separately as an ordinary defect; it is not separate, it is D8's other half, and
+  `_all_criteria_pass` now requires a non-empty criterion set. Worth recording as calibration: two
+  of the three holes in "the number and the boolean cannot disagree" were invisible from the
+  decision text and only appeared against the code — a frozen invariant is a claim to re-derive at
+  build time, not a conclusion to carry forward.
+  *Rejected — drop the field entirely:* the per-criterion scores are already in the payload, so a min
+  is derivable and the field is redundant. But P4's goal text keeps the three verdicts separate *"so
+  P6 can gate DPO extraction on the judge **without re-deriving anything**"*, and dropping it forces
+  exactly that re-derivation.
+  *Rejected — keep the mean:* it is the conventional "overall quality" number and matches
+  `evaluate.py`'s `percentage`. That is precisely the **greenfield** framing — an aggregate over
+  independent qualities. P4's question is a **conjunction**, and a conjunction has no average.
+  **Recorded upgrade, with a countable trigger.** A strictly better number exists once per-criterion
+  cuts diverge (P4-D9): the **margin**, `score(c) − passing_score(c)`, minimised across criteria.
+  `passed ⟺ min(margin) ≥ 0` still holds, and it distinguishes a 4 against a cut of 4 (barely
+  passing) from a 4 against a cut of 3 (comfortable), which a raw min cannot. **Not built now**
+  because both cuts are 4 today, so margin is `score − 4` uniformly: identical ordering, zero new
+  information — and it would add a **fourth** verdict scale, running negative, beside `auto_verdict`
+  0/1/2, `curated_verdict` 0/1/2 and `judge_verdict` 1–5. **Trigger: the first rubric in which two
+  criteria declare different `passing_score` values.** Building it before that is designing from a
+  prediction (`ref:patterns-refactoring-duplicate-first`).
+
+- **P4-D9 — The passing cut. DECIDED 2026-07-28 — the cut moves INTO the rubric as a per-criterion
+  `passing_score`; `oficina-edit` declares 4 on both criteria; the scale text is untouched.**
+  **REVERSED during the walk-through — by reading the rubric rather than the finding's quoted line.**
+  The review reported that rung 3 of `scope_adherence` (*"the requested change plus a small
+  unrequested edit a reviewer would ask to remove"*) sits above `_PASSING_SCORE = 3`, and the first
+  recommendation recorded here was to **rewrite that rung**. Reading **both** ladders side by side
+  shows the scale is not what is wrong:
+
+  | | `scope_adherence` | `objective_met` |
+  |---|---|---|
+  | **4** | + a *trivial incidental* edit (whitespace, import ordering) | implements it; a *minor* stated requirement missing |
+  | **3** | + a small unrequested edit *a reviewer would ask to remove* | partial; a *major* stated requirement missing or wrong |
+
+  **Rung 4 is the lowest acceptable rung in BOTH ladders, and rung 3 in both describes something a
+  reviewer would send back.** The rungs are a coherent, well-ordered severity ladder with the
+  boundary drawn in the same place twice — that consistency is evidence the *scale* is right, and a
+  single number sitting one rung off is the likelier and cheaper error. This entry originally
+  claimed raising the cut would over-tighten `objective_met` *"where 3 may be legitimately passing"*;
+  that was **wrong**, and reading the ladder is what showed it — `objective_met: 3` is *a major
+  stated requirement missing or wrong*. **A scale and a threshold are two halves of one statement
+  ("which rungs pass?"); when they disagree, ask which half is wrong rather than assuming it is the
+  one you looked at first.**
+  **The fix is free, which the rewrite would not have been.** Changing the cut does not touch the
+  prompt, so judge behaviour is unchanged and **A1/A2 hold without re-measurement**: A1 (`2, 5`)
+  fails under ≥3 *and* ≥4; A2 (`5, 5`) passes under both. The pre-T9 probe that scored a smaller
+  synthetic leak **3** — § RESULTS' unresolved calibration note — now correctly **fails**, closing
+  it. Rewriting scale text would have re-opened both acceptances, since scoring-scale text *is* the
+  prompt template (`evaluator/.memories/KNOWLEDGE.md` § "Rubric YAML Format").
+  **Why per-criterion rather than a global constant or a per-rubric key.** A cut is a claim *about a
+  scale*; the scale is per-criterion, so that is where its referent lives. Keeping it in code leaves
+  the two halves of *"which rungs pass?"* in different files with nothing holding them together —
+  and that divergence is **not hypothetical here: it is exactly what produced this finding**
+  (`ref:corpus-divergence-pattern`, now instantiated inside P4 itself). A per-*rubric* key is one
+  number against N ladders — a smaller copy of the same mismatch.
+  *Weak argument deliberately NOT relied on:* "different criteria might want different bars." Both
+  ladders break at 4, so as a **knob** the field has exactly one value, and
+  `ref:patterns-code-extract-keep-divergence` rule 3 would reject it as speculative generality. The
+  justification is **co-location, not variation** — first principle 6 governs *signals that must
+  discriminate*, whereas a field whose purpose is adjacency carries value at zero variance.
+  **Default: `_DEFAULT_PASSING_SCORE = 3` for criteria that do not declare one.** The six other
+  shipped rubrics' ladders have not been read, so imposing 4 on them would be the same unexamined
+  assumption in the other direction. Verified safe: `evaluate.py`'s `load_rubric` asserts only
+  `id`/`criteria`/`name`/`phase`/`weight` and **does not reject unknown keys**, so `passing_score` is
+  invisible to the benchmark path.
+  **Build guard, non-optional.** `weight` on this very file is already a per-criterion number nobody
+  reads (P4-D10). A second one must not join it: `passing_score` has to be genuinely consumed by
+  `judge.py`, pinned by a test in which a criterion scoring **below its declared cut fails the
+  gate**.
+
+- **P4-D10 — `weight` in `oficina-edit.yaml`. DECIDED 2026-07-28 — DELETE it, and record why it
+  could never have worked.**
+  The *ownership* half of this fork is settled by P4-D9: the cut moves to the rubric. What remained
+  was `weight: 3.0`, declared on both criteria and **never read by `judge.py`**, while
+  `evaluator/lib/evaluate.py:75` *asserts* it is present and aggregates via `weighted_average` —
+  one YAML file meaning two different things to its two readers, with tuning a weight silently
+  changing nothing on the oficina path. It is also the one place the build crossed the boundary it
+  declared: *"compose the evaluator, do not reimplement it"* (T-104) was honoured for rubric loading
+  and for prompts, and **aggregation was re-derived with different semantics**.
+  **The fork "make `judge.py` honour it" is not merely unattractive — it is impossible.** Under
+  P4-D8 `passed` is a conjunction, and **no weighting makes an average agree with an AND.** With
+  both cuts at 4: `(4,4)` passes and scores `4(w₁+w₂)`; `(5,3)` fails and must rank below it,
+  requiring `w₁ < w₂`; `(3,5)` also fails and requires `w₂ < w₁`. Contradiction, for every possible
+  pair of weights. So `weight` is not just unused on this path — it is **unusable** for it. That is
+  a far stronger reason to delete it than "nothing reads it".
+  **One reader, not two — structurally shared, semantically private.** The file lives in
+  `evaluator/rubrics/` and `load_rubric` takes a path, so the benchmark path *can* load it; but its
+  criteria instruct the judge to *"consult the drift metrics in the prompt"*, which only oficina's
+  `_judge_user_prompt` supplies. Run through `evaluate.py` it loads and cannot mean anything.
+  **Accepted cost:** deleting `weight` makes `evaluate.py` refuse the file — correct in outcome, but
+  for a **misleading stated reason** (a missing weight, rather than "this rubric needs drift metrics
+  you do not supply"). Mitigated by an in-file comment carrying the real reason, so whoever hits the
+  assertion reads it two lines above. **Making the assertion itself smarter is out of scope on this
+  branch:** `evaluator/` has **zero automated tests** (`evaluator/.memories/QUICK.md`), so touching
+  `evaluate.py` requires a characterization pass first
+  (`ref:patterns-refactoring-characterize-first`) — the convention acting as a real scope boundary
+  rather than as advice.
+  *Rejected — keep it, documented as evaluator-only:* zero-risk, but P4-D9 adds `passing_score`
+  directly beside it, leaving **two adjacent per-criterion numbers, one live and one inert**, with
+  nothing on the page distinguishing them. That is the confusion this entry exists to remove, made
+  worse rather than better.
+  *Rejected — move the file out of `evaluator/rubrics/`:* the evaluator's KNOWLEDGE.md records that
+  a new rubric file is *"the sanctioned extension — no code change was needed"*. P4 got its rubric
+  without touching untested code; moving it now spends that advantage to restate what a comment
+  already says.
+
+- **P4-D11 — Per-criterion `call_id` on judge calls. DEFERRED 2026-07-28 — not built, trigger
+  named. (`run_id` fixed the same day; that half was a defect, not a fork.)**
+  P4-T3 threaded `call_id` for the **coder** because the ledger↔`calls.jsonl` join would otherwise
+  be order-based — the positional fallback T-105 banned. The judge is the same fork one level down:
+  a run makes **N judge calls, one per criterion**, and `Judged` carries a `criteria[]` array with
+  no ids.
+  **What is already recoverable without it.** With `run_id` fixed, every judge call for a run is
+  findable, and each call's prompt *names its criterion* — `_judge_system_prompt` renders
+  `Criterion: {name}`, `_judge_user_prompt` ends *"Score the output on the criterion: **{name}**"*.
+  Within one run criterion names are unique, so **`(run_id, criterion_name)` is a genuine composite
+  key**, not a positional guess. Its weakness is that it is *content-derived*: recovering the name
+  means parsing prompt text, which breaks silently if the wording changes.
+  **No consumer needs it yet.** P6 gates DPO extraction on `passed`, not on judge-call identity,
+  and a DPO pair is (coder prompt, coder response) — **the judge call is the gating signal, not a
+  pair**. Judge-quality DPO (fine-tuning the judge itself) would need it, but no phase owns that,
+  so building for it now is designing from a prediction
+  (`ref:patterns-refactoring-duplicate-first`).
+  **The hazard — recorded because the cheap route is the banned one.** The seam is
+  `chat(system, prompt, schema) -> str`; there is no channel for an id to come back through.
+  Collecting ids side-band inside `default_judge` preserves the seam but then matches ids to
+  criteria **by order** — the exact fallback T-105 banned, reintroduced in the one module whose
+  docstring cites T-105 as its reason for existing. Doing it properly means changing the seam's
+  return type (`judge_deliverable`, `_score_criterion`, `_FakeChat`, `default_judge`).
+  **Trigger: the first consumer that needs to name an individual judge call.**
+  *Shipped instead:* `run_id` is now **required** on `default_judge` and threaded from `_run_loop`.
+  It had been `""` — worse than absent, because a value that looks like one silently merges every
+  run's judge calls into a single empty-string bucket for anything grouping by run. The module was
+  defeating the justification in its own docstring.
 <!-- /ref:delegate-p4-decisions -->
 
 ---
@@ -345,8 +562,10 @@ carries zero bits."* A1 without A2 would accept a report that always cries drift
 tolerating unknown event names is exercised, per the envelope's forward-compatibility rule.
 
 **A4 — the report outlives the workspace.** After a retention prune, `run_result` still resolves
-the report (`ref:delegate-event-model`'s `RunResult` constraint, V-D9). Guards the D6 split from
-a pruner that orphans `report.md`.
+the report *including P4's new metrics*. **Reduced to a regression guard by the D6 correction:**
+because the report is `Delivered`-payload-resident, survival is already guaranteed by
+construction — so A4 no longer proves a new capability, it pins that P4's additions did not
+migrate any part of the report into prunable storage.
 
 **A5 — S17 has something to gate on.** The packaged iteration carries a `judge_verdict` distinct
 from `auto_verdict` and `curated_verdict`, and — per the T-99 revisit — the ledger↔calls join
@@ -378,7 +597,144 @@ so it ships in the same phase as the verb that resumes it. `event-model.md` exis
 this — *"the place where event vocabulary churns cheaply — BEFORE names hit the wire."*
 Accordingly **A3 covers the judge events only**, and the gate's acceptance moves to P5.
 
-## Build steps (TDD-ordered — NOT started; awaiting explicit go-ahead)
+<!-- ref:delegate-p4-results -->
+## RESULTS — T9 acceptance PASSED, and it changed the design (session 131)
+
+Run against the **real** defect, not a synthetic one: `refs/oficina/dy-Bi1nMo5LIqnpzrtXRTw`
+(`cd852fa`) was still reachable, and its run directory had survived retention — so the replay
+used the **actual objective**, which had said *"Keep every existing function, constant, import
+and comment byte for byte."*
+
+| | drift | `scope_adherence` | `passed` |
+|---|---|---|---|
+| **A1** — the T-119 leak | `max_verbatim_run_vs_tests: 78`, `+114/−1`, hunks `[[20,20],[72,184]]` | **2** — "substantial unrequested content added" | **False** ✅ |
+| **A2** — a real accepted edit (`r5qHxH2Cgh…`) | `max_verbatim_run_vs_tests: 1`, `+36/−26`, 7 hunks | **5** — "only the requested change" | **True** ✅ |
+
+**Three findings, in the order they arrived.**
+
+**1. T-119's prediction was exactly right: the unmodified `code-python` rubric PASSES the leak.**
+Scored **5/5 on every criterion**, `judge_verdict: 5`. Worse than missing it — `completeness: 5`
+justified itself as *"self-contained, runnable, and includes a usage example"*, where the "usage
+example" **is** the 78 lines of pasted acceptance tests. The rubric rewarded the defect. This is
+why `evaluator/rubrics/oficina-edit.yaml` exists: kept separate from `code-python` because that
+rubric is shared with the Layer-4 benchmark suite, where a greenfield output has no prior scope
+to adhere to, so adding the criterion there would retroactively change benchmark scoring.
+
+**2. The judge must be shown the CHANGE, not the RESULT — measured, not assumed.** With a scope
+criterion added but the *delivered file* in the prompt, the judge still scored **5** and wrote
+*"contains only the requested change"* about a file with 114 added lines; the drift metrics were
+present and ignored. Shown the **unified diff** instead — same judge, same persona, same metrics,
+same criterion — it scored **2**, at ~33% fewer tokens.
+*This invalidated a P4 assumption made at freeze:* that handing the judge measured numbers could
+substitute for the second artifact.
+**Full three-condition measurement and the generalization — which is not about P4 and applies to
+any model asked to review work — extracted to
+`docs/findings/judge-must-see-the-change-2026-07-28.md` ([ref:judge-sees-the-change]).** The
+short form: a diff is a *representation of the change*, metrics are a *summary of the
+representation*; the coder needed the change (T-120) and so does the judge. Neither needed the
+file.
+
+**3. The gate discriminates, which is what A2 is for.** A2 is not a trivial change — 36
+insertions, 26 deletions, 7 hunks — and still scored 5. The judge is reading the diff against the
+objective, not reacting to size. And on A1 the two criteria stayed **independent**:
+`scope_adherence: 2` alongside `objective_met: 5`, because the run *did* correctly add the
+requested helper *and* pasted the tests. A single blended quality score would have averaged that
+into a pass; splitting the question is what makes the gate work.
+
+### A3–A6, run explicitly (session 131) — 20/20 checks
+
+A3/A4/A6 drive real runs through the real `Worker`/`Ledger`/`Store`/retention with injected
+coder/evaluate/judge seams. **A5 uses REAL model calls**, because its claim is that a ledger
+event and a `calls.jsonl` record join by identity — faking the generation would test the fake.
+
+| | checks | result |
+|---|---|---|
+| **A3** events fold, old clients survive | 3/3 | `Judged` lands, does **not** fold (run stays `completed`), and a fold given a forged unknown event name still returns `completed` — the envelope's forward-compatibility rule exercised, not assumed |
+| **A4** report outlives the workspace | 6/6 | Prune verified to actually fire and the artifacts verified **gone**, after which `run_result` still resolves and the report is **byte-identical** — drift and judge included |
+| **A5** S17 has something to gate on | 6/6 | `judge_verdict` present and a distinct field from `auto_verdict`; **the join holds on a live run** — the iteration's `call_id` names a real `calls.jsonl` record |
+| **A6** failure path | 5/5 | `Exhausted` carries where/whose/what (`whose=model`), best attempt attached, folds to `failed`, `Delivered` **not** emitted, drift present |
+
+**Two things the numbers do not show.**
+
+**A5 logged TWO call records — the coder's and the judge's.** That is the T-95 decision
+validating itself: had P4 composed `run_phase2` wholesale, the judge call would have used the
+evaluator's own transport and left no `calls.jsonl` record, no `run_id`, no `call_id`. The judge
+is inside the observability the DPO pipeline depends on because the transport was kept singular.
+
+**The whole A5 run took 7.2 s** — real coder call, real judge call, worktree, pytest, packaging.
+That is P4-D2's zero-swap reversal showing up as wall-clock: coder and judge share a base, so
+packaging cost no model load.
+
+**Two setup bugs found by running these rather than reasoning about them**, both mine and both
+worth recording because each would have produced a *false pass*: an **empty** artifacts dir is
+deliberately skipped by `_prune_artifacts` ("nothing to free"), so A4 initially "passed a prune"
+that never bit; and a `test_cmd` with a `cd` into the original repo tests a checkout where the
+target does not exist, since the evaluator already runs it with `cwd=worktree`.
+
+**Calibration note carried from T2's probe:** the pre-T9 probe scored a smaller synthetic leak
+**3**, which would have passed the ≥3 threshold. On the real leak with the diff prompt the score
+is **2**. The threshold survives this evidence but is not proven at the boundary — a leak scored
+3 would still pass, so the next real drift incident is worth checking against it.
+**CLOSED 2026-07-28 by P4-D9:** the cut moved into the rubric as a per-criterion `passing_score`
+of 4, so a leak scoring 3 now **fails**. Re-verified against the real rubric file: `(3, 5)` →
+`passed False`.
+
+### Post-review re-verification of A1–A6 (2026-07-28)
+
+The post-build review changed the gate's arithmetic underneath its own acceptance, so the six
+criteria were re-checked rather than assumed to survive. Suite **369 → 387**.
+
+- **A1 / A2 — re-run against the REAL rubric file**, not the test fixture: A1 `passed False` /
+  `judge_verdict` **2**; A2 `passed True` / **5**. They hold for a stronger reason than arithmetic:
+  `passing_score` never reaches the model (`_judge_system_prompt` renders only `name`,
+  `description` and `scoring`), so **P4-D9 changed zero prompt bytes** — the judge was asked a
+  byte-identical question. The one change that *could* have moved a score, the EOF hunk clamp,
+  only affects deletion markers past the delivered EOF, and A1's markers (`[[20,20],[72,184]]`)
+  all sit inside a 185-line file, so its prompt is byte-identical too.
+- **A3 / A4 / A5 / A6** — event folding, report survival past a prune, the `call_id` join and the
+  failure path are unchanged in mechanism, and their suite forms are green. **A5's claim is
+  strengthened rather than preserved:** judge calls now carry a real `run_id` where they carried
+  `""`, so the join it asserts covers the judge's own records too.
+- **Two behaviours A1–A6 never covered are now pinned:** every terminal reports drift (the
+  `Cancelled` payload did not, and `service.result()` returns that payload verbatim), and an
+  exhausted run narrates its iterations.
+
+**RE-RUN LIVE 2026-07-28, after the simplify pass** — `make accept-p4`, real Ollama calls against
+the pinned runs:
+
+| | drift | `scope_adherence` | `objective_met` | `passed` | `judge_verdict` |
+|---|---|---|---|---|---|
+| **A1** — the T-119 leak | `+114/−1`, verbatim **78** | **2** (cut 4) | 5 | **False** ✅ | **2** |
+| **A2** — a real in-scope edit | `+36/−26`, verbatim 1 | **5** | 5 | **True** ✅ | 5 |
+
+Both reproduce session 131's recorded numbers exactly, and on A1 the two criteria stay
+**independent** — `scope_adherence 2` beside `objective_met 5`, which is the split the gate depends
+on. The `judge_verdict` column is P4-D8 visible live: the mean reported **4** on A1; the min
+reports **2**.
+
+**A5 was re-run end-to-end rather than replayed.** A real run emitted
+`RunSubmitted → AssemblyDone → IterationStarted → IterationEvaluated → Judged → Delivered` in
+14.0 s; `judge_verdict 5` sat beside `auto_verdict 2` as distinct fields; the iteration's `call_id`
+named a real `calls.jsonl` record; and **three records carried the run_id** — the coder's call and
+*both* judge calls. That last number is the `run_id` fix validated end-to-end: before it, the two
+judge records would have landed under `""` and only one would have matched.
+
+**The harness is now durable** — `mcp-server/run-acceptance-p4.sh` / `make accept-p4`, indexed in
+`.claude/index.md`. It had been authored ad hoc twice and reconstructed from scratch both times.
+A3/A4/A6 stay in the suite: they are deterministic, need no model, and gain nothing from a live
+pass.
+
+**Measured en route, and recorded because two estimates were wrong before it.** The judge's
+per-criterion calls do **not** reuse Ollama's prefix cache: `prompt_eval_duration_ms` is 2439 →
+2310 ms across A1's two calls and 3140 → 3054 ms across A2's — the second call saves ~4%, which is
+noise. The cause is structural: the criterion block sits in the **system** message and
+`client.chat` places system before user, so the varying text heads every call and the run-constant
+diff is re-evaluated cold. Cost is **~2.4–3.1 s per judged run** on a 2-criterion rubric (~15–20%
+of judge wall-clock), scaling with criterion count. Deferred rather than fixed here — it changes a
+prompt this phase calibrated — but the harness above is now the A/B that settles it cheaply.
+<!-- /ref:delegate-p4-results -->
+
+## Build steps (TDD-ordered — T1–T9 COMPLETE, session 131)
 
 Two standing conventions govern the whole sequence:
 

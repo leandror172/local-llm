@@ -113,6 +113,85 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
 → harden the corpus, revisit code-anchored. Plan + results: `docs/plans/oficina-p2-edit-mode.md`
 (`ref:oficina-edit-mode`, `ref:oficina-edit-mode-decisions`).
 
+## P4 judge gate — what the code now guarantees (T1–T9) — 2026-07-28
+
+- **The judge runs ONCE at packaging and gates nothing.** `Judged{rubric, model, passed,
+  judge_verdict, criteria[]}` is a **non-folding run event** — the run is `working` before and
+  after, and `passed: false` does NOT block `Delivered`. S17 gates DPO *chosen labels*, not
+  delivery; H1 is Claude-gated by design. A judge that errors, times out or returns unparseable
+  output degrades to a report, because by packaging the deliverable already exists.
+- **Opt-in by `acceptance.rubric`, and the name is validated at INTAKE** (`rubric_not_found`), not
+  at packaging — a typo would otherwise survive the whole loop and surface through the judge's
+  degrade-to-a-report path as `passed: False` on a perfectly good deliverable, blaming the work for
+  a defect in the request. No rubric → no judge, and the run delivers exactly as it did
+  before P4. `approval_gate` is recognized but **refused** until P5 supplies `answer_run`; a gate
+  built now could enter `input_required` with nothing able to clear it.
+- **The gate's live acceptance is a durable harness, not a session artefact.**
+  `mcp-server/run-acceptance-p4.sh` (`make accept-p4`) replays A1/A2 against the **pinned** runs —
+  base commit from each run's own `AssemblyDone`, delivered bytes from `refs/oficina/<run_id>` — and
+  drives A5 as a real end-to-end run. **Run it before merging any change to `judge.py`, the rubric's
+  scale text, or the judge persona:** the suite fakes `chat`, so it is structurally blind to what the
+  judge is actually asked, which is the one thing these cases exist to check.
+- **The judge is fed the run's DIFF, not the delivered file** (`LoopResult.change`). Measured,
+  not assumed: with the file plus drift metrics it scored a 78-line acceptance-test leak **5**
+  and wrote "contains only the requested change"; with the diff, **2** — at ~33% fewer tokens.
+  A comparative question is unanswerable from one side of the comparison, and metrics are read as
+  background when they contradict the artifact in view. `ref:judge-sees-the-change`.
+- **oficina composes the RUBRIC and owns the CALL.** The rubric YAML is read as-is; the model call
+  goes through `_chat_generation` (extended with optional `system=`/`schema=`) because per-call
+  transport is ONE spelling (T-95). Composing the evaluator's `run_phase2` would have used its own
+  transport, leaving the judge call with no `calls.jsonl` record, no `run_id` and no `call_id`.
+  Verified: an accepted run logs **two** call records, coder and judge.
+- **A rubric written for greenfield can REWARD an edit defect.** Unmodified `code-python` scored
+  the leaked file 5/5, its `completeness` criterion calling the pasted tests "a usage example".
+  `evaluator/rubrics/oficina-edit.yaml` exists for edit runs and is kept separate, since
+  `code-python` is shared with the Layer-4 benchmark suite where output has no prior scope.
+- **`passed` is a CONJUNCTION and `judge_verdict` is its MIN — never an average (P4-D8/D9/D10).**
+  Each criterion's cut is declared in the rubric as `passing_score`, beside the scale it judges
+  (`oficina-edit` = 4 on both criteria; `_DEFAULT_PASSING_SCORE = 3` for rubrics declaring none) —
+  a cut kept in code against a scale kept in data is how a coherent severity ladder came to sit one
+  rung above its threshold. The verdict reduces the way the gate gates, and **any** unscoreable
+  criterion yields `0`: reducing over only the criteria that *did* score is how the old mean
+  reported **5** on a run whose gate withheld, and a min over the same filtered subset would have
+  too. **An empty criterion set withholds as well** — `all([])` is True, so a rubric declaring no
+  phase-2 criteria would otherwise pass having judged nothing and called no model. `weight` is **deleted** from `oficina-edit.yaml` — no weighting can make an average agree
+  with an AND (ranking `(5,3)` below `(4,4)` needs `w₁<w₂`; `(3,5)` needs `w₂<w₁`), so it was
+  unusable here, not merely unused.
+- **Drift is surfaced, never gated** (`drift.py` → `LoopResult.drift` → the report):
+  `hunks`, `lines_added`/`lines_removed`, `max_verbatim_run_vs_tests`. `files_touched` was
+  specified at freeze and **dropped at build**: the loop writes exactly one file, so it would fire
+  unconditionally (first principle 6). Blank lines are filtered BEFORE matching — `SequenceMatcher`'s
+  `isjunk` stops junk anchoring a match but the winning block still absorbs adjacent junk.
+  **All three terminals carry it — delivered, exhausted AND cancelled.** `LoopResult` always had
+  it, but the `Cancelled` payload did not, and `service.result()` returns that payload verbatim as
+  the report, so on that path it was invisible to every reader. **With no attempt, drift is `{}`**:
+  measuring `""` against an edit run's baseline reports the whole file as removed, describing a run
+  that produced nothing as a run that deleted everything. Reachable beyond cancel — an edit run
+  budgets 1 iteration (T-114), so one anti-cheat rejection leaves no best attempt either.
+  **A deletion's marker is clamped to the last delivered line** — at EOF there is no "line that
+  follows the removal", so it pointed one past the end. Hunks are read by a human AND inlined into
+  the judge's prompt, so a range must be addressable in the file it describes. **The declared tests are read
+  ONCE, at assembly, strictly** (`Assembly.test_sources`), and handed to BOTH consumers — the
+  prompt's tests-as-context block and this drift comparison. Two readers of the same files is how
+  their decoding policies drifted: assembly was strict while the loop tolerated replacement
+  characters, so the loop's tolerance could never fire — the run had already died. An undecodable
+  test file is a **named `AssemblyError` naming the file**, because under P2-D13 the tests ARE the
+  spec: mojibake in them would become the authoritative statement of required behaviour and the
+  coder would write against it with nothing downstream aware. Accepted cost: a
+  `# -*- coding: latin-1 -*-` test file is legal Python that pytest would run.
+- **The report is `Delivered`-payload-resident and compactness is a hard constraint** — it is paid
+  for in the caller's context on every `run_result`, with no pointer indirection. `auto_verdict`
+  is surfaced as `tests_passed`; `error_keys` are omitted. **Its variable-length parts are BOUNDED
+  at the report seam, not trusted to stay small:** judge `reasoning` clips at 200 chars and `hunks`
+  at 10 ranges, with `hunks_total` present **iff** ranges were dropped (unconditional it would
+  carry no bits). Full fidelity survives in the `Judged` event and `LoopResult.drift`, which nobody
+  pays for unless they look. Worst case measured ~750 → ~206 tokens. **`criteria[]` entries are
+  shortened, never dropped** — each carries the `passing_score` its score was judged against, and a
+  report without them states a verdict it cannot explain. **The iterations trail rides the
+  exhausted payload too**, not only the delivered one — an exhausted run is where the narrative is
+  most useful — and each step carries `cheated`, since an anti-cheat rejection was otherwise
+  indistinguishable from an ordinary `structural` failure.
+
 ## LanguagePack — the language axis contract (T-92 Phase 4) — 2026-07-23
 
 - **One algorithm, N packs.** `evaluate()`'s flow (target-presence rule, first-failing-stage

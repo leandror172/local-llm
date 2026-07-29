@@ -25,6 +25,7 @@ from ollama_mcp.oficina.intake import (
     RULE_UNSUPPORTED_LANGUAGE,
     RULE_WORKSPACE_UNSUPPORTED,
     RULE_WORKTREE_NOT_SUPPORTED,
+    RULE_APPROVAL_GATE_UNSUPPORTED,
     RULE_WORKTREE_REQUIRED,
     check_intake,
 )
@@ -281,12 +282,35 @@ def test_unknown_acceptance_key_rejected(tmp_path):
     rejects(spec, with_rule=RULE_UNKNOWN_KEY)
 
 
-def test_acceptance_rubric_key_rejected(tmp_path):
-    """acceptance.rubric is a P4 (Phase-2 judge) field, NOT in P2 — it is rejected as unknown,
-    which is how the schema keeps P4 scope out of P2."""
+def test_acceptance_rubric_key_accepted(tmp_path):
+    """acceptance.rubric names the Phase-2 judge rubric. It was REJECTED through P2 — the
+    schema's way of keeping P4 scope out — and P4-T5 is the phase that admits it."""
     spec = a_function_spec(tmp_path)
-    spec["acceptance"]["rubric"] = "x"
-    rejects(spec, with_rule=RULE_UNKNOWN_KEY)
+    spec["acceptance"]["rubric"] = "code-python"
+    accepts(spec)
+
+
+def test_approval_gate_true_is_rejected_until_p5(tmp_path):
+    """P4 decides the gate's policy but defers the STATE: only answer_run (P5) clears
+    input_required, so a gated run would enter a state nothing could leave. Recognized and
+    refused loudly beats silently ignored."""
+    spec = a_function_spec(tmp_path)
+    spec["approval_gate"] = True
+    rejects(spec, with_rule=RULE_APPROVAL_GATE_UNSUPPORTED)
+
+
+def test_approval_gate_false_changes_nothing(tmp_path):
+    """The default path must be untouched — the key is recognized, not required."""
+    spec = a_function_spec(tmp_path)
+    spec["approval_gate"] = False
+    accepts(spec)
+
+
+def test_a_run_without_a_rubric_is_still_accepted(tmp_path):
+    """The judge gate is opt-in: omitting the rubric must deliver exactly as it did before P4,
+    so the field's arrival cannot silently make every existing spec judged."""
+    spec = a_function_spec(tmp_path)
+    accepts(spec)
 
 
 def test_p2_rejection_carries_triad(tmp_path):
@@ -430,3 +454,30 @@ def test_function_with_already_existing_target_accepted(tmp_path):
     target_path = Path(spec["deliverable"]["target"])
     target_path.write_text("existing content")
     assert accepts(spec)
+
+
+def test_unresolvable_rubric_rejected(tmp_path):
+    """A rubric name is caller-supplied, exactly like a context file — and intake already fails
+    fast on a missing one of those. Deferred to packaging, a typo survives the whole loop and
+    then surfaces as `passed: False` on a perfectly good deliverable: a report blaming the WORK
+    for a defect in the REQUEST, which is the most expensive kind of wrong answer here."""
+    from ollama_mcp.oficina.intake import RULE_RUBRIC_NOT_FOUND
+
+    spec = a_function_spec(tmp_path)
+    spec["acceptance"]["rubric"] = "code-pyton"  # the typo that motivated this
+
+    rejects(spec, with_rule=RULE_RUBRIC_NOT_FOUND)
+
+
+def test_resolvable_rubric_accepted(tmp_path):
+    """The negative control — a real shipped rubric must pass, or the check is a wall."""
+    spec = a_function_spec(tmp_path)
+    spec["acceptance"]["rubric"] = "oficina-edit"
+
+    assert accepts(spec)
+
+
+def test_a_spec_without_a_rubric_is_still_accepted(tmp_path):
+    """The judge is opt-in (P4). No rubric means no judge, and intake must not invent a
+    requirement the gate itself does not have."""
+    assert accepts(a_function_spec(tmp_path))

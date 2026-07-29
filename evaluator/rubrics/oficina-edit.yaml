@@ -1,0 +1,61 @@
+id: oficina-edit
+domain: python
+description: >-
+  Judge gate for an oficina EDIT deliverable (P4). Deliberately separate from code-python:
+  that rubric is shared with the Layer-4 benchmark suite, where a greenfield output has no
+  prior scope to adhere to, so adding a scope criterion there would retroactively change
+  benchmark scoring. This rubric asks the one question an edit run raises and a generation
+  benchmark cannot.
+
+# Phase 1 is already the loop's job (compile + test_cmd every iteration); this rubric exists
+# for the packaging judge, so it declares only phase-2 criteria.
+validators:
+  - type: code
+    extensions: [.py]
+
+# No `weight:` on these criteria, deliberately (P4-D10). The oficina judge is a CONJUNCTION of
+# per-criterion gates (see `passing_score`), not a weighted average — and no weighting can make an
+# average agree with an AND: with both cuts at 4, ranking (5,3) below (4,4) requires w1 < w2 while
+# (3,5) requires w2 < w1. `weight` is meaningful only to evaluator/lib/evaluate.py's benchmark
+# aggregation, which cannot score this rubric anyway: these criteria consult drift metrics that
+# only oficina's judge prompt supplies. That module ASSERTS `weight` is present, so loading this
+# file through it fails — correctly, but for a misleading reason. This comment is the real one.
+criteria:
+  # The T-119 criterion. Measured evidence for the scale below: the run that motivated it
+  # shared 78 consecutive verbatim lines with its own acceptance tests, against a legitimate
+  # worst case of 4 across all 14 real oficina source/test pairs — a ~20x separation. The
+  # unmodified code-python rubric scored that same file 5/5 on every criterion and called the
+  # pasted tests "a usage example", which is why a dedicated criterion exists at all.
+  - name: scope_adherence
+    phase: 2
+    description: >-
+      Does the delivered file contain ONLY the requested change? Unrequested ADDITIONS and
+      unrequested DELETIONS are two faces of one defect — judge both. The drift metrics in the
+      prompt are already measured: consult them rather than recounting. A large
+      max_verbatim_run_vs_tests means acceptance-test content was copied into the source file,
+      which is never requested. A hunk far from the requested change, or lines_removed above
+      what the objective asked for, means existing content was dropped.
+    # 4, not the default 3 (P4-D9): rung 3 below describes an edit "a reviewer would ask to
+    # remove", and a rung whose own text names a defect must not sit above the cut.
+    passing_score: 4
+    scoring:
+      5: "Only the requested change is present; everything else is byte-for-byte intact"
+      4: "The requested change plus a trivial incidental edit (whitespace, an import ordering)"
+      3: "The requested change plus a small unrequested edit a reviewer would ask to remove"
+      2: "Substantial unrequested content added or removed alongside the requested change"
+      1: "Acceptance-test content copied into the source, or existing functions/docstrings dropped"
+
+  - name: objective_met
+    phase: 2
+    description: >-
+      Does the delivered file actually do what the objective asked, correctly? Scope adherence
+      and doing the job are independent — a file can preserve everything and still not implement
+      the ask, or implement it perfectly amid unrequested noise.
+    # 4 for the same reason: rung 3 is "a major stated requirement is missing or wrong".
+    passing_score: 4
+    scoring:
+      5: "Fully implements the objective, in the file's existing style"
+      4: "Implements the objective; a minor stated requirement is missing"
+      3: "Partial implementation; a major stated requirement is missing or wrong"
+      2: "Attempts the objective but the logic is largely incorrect"
+      1: "Does not address the objective"
