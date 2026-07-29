@@ -1,0 +1,65 @@
+id: oficina-greenfield
+domain: python
+description: >-
+  Judge gate for an oficina GREENFIELD deliverable (T-130). The counterpart to oficina-edit:
+  the same two questions, asked on a ladder that does not presuppose a prior state. Kept
+  separate from code-python for the reason oficina-edit is — that rubric is shared with the
+  Layer-4 benchmark suite, and these criteria consult drift metrics only oficina supplies.
+
+# See oficina-edit.yaml for the full reasoning. A greenfield run has no prior file, so every
+# rung of an edit ladder is unanswerable about it; packaging checks this key against the mode
+# detected at assembly and reports a mismatch instead of returning a confident wrong number.
+applies_to: greenfield
+
+# Phase 1 is already the loop's job (compile + test_cmd every iteration); this rubric exists
+# for the packaging judge, so it declares only phase-2 criteria.
+validators:
+  - type: code
+    extensions: [.py]
+
+# No `weight:`, for the same reason oficina-edit carries none (P4-D10): the oficina judge is a
+# conjunction of per-criterion gates, and no weighting can make an average agree with an AND.
+criteria:
+  # The same QUESTION as oficina-edit's scope_adherence — "only what was asked?" — which is why
+  # it keeps the name: verdicts stay comparable across modes and only the ladder differs. The
+  # concern survives greenfield intact; a run can paste its acceptance tests into a brand-new
+  # module exactly as the T-119 run pasted them into an existing one, and
+  # max_verbatim_run_vs_tests measures that identically either way.
+  - name: scope_adherence
+    phase: 2
+    description: >-
+      Does the delivered file contain ONLY what the objective asked for? Judge unrequested
+      ADDITIONS: content the objective never requested, most importantly acceptance-test
+      content copied into the source. A large max_verbatim_run_vs_tests means exactly that
+      and is already measured — consult it rather than recounting.
+
+      IGNORE hunks, lines_added and lines_removed for this criterion. A greenfield run has no
+      prior file to diff against, so lines_removed is always 0, hunks is always one range
+      covering the whole file, and lines_added is merely the file's length. They are artifacts
+      of there being no baseline, not evidence of drift.
+    # 4, for the reason oficina-edit uses 4 (P4-D9): rung 3 describes content a reviewer would
+    # ask to remove, and a rung whose own text names a defect must not sit above the cut.
+    passing_score: 4
+    scoring:
+      5: "Only what the objective asked for is present"
+      4: "What was asked plus a trivial incidental (an unused import, a stray blank line)"
+      3: "What was asked plus a small unrequested addition a reviewer would ask to remove"
+      2: "Substantial unrequested content alongside what was asked"
+      1: "Acceptance-test content copied into the source file"
+
+  # Deliberately NOT identical to oficina-edit's objective_met: that one's rung 5 reads "in the
+  # file's existing style", which a file that did not exist until this run cannot have.
+  - name: objective_met
+    phase: 2
+    description: >-
+      Does the delivered file actually do what the objective asked, correctly? Scope adherence
+      and doing the job are independent — a file can contain nothing extraneous and still not
+      implement the ask, or implement it perfectly amid unrequested noise.
+    # 4 for the same reason: rung 3 is "a major stated requirement is missing or wrong".
+    passing_score: 4
+    scoring:
+      5: "Fully implements the objective, in a style consistent with the surrounding codebase"
+      4: "Implements the objective; a minor stated requirement is missing"
+      3: "Partial implementation; a major stated requirement is missing or wrong"
+      2: "Attempts the objective but the logic is largely incorrect"
+      1: "Does not address the objective"
