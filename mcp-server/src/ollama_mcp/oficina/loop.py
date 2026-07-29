@@ -100,12 +100,22 @@ class LoopResult:
     # report, gating nothing. The judge classifies whether the drift was in scope; this only
     # says how much there was and where.
     drift: Dict[str, Any] = field(default_factory=dict)
-    # The run's change as a unified diff (P4-T9). Fed to the judge INSTEAD of the delivered
-    # file: shown the after-state it scored a 78-line test leak 5/5 ("contains only the
-    # requested change"); shown the diff it scored the same run 2 ("substantial unrequested
-    # content"). A comparative question needs the comparison — and the diff is ~33% cheaper
-    # than the file. Not put in the report: the payload carries numbers only (P4-D6).
+    # The run's change (P4-T9). On an EDIT run this is a unified diff, fed to the judge INSTEAD
+    # of the delivered file: shown the after-state it scored a 78-line test leak 5/5 ("contains
+    # only the requested change"); shown the diff it scored the same run 2 ("substantial
+    # unrequested content"). A comparative question needs the comparison — and the diff is ~33%
+    # cheaper than the file. On a GREENFIELD run it is the delivered content itself (T-130):
+    # with no prior state the change IS the result, and a diff against nothing is the same file
+    # with `+` on every line plus hunk headers — identical information, strictly more tokens,
+    # on the largest payload this phase produces. Not put in the report: the payload carries
+    # numbers only (P4-D6).
     change: str = ""
+    # Which mode the run executed in — "edit" or "greenfield". Detected at assembly by
+    # `Workspace._detect_mode` (target presence at HEAD, E-D2) with no spec field to read, so
+    # packaging cannot re-derive it and this is where it learns it (T-130). Two consumers, both
+    # at the judge: the prompt must name the artifact `change` actually holds, and a rubric's
+    # declared `applies_to` is checked against it.
+    mode: str = ""
 
 
 def _signature(failures: List[ParsedFailure]) -> tuple:
@@ -409,12 +419,41 @@ class EvaluatedLoop:
                 if attempt
                 else {}
             ),
-            change=(
-                _attempt_as_diff(self._edit_baseline or "", attempt.content)
-                if attempt
-                else ""
-            ),
+            change=self._change_view(attempt),
+            # Reported on every terminal, including the ones carrying no attempt: the mode is a
+            # fact about the RUN, not about its output, and a reader asking "what was this run
+            # allowed to be judged on" needs it precisely when nothing was produced.
+            mode=self._mode,
         )
+
+    @property
+    def _mode(self) -> str:
+        """The run's mode, from the one discriminator the loop already holds (T-130).
+
+        `_edit_baseline` is None exactly when there was no committed target — the same
+        condition `Workspace._detect_mode` classified as greenfield. Derived rather than
+        stored so there is one source for it, and no second field to fall out of step.
+        """
+        return "greenfield" if self._edit_baseline is None else "edit"
+
+    def _change_view(self, attempt: Optional[GenerationResult]) -> str:
+        """What the packaging judge is shown of the change (T-130).
+
+        An edit run gets a unified diff against the committed file — P4-T9 measured that a
+        reviewing model shown the RESULT instead scores a leak 5/5 while the same model shown
+        the CHANGE scores it 2. A greenfield run has no committed file, so its change IS its
+        content; diffing against `""` would render the whole file as additions and describe it
+        as a change to something that never existed.
+
+        No attempt means no change, stated as absence rather than as an empty diff — the same
+        rule `drift` follows one field up, and for the same reason: measuring `""` against an
+        edit baseline reports a run that produced nothing as a run that deleted everything.
+        """
+        if attempt is None:
+            return ""
+        if self._edit_baseline is None:
+            return attempt.content
+        return _attempt_as_diff(self._edit_baseline, attempt.content)
 
     def _cancelled(self, k: int) -> LoopResult:
         """Emit Cancelled with the best attempt's drift, in the same shape as `_exhausted`.
