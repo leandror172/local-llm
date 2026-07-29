@@ -61,6 +61,42 @@ per-criterion gates, and **no weighting can make an average agree with an AND** 
 *asserts* `weight` is present, so it can no longer load this file — correct, since its criteria
 require drift metrics only oficina supplies. The reason is written into the YAML itself.
 
+## One Ladder Per Run Mode — `applies_to` (2026-07-29, oficina T-130)
+
+A rubric may declare a top-level **`applies_to`** naming the single run mode its ladder can
+answer about. `oficina-edit` declares `edit`; the new **`oficina-greenfield`** declares
+`greenfield`. A mismatch is refused at packaging with no model call.
+
+**Rationale:** every rung of `oficina-edit`'s `scope_adherence` presupposes a prior state —
+*"byte-for-byte intact"*, *"a trivial incidental edit"*, *"a reviewer would ask to remove"*. Asked
+about a greenfield deliverable those have no answer, **and a judge asked an unanswerable question
+still returns a number**: the same deliverable, same code and same rubric, scored 5 and then 1 an
+hour apart. The scale text IS the prompt template (see "Rubric YAML Format"), so a ladder written
+for one mode cannot be reused for the other by adjusting a threshold.
+
+**Three cases, and the middle one is the trap.** Present-and-equal → judge. Present-and-different
+→ refuse. **ABSENT → judge, with no restriction.** A naive `rubric.get("applies_to") != mode`
+gets the first two right and the third catastrophically wrong, because `None` equals no mode
+string — it would silently stop judging every one of the seven benchmark rubrics, which declare
+none and are shared with the Layer-4 suite. A delegated implementation made exactly this error
+even with the case stated explicitly in its brief; the negative-control test is what caught it.
+
+**It is a PRECONDITION, not a filter.** Its only job is to turn a silent incoherence into a named
+refusal, which is why shipping a rubric for *each* mode is part of the design rather than a
+follow-up — a mode with no rubric would be a mode that is never judged, and greenfield is the
+original run mode. **Not implemented as per-criterion filtering**, which was considered and
+rejected: excluding criteria from the `passed`/`judge_verdict` reductions is structurally the
+same operation as the filtered-subset bug P4-D8 exists to prevent, and it would have required a
+third per-criterion state ("not applicable") beside scored and unscoreable.
+
+**Implication for greenfield criterion text:** with `baseline=None`, `drift.measure` reports
+`lines_removed: 0`, a single hunk spanning the whole file, and `lines_added` = the file's length.
+Those are artifacts of having no baseline, not evidence of drift, so `oficina-greenfield` tells
+the judge to ignore them and consult only `max_verbatim_run_vs_tests` — the one metric meaning
+the same thing in both modes, and the T-119 detector. Its `objective_met` is also NOT a copy:
+the edit version's rung 5 reads *"in the file's existing style"*, which a file that did not exist
+cannot have.
+
 ## Temperature 0.1 for Deterministic Judging (2026-02)
 
 The LLM judge runs at temperature 0.1 (not 0.0, which some models handle poorly).

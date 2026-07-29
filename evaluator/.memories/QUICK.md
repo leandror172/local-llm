@@ -4,12 +4,18 @@
 
 ## Status
 
-Operational. 8 rubrics (Go, Python, Java, Shell, general, classification, writing, oficina-edit),
-split across `phase: 1` / `phase: 2`. The seven benchmark rubrics carry **5–6 weighted criteria
-each**; **`oficina-edit` is the exception on both counts** — 2 phase-2 criteria, and **no
-`weight:` at all**, because its consumer is a conjunction of per-criterion gates rather than a
-weighted average (P4-D10). It instead declares **`passing_score: 4`** per criterion, a key only
-the oficina judge reads. See KNOWLEDGE.md § "A Greenfield Rubric Can Reward an Edit Defect".
+Operational. 9 rubrics (Go, Python, Java, Shell, general, classification, writing, **oficina-edit,
+oficina-greenfield**), split across `phase: 1` / `phase: 2`. The seven benchmark rubrics carry
+**5–6 weighted criteria each**; **the two oficina rubrics are the exception on both counts** — 2
+phase-2 criteria each, and **no `weight:` at all**, because their consumer is a conjunction of
+per-criterion gates rather than a weighted average (P4-D10). They instead declare
+**`passing_score: 4`** per criterion, a key only the oficina judge reads.
+**And they declare `applies_to` (`edit` / `greenfield`, session 133, T-130)** — the one run mode
+each can answer about, checked at packaging because unlike the rubric NAME the mode is not known
+until assembly. An ABSENT `applies_to` means no restriction, never "matches nothing": the seven
+benchmark rubrics declare none and must keep judging everything.
+See KNOWLEDGE.md § "A Greenfield Rubric Can Reward an Edit Defect" and § "One Ladder Per Run
+Mode".
 Phase 1 validators for Go, Shell, Python, Java, JSON schema. Phase 2 LLM judge working.
 Used in Layer 4 benchmark runs; results in `evaluator/results/`.
 
