@@ -156,35 +156,12 @@ label). Keep under 30 lines.*
   mechanism right and the MAGNITUDE wrong** — "tens of seconds" → 2.4–3.1 s; "tens of ms" →
   0.37 ms; and a latin-1 fix hardened a function on a path the failure never reached. Mechanism is
   readable; magnitude and reachability must be measured.
-- 2026-07-29 (session 133): **PR #86 MERGED; the judge's PAYLOAD fixed — T-129 + T-130 closed on
-  `feature/oficina-judge-payload` (suite 393→408, `make accept-p4` green).** T-129: the judge's
-  system prompt is criterion-INVARIANT and forward-references a tail-appended criterion block, so
-  the run-constant material is a reusable KV prefix — second-call prompt eval **2398→513 ms /
-  3105→459 ms** (79–85%). Verdicts unchanged, so the P4-T9 calibration held without re-measuring.
-  **The original estimate was 35% optimistic** (it counted the whole second call as recoverable;
-  the criterion block still evaluates) — and the pre-change measurement is sharper than recorded:
-  ms/token was FLAT across calls (1.393→1.392), so reuse was **zero**, not weak. T-130: a rubric
-  declares **`applies_to`** (`edit`/`greenfield`), refused at packaging with no model call, and
-  greenfield gets its OWN ladder (`oficina-greenfield.yaml`) — an edit ladder's every rung
-  presupposes a prior state, and a judge asked an unanswerable question still returns a number
-  (5, then 1, an hour apart). **Absent `applies_to` means no restriction** — the trap a delegated
-  attempt fell into even with the case spelled out. `LoopResult.mode` + `_change_view`: greenfield
-  `change` is the delivered CONTENT, not a 100%-additions diff.
-  **DELEGATION MEASURED THE ENVELOPE, and T-122's sweep only measures half of it.** `loop.py`
-  refused by the T-112 guard in **0.48 s** on the 16K coder (window wall, as predicted), then
-  produced **nothing in 7,066 s** on the 32K one — a **THROUGHPUT wall the sweep cannot see**, so
-  "21/27 editable" is optimistic on a second axis beyond the 13 files lacking paired tests. Hand-
-  edited, and that is recorded rather than worked around. `judge.py` delegated twice: **verdict 0**
-  (1 of 3 requirements; inverted the absent-`applies_to` case) then **verdict 1** with a sharper
-  checklist prompt (all three right, one missed call site — `_score_criterion` still passed four
-  args to a five-arg `_judge_user_prompt`; the *who else calls this?* seam again). Iteration 2 could
-  not run (`context_budget`), so review-fix-inline per T-114. Attempts pinned at
-  `refs/oficina/{4jnognwr9Jo_TCiaiuT7ZQ,qmZr-Wrydug2OcOVF7Hn3w}`. **A `PYTHONPATH=mcp-server/src`
-  test_cmd DOES resolve against the worktree** (`baseline_failure_count: 3` proved it), which
-  unblocks delegating any oficina file that fits. **T-131 filed:** `spec.timeout_s` is a
-  PER-ATTEMPT deadline — `_cold_start_grace` retries once, so declared 3600 cost 7,066 s, and its
-  premise ("a first-call timeout means the model is loading") is false exactly when the model is
-  simply too slow. Couples to T-111.
+- 2026-07-29 (session 133): **PR #86 merged. Judge PAYLOAD fixed — T-129 + T-130 closed**
+  (PR #87, suite 393→408, `make accept-p4` green). Prompt layout made prefix-cacheable; rubrics
+  now declare `applies_to` and greenfield has its own ladder. Invariants + measurements:
+  KNOWLEDGE.md § "The judge's payload". **`loop.py` is undelegatable on BOTH axes** — window
+  (16K) and throughput (32K) — so T-122's sweep measures half the envelope. New **T-131**
+  (`timeout_s` is per-attempt; the grace retry doubles it).
 - **Next:** (1) **P3** — context & prompt assembly, now the phase in front, and the phase T-129/
   T-130 just gathered evidence for: prompt ORDER is worth 79–85% of a call's prefix eval, and a
   payload must name the artifact it carries. (2) **Axis B kinds reconsideration**

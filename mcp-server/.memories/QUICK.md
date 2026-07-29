@@ -151,22 +151,12 @@ ledger) and `Judged`. **The judge is fed the DIFF, not the delivered file** — 
 scored a 78-line test leak 5/5; with the diff, 2, at ~33% fewer tokens
 ([ref:judge-sees-the-change]). Acceptance A1–A6 all pass, A5 on real model calls.
 
-Session 133 (2026-07-29): **the judge's payload — T-129 + T-130 (suite 393→408, branch
-`feature/oficina-judge-payload`).** `judge.py`'s system prompt is now **criterion-INVARIANT** and
-forward-references a tail-appended criterion block, so the run-constant objective+diff+drift is a
-reusable KV prefix: the second criterion call's prompt eval falls **2398→513 ms / 3105→459 ms**
-(79–85% cold, ~88% session-warm). Verdicts unchanged, so P4-T9's calibration held. `_scoring_scale`
-owns the scale that had to travel with the block. **`LoopResult` gained `mode`** ("edit"/
-"greenfield", derived from `_edit_baseline is None`, reported on every terminal) and **`_change_view`**
-replaced the inline conditional: a greenfield run's `change` is the delivered CONTENT, not
-`_attempt_as_diff("", content)` which rendered the whole file as additions. `judge_deliverable`
-takes `mode` (required, never defaulted) and honours a rubric's `applies_to` precondition via the
-existing `unavailable_verdict` shape; `_change_heading` names the artifact per mode.
-**`make accept-p4` is stricter:** A5 runs on `oficina-greenfield` and asserts `passed is True`
-rather than that a field exists — which found a latent flaw in A5's OWN fixture on the first run
-("One line, with a docstring" cannot both hold, so `objective_met` could never reach its cut of 4).
-A5 now prints the judge's reasoning: its store is a tempdir, so unlike the A1/A2 replays anything
-it does not print is unrecoverable.
+Session 133 (2026-07-29): **judge payload — T-129 + T-130 (PR #87, suite 393→408).** `judge.py`:
+criterion-invariant system prompt + tail criterion block (prefix-cacheable), `_scoring_scale`,
+`mode` parameter honouring a rubric's `applies_to`, `_change_heading`. `loop.py`: `LoopResult.mode`
++ `_change_view`. `worker.py` hands the mode over. `make accept-p4` is stricter (A5 on
+`oficina-greenfield`, asserts `passed`, prints reasoning). Invariants + measurements:
+`docs/vision/coding-delegate/.memories/KNOWLEDGE.md` § "The judge's payload".
 
 ## Deeper Memory -> KNOWLEDGE.md
 

@@ -85,32 +85,14 @@ of ms" measured 0.37 ms, and a latin-1 fix hardened a function on a path the fai
 because assembly read the same files strictly first. Mechanism is derivable by reading; magnitude
 and reachability are not.
 
-Session 133 (2026-07-29): **PR #86 merged; the judge's PAYLOAD fixed — T-129 + T-130 closed,
-suite 393→408, `make accept-p4` green.** **T-129:** the judge's system prompt is now
-criterion-INVARIANT and forward-references a tail-appended criterion block, making the
-run-constant objective+diff+drift a reusable KV prefix — second-call prompt eval **2398→513 ms
-/ 3105→459 ms** (79–85%). Verdicts unchanged, so P4-T9's calibration held. *Two corrections to
-the task's own record: the estimate was **35% optimistic** (the criterion block still evaluates;
-only the shared prefix is free), and the pre-change measurement was understated — ms/token was
-**FLAT** across calls (1.393→1.392), so reuse was zero rather than weak, and the "~4% saving" was
-entirely one criterion's shorter description.* **T-130:** a rubric now declares **`applies_to`**
-(`edit`/`greenfield`) and a mismatch is refused with no model call; greenfield gets its own ladder
-(`oficina-greenfield.yaml`, 9 rubrics now). An edit ladder's every rung presupposes a prior state,
-and **a judge asked an unanswerable question still returns a number** — the same deliverable scored
-5 then 1 an hour apart. **ABSENT `applies_to` means no restriction, never "matches nothing"** (the
-seven benchmark rubrics declare none): a delegated attempt inverted exactly that with the case
-spelled out in its brief, and the negative-control test caught it. Per-criterion filtering was
-rejected — it is structurally the same operation as the filtered-subset bug P4-D8 removes.
-**Tightening A5 found a flaw in A5's own fixture on the first run:** its objective said *"One line,
-with a docstring"*, which cannot both hold, so `objective_met` could never reach its cut — latent
-since s132 because the old assertion only checked a field was *present*. **A check that can only
-pass teaches nothing.** **Delegation measured the envelope and T-122's sweep measures half of it:**
-`loop.py` was refused in **0.48 s** on the 16K coder (window) and produced **nothing in 7,066 s** on
-the 32K one (**throughput** — a wall the sweep cannot see), so "21/27 editable" is optimistic on a
-second axis; `judge.py` went verdict **0** then **1** (sharper checklist prompt; the residual was
-one missed call site — *who else calls this?*). **T-131 filed:** `spec.timeout_s` is a PER-ATTEMPT
-deadline — `_cold_start_grace` retries once, so declared 3600 cost 7,066 s, and its premise ("a
-first-call timeout means the model is loading") is false exactly when the model is simply too slow.
+Session 133 (2026-07-29): **PR #86 merged; judge PAYLOAD fixed — T-129 + T-130 closed** (PR #87,
+suite 393→408, `make accept-p4` green). Prompt made prefix-cacheable (second-criterion eval
+−79–85%, verdicts unchanged); a rubric declares **`applies_to`** and greenfield has its own ladder
+(9 rubrics). Detail: `docs/vision/coding-delegate/.memories/KNOWLEDGE.md` § "The judge's payload"
+and `evaluator/.memories/KNOWLEDGE.md` § "One Ladder Per Run Mode". Carried lessons: **a check that
+can only pass teaches nothing** (tightening A5 exposed a flaw in A5's own fixture), and **T-122's
+sweep measures half the envelope** — `loop.py` fails the window wall at 16K *and* a throughput wall
+at 32K. New **T-131** (`timeout_s` is per-attempt; `_cold_start_grace` doubles it).
 
 ## Repo Structure
 
