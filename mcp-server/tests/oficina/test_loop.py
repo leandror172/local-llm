@@ -831,3 +831,63 @@ def test_the_drift_comparison_reads_the_tests_assembly_already_read(tmp_path):
     )
 
     assert run.result.drift["max_verbatim_run_vs_tests"] == 0  # computed, not skipped
+
+
+# --- T-130: what the packaging judge is handed, and which question it can be asked ---------
+
+
+def then_the_change_is_the_delivered_file(run, content):
+    """No baseline means no prior state, so the change IS the result — a diff against nothing
+    is the file with `+` on every line and hunk headers, carrying identical information at
+    strictly more tokens."""
+    assert run.result.change == content
+    assert "@@" not in run.result.change
+
+
+def then_the_change_is_a_unified_diff(run):
+    assert run.result.change.startswith("--- the committed file")
+    assert "@@" in run.result.change
+
+
+def then_the_result_names_the_mode_it_ran_in(run, mode):
+    assert run.result.mode == mode
+
+
+def test_a_greenfield_result_carries_the_delivered_file_not_a_diff_against_nothing(tmp_path):
+    """T-130. `_attempt_as_diff("", content)` renders the whole file as additions — larger than
+    the file it describes, on the largest payload this phase produces. The correctness half
+    matters more than the bytes: the packaging judge is asked whether the change is in scope,
+    and a 100%-additions diff invites that question about a run that HAS no prior scope."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+
+    then_the_change_is_the_delivered_file(run, GOOD_AREA)
+
+
+def test_an_edit_result_still_carries_the_unified_diff(tmp_path):
+    """The negative control, and the invariant P4-T9 measured: with a baseline the judge must
+    see the CHANGE, not the result. Shown the delivered file plus drift metrics it scored a
+    78-line test leak 5/5; shown the diff, 2. Only the no-baseline case changes here."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+
+    then_the_change_is_a_unified_diff(run)
+
+
+def test_the_result_names_the_mode_it_ran_in_greenfield(tmp_path):
+    """T-130. The mode is DETECTED at assembly (E-D2 — target presence at HEAD, no spec field),
+    so it is not knowable at intake and nothing downstream can re-derive it from the spec. The
+    result is where packaging learns it: the judge's prompt must label the artifact correctly,
+    and the rubric's declared applicability is checked against it."""
+    run = given_a_function_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+
+    then_the_result_names_the_mode_it_ran_in(run, "greenfield")
+
+
+def test_the_result_names_the_mode_it_ran_in_edit(tmp_path):
+    """The other half — a field that only ever reports one value names nothing."""
+    run = given_an_edit_run(tmp_path)
+    when_the_coder_iterates(on=run, writing=[GOOD_AREA], and_evaluation_yields=[CLEAN])
+
+    then_the_result_names_the_mode_it_ran_in(run, "edit")
