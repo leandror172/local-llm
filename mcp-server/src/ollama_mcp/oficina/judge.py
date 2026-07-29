@@ -132,7 +132,7 @@ def _score_criterion(
     identity = {"name": criterion["name"], "passing_score": _passing_score(criterion)}
     try:
         reply = chat(
-            system=_judge_system_prompt(criterion),
+            system=_judge_system_prompt(),
             prompt=_judge_user_prompt(objective, change, drift, criterion),
             schema=VERDICT_SCHEMA,
         )
@@ -154,19 +154,43 @@ def _parsed_verdict(reply: str) -> Dict[str, Any]:
     return parsed
 
 
-def _judge_system_prompt(criterion: Dict[str, Any]) -> str:
-    """The one-criterion framing, mirroring the evaluator's Phase-2 contract."""
-    scale = "\n".join(
-        f"  {k}: {v}" for k, v in sorted((criterion.get("scoring") or {}).items(), reverse=True)
-    )
+def _judge_system_prompt() -> str:
+    """The one-criterion framing, mirroring the evaluator's Phase-2 contract.
+
+    **Criterion-INVARIANT, deliberately (T-129).** Ollama's KV prefix cache reuses a LEADING
+    token sequence and the system message heads it, so anything varying in here invalidates the
+    prefix for every call after the first. The criterion's name, description and scale used to
+    be built in here — the one part that changes per call, sitting in front of the ~1,700
+    run-constant tokens behind it, which were therefore re-evaluated cold every time. Measured
+    before the move (`prompt_eval_duration_ms`, never `prompt_eval_count` — Ollama reports full
+    tokens regardless of reuse, `ref:ollama-kv-prefix-cache`): 1.393 then 1.392 ms per token
+    across a run's two calls. The second call cost exactly what the first did, per token.
+
+    The forward reference is what makes this a move rather than a mutilation: a bare relocation
+    would leave this message demanding a score for a criterion it never names, and instructions
+    that reference something absent are their own failure mode. It names the user message
+    explicitly — the criterion is not late in THIS message, it is in the next one.
+    """
     return (
         "You are an impartial code evaluation judge. "
         "Score an LLM output on exactly ONE criterion.\n\n"
-        f"Criterion: {criterion['name']}\n"
-        f"Description: {criterion['description']}\n\n"
-        f"Scoring scale (1-5):\n{scale}\n\n"
+        "The criterion, its description and its 1-5 scoring scale appear at the END of the "
+        "user message, after the material you are judging.\n\n"
         'Respond ONLY with a JSON object: '
         '{"score": <integer 1-5>, "reasoning": "<one concise sentence>"}'
+    )
+
+
+def _scoring_scale(criterion: Dict[str, Any]) -> str:
+    """The criterion's rungs, highest first.
+
+    Extracted when T-129 moved the criterion block between messages: the scale had to travel
+    with the block, and a scale that silently failed to travel would leave the judge scoring
+    1-5 with no statement of what a rung means — the calibration failure P4-D9 was opened to
+    fix, arriving by a different route. One owner is one place for that to be true.
+    """
+    return "\n".join(
+        f"  {k}: {v}" for k, v in sorted((criterion.get("scoring") or {}).items(), reverse=True)
     )
 
 
@@ -187,6 +211,12 @@ def _judge_user_prompt(
 
     The metrics stay, as NUMBERS rather than something to recompute: the mechanical layer
     produced them for free, and this tier reads a number more reliably than it derives one.
+
+    **The criterion block is the TAIL (T-129).** Everything above it is identical for every
+    criterion of a run, so it is the prefix Ollama's KV cache can hold; the one varying part
+    sits behind it where re-evaluation costs only its own tokens. The judge still scores one
+    criterion per call — the evaluator's Phase-2 design for reliability at this tier — it just
+    reads which one at the end.
     """
     return (
         f"## Objective\n{objective}\n\n"
@@ -196,6 +226,10 @@ def _judge_user_prompt(
         f"- lines_added: {drift.get('lines_added', 0)}\n"
         f"- lines_removed: {drift.get('lines_removed', 0)}\n"
         f"- max_verbatim_run_vs_tests: {drift.get('max_verbatim_run_vs_tests', 0)}\n\n"
+        f"## The criterion to score\n"
+        f"Criterion: {criterion['name']}\n"
+        f"Description: {criterion['description']}\n\n"
+        f"Scoring scale (1-5):\n{_scoring_scale(criterion)}\n\n"
         f"Score the output on the criterion: **{criterion['name']}**"
     )
 

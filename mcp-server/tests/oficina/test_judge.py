@@ -10,6 +10,8 @@ is Claude-gated by design. So every failure mode here degrades to a report, neve
 Injected-seam SUT: `chat` is a fake, so nothing in these tests touches a GPU or a network.
 """
 
+import os
+
 import pytest
 
 from ollama_mcp.oficina.judge import judge_deliverable, load_rubric
@@ -199,3 +201,79 @@ def test_a_criterion_at_its_declared_cut_passes_the_gate():
 
     assert result["passed"] is True
     assert result["judge_verdict"] == 4
+
+
+# --- T-129: the run-constant material must be a reusable cache prefix ---------------------
+#
+# Ollama's prefix cache reuses a leading token sequence. These tests pin the SHAPE that makes
+# reuse possible; they cannot observe the cache itself, which is why `make accept-p4` remains
+# the gate (a fake `chat` never reaches a model, so it can prove structure and nothing else).
+
+
+def test_the_system_prompt_is_identical_for_every_criterion():
+    """T-129. The system message heads the token sequence, so anything varying inside it
+    invalidates the prefix for every call after the first. The criterion's name, description
+    and scale used to live here — the one part that changes per call, in front of the ~1,700
+    run-constant tokens behind it, which were therefore re-evaluated cold every time."""
+    chat = _FakeChat(_scored(5), _scored(5))
+
+    judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    assert chat.calls[0]["system"] == chat.calls[1]["system"]
+
+
+def test_the_shared_prefix_carries_the_expensive_run_constant_material():
+    """T-129. The prefix is only worth reusing if the costly part is INSIDE it: the objective,
+    the diff and the drift numbers are identical across criteria and are what the ~2.4-3.1 s of
+    redundant evaluation was spent on. Measured before the change: 1.393 -> 1.392 ms/token
+    across A1's two calls — the second cost exactly what the first did, per token."""
+    chat = _FakeChat(_scored(5), _scored(5))
+
+    judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    shared = os.path.commonprefix([chat.calls[0]["prompt"], chat.calls[1]["prompt"]])
+    assert AN_OBJECTIVE in shared
+    assert A_CHANGE_DIFF in shared
+    assert "max_verbatim_run_vs_tests" in shared
+
+
+def test_the_criterion_block_is_the_tail_the_calls_diverge_on():
+    """T-129. The varying DATA moves behind the shared material rather than being deleted —
+    the judge still scores one criterion at a time (the evaluator's Phase-2 design), it just
+    reads which one at the end. If any criterion text leaked into the shared prefix the two
+    calls would be asking the same question."""
+    chat = _FakeChat(_scored(5), _scored(5))
+
+    judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    shared = os.path.commonprefix([chat.calls[0]["prompt"], chat.calls[1]["prompt"]])
+    assert "correctness" not in shared
+    assert "scope" not in shared
+    assert chat.calls[0]["prompt"].rstrip().endswith("correctness**")
+    assert chat.calls[1]["prompt"].rstrip().endswith("scope**")
+
+
+def test_the_invariant_framing_says_where_the_criterion_will_be():
+    """T-129. A bare move would leave the system prompt instructing the model to score "one
+    criterion" with no criterion in sight until much later — instructions referencing something
+    absent. The framing forward-references the tail instead, so the contract stays complete at
+    every point the model reads it."""
+    chat = _FakeChat(_scored(5), _scored(5))
+
+    judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    assert "END" in chat.calls[0]["system"]
+
+
+def test_the_scale_reaches_the_model_even_though_it_left_the_system_prompt():
+    """T-129 regression guard. The scoring scale is the rubric's load-bearing content — P4-D9
+    moved the cut INTO it. Moving the block must relocate the scale, never drop it: a judge
+    scoring 1-5 without being shown what each rung means is the calibration failure P4-D9 was
+    opened to fix, arriving by a different route."""
+    chat = _FakeChat(_scored(5), _scored(5))
+
+    judge_deliverable(A_RUBRIC, AN_OBJECTIVE, A_CHANGE_DIFF, SOME_DRIFT, chat)
+
+    asked = chat.calls[0]["system"] + chat.calls[0]["prompt"]
+    assert "solves it" in asked  # the description
+    assert "yes" in asked and "no" in asked  # both rungs of the scale
