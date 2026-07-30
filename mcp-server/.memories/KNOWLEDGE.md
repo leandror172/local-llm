@@ -195,10 +195,22 @@ revert = remove the param from both signatures + the 3-line conditional.
 **T-99 decision (b) (2026-07-16, session 122):** the loop's `auto_verdict` is deliberately
 NOT written into `calls.jsonl` — it lives only in the ledger's `IterationEvaluated`
 (the call record is appended at generation time, before the verdict exists; a back-write
-would mutate the append-only log for a consumer that only arrives at P4). The P4 DPO
-pass joins ledger↔calls on `run_id`; note the join is per-run — per-iteration call
-matching is order-based, and anti-cheat iterations record a verdict without an
-evaluation call. Decision record: `ref:oficina-p2-review-deferred` (T-99).
+would mutate the append-only log for a consumer that only arrives at P4). Decision record:
+`ref:oficina-p2-review-deferred` (T-99).
+
+**The join is IDENTITY-based on the loop path (P4-T3, session 131 — supersedes T-99's
+order-based note).** `IterationEvaluated` carries `call_id` beside `auto_verdict`
+(`loop._emit_iteration_evaluated`, and the anti-cheat emit in `_record_cheat_and_feedback`
+passes `gen.call_id` too), so the DPO pass pairs an iteration with the exact `calls.jsonl`
+record it judges. **Why the old note mattered, kept because the hazard is the lesson:** the
+two logs otherwise share only `run_id`, which is per-RUN, so pairing would have been
+positional — the fallback T-105 banned — and the positions do not even line up, since an
+anti-cheat iteration records a verdict without an evaluation call.
+
+**Scope, verified: loop kinds only.** The single-shot path's `GenerationFinished` payload is
+`{model, eval_count, duration_ms}` (`worker.py`) — **no `call_id`** — so `file` and `answer`
+runs still join on `run_id` alone. That is harmless today (one generation per run, so there is
+nothing to pair *within* the run) and is the reason the gap is easy to miss.
 
 ## oficina P2 deferral resolutions — retention, refs, path canon (2026-07-17, session 123)
 
