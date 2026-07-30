@@ -220,6 +220,29 @@ Three invariants from the T-96–T-98 fixes (decision records: `ref:oficina-p2-r
   `target_relpath` (only it has worktree knowledge). `scope_of` / `diff_touches_test_files`
   compare normpath'd relpaths — basename matching flipped P2-D12 scope on collisions.
 
+## What `worker.py` is not — the transport and report splits (2026-07-28, session 132)
+
+`worker.py` was 566 lines of which `class Worker` began at line 330: it had become the home for
+two things it merely happened to call first.
+
+**`transport.py`** owns `GenerationResult`, `_chat_generation`, `_cold_start_grace` and
+`model_context_limit` — the ONE per-call transport (T-95), which has three callers (single-shot
+generation, `loop.default_coder`, `judge.default_judge`). **Rationale: importing it from the
+worker dragged `Store`/`Fifo`/`WorkerProc`/retention into anything that wanted one model call.**
+`loop.py` now imports nothing from `worker.py` at all.
+
+**`report.py`** owns the iterations trail and the `Delivered`-payload size bounds.
+**Rationale: a bound that holds only where someone remembers to call it has no owner** — the
+`Exhausted` and `Cancelled` payloads had escaped it, and `service.result()` returns those
+payloads verbatim as the report.
+
+`JUDGE_MODEL`/`JUDGE_TIMEOUT_S`/`default_judge` moved to `judge.py`, whose docstring already
+claimed it owned the model call.
+
+**Implication:** a module belongs where its callers are, not where its first caller was. The
+smell is an import that drags unrelated infrastructure, or a bound enforced at one of several
+exits.
+
 ## Debug Logging — Structured JSONL (2026-05, session 65)
 
 The server can emit a structured JSONL log to disk for hang diagnosis and

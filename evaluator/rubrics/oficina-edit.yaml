@@ -7,6 +7,18 @@ description: >-
   benchmark scoring. This rubric asks the one question an edit run raises and a generation
   benchmark cannot.
 
+# The run mode this rubric can answer about (T-130). Every rung of `scope_adherence` below
+# presupposes a prior state — "byte-for-byte intact", "an incidental edit", "a reviewer would
+# ask to remove" — so asking them of a greenfield run has no answer, and a judge asked an
+# unanswerable question still returns a number. Observed live: the same greenfield deliverable,
+# same code and same rubric, scored 5 and then 1 an hour apart.
+#
+# This is a PRECONDITION, not a filter. The run's mode is detected at assembly (E-D2: target
+# presence at HEAD, no spec field), so it cannot be validated at intake the way the rubric NAME
+# is; packaging compares it against this key and reports a mismatch rather than absorbing it.
+# `oficina-greenfield.yaml` is the counterpart, so every mode has a rubric that fits it.
+applies_to: edit
+
 # Phase 1 is already the loop's job (compile + test_cmd every iteration); this rubric exists
 # for the packaging judge, so it declares only phase-2 criteria.
 validators:

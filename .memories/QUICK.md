@@ -85,6 +85,15 @@ of ms" measured 0.37 ms, and a latin-1 fix hardened a function on a path the fai
 because assembly read the same files strictly first. Mechanism is derivable by reading; magnitude
 and reachability are not.
 
+Session 133 (2026-07-29): **PR #86 merged; judge PAYLOAD fixed — T-129 + T-130 closed** (PR #87,
+suite 393→408, `make accept-p4` green). Prompt made prefix-cacheable (second-criterion eval
+−79–85%, verdicts unchanged); a rubric declares **`applies_to`** and greenfield has its own ladder
+(9 rubrics). Detail: `docs/vision/coding-delegate/.memories/KNOWLEDGE.md` § "The judge's payload"
+and `evaluator/.memories/KNOWLEDGE.md` § "One Ladder Per Run Mode". Carried lessons: **a check that
+can only pass teaches nothing** (tightening A5 exposed a flaw in A5's own fixture), and **T-122's
+sweep measures half the envelope** — `loop.py` fails the window wall at 16K *and* a throughput wall
+at 32K. New **T-131** (`timeout_s` is per-attempt; `_cold_start_grace` doubles it).
+
 ## Repo Structure
 
 ```

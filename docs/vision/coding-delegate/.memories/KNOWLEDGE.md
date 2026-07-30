@@ -192,6 +192,64 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   most useful — and each step carries `cheated`, since an anti-cheat rejection was otherwise
   indistinguishable from an ordinary `structural` failure.
 
+## The judge's payload — what it is asked, and about what (T-129/T-130) — 2026-07-29
+
+- **The system prompt is criterion-INVARIANT, and that is a performance contract, not a style
+  choice.** Ollama's KV prefix cache reuses a LEADING token sequence; the system message heads it.
+  While the criterion's name/description/scale lived there, the ~1,700 run-constant tokens behind
+  it (objective + change + drift) were re-evaluated cold on every criterion. `_judge_system_prompt()`
+  now takes no arguments and **forward-references the tail** ("...appear at the END of the user
+  message"), which is what makes it a move rather than a mutilation — a bare relocation leaves the
+  framing demanding a score for a criterion it never names. The criterion block is appended LAST in
+  `_judge_user_prompt`, scale included via `_scoring_scale`. **Measured both ways** — the honest
+  metric is `prompt_eval_duration_ms`, never `prompt_eval_count`, which reports full tokens
+  regardless of reuse: before, ms/token was FLAT across a run's two calls (1.393→1.392, 1.352→1.355),
+  so reuse was **zero**; after, the second call's prompt eval fell **2398→513 ms** and
+  **3105→459 ms** (79–85%; ~88% session-warm). **Verdicts did not change**, which is the load-bearing
+  half: A1 still 2/withheld, A2 still 5/pass, so P4-T9's calibration survived a prompt rewrite.
+  Anything touching this layout must re-run `make accept-p4` — the suite fakes `chat` and cannot see
+  a prompt.
+- **A rubric declares the one run MODE its ladder can answer about, and a mismatch is refused
+  (T-130).** `applies_to: edit` / `applies_to: greenfield`; `judge_deliverable` takes the run's
+  `mode` (required, never defaulted, for the reason `default_judge` requires `run_id`) and returns
+  `unavailable_verdict` **with no model call** on a mismatch. Every rung of an edit ladder
+  presupposes a prior state, so a greenfield run has no answer to give — **and a judge asked an
+  unanswerable question still returns a number**: the same deliverable, same code, same rubric,
+  scored 5 and then 1 an hour apart. **PRECONDITION, not filter** — which is why
+  `oficina-greenfield.yaml` shipped in the same change: a mode with no rubric is a mode never
+  judged, and greenfield is the original mode. **ABSENT means no restriction, never "matches
+  nothing"** — the seven benchmark rubrics declare none; a delegated implementation inverted exactly
+  this with the case spelled out in its brief, and the negative-control test is what caught it.
+  Per-criterion filtering was considered and **rejected**: excluding criteria from the reductions is
+  structurally the same operation as the filtered-subset bug P4-D8 exists to prevent, and needs a
+  third state beside scored and unscoreable.
+- **The prompt names the artifact it carries, because the artifact depends on the mode.**
+  `LoopResult.mode` is derived from `_edit_baseline is None` (one source, no second field to drift)
+  and reported on **every** terminal including those with no attempt — the mode is a fact about the
+  RUN, not its output. `_change_view` makes a greenfield `change` the delivered CONTENT: diffing
+  against `""` rendered the whole file as additions, identical information at strictly more tokens,
+  on the largest payload this phase produces. `_change_heading(mode)` then labels it truthfully,
+  because P4-T9 measured that this tier resolves a conflict between what it is told and what it can
+  see by trusting what it can see — a false heading is a claim the judge quietly resolves against.
+- **`make accept-p4` asserts a greenfield PASS, and that immediately found a flaw in its own
+  fixture.** A5 used to check only that `judge_verdict` was a present field distinct from
+  `auto_verdict` — which passes on any number, and stayed green while that run returned 5 then 1.
+  Tightened to `passed is True`, it failed on the first run: `objective_met 3`, *"does not meet the
+  one-line requirement"*. The objective said **"One line, with a docstring"** — two requirements
+  that cannot both hold, so that criterion could never reach its cut of 4. Latent since A5 was
+  authored; the loose check hid it. **A check that can only pass teaches nothing.** A5 also now
+  prints the judge's reasoning: its store is a tempdir, so unlike the A1/A2 replays, anything it
+  does not print is unrecoverable.
+- **The delegate's envelope has TWO walls and `judge-window-sweep.py` measures one.** `loop.py`:
+  refused by the T-112 guard in **0.48 s** with zero GPU calls on the 16K coder (window), then
+  **nothing in 7,066 s** on the 32K one (throughput — 9.4 GiB resident of a 14.2 GiB config at ~49%
+  utilisation is partial offload). So T-122's "21/27 editable" is optimistic on a second axis, on
+  top of the 13 files with no paired test. Corollary found the same day: **a
+  `PYTHONPATH=mcp-server/src` + repo-venv `test_cmd` resolves against the WORKTREE**, proven by
+  `baseline_failure_count: 3` matching the committed red tests — so oficina can accept against this
+  repo's own suite, and any oficina file that FITS is delegable. And the red tests must be
+  **committed**: the worktree checks out HEAD, so an uncommitted spec is a spec the run cannot see.
+
 ## LanguagePack — the language axis contract (T-92 Phase 4) — 2026-07-23
 
 - **One algorithm, N packs.** `evaluate()`'s flow (target-presence rule, first-failing-stage

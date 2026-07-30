@@ -106,23 +106,26 @@ A_RUBRIC_YAML = "id: tiny\ncriteria:\n  - name: scope\n    phase: 2\n    descrip
 def when_the_worker_runs_the_loop(
     on, *, evaluation_yields, coder_writes=GOOD_AREA,
     judging_with=None, judge_says=None, monkeypatch=None,
+    rubric_yaml=A_RUBRIC_YAML, judge=None,
 ):
     """Submit a function run and let the worker route it through the loop. `evaluation_yields`
     are the per-iteration evaluations (the C0 baseline, CLEAN, is prepended automatically).
     `judging_with` names a rubric written into a temp rubrics dir — omitted means no judge,
-    which is how every pre-P4 run behaves."""
+    which is how every pre-P4 run behaves. `rubric_yaml` overrides that rubric's CONTENT for
+    the family that varies what the rubric declares rather than whether one exists; `judge`
+    passes a recording fake where a canned reply is not enough."""
     spec = _function_spec(on.repo)
     if judging_with:
         rubrics = on.tmp_path / "rubrics"
         rubrics.mkdir(exist_ok=True)
-        (rubrics / f"{judging_with}.yaml").write_text(A_RUBRIC_YAML, encoding="utf-8")
+        (rubrics / f"{judging_with}.yaml").write_text(rubric_yaml, encoding="utf-8")
         monkeypatch.setenv("OFICINA_RUBRICS", str(rubrics))
         spec["acceptance"]["rubric"] = judging_with
     worker = Worker(
         on.tmp_path / "store",
         loop_coder=_coder(coder_writes),
         loop_evaluate=_Evaluate([CLEAN, *evaluation_yields]),
-        loop_judge=(lambda **kw: judge_says) if judge_says else None,
+        loop_judge=judge or ((lambda **kw: judge_says) if judge_says else None),
     )
     on.run_id = _submit(on.store, worker, spec)
     worker.process_run(on.run_id)
@@ -149,6 +152,23 @@ def then_it_exhausted_and_folded_to_failed(on):
 
 A_PASSING_VERDICT = '{"score": 5, "reasoning": "only the requested change"}'
 A_FAILING_VERDICT = '{"score": 1, "reasoning": "unrequested content added"}'
+
+# T-130: the same rubric, declaring the one run mode its ladder can answer about. A worker-loop
+# run's target is absent at C0, so every run in this file is GREENFIELD — which is exactly the
+# mismatch this rubric cannot judge.
+AN_EDIT_ONLY_RUBRIC_YAML = A_RUBRIC_YAML.replace("id: tiny\n", "id: tiny\napplies_to: edit\n")
+
+
+class _RecordingJudge:
+    """A judge `chat` that answers and remembers being asked — the point of the T-130 case is
+    that it is NOT asked, and an unasked question is invisible to a lambda."""
+
+    def __init__(self, reply):
+        self.reply, self.calls = reply, []
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.reply
 
 
 def then_the_delivered_deliverable_names_the_run_branch(on):
@@ -243,6 +263,31 @@ def test_the_report_narrates_a_multi_iteration_run(tmp_path):
     run = given_a_git_repo(tmp_path)
     when_the_worker_runs_the_loop(run, evaluation_yields=[FAILS("a"), CLEAN])
     then_the_report_narrates_every_iteration(run, verdicts=[False, True])
+
+
+def test_a_rubric_that_cannot_judge_this_run_s_mode_is_refused_at_packaging(
+    tmp_path, monkeypatch
+):
+    """T-130, end to end at the seam that wires it. The worker hands the judge the run's mode —
+    a fact only the loop knows, since `Workspace._detect_mode` derives it from target presence
+    at HEAD and no spec field carries it (E-D2). Without that hand-off the rubric's declared
+    precondition is unenforceable, and this run would come back with a confident number from a
+    ladder whose every rung presupposes a file that did not exist.
+
+    Delivery is unaffected: a refusal is a report, exactly as a failing verdict is."""
+    run = given_a_git_repo(tmp_path)
+    judge = _RecordingJudge(A_PASSING_VERDICT)
+
+    when_the_worker_runs_the_loop(
+        run, evaluation_yields=[CLEAN], judging_with="tiny",
+        rubric_yaml=AN_EDIT_ONLY_RUBRIC_YAML, judge=judge, monkeypatch=monkeypatch,
+    )
+
+    judged = next(e for e in _events(run) if e["event"] == "Judged")["payload"]
+    assert judged["passed"] is False
+    assert "greenfield" in judged["error"]
+    assert judge.calls == []  # refused without spending a model call
+    assert "Delivered" in _event_names(run)
 
 
 def test_a_run_without_a_rubric_is_not_judged(tmp_path):
