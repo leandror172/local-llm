@@ -1,57 +1,50 @@
 # Session Log
 
-**Current Layer:** "Layer 5 — Expense Classifier (oficina P4 merged; judge payload closed, PR #87 open; P3 next)"
-**Current Session:** 2026-07-29 — Session 133: "T-129 + T-130 CLOSED — the judge's payload made prefix-cacheable and mode-aware; three QUICK files compacted"
+**Current Layer:** Layer 5+ — oficina P1–P4 built; P3 (context & prompt assembly) planned, register open
+**Current Session:** 2026-07-30 — Session 134: PR #87 merged; P3 plan drafted then REVISED by re-grounding — the output-shape field was a duplicate axis, and `context.callers` is declared-but-unconsumed
 
 ---
-## 2026-07-29 - Session 133: "T-129 + T-130 CLOSED — the judge's payload made prefix-cacheable and mode-aware; three QUICK files compacted"
+## 2026-07-30 - Session 134: PR #87 merged; P3 plan drafted then REVISED by re-grounding — the output-shape field was a duplicate axis, and `context.callers` is declared-but-unconsumed
 
 ### Context
 
-Opened on a merged PR #86 and a clean master, with the session-132 handoff naming three
-candidates: P3, the deferred T-129/T-130 judge-payload pair, and the cheap carried tasks. Chose
-**B — T-129 + T-130 first**, on the argument that both are defects in *what the judge is sent*,
-which is P3's own subject matter: building the prompt compiler first and then discovering them
-would have encoded the defects into the mechanism. Mid-session the user redirected twice, and
-both corrections changed how the work was done rather than what it produced — read the
-test/code/refactor/local-model conventions and delegate through them, and read the QUICK/KNOWLEDGE
-memories of every folder being touched.
+Opened with PR #87 already merged and master updated, for a "discuss next steps" session. No
+code was written: the session sequenced the phase in front, then authored P3's plan doc — and
+the plan was materially wrong until it was re-grounded against the inception docs, which is the
+session's main lesson.
 
 ### What Was Done
 
-- **T-129 closed** — `judge.py`'s system prompt is now criterion-INVARIANT and forward-references a tail-appended criterion block, making the run-constant objective+diff+drift a reusable KV prefix. Second-criterion prompt eval fell **2398→513 ms** (A1) and **3105→459 ms** (A2), 79–85% cold and ~88% session-warm. `_scoring_scale` extracted so the scale has one owner.
-- **T-130 closed** — `LoopResult.mode` + `_change_view` (a greenfield `change` is the delivered CONTENT, not a 100%-additions diff); `judge_deliverable(..., mode)` honouring a rubric's `applies_to` precondition through the existing `unavailable_verdict` shape; `_change_heading` naming the artifact per mode; `worker._judge_delivered` handing the mode over.
-- **New rubric `evaluator/rubrics/oficina-greenfield.yaml`** (9 rubrics now), and `applies_to` added to `oficina-edit.yaml`.
-- **`make accept-p4` made stricter** — A5 runs on the greenfield rubric and asserts `passed is True` rather than that a verdict field merely exists, and now prints the judge's per-criterion reasoning.
-- **PR #87 opened**; suite 393 → 408; live acceptance green.
-- **T-131 and T-132 filed.**
-- **Three QUICK.md files compacted** after user correction: coding-delegate 201→73, mcp-server 167→72 (with one orphaned rationale migrated into its KNOWLEDGE.md), and the s133 entries in all three rewritten from ~25 lines to ~6.
-- **Memory/README convergence** across seven documents plus `.claude/index.md`.
+- **PR #87 merged** (T-129/T-130 landed on master; suite 408, `make accept-p4` green). Verified rather than assumed — `gh pr view 87` shows MERGED, `master` at `3f3348d`.
+- **`docs/plans/oficina-p3-context-assembly.md` authored** (505 lines, `d0cae93`) — register **P3-D1…D9 OPEN**, no build steps, `ref:delegate-p3-goal` / `-decisions` / `-probe`, indexed.
+- **The plan was then REVISED IN PLACE after reading the whole oficina inception set** (`vision`/`decisions`/`evidence`/`architecture`/`integration`/`phasing`/`naming`/`event-model` /`index`/`README`, both `.memories`, plus `mcp-server/.memories/*`). Three of five worked entries changed; the reversal is recorded in the plan rather than smoothed over (P4 precedent).
+- **`context.callers` found declared-but-unconsumed** (`intake.py:44`) — verified by grep over all of `mcp-server/{src,tests}`, where the symbol appears exactly once. Filed **T-133**.
+- **Two records of P4-T3 corrected** (`37ce27b`) — `mcp-server/.memories/KNOWLEDGE.md` was STALE and `event-model.md` was NEVER TRUE, in opposite directions. Both applied in place, not appended (the s133 lesson from that same KNOWLEDGE.md).
+- Two commits on branch `docs/p3-plan-and-join-record`; **no PR opened yet**.
 
 ### Decisions Made
 
-- **`applies_to` is rubric-level, not criterion-level.** Per-criterion filtering was designed and rejected: excluding criteria from the `passed`/`judge_verdict` reductions is structurally the same operation as the filtered-subset bug **P4-D8** exists to prevent, and it would need a third per-criterion state ("not applicable") beside scored and unscoreable. Rubric granularity needs no change to either reduction.
-- **A rubric ships for each mode in the same change.** Deferring `oficina-greenfield.yaml` was considered and reversed on the user's challenge — leaving greenfield (the *original* run mode) unjudged is worse than the incoherent scale, because incoherence is at least visible.
-- **`scope_adherence` keeps its name in both rubrics** — the judged question is identical ("only what was asked?") and only the rungs differ, so verdicts stay comparable across modes.
-- **`mode` is required, never defaulted**, for the reason `default_judge` requires `run_id`: a default would be a value that looks like one, and it would silently decide which question a rubric is allowed to ask.
-- **The applicability check lives in `judge.py`, not the worker** — that module already owns `unavailable_verdict` because it owns the invariant that `passed` and `judge_verdict` agree, and a refusal has to satisfy it too.
-- **`loop.py` was hand-edited and the failed delegation recorded** rather than retried at ~1 h per attempt.
-- **Compacting `.memories/QUICK.md` (root) deferred to its own session (T-132)** — it spans every workstream, so the unit is one line per *workstream*, and the blocking question (where cross-cutting infra facts live) is a judgement call, not a mechanical pass.
+- **T-122 remedy (a) — code-anchored output for large targets — CHOSEN**, with (b) closed on measurement rather than left "blocked on T-113": s133 showed `loop.py` clearing the 32K window and producing nothing in 7,066 s at ~49% utilisation. A window you cannot drive is not a remedy, and T-113 cannot revive it because throughput is downstream of footprint.
+- **P3-D1's first draft (`deliverable.output_shape`) REJECTED as a duplicate axis.** The draft run spec already listed `kind: …|patch` (specified, dropped at build); **E-D8 froze the taxonomy with the Axis-B kind-widening pass as its NAMED trigger**, so a kind-shaped answer is Axis B work, not P3; and the recorded fallback names `deliverable.unit`, not a shape toggle. A third orthogonal axis is the drift V-D1 named when it killed the `my-aprendiz-*` family.
+- **Recommendation (not frozen): caller-declared on the `unit` axis.** Auto-select must guess when `_context_limit is None`, and `transport.model_context_limit`'s docstring is a written refusal of that guess — caller-declares removes the question instead of answering it. E-D2's no-spec-field-for-derivable-facts precedent addressed out loud (shape depends on a budget, not a repo fact).
+- **P3-T0 gates P3-D1** — an anchor-emission probe on `parser.py`/`intake.py` (NOT `loop.py`, which measures throughput). If anchors are unreliable at 14B, **T-122 collapses to (c) by measurement rather than concession** — and (c) is consistent with `ref:delegate-non-goals`.
+- **Founding-evidence claim corrected:** P3's own predates P4 by four months — `ref:delegate-evidence-verdicts` records the March re-declaration defect class *disappearing* once conventions required protocol files + callers in context. T-129/T-130/T-122 are carried constraints, not founding.
+- **Two commits, deliberately split.** The as-built correction is reviewable against `worker.py:134` / `loop.py:320` in a minute; the plan's review question is "are these the right forks?" Reviewing them together means the mechanical question loses.
 
 ### Next
 
-- **Merge PR #87** — 408 green, `make accept-p4` passing, description current.
-- **P3 — context & prompt assembly**, the phase in front. T-129/T-130 handed it two constraints worth encoding in the compiler from the start: prompt ORDER is worth 79–85% of a call's prefix evaluation, and a payload must name the artifact it carries.
-- **T-131** (`timeout_s` is per-attempt; `_cold_start_grace` doubles it) — weigh together with T-111, since both come from threading `spec.timeout_s` through as a per-call value.
-- **T-132** (root QUICK.md compaction) — its own session, per this session's decision.
-- Still carried: **T-118** R-D1/R-D3; **Axis B kinds reconsideration** (untouched since s128); T-125/126/127/128, of which T-125 and T-128 remain cheapest.
+- **Walk the P3 register with the user** (user's words: "we'll run through the decisions next session"). **P3-D1 BLOCKS** — `deliverable.unit` (P3 owns it) vs reviving `kind: patch` (E-D8's trigger routes it to Axis B, P3 becomes a consumer). D2/D3/D5 are ready to freeze.
+- **P3-T0** — the anchor-emission probe. Write the apply-side negative control FIRST (s133: a delegated model inverted `applies_to` with the case spelled out in its brief).
+- **T-133** (`context.callers`) — independent of the probe, smallest change in the phase, best evidenced. Its test must fail today, or it encodes the bug.
+- Open a PR for `docs/p3-plan-and-join-record` (2 commits, docs-only) or land on master.
+- Still carried: **T-131** (weigh with T-111), **T-132** (root QUICK, own session), **Axis B** (now load-bearing for P3-D1, not just carried), T-125/126/127/128.
 
 ### Gotchas
 
-- **A check that can only pass teaches nothing.** Tightening A5 from "`judge_verdict` is a present field distinct from `auto_verdict`" to "`passed is True`" failed on the **first** run — and the fault was in A5's OWN fixture: its objective read *"One line, with a docstring"*, two requirements that cannot both hold, so `objective_met` could never reach its cut of 4. Latent since A5 was authored in s132, invisible because the old assertion passes on any number.
-- **`judge-window-sweep.py` measures ONE of two walls.** `loop.py` was refused by the T-112 guard in **0.48 s** on the 16K coder (window) and then produced **nothing in 7,066 s** on the 32K one (throughput — 9.4 GiB resident of a 14.2 GiB config at ~49% utilisation is partial offload). A file can fit the window and still be practically uneditable, so T-122's "21/27" is optimistic on a second axis beyond the 13 files lacking paired tests.
-- **`spec.timeout_s` is a PER-ATTEMPT deadline.** `_cold_start_grace` retries once on `OllamaTimeoutError`, so a declared 3600 cost 7,066 s of wall clock. Its premise — a first-call timeout means the model is loading — is false exactly when the model is simply too slow, making the retry a guaranteed second full waste (T-131).
-- **A correction can be APPENDED instead of APPLIED, and then the stale claim wins.** `mcp-server/.memories/QUICK.md` § Key Patterns asserted the pre-T-105 call-logging shape for eight sessions while s125's entry, 35 lines below it, said in so many words "supersedes … above". A reader hits the top of the file first. That is the append-log's real cost, not its length.
-- **A delegated model can invert a case the brief states explicitly.** `judge.py` attempt 1 wrote `rubric.get("applies_to") != mode`, which refuses when the key is ABSENT — it would have stopped every benchmark rubric from judging anything. The negative-control test caught it, which is the argument for writing that test *before* delegating.
-- **Two prior records of my own were wrong in opposite directions and are now corrected in place:** T-129's cost estimate was 35% optimistic (only the shared prefix is free — the criterion block still evaluates), while its pre-change measurement was *understated* (ms/token was FLAT across calls, so reuse was zero, not weak).
-- **oficina's worktree checks out HEAD**, so red tests must be COMMITTED before a run can see them. Corollary proved live: a `PYTHONPATH=mcp-server/src` + repo-venv `test_cmd` resolves against the worktree (`baseline_failure_count: 3` matched the committed red tests), which unblocks delegating any oficina file that fits.
+- **A plan authored from the phase doc alone was wrong in three places; the inception folder had already priced all three.** Exactly the cause P4 recorded for its own two pre-freeze reversals (*"the fork was framed from the phase doc alone, and the vision folder had already priced the trade"*). It has now happened twice — treat "read the vision folder before authoring a phase plan" as a rule, not advice.
+- **A declared schema field is how a silent ignore becomes possible.** `Context` sets `extra="forbid"`, so an UNDECLARED key is rejected at intake; `context.callers` is swallowed *precisely because* it is declared. The schema converts a loud rejection into silence — the inverse of first principle 4 ("the harness should refuse"). No checker can see this: nothing reports anything at all, which is why no audit found it.
+- **There are THREE prompt builders, not two** — `server.py` (`<refs>`→`<context_files>`→hint, 2026-05), `prompt.py` (P2-D2 stable-first), `judge.py` (criterion-last, T-129) — with three independently-authored ordering rules and no shared definition. `loop.py` calls `server._build_refs_block` then re-orders, so bridge and oficina agree **by coincidence, not construction**. First `ref:corpus-divergence-pattern` instance in prompt construction rather than in a checker.
+- **T-129's 79–85% win is bounded by a 15-minute slot life** (`ref:mcp-keep-alive`: `keep_alive="15m"`, llama.cpp reuses a leading prefix only while the slot lives). Order is a *within-run* win, not a free property.
+- **Two stale records, opposite failure modes, neither catchable by tooling.** KNOWLEDGE.md was true-when-written and overtaken; event-model.md was written the same session as the code and attributed P4-T3 to the wrong row. Both survived because the docs were checked against the *narrative* ("thread `call_id` through so the join is identity-based"), which is accurate, rather than re-derived from the emitter. `check-ref-integrity.py` validates markers, not claims.
+- **The correction had a scope qualifier nobody had written down:** the identity-based join holds for LOOP kinds only. `file`/`answer` runs still join on `run_id` alone — harmless today (one generation per run, nothing to pair within it), which is exactly why it stayed invisible. A flat "it's identity-based now" would have replaced an understatement with an overstatement.
+- **The unpriced cost of code-anchored output is narrower than s126 implies.** T-104's principle — *oficina composes the bridge tools, it does not reimplement them* — means `patch_file` is the apply path and already exists. What is genuinely unpriced is the AMENDMENT's narrower set: the `unit` field, response-shape validation, import merging, the constants boundary.
