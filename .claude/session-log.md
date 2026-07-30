@@ -1,49 +1,57 @@
 # Session Log
 
-**Current Layer:** "Layer 5 — Expense Classifier (oficina P4 reviewed + re-accepted, PR #86 ready; P3 next)"
-**Current Session:** 2026-07-28 — Session 132: "P4 REVIEWED, SIMPLIFIED and RE-ACCEPTED LIVE — 13 findings closed, P4-D8/D9/D10 frozen, acceptance made durable"
+**Current Layer:** "Layer 5 — Expense Classifier (oficina P4 merged; judge payload closed, PR #87 open; P3 next)"
+**Current Session:** 2026-07-29 — Session 133: "T-129 + T-130 CLOSED — the judge's payload made prefix-cacheable and mode-aware; three QUICK files compacted"
 
 ---
-## 2026-07-28 - Session 132: "P4 REVIEWED, SIMPLIFIED and RE-ACCEPTED LIVE — 13 findings closed, P4-D8/D9/D10 frozen, acceptance made durable"
+## 2026-07-29 - Session 133: "T-129 + T-130 CLOSED — the judge's payload made prefix-cacheable and mode-aware; three QUICK files compacted"
 
 ### Context
 
-Opened on the session-131 handoff's own Next — *"review/merge PR #86; consider `/simplify` over the branch first"* — and ran the whole sequence in order: `/code-review`, freeze the design forks it surfaced, `/simplify`, then re-run the acceptance live because the review had changed the gate's arithmetic underneath it.
+Opened on a merged PR #86 and a clean master, with the session-132 handoff naming three
+candidates: P3, the deferred T-129/T-130 judge-payload pair, and the cheap carried tasks. Chose
+**B — T-129 + T-130 first**, on the argument that both are defects in *what the judge is sent*,
+which is P3's own subject matter: building the prompt compiler first and then discovering them
+would have encoded the defects into the mechanism. Mid-session the user redirected twice, and
+both corrections changed how the work was done rather than what it produced — read the
+test/code/refactor/local-model conventions and delegate through them, and read the QUICK/KNOWLEDGE
+memories of every folder being touched.
 
 ### What Was Done
 
-- **`/code-review` over the full branch: 13 findings, all closed.** Ten were ordinary defects; **three turned out to be design forks** and were escalated to the P4 decision register rather than settled inside fix commits — a register amended silently by fixes stops recording what was decided and starts recording what survived.
-- **P4-D8/D9/D10 frozen, P4-D11 deferred** (see Decisions), then implemented: `judge_verdict` as a min, the cut moved into the rubric, `weight` deleted, judge calls given a real `run_id`.
-- **Report bounded** — judge `reasoning` clips at 200 chars, `hunks` at 10 with a conditional `hunks_total`; worst case measured **~750 → ~206 tokens**, and bounded rather than merely smaller.
-- **Every terminal now reports.** `Cancelled` carried no drift (the payload, not the object — `service.result()` returns it verbatim); a no-attempt run reported the whole baseline as deleted; the iterations trail was missing on the exhausted path; anti-cheat rejections were indistinguishable from ordinary structural failures.
-- **`/simplify` (4 parallel angles): 9 cleanups applied, 7 deferred to tasks.** `judge.py` gained `unavailable_verdict()`; the cancelled terminal became a named method; the report's size bound now holds on **all three** terminals; `drift.py` states its clamp as an invariant rather than the endpoint one incident exposed.
-- **Live acceptance re-run and made durable** — `mcp-server/run-acceptance-p4.sh` / `make accept-p4`, indexed. A1/A2 replay the **pinned** runs (base commit from each run's own `AssemblyDone`, delivered bytes from `refs/oficina/<run_id>`); **A5 drives a real end-to-end run**. All pass. It had been authored ad hoc twice and rebuilt from scratch both times.
-- **`worker.py` split** — `transport.py` (the ONE T-95 per-call transport, three callers) and `report.py` (the `Delivered`-payload bounds). `class Worker` had not started until line 330 of 566. **`loop.py` no longer imports from `worker.py` at all.**
-- **Three "one owner" fixes:** the declared tests are read once at assembly, strictly (two readers had drifted on decoding); one call-time `repo_root()` (`LLM_REPO_ROOT` was honoured by **1 of 4** asset resolvers); `errors.py` owns the `whose` vocabulary and the limit→attribution map.
-- **The event phase-registry is pinned by a test** — `Judged` had been omitted, so a run reported `looping` through its whole judging window, and `fold_phase` tolerates unknown names silently.
-- **PR #86 description updated** — it still advertised the ≥3 threshold as an open, unproven risk that P4-D9 had closed, plus a stale suite count.
-- **Memories/README converged**; a new cross-session memory recorded (measure magnitude, don't estimate it). Suite **369 → 393**; 17 commits.
+- **T-129 closed** — `judge.py`'s system prompt is now criterion-INVARIANT and forward-references a tail-appended criterion block, making the run-constant objective+diff+drift a reusable KV prefix. Second-criterion prompt eval fell **2398→513 ms** (A1) and **3105→459 ms** (A2), 79–85% cold and ~88% session-warm. `_scoring_scale` extracted so the scale has one owner.
+- **T-130 closed** — `LoopResult.mode` + `_change_view` (a greenfield `change` is the delivered CONTENT, not a 100%-additions diff); `judge_deliverable(..., mode)` honouring a rubric's `applies_to` precondition through the existing `unavailable_verdict` shape; `_change_heading` naming the artifact per mode; `worker._judge_delivered` handing the mode over.
+- **New rubric `evaluator/rubrics/oficina-greenfield.yaml`** (9 rubrics now), and `applies_to` added to `oficina-edit.yaml`.
+- **`make accept-p4` made stricter** — A5 runs on the greenfield rubric and asserts `passed is True` rather than that a verdict field merely exists, and now prints the judge's per-criterion reasoning.
+- **PR #87 opened**; suite 393 → 408; live acceptance green.
+- **T-131 and T-132 filed.**
+- **Three QUICK.md files compacted** after user correction: coding-delegate 201→73, mcp-server 167→72 (with one orphaned rationale migrated into its KNOWLEDGE.md), and the s133 entries in all three rewritten from ~25 lines to ~6.
+- **Memory/README convergence** across seven documents plus `.claude/index.md`.
 
 ### Decisions Made
 
-- **P4-D8 — `judge_verdict` is the MIN of the criteria, not their mean, and is `0` when ANY criterion is unscored.** A conjunction has no average: the mean reported **4** on the T-119 leak while `passed` correctly withheld. **Sharpened at build time** — the freeze wording said *"0 when none scored"*, which would have left the hole open, because a min over *the criteria that actually scored* is still 5. The defect was never mean-vs-min; both reduced over a filtered subset.
-- **P4-D9 — the passing cut moved INTO the rubric as a per-criterion `passing_score: 4`.** Rung 3 of `scope_adherence` describes a defect yet sat above a threshold of 3; reading **both** ladders showed rung 4 is the lowest acceptable rung in each, so the scale was right and the number was one rung low. **Changed zero prompt bytes** (`passing_score` never reaches the model), so A1/A2 held without re-measurement — and it **closes the plan's carried calibration note** (a leak scoring 3 used to pass). Reversal recorded: the first recommendation was to rewrite the rung, and reading the rubric overturned it.
-- **P4-D10 — `weight` deleted from `oficina-edit.yaml`.** Not merely unused but **unusable**: no weighting can make an average agree with an AND (with both cuts at 4, ranking `(5,3)` below `(4,4)` needs `w₁<w₂` while `(3,5)` needs `w₂<w₁`).
-- **P4-D11 — per-criterion judge `call_id` deferred with a countable trigger.** The cheap route (side-band collection) matches ids to criteria **by order** — the positional fallback T-105 banned, in the one module whose docstring cites T-105. The `run_id` half was a real defect (judge calls logged under `""`, a value that looks like one) and is fixed.
-- **Test-file decoding is STRICT, one read, at assembly.** Under P2-D13 the tests ARE the spec, so a file that cannot be decoded cannot be handed to the model as one. Accepted cost, stated rather than discovered: a `# -*- coding: latin-1 -*-` test file is legal Python that pytest would run, and oficina now refuses it — loudly, naming the file.
-- **Won't-fix, with measurements:** the redundant `change` computation (0.37 ms on a 599-line file, and making it conditional would put an outcome-specific branch back into the single terminal seam whose value is having none); `ContextLimitUnknown` stays OUT of the phase map (it reports a capability, not progress) but is now *declared* phase-neutral, because "neutral" and "forgotten" looked identical to `fold_phase`.
+- **`applies_to` is rubric-level, not criterion-level.** Per-criterion filtering was designed and rejected: excluding criteria from the `passed`/`judge_verdict` reductions is structurally the same operation as the filtered-subset bug **P4-D8** exists to prevent, and it would need a third per-criterion state ("not applicable") beside scored and unscoreable. Rubric granularity needs no change to either reduction.
+- **A rubric ships for each mode in the same change.** Deferring `oficina-greenfield.yaml` was considered and reversed on the user's challenge — leaving greenfield (the *original* run mode) unjudged is worse than the incoherent scale, because incoherence is at least visible.
+- **`scope_adherence` keeps its name in both rubrics** — the judged question is identical ("only what was asked?") and only the rungs differ, so verdicts stay comparable across modes.
+- **`mode` is required, never defaulted**, for the reason `default_judge` requires `run_id`: a default would be a value that looks like one, and it would silently decide which question a rubric is allowed to ask.
+- **The applicability check lives in `judge.py`, not the worker** — that module already owns `unavailable_verdict` because it owns the invariant that `passed` and `judge_verdict` agree, and a refusal has to satisfy it too.
+- **`loop.py` was hand-edited and the failed delegation recorded** rather than retried at ~1 h per attempt.
+- **Compacting `.memories/QUICK.md` (root) deferred to its own session (T-132)** — it spans every workstream, so the unit is one line per *workstream*, and the blocking question (where cross-cutting infra facts live) is a judgement call, not a mechanical pass.
 
 ### Next
 
-- **Merge PR #86** — 393 green, live acceptance passing, description updated.
-- **P3 — context & prompt assembly**, the phase in front, and the one that makes the approval gate's payload worth defaulting on.
-- **T-129 + T-130 together** — both change what the judge is sent, so one `make accept-p4` A/B covers both.
-- Still carried: **T-118** R-D1/R-D3; **Axis B kinds reconsideration** (E-D8 rename + dead `acceptance.validators`, untouched since s128); the four s131 tasks (T-125/126/127/128), of which T-125 and T-128 remain the cheapest.
+- **Merge PR #87** — 408 green, `make accept-p4` passing, description current.
+- **P3 — context & prompt assembly**, the phase in front. T-129/T-130 handed it two constraints worth encoding in the compiler from the start: prompt ORDER is worth 79–85% of a call's prefix evaluation, and a payload must name the artifact it carries.
+- **T-131** (`timeout_s` is per-attempt; `_cold_start_grace` doubles it) — weigh together with T-111, since both come from threading `spec.timeout_s` through as a per-call value.
+- **T-132** (root QUICK.md compaction) — its own session, per this session's decision.
+- Still carried: **T-118** R-D1/R-D3; **Axis B kinds reconsideration** (untouched since s128); T-125/126/127/128, of which T-125 and T-128 remain cheapest.
 
 ### Gotchas
 
-- **A fix shipped this morning was UNREACHABLE, and its test proved nothing.** `_read_test_sources` gained `errors="replace"` so a latin-1 test file would not kill a run — but `Workspace._build_stable_parts` reads the same declared files **strictly**, during `assemble()`, and the run dies there first. The unit test called the fixed function directly and passed. This is the producer→consumer seam mistake `ref:active-decisions` already records; the question that catches it is one grep — **who else reads these files?**
-- **Five findings identified their MECHANISM correctly and got their MAGNITUDE wrong**, in both directions: *"tens of seconds"* measured **2.4–3.1 s**; my own counter-estimate of *"well under a second"* was wrong the other way (I anchored on the recorded 7.2 s run, which judged a **tiny synthetic fixture**, not a real ~1,300-token diff); *"tens of milliseconds"* measured **0.37 ms**. Mechanism is derivable by reading; magnitude and reachability are not.
-- **`rtk grep` under-reported** — it returned 5 of 7 matches, missing two in a file I had just read on screen. Use plain `grep` when completeness is the point. Joins `rtk git log` (drops merge commits) and `rtk curl` (mangles JSON).
-- **A5's `judge_verdict` came back 5 and then 1 an hour apart, same code and same rubric.** It is a *greenfield* run judged with `oficina-edit`, whose `change` is a 100%-additions diff — `scope_adherence` on it is incoherent, not merely noisy (→ T-130). The A5 check only asserts the field is *distinct* from `auto_verdict`, so it passes either way: that is the check being loose, not the behaviour being stable.
-- **A fake at an injected seam is blind to everything upstream of it.** `verify_cuts.py` proves the cuts and the reduction and cannot prove the judge was asked the right question, because a fake `chat` never reads the prompt. That is why the live harness exists and why it is the gate for any change to `judge.py`, the rubric's scale text, or the judge persona.
+- **A check that can only pass teaches nothing.** Tightening A5 from "`judge_verdict` is a present field distinct from `auto_verdict`" to "`passed is True`" failed on the **first** run — and the fault was in A5's OWN fixture: its objective read *"One line, with a docstring"*, two requirements that cannot both hold, so `objective_met` could never reach its cut of 4. Latent since A5 was authored in s132, invisible because the old assertion passes on any number.
+- **`judge-window-sweep.py` measures ONE of two walls.** `loop.py` was refused by the T-112 guard in **0.48 s** on the 16K coder (window) and then produced **nothing in 7,066 s** on the 32K one (throughput — 9.4 GiB resident of a 14.2 GiB config at ~49% utilisation is partial offload). A file can fit the window and still be practically uneditable, so T-122's "21/27" is optimistic on a second axis beyond the 13 files lacking paired tests.
+- **`spec.timeout_s` is a PER-ATTEMPT deadline.** `_cold_start_grace` retries once on `OllamaTimeoutError`, so a declared 3600 cost 7,066 s of wall clock. Its premise — a first-call timeout means the model is loading — is false exactly when the model is simply too slow, making the retry a guaranteed second full waste (T-131).
+- **A correction can be APPENDED instead of APPLIED, and then the stale claim wins.** `mcp-server/.memories/QUICK.md` § Key Patterns asserted the pre-T-105 call-logging shape for eight sessions while s125's entry, 35 lines below it, said in so many words "supersedes … above". A reader hits the top of the file first. That is the append-log's real cost, not its length.
+- **A delegated model can invert a case the brief states explicitly.** `judge.py` attempt 1 wrote `rubric.get("applies_to") != mode`, which refuses when the key is ABSENT — it would have stopped every benchmark rubric from judging anything. The negative-control test caught it, which is the argument for writing that test *before* delegating.
+- **Two prior records of my own were wrong in opposite directions and are now corrected in place:** T-129's cost estimate was 35% optimistic (only the shared prefix is free — the criterion block still evaluates), while its pre-change measurement was *understated* (ms/token was FLAT across calls, so reuse was zero, not weak).
+- **oficina's worktree checks out HEAD**, so red tests must be COMMITTED before a run can see them. Corollary proved live: a `PYTHONPATH=mcp-server/src` + repo-venv `test_cmd` resolves against the worktree (`baseline_failure_count: 3` matched the committed red tests), which unblocks delegating any oficina file that fits.
