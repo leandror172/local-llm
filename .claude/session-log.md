@@ -1,10 +1,10 @@
 # Session Log
 
-**Current Layer:** "Layer 5+ — oficina P1–P4 built; P3 (context & prompt assembly) planned, D1 re-evidenced and still open, register unwalked"
-**Current Session:** 2026-07-31 — Session 135: "P3-D1 RE-OPENED — the option set was incomplete; symbol-addressed editing surveyed (4 arms) and measured on our own corpus; five confident claims corrected"
+**Current Layer:** Layer 5+ — oficina P1–P4 built; P3 (context & prompt assembly) planned, D1 re-evidenced and still open, register unwalked
+**Current Session:** 2026-07-31 — Session 135: P3-D1 RE-OPENED — the option set was incomplete; symbol-addressed editing surveyed (4 arms) and measured on our own corpus; five confident claims corrected
 
 ---
-## 2026-07-31 - Session 135: "P3-D1 RE-OPENED — the option set was incomplete; symbol-addressed editing surveyed (4 arms) and measured on our own corpus; five confident claims corrected"
+## 2026-07-31 - Session 135: P3-D1 RE-OPENED — the option set was incomplete; symbol-addressed editing surveyed (4 arms) and measured on our own corpus; five confident claims corrected
 
 ### Context
 
