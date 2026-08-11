@@ -225,9 +225,31 @@ edits** across the extraction. Coder models are the 16K ctx variants (measured V
 decision — 32K cannot fit the card; rationale in the pack comment).
 
 **`acceptance.validators` reconsidered (Phase 4 exit item): the language field IS the
-registry key; the dead field is not it.** It stays in intake for now — deleting it would
+registry key; the dead field is not it.** ~~It stays in intake for now — deleting it would
 flip accepted-and-ignored into unknown-key REJECTION for any spec carrying it — and its
 removal is queued for the Axis-B kind-widening pass, which must touch the intake taxonomy
-anyway (same trigger as E-D8's rename).
+anyway (same trigger as E-D8's rename).~~
+
+**RESOLVED s136 (T-133) — DELETED in P3, not Axis B. Both halves of the deferral are
+addressed here rather than silently overridden** (house rule: a phase plan may refine, not
+silently reverse):
+
+- **The stated cost was the point, not the objection.** *"Deleting it would flip
+  accepted-and-ignored into unknown-key REJECTION for any spec carrying it"* — that flip **is
+  the fix**. A caller who sets `validators` believes it selects validators; accepted-and-ignored
+  is precisely the silent-swallow this field is the archetype of, and first principle 4 says the
+  harness should refuse. Measured blast radius before deleting: the symbol appeared **exactly
+  once** in all of `mcp-server/src` and `mcp-server/tests` — its own declaration — no fixture,
+  no test, and `run-acceptance-p4.sh` does not use it. So the flip affects only hand-written
+  specs, which are exactly the ones that should hear about it.
+- **The Axis-B routing did not survive its own mechanism.** E-D8's trigger is the *kind*
+  taxonomy; `acceptance.validators` **is not a kind**, so the trigger never covered it — only a
+  `QUICK.md` "Next" line had routed it here. `ref:declared-unconsumed-spec-fields` records the
+  conflict; P3-D6 resolves it, because that is where its sibling `context.callers` lives and
+  the two share one mechanism.
+
+*Still true and worth keeping:* the language field IS the registry key. That is what made
+**delete** the right remedy rather than **wire** — the opposite call from `context.callers`,
+which has measured evidence and no derivable substitute.
 
 Phase 5 (live acceptance) is next; its stretch goal (a Go edit run) stands.
