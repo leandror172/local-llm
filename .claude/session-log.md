@@ -1,52 +1,49 @@
 # Session Log
 
-**Current Layer:** Layer 5+ — oficina P1–P4 built; P3 (context & prompt assembly) planned, D1 re-evidenced and still open, register unwalked
-**Current Session:** 2026-07-31 — Session 135: P3-D1 RE-OPENED — the option set was incomplete; symbol-addressed editing surveyed (4 arms) and measured on our own corpus; five confident claims corrected
+**Current Layer:** Layer 5+ — oficina P1–P4 built; P3 (context & prompt assembly) IN PROGRESS — T-133 shipped (PR #88), D1 re-grounded and still gated on P3-T0, register D2/D3/D7/D8/D9 unwalked
+**Current Session:** 2026-08-11 — Session 136: P3-D1 re-grounded — the apply mechanism was already BUILT AND MEASURED in s124; T-133 shipped; PR #88 open
 
 ---
-## 2026-07-31 - Session 135: P3-D1 RE-OPENED — the option set was incomplete; symbol-addressed editing surveyed (4 arms) and measured on our own corpus; five confident claims corrected
+## 2026-08-11 - Session 136: P3-D1 re-grounded — the apply mechanism was already BUILT AND MEASURED in s124; T-133 shipped; PR #88 open
 
 ### Context
 
-Opened as "discuss next steps" with the P3 register walk as the user's stated plan. The walk
-never got past D1 — a user challenge on what `deliverable.unit` actually meant exposed that the
-register's option set was **missing the intended design**, and the session became a full
-prior-art survey plus an own-corpus measurement to price it. No code written; docs only.
+Opened as a "discuss next steps" session against the s135 handoff, whose Next named P3-T0 as the only thing that could decide P3-D1 and flagged an unpriced SCIP prerequisite. A user instruction to read the research we already had — and then the reading guide's own top entry, which had been skipped — turned it into a correction session: four claims in P3-D1 were falsified from primary sources inside this repo, and the phase's cheapest task then shipped.
 
 ### What Was Done
 
-- **`docs(P3-D1): symbol-addressed editing — 4-arm survey, own-corpus census, register rewritten`** (b9aaf36, 11 files, +2019/−77).
-- **P3-D1 rewritten TWICE.** First to a three-option fork correcting the s134 scoping error; then to a four-option fork with the evidence folded in and a concrete schema. Recorded as revisions, not silent fixes.
-- **Two AST censuses of the actual targets** (`ref:unit-addressing-census`): 10 oficina Python modules, and 129 non-test Go files / 20,643 lines across `expenses/code` + `career-search` via `go/ast`. Scripts promoted to `.claude/tools/unit-census-*`.
-- **Four-arm prior-art survey commissioned and preserved** (`ref:symbol-addressed-editing-survey`, `docs/research/symbol-addressed-editing/`) — address grammars, LLM edit vocabularies, Java/OpenRewrite, small-model reliability; ~690K subagent tokens rescued out of a session-scoped scratchpad.
-- **T-133 trimmed 3,800→1,535 chars**, body moved to `ref:declared-unconsumed-spec-fields`, and **extended with a second declared-and-unconsumed field** (`acceptance.validators`, `intake.py:58`) found by the same grep.
-- Branch renamed `docs/p3-plan-and-join-record` → `feature/oficina-p3-context-assembly` (local-only, no PR).
-- **Cross-repo, `web-research` (2 commits):** field report on a new defect class + **T-09**; then discovered the **2026-07-11 field report had been UNTRACKED for three weeks** while cited from this repo as delivered, and **four of its five defects had no task** — committed it and backfilled **T-10..T-13**.
+- **P3-D1 revision 3 (`1a35235`)** — recorded four corrections, each from a primary source in this repo rather than from further reasoning.
+- **Vision-level reconciliation (`3f43806`)** — the first pass of `docs/vision/coding-delegate/` against THIS entry; five results, including T-122's actual code path.
+- **"Who chooses" re-argued (`6ba0e09`)** — its stated decider does not hold, and the two-way framing hid the option the code already implements twice.
+- **T-133 shipped (`7bd9191`)** — `context.callers` wired as its own stable prompt segment, `acceptance.validators` deleted; suite **408 → 416**, `make accept-p4` green.
+- **Doc propagation (`4c10d15`)** — swept every record the schema change made stale; three real hits, one of them a recorded deferral this session had contradicted without saying so.
+- **PR #88 opened** (`MERGEABLE`, merge state `CLEAN`, 12 commits) — the branch's first code after 7 docs-only commits.
+- Checked the s135 handoff's flagged prerequisite empirically: **no `scip*` binary and no LSP server is installed** in this estate.
+- *(`f78d0c4`, the payload-scalar quote-stripping fix, was already at HEAD when the session opened — s135's tail, covered by no session log.)*
 
 ### Decisions Made
 
-- **`deliverable.unit` (caller names one function) was NOT what the phase needs.** The T-122 blocked set is blocked by SIZE, not by having one identifiable bad unit, so a caller-scoped span does not reach it. The intended design — **the model emits structured edit operations** — had been dropped in s134 as a "duplicate axis", on a reason **S15 undercuts**: the branch IS the deliverable, so response shape is not a `kind`, and E-D8's Axis-B trigger therefore does not capture it.
-- **Schema: symbol-addressed, structured tuple, NO `file` field** (user decision). `{"op":"replace_unit","path":["EvaluatedLoop","run"],"kind":"Method","body":"..."}`. Dropping `file` matches S1 rather than exceeding it, turns "cross-file moves are inexpressible" from a grammar gap into a **scope boundary** (which file is Claude's reasoning), and removes a failure mode outright — a model that can name a file can name the *wrong* file, and `patch_file` would apply the edit to it successfully and silently.
-- **Dotted addressing is mandatory, not a refinement.** `loop.py`'s top-level ceiling is 438 lines (69% of file) vs 66 (10%) dotted; median edit 17 lines. Top-level-only addressing is worthless on exactly the files that motivated T-122.
-- **Omit the overload slot entirely.** Every index system's disambiguator is a POSITIONAL counter (SCIP/SemanticDB `+1` = `methods.indexOf(sym)`, Serena `[n]`, Glean's `span`-in-key). Multi-match ⇒ hard resolve error. Java needs arity-first with type spelling as tiebreaker — not positional, and compatible.
-- **A refusal region is mandatory** (anonymous/lambda/local classes, in-body spans) — arms 1 and 3 converged on it independently. Fallback is whole-file, i.e. **E-D1's existing mechanism**, so it costs nothing to build.
-- **Only the NARROW ask is licensed.** E-D1 preserved code-anchored as *"the fallback mechanism"*; T-122 is a *feasibility* argument while E-D1 was decided on *quality + spec simplicity*. So a **size-gated fallback** is E-D1 operating as designed; making it the default would reverse E-D1 on three grounds T-122 does not rebut.
-- **D1 still NOT frozen.** The mechanism argument gained a production precedent and a measured +20.8pp on the weakest-model case; the magnitude on *our* coder remains unmeasured, and the two published results bearing on format choice **disagree with each other**.
-- **A fourth option recorded rather than left to be rediscovered:** the CASCADE (Claude emits an edit sketch, the local model applies it). Not recommended — it moves intellectual work back to Claude, which is the cost oficina exists to avoid.
+- **P3-D1's apply mechanism was never open.** `ref:oficina-write-model-report` **arm A** is exactly it — *"model returns only the rewritten function; code locates the span (`ast`), reads `old_string` from disk, exact-replace; apply-failure mode: none — 100% by construction"*, 25 output tokens flat across every size bucket. The harness constructs the anchor; the model never reproduces bytes. A model emitting its own anchors is **arm C**, a different arm, also already measured.
+- **Resolver: in-process AST per language, NOT SCIP** (supersedes survey § 9). Three grounds: the seed exists and already spans decorators (`writemodel_apply.py:36`, verdict 2); T-104 already chose `ast` + `go/parser`; and **a precomputed index is stale inside a batch** — op 1 invalidates it for ops 2..N, the same objection already made against line numbers. `locate_unit` stays a per-language `LanguagePack` member (verified as-built: the pack has exactly 4).
+- **First principle 1 is the decisive citation and had never been made** — *"harness code does all mechanics (**locate**, fetch, splice, verify, log)"*. An emitted anchor makes the MODEL locate; a symbol name makes the HARNESS locate. Principle 2's ellipsis un-joined: the request/fulfill clause is about *context* requests, not edit responses.
+- **T-133's two fields got opposite remedies for a recorded reason.** `callers` WIRED (measured evidence, no derivable substitute) as its **own** segment — folding it under `CONTEXT:` would make that header a false claim (P3-D3 half 1). `validators` DELETED (selection derives from the language; E-D2 refuses a spec field for a derivable fact).
+- **"Who chooses" recommendation revised to DERIVE WITH OVERRIDE** — `_resolve_output_shape(assembly)` following E-D9/T-114's shape exactly. Recorded as **re-argued, not frozen**; the probe still gates the entry. User settled both open sub-questions: an *optional* override does not violate E-D2's spirit; recording shape for reproducibility is *"might be a good idea"* and stays open.
+- **P3-D6 FROZEN AND BUILT**; the P3-vs-Axis-B routing conflict resolved in P3's favour **by mechanism** — `validators` is not a *kind*, so E-D8's trigger never covered it.
 
 ### Next
 
-- **P3-T0 is now the ONLY thing that can decide D1** — reframed with three pre-registered criteria: anchor fidelity, **no degeneration to whole-file** (the silent one that voids T-122's rationale), and applicability rather than exact match. Write the apply-side negative control FIRST. Target `parser.py`/`intake.py`, never `loop.py`.
-- **UNPRICED PREREQUISITE, not yet a task:** the recommended resolution path (join the tuple to SCIP's `enclosing_range`) assumes `scip-python`/`scip-go` can actually be run in this estate. **Nobody has checked.** If they cannot, the fallback tier is LSP `documentSymbol` — and then the span must be backfilled per language by hand, which re-opens the decorator/doc-comment hazard the SCIP route closes for free.
-- **T-133 remains the cheapest first move** — untouched by all of this, now two-membered, independent of D1 and of the probe. Its test must fail today or it encodes the bug, and it must be **behavioural**, not a symbol scan.
-- **The register was never walked.** D2, D3, D6, D7, D8, D9 remain open and unfrozen; only D1 was worked.
-- Carried: **T-131** (weigh with T-111), **T-132** (root QUICK, own session), **Axis B**, T-125/126/127/128.
+- **P3-T0 is materially smaller than it was.** The apply half is closed and the resolver is decided, so the probe measures only what arm A never covered: **dotted `Class.method` resolution** (`locate_function` is top-level-only) and **a hardened corpus** (arm A's filler was 20 identical `op_k` functions — *"the synthetic corpus accidentally optimized for whole-file"*). **Vehicle: the EXISTING benchmark** (`benchmarks/lib/writemodel_{apply,corpus,bench}.py`, `run-write-model-bench.sh`) plus E-D1's own prescribed corpus hardening — not a probe built from scratch. Criterion 1 is half deterministic and belongs in the 408→416 suite, not on the GPU.
+- **D2 / D3-half-1 / D7 remain unwalked** and are D1-independent; the plan marks **D3 half 1 "ready to freeze"**. Walking them turns P3 from one blocked entry into a frozen register.
+- **PR #88 is open and MERGEABLE** — note `checks: 0`, this repo has no CI, so the suite + `make accept-p4` results in the PR body are the only verification record.
+- Carried: **T-131** (weigh with T-111), **T-132** (root QUICK, own session — now **three** sessions behind), **Axis B**, T-125/126/127/128, new **T-135**.
 
 ### Gotchas
 
-- **Five confident claims were WRONG this session**, recorded as a corrections table in the survey § 0 rather than silently fixed. Two came from search-result summaries that were *directionally right and specifically wrong* — SCIP's disambiguator "handles overloads" (it **counts** them, so it renumbers on insert) and udiff-l "helps small models" (it is the **worst** format at every size, and the paper **rejects** the marker-collision mechanism that was quoted for it). **A summarizer's paraphrase of a spec is not the spec** — the failure has no symptom, because a plausible summary reads exactly like a correct one.
-- **Java was assumed to have both span hazards at once; it has NEITHER.** Annotations are grammatically modifiers (inside the declaration), and JDT's node range *begins at the opening `/**`* — the only tool surveyed whose natural span is the correct span. javac's Trees API *does* have the Python/Go bug.
-- **`query_knowledge` returning `[]` is not evidence of an empty corpus** — it matches close-to-literally (a known, unfixed defect since 2026-07-11, now `web-research` T-13). This session read two empty results as "genuinely new ground for the estate" and commissioned a four-arm survey on that basis. The tool cannot distinguish "nothing stored" from "nothing matched", so its silence reads as a fact about the corpus when it is only a fact about the matcher.
-- **Code-index systems fail as addresses for a structural reason:** they are built for **navigation** (resolve once, jump — position-dependence is free) not **addressing** (a name that must survive a mutation the index has not seen). Do not expect to adopt an index's symbol *format*; adopt its taxonomy of distinctions.
-- **A cited cross-repo artefact had never been committed.** The 2026-07-11 `web-research` field report sat untracked for three weeks while `ref:delegate-cross-repo` pointed at it, and four of its five defects had no task — invisible to every session since. Worth a periodic check that cross-repo citations resolve to something in *history*, not just on a disk.
-- **The T-09/T-11 pair wants one guard with two bounds:** a `clean_chars` **ceiling** (a 452K-char document is probably off-domain) and a **floor** (a 350-char document is probably a bot wall). Neither is measured today.
+- **The survey enumerated external prior art exhaustively and never enumerated our own.** 13-agent source survey, four indexer SHAs, five fast-apply vendors — and the operation was already built and measured in `benchmarks/lib/`. Nothing in it is false; the set it searched was not the set that mattered. **`ref:corpus-divergence-pattern` at document altitude** — recorded as § 0a in the survey itself.
+- **The decorator span hazard was solved here in s124, in code, by a local model, verdict 2.** The s135 census re-derived it "by inspection" and the survey credited SCIP with solving it.
+- **P3-T0's criteria existed in TWO copies in one document and drifted within a single revision pass.** The probe copy was rewritten in s135; D1's summary copy still asked for *"the emitted `old_string`"*. Collapsed to one source (T-130's pattern) — the duplication survived a full re-grounding **inside one file**.
+- **A claim this branch's own survey falsified was left standing in the body that consumed it** — the udiff-l argument. § 0 corrected it; P3-D1 still argued from it in two places.
+- **The "who chooses" decider rested on a code path that does not execute.** All three oficina personas declare `PARAMETER num_ctx 16384`, so `_context_limit is None` only when `/api/show` fails — i.e. Ollama is down and the run dies anyway.
+- **The memory that OUTRANKS the plan docs was itself two sessions stale.** `coding-delegate/.memories/KNOWLEDGE.md`'s assembly paragraph listed neither `current_file` nor `mode`, both added by T-110 in s126 → **T-135**.
+- **A recorded deferral was contradicted without noticing.** `oficina-p2-go-widening.md` said deleting `validators` *"would flip accepted-and-ignored into unknown-key REJECTION"* and queued it for Axis B. The flip **is** the fix and the blast radius was measured (one occurrence, its own declaration) — but nothing in T-133's evidence chain pointed at that plan. **It surfaced only because the user asked for a doc sweep.**
+- Process: ran `python3 -m pytest` directly (project rule is `make test` / bash wrappers) and grepped files that then had to be `Read` anyway to edit.
