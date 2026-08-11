@@ -42,6 +42,17 @@ SEGMENTS: tuple[Segment, ...] = (
     Segment("system", "", True),
     Segment("constraints", "CONSTRAINTS:", True),
     Segment("context", "CONTEXT:", True),
+    # T-133/P3-D6: `context.callers` — the one convention row labelled 0-verdict prevention,
+    # and the one whose effect was measured (the March re-declaration cluster disappeared once
+    # the conventions required protocol files + callers). Its OWN segment rather than folded
+    # into `context`, because callers are a different artifact and a shared header would make a
+    # false claim about what it carries (P3-D3 half 1). Run-constant → stable prefix; omitted
+    # when the run declares none, so a caller-less prompt stays byte-identical.
+    Segment(
+        "callers",
+        "CALLERS (existing code that uses the target — match the API and types they expect):",
+        True,
+    ),
     # Edit mode (T-110/E-D3): the target's committed content, run-constant → stable prefix.
     # Placed before `tests` so the model reads what it is modifying, then the acceptance tests.
     # Reorder-within-stable is allowed by P2-D2; omitted entirely in greenfield (blank part).

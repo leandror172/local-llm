@@ -135,3 +135,33 @@ def test_blank_current_file_is_omitted():
     parts = {**STABLE_PARTS, "current_file": ""}
     prompt = build_prompt(parts)
     assert "CURRENT FILE" not in prompt
+
+
+# --- callers segment (T-133, P3-D6): stable, between context and current_file ---
+
+
+def test_callers_segment_renders_between_context_and_current_file():
+    """The 'callers' segment renders between context and current_file, with its header
+    present and the three contents in SEGMENTS order. Each part carries DISTINCT text so
+    the ordering assertion can actually fail — identical content would make the three
+    indices collapse and the check vacuous (first principle 6)."""
+    parts = {
+        **STABLE_PARTS,
+        "callers": "def invoke_area(): return area(9, 9)",
+        "current_file": "def area(w, h): return w * h",
+    }
+    prompt = build_prompt(parts)
+    assert "CALLERS" in prompt
+    context_index = prompt.find("def caller(): return area(2, 3)")
+    callers_index = prompt.find("def invoke_area(): return area(9, 9)")
+    current_index = prompt.find("def area(w, h): return w * h")
+    assert context_index < callers_index < current_index
+
+
+def test_blank_callers_is_omitted():
+    """A blank 'callers' part is omitted entirely — a run that declares no callers
+    produces a byte-identical prompt to one that has no such field at all."""
+    parts = {**STABLE_PARTS, "callers": ""}
+    prompt = build_prompt(parts)
+    assert "CALLERS" not in prompt
+    assert prompt == build_prompt(STABLE_PARTS)

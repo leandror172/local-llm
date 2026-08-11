@@ -499,9 +499,21 @@ already compares; return `"whole_file"` when the ceiling is unknown. Emit the ch
 - **A third resolver is a third thing that can be wrong.** Mitigated by the pattern being
   twice-established, and by the negative control being cheap.
 
-**Two questions left open for the user, deliberately:** whether an *optional* `output_shape`
-override violates E-D2's spirit even as an override; and whether shape should appear in the spec
-regardless, for reproducibility reasons that outrank derivability.
+**Both open questions answered by the user, s136:**
+
+1. **An *optional* `output_shape` override does NOT violate E-D2's spirit.** E-D2 refuses a
+   *required* field for a derivable fact; an override is the E-D9/T-114 shape, where the derived
+   value is the contract and the field only pre-empts it. **Derive-with-override is clear to
+   build.**
+2. **Recording the shape for reproducibility: leaning yes, not decided.** Noted as *"might be a
+   good idea"*, so it stays open. **Synthesis offered, not user-stated:** first principle 5
+   (*everything is an event*) already supplies most of what reproducibility wants — emitting the
+   **chosen** shape on the run ledger makes a completed run's encoding recoverable without making
+   the field required, and it is the same move `AssemblyDone`'s additive `mode` key made for E-D2.
+   The residual question the ledger does *not* answer is **forward** reproducibility: a re-run on a
+   different persona derives a different ceiling and could silently pick a different encoding. If
+   that matters, the answer is a spec field; if only forensics matter, the event suffices.
+   **Decide with the probe's results, not before.**
 
 ### Prior art and measurement — commissioned s135, four arms
 
@@ -739,7 +751,19 @@ T-130 design — record it as such rather than editing that decision in place.
 ***Recommendation:* deferred to the probe**, for P3-D4's reason: write the ladder from an
 observed anchoring failure, not a predicted one.
 
-### P3-D6 — `context.callers` is declared and consumed by nothing — **cheapest, best-evidenced**
+### P3-D6 — `context.callers` is declared and consumed by nothing — **FROZEN AND BUILT (T-133, s136)**
+
+**Resolution: recommendation (i) shipped; (ii) stays deferred with T-77 as its named trigger.**
+`callers` is now a stable prompt segment of its own between `context` and `current_file`; it and
+`context.files` render through one `workspace._rendered_file_block`. Intake rejects a missing
+caller path on the existing `RULE_CONTEXT_FILE_MISSING` — **the fetch is what makes an unreadable
+path a silent empty block**, the same failure one layer down. Sibling `acceptance.validators`
+**deleted**, and the **P3-vs-Axis-B routing conflict resolved in P3's favour by mechanism**:
+`validators` is not a *kind*, so E-D8's trigger never covered it. Suite **408→416**,
+`make accept-p4` green (the prompt layout changed, and the suite fakes `chat`). 5 of 8 new tests
+were RED first, verified by running them.
+
+*The original entry follows, unedited — the evidence is what made the remedy obvious.*
 
 `intake.py:44` declares `callers: List[str]` on the `Context` model. Nothing reads it:
 `_check_context_files` validates only `context.files`, and no consumer exists in `loop.py`,

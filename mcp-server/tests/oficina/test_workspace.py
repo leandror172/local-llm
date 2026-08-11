@@ -281,3 +281,53 @@ def test_run_branch_survives_teardown(tmp_path):
         text=True,
     ).stdout
     assert "oficina-run-rid1" in branches
+
+
+# --- context.callers reaches the prompt (T-133 / P3-D6) ---------------------
+
+
+def test_declared_callers_reach_the_assembled_parts(tmp_path):
+    """A spec that declares ``context.callers`` puts those files' CONTENT into the assembled
+    stable parts. This is the behavioural shape the finding requires: a reference/symbol scan
+    would pass on a `# callers resolved later` comment, so the assertion is on the delivered
+    bytes, not on a mention."""
+    repo = _make_repo(tmp_path)
+    caller = repo / "report.py"
+    caller.write_text("from area import area\n\n\ndef report():\n    return area(4, 5)\n")
+    spec = _spec(repo)
+    spec["context"] = {"callers": [str(caller)]}
+
+    assembly = Workspace(spec, "rid1", tmp_path / "run", _no_failures).assemble()
+
+    assert "def report():" in assembly.stable_parts["callers"]
+    assert "return area(4, 5)" in assembly.stable_parts["callers"]
+
+
+def test_callers_are_a_separate_part_from_context_files(tmp_path):
+    """Callers and context files are DIFFERENT artifacts and render as different parts —
+    folding callers into the CONTEXT block would make that header a false claim about what
+    it carries (P3-D3 half 1: a segment names its artifact truthfully)."""
+    repo = _make_repo(tmp_path)
+    caller = repo / "report.py"
+    caller.write_text("def report():\n    return area(4, 5)\n")
+    supporting = repo / "protocol.py"
+    supporting.write_text("class AreaLike:\n    pass\n")
+    spec = _spec(repo)
+    spec["context"] = {"files": [str(supporting)], "callers": [str(caller)]}
+
+    parts = Workspace(spec, "rid1", tmp_path / "run", _no_failures).assemble().stable_parts
+
+    assert "class AreaLike:" in parts["context"]
+    assert "class AreaLike:" not in parts["callers"]
+    assert "def report():" in parts["callers"]
+    assert "def report():" not in parts["context"]
+
+
+def test_no_declared_callers_leaves_the_part_absent(tmp_path):
+    """A run declaring no callers has no ``callers`` part at all — so a greenfield or
+    caller-less prompt is byte-identical to today's (the blank segment is omitted)."""
+    repo = _make_repo(tmp_path)
+
+    parts = _workspace(tmp_path, repo).assemble().stable_parts
+
+    assert "callers" not in parts
