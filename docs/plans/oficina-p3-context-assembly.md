@@ -425,7 +425,9 @@ budgets re-prompts for *"lint/test failures **or malformed edits**"*
 (`coding-subagent-prior-art.md:15`). Both built recovery machinery around this exact failure
 class. That machinery is part of (B)'s unpriced cost.
 
-**Who chooses.** Three sub-options, and one constraint decides it:
+**Who chooses.** Three sub-options were recorded, and one constraint was said to decide it. **The
+constraint did not survive s136 and a fourth option — the one the code already implements twice —
+was hidden by the two-way framing.** The sub-options as recorded:
 
 - **auto-select at assembly** — a `_resolve_output_shape(assembly)` beside `_resolve_num_predict`
   (E-D9) and `_resolve_max_iterations` (T-114). Attractive because **T-112's guard is a refusal
@@ -436,23 +438,70 @@ class. That machinery is part of (B)'s unpriced cost.
 - **caller declares** — validated at intake, with today's guard refusing loudly on a mismatch.
 - **refuse-and-suggest** — no new runtime behaviour; `ContextBudgetError` names the remedy.
 
-**The deciding constraint.** Under auto-select, when `_context_limit is None` the selector *must*
-still emit something — and `transport.model_context_limit`'s docstring is a written record of
-this project refusing that exact guess:
+**~~The deciding constraint.~~ RE-ARGUED s136 — the decider does not hold, and it hid the option
+the code already implements twice. Still NOT frozen: the probe gates the whole entry.**
 
-> *"Absence is NOT 'the architectural maximum' … an absent or unreadable value yields None rather
-> than a guess: guessing high silently disables the caller's fit check, guessing low aborts valid
-> work."*
+The constraint as written: *under auto-select, when `_context_limit is None` the selector must
+still emit something*, and `transport.model_context_limit` is a written record of this project
+refusing that guess — *"an absent or unreadable value yields None rather than a guess: guessing
+high silently disables the caller's fit check, guessing low aborts valid work."* Auto-select would
+place a guessing selector beside a resolver documented as refusing to guess; caller-declares
+removes the question rather than answering it.
 
-Auto-select would place a guessing selector directly beside a resolver documented as refusing to
-guess. **Caller-declares does not answer that question — it removes it:** with the choice
-declared, an undeterminable ceiling simply disables the backstop, as today.
+**It fails on two counts, one logical and one measured.**
 
-**The precedent that must be addressed out loud: E-D2.** Edit-vs-greenfield mode was
-**deliberately not a spec field** — *"Mode = target committed at HEAD (E-D2, no spec field)"* —
-a recorded stance against spec fields for derivable facts. Caller-declares survives it because
-shape depends on a **budget**, not an unambiguous repository fact; but the entry must say so
-rather than appear ignorant of the precedent.
+1. **It conflates guessing a ceiling VALUE with choosing a DEFAULT under absence** — and the
+   consumer of that same `None` already demonstrates the correct move, one function away
+   (`loop.py:536`): `if self._context_limit is None: return None` — *"an unresolvable ceiling
+   disables the guard; the caller was already told once, at resolve time."* `_context_overflow`
+   does not guess; it **declines to act**. A `_resolve_output_shape` returning `"whole_file"` on
+   `None` is the identical move: keep today's behaviour, change nothing. **The precedent cited as
+   forbidding auto-select is in fact the template for handling absence.**
+2. **The case is close to hypothetical for oficina's own models — measured, not assumed.** All
+   three personas the system uses declare the window explicitly:
+   `modelfiles/python-q25c14-16k-qwen25c14.Modelfile:4`, `go-…:4`, `judge-…:5` — all
+   `PARAMETER num_ctx 16384`. `None` therefore arises only when `/api/show` itself fails, i.e.
+   Ollama is unreachable or wedged, in which case the run dies at the first generate regardless.
+   *(Boundary: the Modelfiles were read; live `/api/show` output was not re-confirmed.)* **A
+   design fork was closed on a code path that does not execute** — s132's calibration lesson at
+   design altitude.
+
+**The option the two-way framing hid: DERIVE WITH OVERRIDE.** E-D9 and T-114 are both
+*derive-from-mode, explicit-wins* (`if self._explicit_num_predict is not None: return …`;
+`if self._explicit_iterations is not None: return …`). That is neither "auto-select" nor "caller
+declares" — it is the **house pattern for exactly this class of question**, established twice, and
+recording the fork as two-way made the synthesis invisible.
+
+**E-D2 now points the other way, and the entry had it backwards.** The stance is *"no new spec
+fields"* for derivable facts. The previous text argued caller-declares survives it because shape
+depends on *"a budget, not an unambiguous repository fact"* — but the budget is `num_ctx` +
+`num_predict`, and **`_context_overflow` computes that comparison today**. Shape is as derivable
+as mode is. The s134 `output_shape` field was rejected for the wrong reason (duplicate axis);
+**the E-D2 objection is a separate, still-live one, and it tells against caller-declares.**
+
+**First principle 1 seconds it.** *"Harness code does all mechanics … models only decide
+content."* Choosing an output encoding from a budget is mechanics. Pushing it to the caller
+reproduces the objection this entry already makes against option (D): *"it moves intellectual work
+back to Claude, which is the cost oficina exists to avoid."* Today Claude must know which 6 of 27
+files are blocked; a derived shape is what makes T-122 disappear for the caller.
+
+***Recommendation (re-argued, NOT frozen):* `_resolve_output_shape(assembly)`, third in the
+sequence at `loop.py:550-552`, following E-D9's shape exactly** — an explicit
+`deliverable.output_shape` wins if present; otherwise derive from the numbers `_context_overflow`
+already compares; return `"whole_file"` when the ceiling is unknown. Emit the choice as an event
+(first principle 5) so a run's shape is never inferred after the fact.
+
+**Two costs, both real:**
+
+- **P3-D5's widening becomes live** — if both shapes occur in edit mode, `applies_to` may need to
+  key on `(mode, shape)` rather than `mode`, touching P4's frozen T-130 design. **This does not
+  discriminate between the sub-options**: the shape varies under caller-declares too.
+- **A third resolver is a third thing that can be wrong.** Mitigated by the pattern being
+  twice-established, and by the negative control being cheap.
+
+**Two questions left open for the user, deliberately:** whether an *optional* `output_shape`
+override violates E-D2's spirit even as an override; and whether shape should appear in the spec
+regardless, for reproducibility reasons that outrank derivability.
 
 ### Prior art and measurement — commissioned s135, four arms
 
