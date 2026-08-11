@@ -213,6 +213,13 @@ Four corrections, each from a primary source in this repo:
    and not in the body that consumed it.*
 4. **`locate_unit`'s resolver was decided before the survey proposed SCIP** — T-104's own
    future-work line names `ast` + `go/parser`, and the seed already handles the decorator span.
+5. **The vision set had never been checked against THIS entry.** Doing so found the T-122 remedy's
+   actual code path (E-D9 / `_context_overflow`), an uncited argument that lands on the flywheel
+   (first principle 8 + token-level diff masking), a principle that cuts against this entry's own
+   token-cost framing (principle 3), a stance whose *subject* disappears rather than its risk
+   (E-D6), and a "who chooses" decider that is weaker than it reads (E-D2). See
+   § "Vision-level reconciliation (s136)" below. **This is the fourth consecutive session in which
+   re-grounding changed a P3 conclusion** — the guide's warning is now self-evidencing.
 
 **The fork, corrected — three options:**
 
@@ -326,6 +333,50 @@ build** — not a new architecture.
 - **Separate the budgets** (SWE-agent, **+3.0 points** measured): *"edit didn't apply"* must not
   consume the *"output didn't parse"* budget. That single choice is why a trajectory survives 33
   failed edits on a format budget of 3. Cheap now, expensive to retrofit.
+
+**Vision-level reconciliation (s136).** The reading guide requires re-grounding against
+`docs/vision/coding-delegate/` before amending a phase plan, *and* checking the as-built facts.
+Both passes were done here for the first time on this entry. Five results:
+
+1. **E-D9 IS the code path by which (B) fixes T-122, and this entry never named it.** Verified
+   as-built at `loop.py:263` — `_resolve_num_predict` returns
+   `min(EDIT_NUM_PREDICT_CAP, max(NUM_PREDICT, ceil(len(current_file) / 4) * 2))`. **That `* 2` is
+   the feasibility band**, and T-112's `_context_overflow` adds the result to the input estimate
+   before comparing against the live `/api/show` ceiling. So under (B) the resolver sizes to the
+   **unit**, not the file — which shrinks the guard's own arithmetic and thereby changes *which
+   files are feasible at all*. The remedy is two named functions, not a new subsystem. **Any
+   build step for (B) starts here**, and E-D9's rule needs a third branch rather than an edit.
+2. **First principle 8 + the DPO evidence give (B) an argument nobody has made — and it lands on a
+   founding fact.** `ref:delegate-evidence-dpo`: *"whole-block pairs teach style collapse;
+   **token-level diff masking** (credit only the changed tokens) is the documented correction."*
+   **Symbol-addressed output is token-level diff masking, structurally** — the model only ever
+   emits the changed unit, so a (chosen, rejected) pair is already scoped to it. Under whole-file,
+   every DPO pair is a whole-block pair, i.e. the documented pitfall. Fact 3 of five
+   (`ref:delegate-vision`) is the flywheel; this is the only argument on this page that touches it.
+3. **First principle 3 cuts AGAINST this entry's token-cost framing, and T-122 survives it
+   anyway.** *"Async exists to buy quality, not speed … latency is spent where it buys verdict-2
+   outputs."* So arm A's **25 vs 310 output tokens is not the argument** — the design has already
+   decided it does not optimize for cost, and that is exactly why E-D1 discounted the same number
+   in s126. What survives is **feasibility**: a file that cannot be edited *at all* is not a cost
+   complaint. State the band; stop citing the token count as though it persuades.
+4. **E-D6's subject disappears rather than its risk shrinking.** *"No omission heuristic in v1 …
+   omission detection is behavioral."* Under (B), code outside the addressed span is **structurally
+   impossible to omit** — the model never emits it, so there is nothing for a heuristic to detect.
+   The s127 drift class (module docstring deleted in **4 of 4** runs, including runs that forbade
+   it) cannot occur. **Inside** the span it is unchanged: a model can still paste tests into a unit,
+   so `max_verbatim_run_vs_tests` stays live and P3-D5's reading holds.
+5. **E-D2's precedent may not bind "who chooses" the way this entry argues.** The recommendation
+   is caller-declares, on the ground that shape depends on *"a **budget**, not an unambiguous
+   repository fact"*, with the deciding constraint that auto-select must emit something when
+   `_context_limit is None`. **Under the size-gated-fallback framing this entry itself adopts, that
+   constraint dissolves:** an unknown ceiling means *do not fall back*, i.e. keep today's whole-file
+   default — the same fail-safe direction `transport.model_context_limit` already documents. This
+   does not decide the sub-fork, but the stated decider is weaker than it reads. **Re-argue it
+   before freezing.**
+
+*Also verified as-built: `LanguagePack` has exactly four members (`compile_stage`, `test_stage`,
+`system_prompt`, `coder_model`, `evaluator.py:322`), so `ref:unit-addressing-census`'s "fifth
+member" claim is correct as of this commit.*
 
 **Evidence AGAINST (B), measured, on our own model family — verified s135.** Diff-XYZ
 ([arXiv 2510.12487](https://arxiv.org/html/2510.12487v1)) benchmarks **Qwen2.5-Coder**, our coder
