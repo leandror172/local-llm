@@ -38,6 +38,26 @@ sibling rule earned here is narrower: **a summarizer's paraphrase of a spec is n
 Two of the five came from search-result snippets that were *directionally* right and *specifically*
 wrong — the most dangerous shape, because nothing looks incorrect.
 
+### 0a. Two further corrections — added session 136, and they are about THIS survey's own corpus
+
+| Believed | True | Caught by |
+|---|---|---|
+| The span problem is solved by SCIP's `enclosing_range` and would otherwise need hand-backfilling per language (§ 2, § 9) | **Solved in this repo since session 124.** `benchmarks/lib/writemodel_apply.py:36` `locate_function` spans from `decorator_list[0].lineno` when decorated. Local-model generated, **verdict 2, used as-is** | Reading our own benchmark harness |
+| No production system addresses edits by symbol except Serena / Moderne / CODESTRUCT (§ 4) | **Arm A of `ref:oficina-write-model-report` is exactly this operation** — model returns only the rewritten unit, code locates the span via `ast` and reads `old_string` from disk. Built, measured s124: **apply-failure mode "none — 100% by construction"**, 25 output tokens flat across all size buckets | Reading `ref:oficina-write-model-report` |
+
+**The pattern, and it is a named one here.** This survey enumerated *external* prior art
+exhaustively — 13-agent source survey, four indexer SHAs, five fast-apply vendors, three
+structural engines — and **never enumerated our own**. Nothing in §§ 1–11 is false; the set it
+searched simply was not the set that mattered. That is `ref:corpus-divergence-pattern` at document
+altitude rather than in a health-reporting tool: *"name the set it enumerates and the set its
+consumers use; if they come from different definitions they will drift."* The consumer here is
+P3-D1, whose own decision history includes the benchmark this survey did not read.
+
+**Consequence for § 9's resolution recommendation: SUPERSEDED — see P3-D1 § "The resolver".** The
+in-process AST route wins on three grounds, one of which no external survey could have surfaced:
+a precomputed index is **stale inside a batch** (operation 1 invalidates it for operations 2..N),
+which is the same objection this survey's own consumers already make against line numbers.
+
 ## 1. The headline: adopt nothing whole — JOIN two things
 
 > *"No surveyed grammar is adoptable whole, because the emittable address and the correct span
@@ -323,11 +343,17 @@ it. (Not a claim E-D1's trigger fired; that needs sibling *code*.)
   so `EvaluatedLoop.run` is not what gopls calls it.
 - **`kind` = an LSP `SymbolKind` name** — a closed 26-value vocabulary showable in the prompt.
   Not SCIP descriptor suffixes (§ 3).
-- **Resolution:** run `scip-python`/`scip-go`, parse each `SymbolInformation.symbol`, discard the
-  `scheme manager package version` prefix, match the `path` array against the descriptor tail
-  ignoring suffix characters, take the `Definition`-role `Occurrence`'s enclosing range. ~30 lines.
-  **Fallback tier:** LSP `documentSymbol` walked Serena-style — but then backfill the span per
-  language yourself, because **LSP ranges are not full spans**.
+- **Resolution — SUPERSEDED session 136 (see § 0a).** ~~Run `scip-python`/`scip-go`, parse each
+  `SymbolInformation.symbol`, discard the `scheme manager package version` prefix, match the
+  `path` array against the descriptor tail ignoring suffix characters, take the
+  `Definition`-role `Occurrence`'s enclosing range. ~30 lines. Fallback tier: LSP
+  `documentSymbol`.~~ **Decided instead: in-process AST per language**, a fifth `LanguagePack`
+  member, seeded by `benchmarks/lib/writemodel_apply.py`'s `locate_function` (which already
+  spans decorators) and extended to dotted `Class.method`. Three grounds, in P3-D1 §
+  "The resolver": the seed exists, T-104 already chose `ast` + `go/parser`, and **a precomputed
+  index is stale inside a batch**. The SCIP research below stands as the correct account of what
+  SCIP specifies — it is simply not the tool we need. Verified session 136: no `scip*` binary and
+  no LSP server is installed in this estate, so the route also carried an unmet prerequisite.
 
 **Verification note:** Kythe and Glean claims were relayed between agents rather than
 primary-verified, and are flagged lower-confidence in the arm reports.

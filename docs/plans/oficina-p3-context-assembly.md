@@ -155,8 +155,9 @@ Freeze on review with the user; reverse only with new evidence once frozen.
 
 ### P3-D1 — What the model EMITS when editing, and who chooses — **BLOCKS**
 
-**This entry has been revised twice. Both revisions are recorded, because the second one
-reinstates something the first removed.**
+**This entry has been revised three times. All three are recorded, because the second one
+reinstates something the first removed, and the third finds that the mechanism had already been
+BUILT AND MEASURED in this repo and the record was never consulted.**
 
 **Revision 1 (s134).** The first draft proposed `deliverable.output_shape: whole_file |
 code_anchored` and it was rejected as a duplicate axis, on three findings that remain true as
@@ -193,6 +194,26 @@ Two corrections follow:
   *communicates*. They are different axes, not two spellings of one — which also means **E-D8's
   Axis-B trigger does not capture option (B)**. *(This is reasoning, not measurement.)*
 
+**Revision 3 (s136) — the apply mechanism was never open, and two arguments on this page were
+built on falsified claims.** Prompted by re-reading the primary records the reading guide names.
+Four corrections, each from a primary source in this repo:
+
+1. **`ref:oficina-write-model-report` arm A *is* (B)'s apply path, built and measured s124** —
+   *"model returns only the rewritten function; code locates the span (`ast`), reads `old_string`
+   from disk, exact-replace; apply-failure mode: none — 100% by construction."* This entry
+   presented the anchor question as open. It was closed twenty sessions ago, on our own coder.
+2. **The `old_string`-emission framing was a category error.** The harness constructs the anchor;
+   the model never reproduces bytes. A model that emits its own anchors is **arm C**, a different
+   arm, also already measured — see the corrected mechanism block below.
+3. **The udiff-l argument was falsified by this session's own survey and left standing here.**
+   `ref:symbol-addressed-editing-survey` § 0 records that udiff-l is *"the **worst** format at
+   every size (7B **0.00**)"* and that marker collision is the paper's *hypothesis 2*, **which it
+   rejects**. The "(b) our schema is structurally udiff-l" transfer argument below rested on both.
+   *This is the § 0 lesson recurring one hop later: the correction landed in the survey's summary
+   and not in the body that consumed it.*
+4. **`locate_unit`'s resolver was decided before the survey proposed SCIP** — T-104's own
+   future-work line names `ast` + `go/parser`, and the seed already handles the decorator span.
+
 **The fork, corrected — three options:**
 
 - **(A) `deliverable.unit` — caller-scoped span.** The caller says *"modify this function"*;
@@ -224,19 +245,87 @@ Two corrections follow:
   not recommended, because it moves intellectual work back to Claude, which is the cost oficina
   exists to avoid.
 
-**Evidence FOR (B) that revision 1 never cited.** **First principle 2** is a direct endorsement —
-*"Structured output only — no free-form tool use by local models … models **request** (typed
-JSON); deterministic fetchers **fulfill**"* — and `ref:structured-output` records Ollama's
-`format` param as **100% reliable, no speed penalty**. (B) is that principle applied to the
-response; the whole-file status quo is the one place the loop does *not* use structured output.
+**Evidence FOR (B) — and the strongest citation is first principle 1, which was never quoted.**
 
-**Mechanism, within (B): anchor-based, NOT line numbers.** Line numbers shift after the first
-operation, so a batch is expressed against a moving target. An `{old_string, new_string}`
-operation list composes **`patch_file`**, which already exists in the same server with exactly
-the needed semantics (exact match, uniqueness check, `replace_all`). T-104's principle —
-*"oficina composes the ollama-bridge tools, it does not reimplement them"* — lands in (B)'s
-favour: **the apply path is free and already hardened.** Import merging and the constants
-boundary remain genuinely unpriced.
+*"Harness code does all mechanics (**locate**, fetch, splice, verify, log); models only decide
+content."* **Locating is named, in the founding text, as harness work.** An emitted string anchor
+makes the *model* locate — it reproduces bytes so the harness can find them again. A symbol name
+makes the *harness* locate. That puts anchor-**emission** on the wrong side of the design's
+founding line independently of any benchmark, and it is the cleanest argument on this page.
+
+**First principle 2 supports (B) too, but only on one of its two clauses.** *"Structured output
+only — no free-form tool use by local models"* applies directly: `format` is **100% reliable**
+(`ref:structured-output`), and the whole-file status quo is the one place the loop does *not* use
+structured output. The clause revision 2 elided into it — *"models request (typed JSON);
+deterministic fetchers fulfill"* — is about **context requests**, not edit responses. Cite the
+first clause; do not join them.
+
+**Mechanism, within (B) — CORRECTED s136. This was built and measured in session 124.**
+`ref:oficina-write-model-report` benchmarked three apply arms on `my-python-q25c14`, 108
+generations, 0 errors — and **arm A is precisely (B)'s apply path**:
+
+| Arm | Model returns | Applied by | Apply-failure mode | Output tokens (small/med/large) |
+|---|---|---|---|---|
+| **A. code-anchored** | **only the rewritten unit** | **code locates the span (`ast`), reads `old_string` from disk**, exact-replace | **none — 100% by construction** | **25 / 25 / 25 — size-invariant** |
+| B. whole-file | the complete modified file | overwrite | silent: drops/paraphrases unchanged code | 40 / 134 / 310 |
+| C. model-anchored | aider SEARCH/REPLACE blocks | exact-match apply | loud: `old_string` absent → fail | 46 / 48 / 49 |
+
+**The harness constructs the anchor; the model never reproduces bytes.** So `{old_string,
+new_string}` is the *internal* representation that reaches `patch_file`, **not what the model
+emits**. The model emits `path` / `kind` / `body`; `locate_unit` resolves the path to a span; the
+harness reads the current text at that span as `old_string`. Line numbers are rejected for the
+reason already stated — a batch is expressed against a moving target — but so is
+anchor-*emission*, and for a stronger reason: **arm C is the model-emits-anchors variant, it was
+measured in the same run, and the benchmark's own meta-finding argues against it.** The 14B
+*"mis-generated the SEARCH/REPLACE parser … and fenced its own block contents at runtime — the
+exact-format fragility arm C exists to measure … a cheap independent prior in favour of removing
+exact-format reproduction from the model's plate (i.e. code-anchoring)."*
+
+T-104's principle — *"oficina composes the ollama-bridge tools, it does not reimplement them"* —
+therefore lands exactly: **the apply path is free, already hardened, and already measured at 100%
+by construction.** What remains genuinely unpriced is what E-D1 actually named: the **spec
+surface** — response-shape validation, deterministic import merging, the constants boundary.
+Not the locator, and not the apply.
+
+**The resolver — in-process AST, NOT SCIP (decided s136; supersedes survey § 9).** The survey
+recommends emitting a Serena-shaped tuple and resolving it against SCIP's `enclosing_range`
+(*"~30 lines"*). Three facts already on file decide against it:
+
+1. **The seed exists and already solves the span hazard.**
+   `benchmarks/lib/writemodel_apply.py:36` `locate_function` returns a span whose *"start = the
+   first decorator's line if decorated, else the `def` line"* — the exact hazard the s135 census
+   re-derived by inspection and credited SCIP with solving. Local-model generated,
+   `my-python-q25c14`, **verdict 2, used as-is.**
+2. **T-104 already chose this route:** *"`locate_unit` for Python (`ast` — the benchmark's
+   `locate_function` is a working seed) + Go (`go/parser`)."*
+3. **A precomputed index is stale inside a batch.** Operation 1 of an N-operation batch
+   invalidates the index for operations 2..N — structurally the same objection this entry already
+   makes against line numbers, and N-scattered-changes-in-one-large-file is the entire reason (B)
+   exists over (A). `ast.parse` of the current buffer has no such problem.
+
+Corollary: `locate_unit` stays a **per-language `LanguagePack` member** (`ref:unit-addressing-census`
+§ Consequence — the fifth member, on a seam T-92 Phase 4 validated with measured evidence), which
+a single protobuf reader could not be. **The gap is real and named:** `locate_function` handles
+*"only top-level functions (not methods)"*, and the census measured top-level addressing at
+**69% of `loop.py`** versus **10%** dotted. **Extending the seed to dotted `Class.method` is the
+build** — not a new architecture.
+
+**Limits to carry into the schema so they are not rediscovered:**
+
+- **Rename breaks symbol identity.** If `body` renames the unit, the address names the old and the
+  body defines the new. Serena has a live bug in exactly this operation
+  ([oraios/serena#576](https://github.com/oraios/serena/issues/576)).
+- **CODESTRUCT's +20.8pp includes FUZZY selector matching** (`FuzzyMatch`; *"guf can match
+  get_user_file"*), while § 3's recommendation is fail-loud on ambiguity. Do not quote the number
+  as though it transfers to an exact-match resolver.
+- **The binding output constraint is the ~800-token 14B reliability ceiling**
+  (`.memories/KNOWLEDGE.md:55`), not `num_predict`. Python's 17-line median unit sits well inside
+  it; **Go's largest measured unit is 159 lines ≈ 2,000 tokens and does not.** The census called
+  that *"comfortably inside `num_predict`"* — true, and the wrong constraint. Same class as E-D9's
+  own lesson one level up.
+- **Separate the budgets** (SWE-agent, **+3.0 points** measured): *"edit didn't apply"* must not
+  consume the *"output didn't parse"* budget. That single choice is why a trajectory survives 33
+  failed edits on a format budget of 3. Cheap now, expensive to retrofit.
 
 **Evidence AGAINST (B), measured, on our own model family — verified s135.** Diff-XYZ
 ([arXiv 2510.12487](https://arxiv.org/html/2510.12487v1)) benchmarks **Qwen2.5-Coder**, our coder
@@ -244,29 +333,39 @@ base. *Diff Generation*, exact match: **0.5B 0.00 · 3B 0.00 · 7B 0.03 · 32B 0
 *"None of the open-source models achieve comparable performance on Diff Generation."* **Our 14B
 coder sits inside that gap.** Two further results bear on the design:
 
-- *"search-replace is a strong default for most larger models, while **udiff-l achieves the best
-  scores for smaller models**"* — and the stated mechanism is **marker collision**: *"Small models
-  may confuse single-character udiff markers (+, −, leading space) with ordinary code characters.
-  Replacing them with explicit tags (ADD/DEL/CON) makes the control tokens unambiguous and rare."*
+- ~~*"search-replace is a strong default for most larger models, while udiff-l achieves the best
+  scores for smaller models"* — mechanism: marker collision.~~ **STRUCK s136 — falsified by this
+  session's own survey and left standing here.** `ref:symbol-addressed-editing-survey` § 0 and § 5:
+  udiff-l is **the worst format at every size** (diff-generation EM — udiff-l 1.5B 0.00 / 3B 0.00 /
+  7B 0.00 / 32B 0.01 vs search-replace 0.20 / 0.14 / 0.28 / 0.68), and marker collision is the
+  paper's *hypothesis 2*, **which the authors reject**: *"this verbosity increases complexity
+  rather than actually helping the models"*; *"smaller open models benefit little from any
+  formatting choice."* The survey's instruction is **"do not ship ADD/DEL/CON tagging."**
 - Aider's own benchmark records GPT-3.5, when it emitted diffs at all, *"often uses it in a
   pathological manner, placing the entire original source file in the ORIGINAL block and the
   entire updated file in the UPDATED block — strictly worse than just using the whole edit
   format."*
 
-**How much of that transfers, and how much does not.** The mechanism transfers; the magnitude is
-NOT derivable from these numbers (`feedback_measure_magnitude_not_estimate`). Three reasons the
+**How much of that transfers, and how much does not — CORRECTED s136.** The magnitude is NOT
+derivable from these numbers (`feedback_measure_magnitude_not_estimate`). But the deeper point is
+that **this evidence is about arm C and (B) is arm A**: every format Diff-XYZ scores is one where
+the model reproduces existing bytes. Under (B) it reproduces none. Three further reasons the
 benchmark is not our configuration: (a) its formats are **text parsed from free output**, while
-(B) is **schema-enforced via `format`** — marker collision, the paper's own first mechanism, is
-exactly the class `format` eliminates; (b) a JSON schema with named fields (`operation`,
-`old_string`, `new_string`) is structurally **udiff-l** — explicit, unambiguous, rare control
-tokens — i.e. the variant the paper found *best* for small models, not the search-replace variant
-it found worst; (c) its metric is **exact match against a reference diff**, while our success
-criterion is an **applicable** edit. `0.03` is therefore not "3% success at our task."
+(B) is **schema-enforced via `format`**; (b) ~~a JSON schema with named fields is structurally
+udiff-l, the variant the paper found best for small models~~ — **STRUCK s136. Both halves are
+false.** `ref:symbol-addressed-editing-survey` § 0: udiff-l is *"the **worst** format at every
+size (7B **0.00**)"*, and marker collision is the paper's *hypothesis 2*, **which it rejects**
+(*"this verbosity increases complexity rather than actually helping the models"*). The claim
+entered from a search-result summary, was falsified by this survey, and was left standing in the
+body that consumed it; (c) its metric is **exact match against a reference diff**, while our
+criterion is an **applicable** edit. `0.03` is not "3% success at our task."
 
-**The pathological failure mode is the one that must be pre-registered.** If the coder emits the
-whole file as `old_string`, the design pays for the target **twice** again — the exact bound (B)
-exists to escape — while adding an edit language, and the run still *looks* successful. Aider
-measured this on a weak model; nothing rules it out at 14B. **P3-T0 must measure it directly.**
+**The pathological failure mode, re-aimed s136.** Aider's mode — the whole file inside the
+ORIGINAL block — **cannot occur under (B)**, because the model emits no anchor to put it in. The
+surviving failure of the same shape is **naming too coarse a unit**: the census measured
+`EvaluatedLoop` at **438 lines, 69% of `loop.py`**, so a model that names the class instead of
+the method pays for the target twice by a different route, and the run still *looks* successful.
+**That is what P3-T0 must measure directly**, and it is still the silent one.
 
 **Corroborating scaffolding costs, from our own evidence base:** SWE-agent carries a
 *"model-error requery ladder for recovering from malformed actions"* and an *"edit+lint tool with
@@ -366,22 +465,14 @@ whole-file's best case — the finding calls this *"a coverage failure, NOT 'who
 **So the comparison that would settle default-vs-fallback has never been run on a fair corpus**,
 and it costs GPU time and no design surface. It belongs before any edit-language build.
 
-**GATED on P3-T0, which is now the only thing that can decide this entry.** Revision 1 gated on
-*"can the coder emit a well-formed anchor"*; `format` largely answers that for free, so the probe
-must measure what `format` cannot guarantee. **Pre-registered criteria, all on the real 16K
-coder:**
+**GATED on P3-T0, which is now the only thing that can decide this entry.**
 
-1. **Anchor fidelity** — does the emitted `old_string` occur in the target **exactly and
-   uniquely**? This is precisely what `patch_file` already checks, so the negative control is
-   obvious: a case whose anchor cannot match, asserting a **loud** failure rather than a silent
-   no-op. *(Write the negative control FIRST — s133's delegated model inverted `applies_to` with
-   the case spelled out in its brief.)*
-2. **No degeneration to whole-file.** Measure `len(old_string) / len(file)` per operation. Aider
-   measured a weak model placing the entire file in the ORIGINAL block; if that happens here, (B)
-   pays for the target twice and **T-122's entire rationale evaporates** while the run still
-   reports success.
-3. **Applicability, not exact match** — the criterion is that the operation list applies cleanly
-   and the result passes the run's own acceptance, never equality with a reference diff.
+**The criteria live in ONE place — § P3-T0 — and are not restated here (s136).** This section
+previously carried a second copy, and the two drifted: the P3-T0 copy was rewritten while this one
+still asked for *"the emitted `old_string`"*, a mechanism the corrected entry does not propose.
+That is precisely the defect T-130 fixed by deriving `_change_heading` from `LoopResult.mode` —
+**one source, no second field to drift** — and it is worth noting that the duplication survived a
+full revision pass **within the same document**, unread.
 
 **If the probe reports poorly, T-122 collapses to remedy (c) — route large edits to Claude — by
 measurement rather than by concession.** Do not freeze before the probe reports. Target
@@ -620,35 +711,47 @@ planned as one — each step still emits a whole file unless P3-D1 says otherwis
 <!-- ref:delegate-p3-probe -->
 ## P3-T0 — The gating probe: can the 16K coder emit APPLICABLE structured edits?
 
-**Why this exists.** Every argument for P3-D1(B) on this page is **mechanism** reasoning — both
-walls, the eliminated sibling-drop class, first principle 2, the free apply path. Session 132
-recorded five findings that got the mechanism right and the **magnitude** wrong, and session 133
-continued it in both directions. Mechanism is derivable by reading; magnitude and reachability
-are not (`feedback_measure_magnitude_not_estimate`). Freezing P3-D1 on mechanism alone repeats
-that error at design scale — **and here the only measurements that exist point the other way**
-(Diff-XYZ on Qwen2.5-Coder: 7B 0.03 / 32B 0.24 on diff generation; see P3-D1).
+**Why this exists.** The remaining arguments for P3-D1(B) are **mechanism** reasoning — both
+walls, the eliminated sibling-drop class, first principle 1's *locate*, the apply path. Session
+132 recorded five findings that got the mechanism right and the **magnitude** wrong, and session
+133 continued it in both directions. Mechanism is derivable by reading; magnitude and reachability
+are not (`feedback_measure_magnitude_not_estimate`).
 
-**The question REFRAMED (s135).** The earlier framing — *"can it emit a well-formed anchor"* — is
-largely answered for free: `format` enforces schema conformance, and `ref:structured-output`
-records it as 100% reliable. **So the probe must measure exactly what `format` cannot
-guarantee**, which is three things, none of them syntactic.
+**What s136 removed from this probe's job, and what it added.** The apply half is **not open** —
+arm A of `ref:oficina-write-model-report` measured it at *"100% by construction"*, 25 output
+tokens flat across all three size buckets. And the Diff-XYZ counter-evidence scores **arm C**
+(model-emitted anchors), not arm A. So the probe no longer asks *"can the coder produce a working
+anchor"*. It asks the two questions arm A never covered:
 
-**Pre-registered criteria** (all on the real 16K coder, all decided before running — a criterion
-chosen after seeing output is not a measurement):
+- **arm A resolved only top-level functions** (`locate_function`: *"Only top-level functions (not
+  methods)"*), and the census says dotted addressing **is** the decision (`loop.py` 69% → 10%);
+- **arm A's corpus was 20 structurally-identical `op_k` fillers** — the report's own words,
+  *"the best possible case for whole-file fidelity … the synthetic corpus accidentally optimized
+  for whole-file"*, and *"you cannot conclude 'whole-file is safe' from a test that did not
+  stress it."*
 
-1. **Anchor fidelity.** Does the emitted `old_string` occur in the target **exactly and
-   uniquely**? `patch_file` already checks precisely this, so the harness is free and the
-   negative control is obvious.
-2. **No degeneration to whole-file.** Record `len(old_string) / len(file)` per operation.
-   **This is the criterion that can kill the design**: Aider measured a weak model placing the
-   entire source file in the ORIGINAL block and the entire updated file in the UPDATED block. If
-   that happens at 14B, (B) pays for the target **twice** — the exact bound it exists to escape —
-   T-122's rationale evaporates, **and the run still reports success.** A pass on criteria 1 and
-   3 with a failure here is the dangerous outcome, because nothing else surfaces it.
-3. **Applicability, never exact match.** Success = the operation list applies cleanly *and* the
-   result passes the run's own acceptance. Diff-XYZ scores equality with a reference diff, which
-   is a strictly harder question than ours and is why its numbers bound the mechanism but not the
-   magnitude.
+**Pre-registered criteria — REWRITTEN s136** (all on the real 16K coder, all fixed before running;
+amending them *before* a run is plan maintenance — the rule forbids only choosing them *after*
+seeing output). The previous set asked whether *"the emitted `old_string`"* matched and recorded
+`len(old_string)/len(file)`: under (B) the model emits no `old_string`, so those criteria measured
+arm C, a mechanism this entry does not propose.
+
+1. **Address fidelity.** Does the emitted `path`/`kind` resolve to **exactly one** unit in the
+   target? Multi-match and no-match are both hard failures (§ 3 — never "first match wins").
+   **Half of this is deterministic and belongs in the 408-suite, not on the GPU:** given a path,
+   `locate_unit` either resolves uniquely or fails loud, and *that* is the negative control. What
+   needs the live coder is only whether it **names a unit that exists**.
+2. **No degeneration to a coarse unit.** Record `len(resolved span)/len(file)` **and**
+   `len(body)/len(file)` per operation. The failure mode is **not** Aider's — the model cannot
+   paste the file into an anchor it does not emit — it is **naming the class instead of the
+   method** (`EvaluatedLoop` = 438 lines, 69% of `loop.py`). **Still the criterion that can kill
+   the design, and still the silent one.**
+3. **Applicability, never exact match.** Unchanged. Success = the operation list applies cleanly
+   *and* the result passes the run's own acceptance — never equality with a reference diff.
+4. **Response-shape discipline** (added s136). Does `body` contain **only** the unit — no fences,
+   no prose, no neighbouring code? The same 14B *"fenced its own block contents at runtime"* in
+   the s124 benchmark, and E-D5 already strips fences at the write step for exactly this reason.
+   This is the *"response-shape validation"* item E-D1 priced and nobody has built.
 
 **Method:**
 
@@ -661,26 +764,38 @@ chosen after seeing output is not a measurement):
 - **Change:** small, real, on a file the whole-file path cannot reach at all today.
 - **N attempts**, reporting the distribution and the failure modes — not a single run.
 
-**Write the apply-side negative control BEFORE the probe.** Session 133 recorded a delegated
-model inverting `applies_to` (`rubric.get("applies_to") != mode`, which refuses when the key is
-ABSENT) with the case spelled out in its brief; the negative-control test is what caught it. A
-structured edit language is strictly harder to emit correctly than a boolean check. The control:
-a case whose anchor **cannot** match, asserting a loud failure rather than a silent no-op.
+**Vehicle — do not build a new probe (s136).** All three apply arms already exist in
+`benchmarks/lib/writemodel_{apply,corpus,bench}.py`, driven by `run-write-model-bench.sh`. The
+unbuilt halves are (i) dotted `Class.method` resolution in `locate_function` and (ii) **E-D1's own
+prescribed corpus hardening** — *"heterogeneous filler, 500+ lines, re-run, revisit"* — which is
+the comparison this plan elsewhere notes *"has never been run on a fair corpus."* Hardening the
+corpus answers the whole-file omission question **and** criterion 2 in one run, and it costs GPU
+time and no design surface.
 
-**A cheap variant worth pricing in the same pass.** Diff-XYZ found *udiff-l* — explicit
-`ADD`/`DEL`/`CON` tags rather than terse markers — best for small models, attributing it to
-control tokens being *"unambiguous and rare."* A JSON schema with named fields is already that
-shape, but if criterion 1 or 2 fails, **verbosity of the operation vocabulary is the first knob
-to turn**, before abandoning (B).
+**Write the resolve-side negative control BEFORE the probe.** Session 133 recorded a delegated
+model inverting `applies_to` (`rubric.get("applies_to") != mode`, which refuses when the key is
+ABSENT) with the case spelled out in its brief; the negative-control test is what caught it. The
+control is now **deterministic and free**: a `path` that resolves to **nothing**, and a `path`
+that resolves to **two** units, each asserting a loud failure rather than a silent no-op or a
+first-match win. Both belong in the suite. **The test corpus must include a decorated symbol and
+a documented symbol** (`ref:unit-addressing-census` Finding 3) — the span hazards are invisible to
+a corpus of plain functions, and in Go a doc comment is on essentially every exported symbol, so
+it fires constantly rather than rarely.
+
+*(STRUCK s136 — a "cheap variant" recommending `ADD`/`DEL`/`CON` udiff-l tagging as the first knob
+to turn. `ref:symbol-addressed-editing-survey` § 0 falsifies both its premise and its mechanism:
+udiff-l is the worst format at every size and the paper rejects marker collision. The survey's own
+instruction is **"do not ship ADD/DEL/CON tagging."**)*
 
 **What each outcome decides:**
 
 | Probe result | Consequence |
 |---|---|
-| Applies reliably, no degeneration | Freeze P3-D1 on **(B)**, size-gated per the E-D1 split; author P3-D4's constraints text and P3-D5's ladder rungs **from what the probe needed** |
-| Degenerates to whole-file (criterion 2) | **(B) buys nothing** — it is the status quo with an edit language on top. T-122 → (c). |
-| Anchors unreliable (criterion 1) | The field has no implementation; **T-122 collapses to (c)** — route large edits to Claude — by measurement, consistent with `ref:delegate-non-goals` |
-| Mixed / fixable with prompt or vocabulary work | The cost s126 left unpriced now has a number; re-weigh against (c) with it, and run E-D1's prescribed corpus-hardening re-run before any default-mode change |
+| Resolves uniquely, units stay fine-grained | Freeze P3-D1 on **(B)**, size-gated per the E-D1 split; author P3-D4's constraints text and P3-D5's ladder rungs **from what the probe needed** |
+| Names coarse units (criterion 2) | **(B) buys little** — the target is still paid for twice, by a different route. Re-weigh against (c); a prompt/vocabulary fix is tried before abandoning |
+| Names units that do not exist (criterion 1) | **T-122 collapses to (c)** — route large edits to Claude — by measurement, consistent with `ref:delegate-non-goals` |
+| `body` carries fences/prose/neighbours (criterion 4) | Not fatal — this is the response-shape validation E-D1 priced; it becomes a build item with a measured need rather than a predicted one |
+| **Hardened corpus shows whole-file dropping code** | **E-D1's own fallback trigger fires on its own prescribed evidence.** The narrow ask stops being narrow — revisit default-vs-fallback, which E-D1 explicitly reserved for this |
 <!-- /ref:delegate-p3-probe -->
 
 ---

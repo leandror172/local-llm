@@ -55,6 +55,16 @@ largest in corpus:       159 lines   (runBatch)
 159 lines ≈ 2,000 output tokens — comfortably inside `num_predict`. Go's tail looks alarming as a
 percentage and is harmless in absolute terms.
 
+> **CORRECTION (session 136): `num_predict` is the wrong constraint, so the reassurance does not
+> hold for Go's tail.** `num_predict` bounds *truncation*; the binding limit on *quality* is the
+> **~800-token 14B output-reliability ceiling** (`.memories/KNOWLEDGE.md:55`), which
+> `docs/plans/oficina-p2-edit-mode.md` § Risks already names as feeding E-D1's fallback trigger —
+> *"E-D9 prevents truncation, not drift."* Python's 17-line median unit (~200 tokens) sits well
+> inside it. **Go's 159-line maximum is ~2.5× over it**, and `MarkdownStore.Stage` at 119 lines is
+> ~1.9× over. This is the same class as E-D9's own lesson one level up: an output budget justified
+> by "the unit is small" is a defect marker once the unit can be large. Unchanged: the *median*
+> Go unit is **7 lines**, so the tail is the exception, not the regime.
+
 ## Finding 2 — the "module-level code that isn't a def/class" problem barely exists
 
 **Python**, 237 top-level statements across 10 modules:
