@@ -201,6 +201,43 @@ def test_nonexistent_context_file_rejected():
     rejects(spec, with_rule=RULE_CONTEXT_FILE_MISSING)
 
 
+# --- Caller existence (T-133 / P3-D6): callers are fetched, so they must exist ---
+
+
+def test_nonexistent_caller_file_rejected():
+    """A context.callers entry pointing at a missing path is rejected, exactly as
+    context.files is. Now that callers are FETCHED rather than ignored, an unreadable
+    caller would otherwise contribute an empty block silently — which is the
+    declared-and-unconsumed failure this task exists to remove, one layer down."""
+    spec = an_answer_spec()
+    spec["context"] = {"callers": ["/definitely/not/here/caller.py"]}
+    rejects(spec, with_rule=RULE_CONTEXT_FILE_MISSING)
+
+
+def test_existing_caller_file_accepted(tmp_path):
+    """The negative control — a caller that exists on disk must pass, or the check is a wall."""
+    caller = tmp_path / "caller.py"
+    caller.write_text("from area import area\n")
+    spec = an_answer_spec()
+    spec["context"] = {"callers": [str(caller)]}
+    accepts(spec)
+
+
+# --- acceptance.validators is DELETED (T-133): stage selection derives from language ---
+
+
+def test_acceptance_validators_is_rejected_as_an_unknown_key(tmp_path):
+    """``acceptance.validators`` was declared and read by nothing. It is DELETED rather than
+    wired, because validator selection is derived from the language via ``language_pack`` /
+    ``resolve_language`` (T-92 Phase 4) and E-D2 refuses a spec field for a derivable fact.
+    Deleting the declaration is what restores the loud rejection ``extra='forbid'`` would
+    always have given an undeclared key — the declaration was the thing creating the silence."""
+    spec = a_function_spec(tmp_path)
+    spec["acceptance"]["validators"] = ["ruff"]
+
+    rejects(spec, with_rule=RULE_UNKNOWN_KEY)
+
+
 def test_existing_context_file_accepted(tmp_path):
     """A context.files entry that exists on disk is accepted."""
     f = tmp_path / "ctx.txt"

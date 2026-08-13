@@ -59,11 +59,13 @@ objective: >-                 # behavioral intent — "behavior, not implementat
 context:
   files: [...]                # explicit seed (server-side read, zero Claude tokens)
   refs: [...]                 # ref:KEY injection (existing mechanism)
-  callers: [...]              # per conventions: callers of generated code MUST be included
+  callers: [...]              # CONSUMED since T-133 (s136): own stable prompt segment
 acceptance:
   test_cmd: "..."             # executable gate, runs every iteration
   test_files: [...]           # tests-first: authored/reviewed BEFORE implementation runs
-  validators: [go, python...] # evaluator Phase 1 selection
+                              # `validators` DELETED T-133 (s136) — Phase 1 selection derives
+                              # from the language (language_pack/resolve_language); a spec
+                              # carrying it is now rejected as an unknown key
   structural: default         # CONSTRAINTS block checks (fn length, naming)
   rubric: <evaluator rubric>  # Phase 2 judge, runs once at packaging
 steps: [...]                  # optional ordered generation steps (decomposed generation)

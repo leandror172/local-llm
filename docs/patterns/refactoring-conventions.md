@@ -100,7 +100,7 @@ coder_model}`. The delta:
   all module-private inside Go's stage.
 
 A pack designed from the prediction would have carried three dead members (the exact
-failure that produced the dead `acceptance.validators` field), missed the command-
+failure that produced the dead `acceptance.validators` field — deleted s136, T-133), missed the command-
 ownership asymmetry, and been blindsided by the fallback. The 329-test suite, green with
 **zero test edits** across the extraction, is what "the duplication was the measurement
 instrument" buys.

@@ -6,7 +6,7 @@
 
 Operational, system-wide availability. **18 tools** exposed to Claude Code (verified
 2026-07-21 by decorator site, not by `grep -c "@mcp.tool"` — that returns 19 because one
-hit is a docstring). **408 tests green** (`make test`); live P4 judge-gate acceptance is a
+hit is a docstring). **416 tests green** (`make test`); live P4 judge-gate acceptance is a
 separate, deliberate non-test target — `make accept-p4`, real Ollama calls.
 All tools verified, call logging active. Server is the integration layer for all 3 repos.
 
@@ -59,7 +59,13 @@ mcp-server-side facts that live nowhere else:
 - `.claude/tools/ollama-cache-report.py` — per-run prefix-reuse report over `calls.jsonl`
   (duration-not-count rule).
 
-Suite 408; live gate `make accept-p4` (currently T-129/T-130 → PR #87).
+- **`context.callers` is a fetched prompt segment (T-133/P3-D6, s136).** Its own stable segment
+  between `context` and `current_file`; it and `context.files` share `workspace._rendered_file_block`.
+  Sibling `acceptance.validators` was **deleted**, not wired — validator selection derives from the
+  language (`language_pack`/`resolve_language`), and **the declaration was what created the silence**:
+  `extra="forbid"` rejects undeclared keys, so removing the field restores the loud rejection.
+
+Suite 416; live gate `make accept-p4` (green at T-133, s136).
 
 ## Deeper Memory -> KNOWLEDGE.md
 

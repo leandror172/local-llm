@@ -41,8 +41,11 @@ Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE
 - (1) **P3** — context & prompt assembly, now the phase in front, and the phase T-129/
   T-130 just gathered evidence for: prompt ORDER is worth 79–85% of a call's prefix eval, and a
   payload must name the artifact it carries. (2) **Axis B kinds reconsideration**
-  (fed by Axis A: language axis proven, taxonomy trigger for E-D8 rename + dead
-  `acceptance.validators` removal). (3) T-93 refs-diagram verdict;
+  (fed by Axis A: language axis proven, taxonomy trigger for the E-D8 rename. **The dead
+  `acceptance.validators` removal is NO LONGER Axis B's — it shipped in P3 as T-133, s136.**
+  The routing conflict resolved in P3's favour by mechanism: `validators` is not a *kind*, so
+  E-D8's trigger never covered it; only the QUICK "Next" line had routed it here).
+  (3) T-93 refs-diagram verdict;
   T-86 distribution (`OFICINA_VALIDATE_CODE`/`_REF_LOOKUP`/`OFICINA_GO`). Standing: T-102 gate
   busy-check (G-D8); T-111 cancel gap; T-118 run-provenance convention; prefix-reuse tracking via
   `.claude/tools/ollama-cache-report.py`; harden write-model corpus IF a real edit run drops

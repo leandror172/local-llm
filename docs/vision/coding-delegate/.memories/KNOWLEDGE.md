@@ -430,9 +430,18 @@ is present in the checkout (first slice: tests are committed; a declared-but-abs
 `AssemblyError` — no content source in v1 schema) → commit **C0** (`--allow-empty`, oficina identity
 via `-c` flags so host git-config is irrelevant) → evaluate C0 via the **injected `EvaluateFn` seam**
 (mirrors P1's `start_time_reader`/`generate`; the worker passes the real evaluator, T5) → build the
-run-constant stable prompt parts (objective + tests-read-from-worktree + context files; system/
+run-constant stable prompt parts (objective + tests-read-from-worktree + context files
++ **`callers`** (T-133) + **`current_file`** in edit mode (T-110/E-D3); system/
 constraints/refs layered in T6) → return `Assembly`, and if given an `emit` callback, fire
-`AssemblyDone{worktree_path, base_commit, test_files_materialized, baseline_failure_count}`.
+`AssemblyDone{worktree_path, base_commit, test_files_materialized, baseline_failure_count,
+`**`mode`**` }`.
+
+> **Drift note (s136).** This paragraph listed neither `current_file` nor `mode` — **both added
+> in s126 by T-110** — so the memory that *outranks the plan docs* had been two sessions stale
+> before T-133 added a third omission. The parts list and the `AssemblyDone` payload are the two
+> places assembly changes must land; check them whenever `_build_stable_parts` or the `emit` dict
+> changes. Same shape as `ref:corpus-divergence-pattern`: nothing here was wrong about what it
+> described, it just stopped describing everything.
 `snapshot(msg)` commits per iteration (powers the T5 delta diff + forensics). `teardown()` is
 `git worktree remove --force` + **`git worktree prune`** (both, per the P2-D5 advisor note — retention's
 `rm -rf` alone leaves a dangling `.git/worktrees/<id>`) and is idempotent; it **keeps the run branch**

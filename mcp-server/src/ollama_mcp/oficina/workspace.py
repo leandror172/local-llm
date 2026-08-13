@@ -44,6 +44,25 @@ EvaluateFn = Callable[[Path, Path, Dict[str, Any]], List[ParsedFailure]]
 _GIT_IDENTITY = ["-c", "user.email=oficina@localhost", "-c", "user.name=oficina"]
 
 
+def _rendered_file_block(paths: List[str]) -> str:
+    """Absolute-resolve ``paths`` and render them as the prompt's fenced-file block, "" for none.
+
+    One mechanism, two callers (``context.files`` and ``context.callers``) whose only
+    divergence is which prompt part they land in — so the seam stays at the call site and
+    this helper takes no mode flag (`ref:patterns-code-extract-keep-divergence`: a parameter
+    earns its place only when the callers actually differ). Reuses the server's own
+    ``_build_context_block``, the same block the single-shot path feeds the model, so the
+    paths cannot drift on context formatting.
+    """
+    if not paths:
+        return ""
+    from ollama_mcp import server as srv  # lazy, mirrors worker._build_prompt
+
+    return srv._build_context_block(
+        [srv.ContextFile(path=str(Path(p).resolve())) for p in paths]
+    )
+
+
 class AssemblyError(TriadError):
     """An assembling failure; ``whose`` defaults to the payload (a bad spec, not the system)."""
 
@@ -293,16 +312,20 @@ class Workspace:
     def _build_stable_parts(
         self, current_file: str = "", test_sources: Optional[List[str]] = None
     ) -> Dict[str, str]:
-        """The run-constant prompt parts (P2-D2): objective, tests-as-context, context files.
+        """The run-constant prompt parts (P2-D2): objective, tests-as-context, context files, callers.
 
         System/constraints/refs are layered on in T6; this fills the parts that come from
         the assembled worktree. Tests are read from the worktree (dual role: on disk for
         test_cmd, in the prompt as acceptance context — P2-D13); ``_materialize_test_files``
-        has already guaranteed each declared test exists. Context files render through the
-        server's ``_build_context_block`` — the same block the single-shot path feeds the
-        model, so the two paths cannot drift on context formatting. In edit mode
-        ``current_file`` carries the target's committed content (E-D3); it is run-constant
-        (the C0 content) and so belongs in the stable prefix — omitted when empty (greenfield).
+        has already guaranteed each declared test exists. Context files and callers both render
+        through ``_rendered_file_block`` (the server's own ``_build_context_block``) — the same
+        block the single-shot path feeds the model, so the three paths cannot drift on context
+        formatting. In edit mode ``current_file`` carries the target's committed content (E-D3);
+        it is run-constant (the C0 content) and so belongs in the stable prefix — omitted when
+        empty (greenfield).
+
+        ``context.callers`` (T-133/P3-D6) lands in its OWN part, not folded into ``context``:
+        they are different artifacts, and one header over both would misname what it carries.
         """
         parts: Dict[str, str] = {"objective": self.spec.get("objective", "") or ""}
         if current_file:
@@ -317,12 +340,12 @@ class Workspace:
         if test_blocks:
             parts["tests"] = "\n\n".join(test_blocks)
 
-        context_files = ((self.spec.get("context") or {}).get("files")) or []
-        if context_files:
-            from ollama_mcp import server as srv  # lazy, mirrors worker._build_prompt
-
-            parts["context"] = srv._build_context_block(
-                [srv.ContextFile(path=str(Path(f).resolve())) for f in context_files]
-            )
+        context = self.spec.get("context") or {}
+        context_block = _rendered_file_block(context.get("files") or [])
+        if context_block:
+            parts["context"] = context_block
+        callers_block = _rendered_file_block(context.get("callers") or [])
+        if callers_block:
+            parts["callers"] = callers_block
 
         return parts

@@ -55,7 +55,13 @@ class Acceptance(BaseModel):
     model_config = ConfigDict(extra="forbid")
     test_cmd: Optional[str] = None
     test_files: List[str] = Field(default_factory=list)
-    validators: List[str] = Field(default_factory=list)
+    # NOTE (T-133): ``validators`` was declared here and read by NOTHING. Deleted rather than
+    # wired — validator selection derives from the language via ``language_pack`` /
+    # ``resolve_language`` (T-92 Phase 4), and E-D2 refuses a spec field for a derivable fact.
+    # Deleting the declaration is what RESTORES the loud rejection: ``extra="forbid"`` rejects
+    # undeclared keys, so declaring it was the thing creating the silence. Its sibling
+    # ``context.callers`` got the opposite remedy (wired) because it has measured evidence and
+    # no derivable substitute. `ref:declared-unconsumed-spec-fields`.
     structural: Optional[str] = None
     rubric: Optional[str] = None
 
@@ -407,11 +413,19 @@ def _check_target_git_repo(spec: Dict[str, Any]) -> Optional[Rejection]:
 
 
 def _check_context_files(spec: Dict[str, Any]) -> Optional[Rejection]:
-    """Reject the first context.files entry that does not exist on disk."""
+    """Reject the first context.files or context.callers entry that does not exist on disk.
+
+    Both are FETCHED into the prompt by ``workspace._rendered_file_block``, so an unreadable
+    path would contribute an empty block and say nothing — the same silent-swallow shape T-133
+    removed one layer up, and first principle 4's *the harness should refuse*. One rule for
+    both, because the remedy is identical (fix the path); the ``what`` names which kind failed,
+    per the where/whose/what triad.
+    """
     context = spec.get("context") or {}
-    for file_path in context.get("files", []):
-        if not Path(file_path).exists():
-            return Rejection(RULE_CONTEXT_FILE_MISSING, f"context file not found: {file_path}")
+    for label, paths in (("context file", context.get("files", [])), ("caller", context.get("callers", []))):
+        for file_path in paths:
+            if not Path(file_path).exists():
+                return Rejection(RULE_CONTEXT_FILE_MISSING, f"{label} not found: {file_path}")
     return None
 
 
