@@ -94,6 +94,25 @@ can only pass teaches nothing** (tightening A5 exposed a flaw in A5's own fixtur
 sweep measures half the envelope** — `loop.py` fails the window wall at 16K *and* a throughput wall
 at 32K. New **T-131** (`timeout_s` is per-attempt; `_cold_start_grace` doubles it).
 
+Session 137 (2026-08-18): **P3-T0's benchmark half BUILT + MEASURED — symbol-addressed editing
+costs 43 output tokens FLAT** against whole-file's 120/216/479 by size bucket, **both arms 100%
+correct** (24 generations, `my-python-q25c14-16k`). Address fidelity **12/12** unique; the
+design-killing degeneration case **0/12**. Shipped: dotted `find_units`/`resolve_unit`/`apply_unit`
+beside a frozen `locate_function`, a class-bearing corpus, a 4th benchmark arm, **67 tests**.
+**Four findings the plan lacked** — the **~10.9% unaddressable-by-construction bound** (the
+`ref:unit-addressing-census` complement nobody had read: imports/constants/module docstring have
+no dotted address at all, bounding what P3-D1(B) can cover); **the harness must own indentation**;
+the synthetic corpus had **no classes**, making criterion 2 structurally unmeasurable; and the plan
+named **one vehicle for two questions**. **Corrected a load-bearing invariant: "16K is VRAM-fit" is
+FALSE on this host** — 9.31 GiB resident / **1.76 GiB on CPU** with the card deliberately quiet, so
+~13–21 tok/s was never reachable and every run has paid partial offload. **Two of my own claims
+were wrong and are retracted in place:** ~2–3 tok/s was really ≥5.1, and "8 ref keys break on clone"
+was false — they resolve via a tracked duplicate, and `ref-lookup.sh --paths` emits one line per KEY
+so it structurally cannot show two definitions. `check-ref-integrity.py` had it right inside a
+**39-error backlog nobody reads**. **`benchmarks/results/` is now tracked** (170 files, +1 MB) on the
+provenance argument. New **T-136** (67 benchmark tests run in no suite). Criterion 3 (real file, via
+oficina) and criterion 5 remain unrun.
+
 ## Repo Structure
 
 ```

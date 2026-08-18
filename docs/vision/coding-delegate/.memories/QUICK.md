@@ -11,10 +11,15 @@ and T-133. In flight: `feature/oficina-p3-unit-addressing` (P3-T0's deterministi
 
 Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE.md:
 
-- **s137** (08-18) — **P3-T0 started, and it is much smaller than s135 framed it**: the apply
-  half was already built and measured (arm A, s124), so the probe measures only dotted
-  `Class.method` resolution and a hardened corpus. 31 red tests specify `find_units`/
-  `resolve_unit` beside a frozen `locate_function`.
+- **s137** (08-18) — **P3-T0's BENCHMARK HALF BUILT AND MEASURED; the naming half clears its
+  gate.** Dotted addressing (`find_units`/`resolve_unit`/`apply_unit`) + class-bearing corpus +
+  a 4th `symbol_addressed` arm; 67 tests. **Measured: 43 output tokens FLAT vs whole-file's
+  120/216/479 by bucket, both arms 100% correct**; address fidelity 12/12, degeneration 0/12.
+  Four findings the plan lacked — the **~10.9% unaddressable-by-construction bound** (the
+  census's unread complement), **harness-owned indentation**, the corpus having **no classes**
+  at all, and one vehicle named for two questions. Also corrected: **"16K is VRAM-fit" is FALSE
+  on this host** (9.31 GiB resident / 1.76 on CPU with a quiet card). Criterion 3 (real file)
+  and criterion 5 remain unrun. § "The judge's payload" is unaffected.
 - **s134–s136** (07-30 → 08-11) — P3 planned, then **re-grounded twice**; P3-D1 still OPEN.
   T-133 shipped (`context.callers` wired, `acceptance.validators` deleted). Headline:
   **a 4-arm external prior-art survey never enumerated our own repo**, where the operation
