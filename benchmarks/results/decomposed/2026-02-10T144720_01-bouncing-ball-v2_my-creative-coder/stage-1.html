@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotating Square</title>
+<style>
+  body { margin: 0; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 600;
+canvas.height = 600;
+
+let lastTime = null;
+const squareSize = 400;
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+const rotationSpeed = (2 * Math.PI) / (8 * 1000); // radians per millisecond
+
+function drawSquare(time) {
+  if (!lastTime) lastTime = time;
+  const deltaTime = time - lastTime;
+  lastTime = time;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(deltaTime * rotationSpeed);
+  ctx.strokeStyle = 'blue';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-squareSize / 2, -squareSize / 2, squareSize, squareSize);
+  ctx.restore();
+
+  requestAnimationFrame(drawSquare);
+}
+
+requestAnimationFrame(drawSquare);
+</script>
+</body>
+</html>

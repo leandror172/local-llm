@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquarium Background</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="aquarium"></canvas>
+<script>
+const canvas = document.getElementById('aquarium');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+gradient.addColorStop(0, '#87CEEB');
+gradient.addColorStop(1, '#001a33');
+
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+const sandyBottomY = canvas.height * 0.85;
+ctx.fillStyle = '#c2b280';
+ctx.fillRect(0, sandyBottomY, canvas.width, canvas.height - sandyBottomY);
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+const pebbles = [];
+for (let i = 0; i < 30; i++) {
+  pebbles.push({
+    x: getRandomInt(0, canvas.width),
+    y: sandyBottomY,
+    size: getRandomInt(3, 8),
+    color: `hsl(${getRandomInt(10, 40)}, 50%, 60%)`
+  });
+}
+
+function drawPebbles() {
+  ctx.fillStyle = '#c2b280';
+  pebbles.forEach(pebble => {
+    ctx.beginPath();
+    ctx.arc(pebble.x, pebble.y, pebble.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+const lightRays = [];
+for (let i = 0; i < getRandomInt(5, 7); i++) {
+  const angle = Math.random() * Math.PI / 6;
+  lightRays.push({
+    x: canvas.width / 2,
+    y: 0,
+    dx: Math.cos(angle),
+    dy: Math.sin(angle),
+    opacity: Math.random() * (0.06 - 0.03) + 0.03
+  });
+}
+
+function drawLightRays() {
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  lightRays.forEach(ray => {
+    ctx.beginPath();
+    ctx.moveTo(ray.x, ray.y);
+    ctx.lineTo(ray.x + ray.dx * canvas.width / 2, ray.y + ray.dy * canvas.height);
+    ctx.lineTo(ray.x - ray.dx * canvas.width / 4, ray.y + ray.dy * canvas.height);
+    ctx.closePath();
+    ctx.fillStyle = 'white';
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+const fish = [];
+for (let i = 0; i < 8; i++) {
+  const bodyLength = getRandomInt(30, 60);
+  fish.push({
+    x: getRandomInt(bodyLength / 2 + 50, canvas.width - bodyLength / 2 - 50),
+    y: getRandomInt(50, sandyBottomY - bodyLength - 50),
+    vx: (getRandomInt(30, 80) * Math.random() * (Math.random() < 0.5 ? -1 : 1)) / 10,
+    size: bodyLength,
+    color: `hsl(${getRandomInt(20, 60)}, 70%, 40%)`,
+    direction: Math.random() < 0.5 ? -1 : 1
+  });
+}
+
+function drawFish(fish) {
+  fish.forEach(f => {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(Math.atan2(f.dy, f.dx));
+    ctx.fillStyle = f.color;
+    
+    // Fish body
+    ctx.beginPath();
+    ctx.ellipse(0, 0, f.size / 2, f.size / 4, 0, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Tail fin
+    const tailX = -f.size / 2;
+    ctx.beginPath();
+    ctx.moveTo(tailX, 0);
+    ctx.lineTo(tailX - f.size / 3, -f.size / 4);
+    ctx.lineTo(tailX - f.size / 3, f.size / 4);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Eye
+    const eyeX = f.size / 4;
+    ctx.beginPath();
+    ctx.arc(eyeX, -f.size / 8, f.size / 10, 0, 2 * Math.PI);
+    ctx.fillStyle = 'white'; ctx.fill();
+    ctx.beginPath();
+    ctx.arc(eyeX + f.size / 2, -f.size / 8, f.size / 20, 0, 2 * Math.PI);
+    ctx.fillStyle = 'black'; ctx.fill();
+    
+    ctx.restore();
+  });
+}
+
+function updateFish(fish) {
+  fish.forEach(f => {
+    f.x += f.vx * f.direction;
+    if (f.x < -50 || f.x > canvas.width + 50) {
+      f.direction *= -1;
+    }
+    if (f.y < -50 || f.y > sandyBottomY + 50) {
+      f.y = getRandomInt(50, sandyBottomY - f.size - 50);
+      f.vx = (getRandomInt(30, 80) * Math.random() * (Math.random() < 0.5 ? -1 : 1)) / 10;
+    }
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#c2b280';
+  ctx.fillRect(0, sandyBottomY, canvas.width, canvas.height - sandyBottomY);
+  drawPebbles();
+  updateFish(fish);
+  drawFish(fish);
+  drawLightRays();
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>

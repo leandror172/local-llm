@@ -1,0 +1,190 @@
+{
+  "run_id": "2026-02-09T082340",
+  "timestamp": "2026-02-09 08:39:36",
+  "models": {
+    "my-coder": {
+      "base_model": "qwen2.5-coder:7b",
+      "category": "backend"
+    },
+    "my-coder-q3": {
+      "base_model": "qwen3:8b",
+      "category": "backend"
+    },
+    "my-creative-coder": {
+      "base_model": "qwen2.5-coder:7b",
+      "category": "visual"
+    },
+    "my-creative-coder-q3": {
+      "base_model": "qwen3:8b",
+      "category": "visual"
+    }
+  },
+  "results": [
+    {
+      "model": "my-coder",
+      "prompt_id": "01-go-lru-cache",
+      "category": "backend",
+      "description": "Concurrent-safe LRU cache with TTL expiration in Go",
+      "status": "success",
+      "eval_count": 1635,
+      "tok_s": 65.9,
+      "prompt_eval_count": 185,
+      "total_seconds": 26.18,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "code/my-coder--01-go-lru-cache.go",
+      "extracted_lines": 163
+    },
+    {
+      "model": "my-coder",
+      "prompt_id": "02-java-csv-parser",
+      "category": "backend",
+      "description": "Stream-based CSV parser with error handling in Java",
+      "status": "success",
+      "eval_count": 852,
+      "tok_s": 66.6,
+      "prompt_eval_count": 201,
+      "total_seconds": 13.59,
+      "load_seconds": 0.05,
+      "think_tokens": 0,
+      "extracted_file": "code/my-coder--02-java-csv-parser.java",
+      "extracted_lines": 94
+    },
+    {
+      "model": "my-coder",
+      "prompt_id": "03-merge-intervals",
+      "category": "backend",
+      "description": "Merge overlapping intervals algorithm",
+      "status": "success",
+      "eval_count": 854,
+      "tok_s": 66.6,
+      "prompt_eval_count": 208,
+      "total_seconds": 13.67,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "code/my-coder--03-merge-intervals.java",
+      "extracted_lines": 82
+    },
+    {
+      "model": "my-coder-q3",
+      "prompt_id": "01-go-lru-cache",
+      "category": "backend",
+      "description": "Concurrent-safe LRU cache with TTL expiration in Go",
+      "status": "timeout",
+      "timeout": 120
+    },
+    {
+      "model": "my-coder-q3",
+      "prompt_id": "02-java-csv-parser",
+      "category": "backend",
+      "description": "Stream-based CSV parser with error handling in Java",
+      "status": "timeout",
+      "timeout": 120
+    },
+    {
+      "model": "my-coder-q3",
+      "prompt_id": "03-merge-intervals",
+      "category": "backend",
+      "description": "Merge overlapping intervals algorithm",
+      "status": "success",
+      "eval_count": 6238,
+      "tok_s": 54.4,
+      "prompt_eval_count": 210,
+      "total_seconds": 116.38,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "code/my-coder-q3--03-merge-intervals.java",
+      "extracted_lines": 77
+    },
+    {
+      "model": "my-creative-coder",
+      "prompt_id": "01-bouncing-ball-rotating-square",
+      "category": "visual",
+      "description": "Ball bouncing inside a slowly rotating square without gravity",
+      "status": "success",
+      "eval_count": 651,
+      "tok_s": 66.4,
+      "prompt_eval_count": 226,
+      "total_seconds": 10.44,
+      "load_seconds": 0.05,
+      "think_tokens": 0,
+      "extracted_file": "html/my-creative-coder--01-bouncing-ball-rotating-square.html",
+      "extracted_lines": 85
+    },
+    {
+      "model": "my-creative-coder",
+      "prompt_id": "02-twenty-balls-heptagon",
+      "category": "visual",
+      "description": "20 colored balls bouncing inside a spinning heptagon with physics",
+      "status": "success",
+      "eval_count": 1711,
+      "tok_s": 64.2,
+      "prompt_eval_count": 501,
+      "total_seconds": 28.27,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "html/my-creative-coder--02-twenty-balls-heptagon.html",
+      "extracted_lines": 170
+    },
+    {
+      "model": "my-creative-coder",
+      "prompt_id": "03-aquarium-screensaver",
+      "category": "visual",
+      "description": "Animated fish tank screensaver with procedural fish, bubbles, and plants",
+      "status": "success",
+      "eval_count": 1365,
+      "tok_s": 64.0,
+      "prompt_eval_count": 296,
+      "total_seconds": 22.69,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "html/my-creative-coder--03-aquarium-screensaver.html",
+      "extracted_lines": 176
+    },
+    {
+      "model": "my-creative-coder-q3",
+      "prompt_id": "01-bouncing-ball-rotating-square",
+      "category": "visual",
+      "description": "Ball bouncing inside a slowly rotating square without gravity",
+      "status": "success",
+      "eval_count": 8688,
+      "tok_s": 51.8,
+      "prompt_eval_count": 228,
+      "total_seconds": 170.22,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "html/my-creative-coder-q3--01-bouncing-ball-rotating-square.html",
+      "extracted_lines": 124
+    },
+    {
+      "model": "my-creative-coder-q3",
+      "prompt_id": "02-twenty-balls-heptagon",
+      "category": "visual",
+      "description": "20 colored balls bouncing inside a spinning heptagon with physics",
+      "status": "success",
+      "eval_count": 11151,
+      "tok_s": 50.4,
+      "prompt_eval_count": 503,
+      "total_seconds": 224.62,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "html/my-creative-coder-q3--02-twenty-balls-heptagon.html",
+      "extracted_lines": 201
+    },
+    {
+      "model": "my-creative-coder-q3",
+      "prompt_id": "03-aquarium-screensaver",
+      "category": "visual",
+      "description": "Animated fish tank screensaver with procedural fish, bubbles, and plants",
+      "status": "success",
+      "eval_count": 2964,
+      "tok_s": 55.6,
+      "prompt_eval_count": 298,
+      "total_seconds": 54.24,
+      "load_seconds": 0.05,
+      "think_tokens": 0,
+      "extracted_file": "html/my-creative-coder-q3--03-aquarium-screensaver.html",
+      "extracted_lines": 244
+    }
+  ]
+}

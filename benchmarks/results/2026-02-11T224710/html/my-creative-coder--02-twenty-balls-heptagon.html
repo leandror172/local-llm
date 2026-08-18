@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heptagon Ball Simulation</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #282c34; }
+  canvas { border: 1px solid white; }
+</style>
+</head>
+<body>
+<canvas id="simulationCanvas"></canvas>
+<script>
+const canvas = document.getElementById('simulationCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = 800;
+canvas.height = 800;
+
+const numBalls = 20;
+const ballRadius = 10;
+const heptagonSideLength = 300;
+const gravity = 0.5;
+const friction = 0.97;
+const heptagonCenter = { x: canvas.width / 2, y: canvas.height / 2 };
+const heptagonAngleStep = (Math.PI * 2) / 7;
+
+class Ball {
+  constructor(id, color, position, velocity) {
+    this.id = id;
+    this.color = color;
+    this.position = { ...position };
+    this.velocity = { x: velocity.x, y: velocity.y };
+    this.rotation = 0;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.1;
+  }
+
+  update() {
+    this.velocity.y += gravity;
+    this.velocity.x *= friction;
+    this.velocity.y *= friction;
+
+    this.position.x += this.velocity.x;
+    this.position.y += this.velocity.y;
+
+    this.rotation += this.rotationSpeed;
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.position.x, this.position.y);
+    ctx.rotate(this.rotation);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, ballRadius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(this.id.toString(), 0, 0);
+
+    ctx.restore();
+  }
+
+  collideWithHeptagon() {
+    const angle = Math.atan2(this.position.y - heptagonCenter.y, this.position.x - heptagonCenter.x);
+    const sideIndex = Math.floor((angle + Math.PI / 14) / heptagonAngleStep);
+
+    const nextSideAngle = (sideIndex * heptagonAngleStep + heptagonAngleStep / 2) % (Math.PI * 2);
+    const nextSideX = heptagonCenter.x + Math.cos(nextSideAngle) * heptagonSideLength;
+    const nextSideY = heptagonCenter.y + Math.sin(nextSideAngle) * heptagonSideLength;
+
+    const distanceToSide = Math.abs((this.position.x - heptagonCenter.x) * Math.sin(nextSideAngle) - (this.position.y - heptagonCenter.y) * Math.cos(nextSideAngle)) / Math.sqrt(Math.pow(Math.cos(nextSideAngle), 2) + Math.pow(Math.sin(nextSideAngle), 2));
+
+    if (distanceToSide < ballRadius) {
+      const normalX = Math.cos(nextSideAngle);
+      const normalY = Math.sin(nextSideAngle);
+
+      const relativeVelocityX = this.velocity.x - normalX * (this.velocity.x * normalX + this.velocity.y * normalY);
+      const relativeVelocityY = this.velocity.y - normalY * (this.velocity.x * normalX + this.velocity.y * normalY);
+
+      const restitution = 1;
+      const impulseX = restitution * relativeVelocityX / (2 * 1); // Assuming mass of 1 for simplicity
+      const impulseY = restitution * relativeVelocityY / (2 * 1);
+
+      this.velocity.x -= impulseX * normalX;
+      this.velocity.y -= impulseY * normalY;
+
+      this.position.x += impulseX * normalX;
+      this.position.y += impulseY * normalY;
+    }
+  }
+
+  collideWithBall(other) {
+    const dx = other.position.x - this.position.x;
+    const dy = other.position.y - this.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < ballRadius * 2) {
+      const normalX = dx / distance;
+      const normalY = dy / distance;
+
+      const relativeVelocityX = this.velocity.x - other.velocity.x;
+      const relativeVelocityY = this.velocity.y - other.velocity.y;
+
+      const restitution = 1;
+      const impulse = (-(1 + restitution) * (relativeVelocityX * normalX + relativeVelocityY * normalY)) / ((this.mass + other.mass) / (this.mass * other.mass));
+
+      this.velocity.x -= impulse * normalX * this.mass / (this.mass + other.mass);
+      this.velocity.y -= impulse * normalY * this.mass / (this.mass + other.mass);
+
+      other.velocity.x += impulse * normalX * other.mass / (this.mass + other.mass);
+      other.velocity.y += impulse * normalY * other.mass / (this.mass + other.mass);
+    }
+  }
+}
+
+const colors = [
+  '#f8b862', '#f6ad49', '#f39800', '#f08300', '#ec6d51',
+  '#ee7948', '#ed6d3d', '#ec6800', '#ec6800', '#ee7800',
+  '#eb6238', '#ea5506', '#ea5506', '#eb6101', '#e49e61',
+  '#e45e32', '#e17b34', '#dd7a56', '#db8449', '#d66a35'
+];
+
+const balls = [];
+for (let i = 0; i < numBalls; i++) {
+  const angle = (i * heptagonAngleStep + Math.PI / 14) % (Math.PI * 2);
+  const x = heptagonCenter.x + Math.cos(angle) * heptagonSideLength;
+  const y = heptagonCenter.y + Math.sin(angle) * heptagonSideLength;
+  const velocity = { x: (Math.random() - 0.5) * 1, y: (Math.random() - 0.5) * 1 };
+  balls.push(new Ball(i + 1, colors[i % colors.length], { x, y }, velocity));
+}
+
+function update() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < numBalls; i++) {
+    const ball = balls[i];
+    ball.update();
+
+    if (ball.position.x - ballRadius < 0 || ball.position.x + ballRadius > canvas.width) {
+      ball.velocity.x *= -1;
+    }
+    if (ball.position.y - ballRadius < 0 || ball.position.y + ballRadius > canvas.height) {
+      ball.velocity.y *= -1;
+    }
+
+    for (let j = i + 1; j < numBalls; j++) {
+      const otherBall = balls[j];
+      ball.collideWithBall(otherBall);
+    }
+
+    ball.collideWithHeptagon();
+
+    ball.draw();
+  }
+}
+
+function animate(timestamp) {
+  requestAnimationFrame(animate);
+  update();
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

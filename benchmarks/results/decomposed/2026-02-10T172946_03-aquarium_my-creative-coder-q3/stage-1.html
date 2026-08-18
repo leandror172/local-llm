@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aquarium Background</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<canvas></canvas>
+<script>
+  const canvas = document.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let width, height;
+
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, '#87CEEB');
+  gradient.addColorStop(1, '#001a33');
+
+  const pebbles = [];
+  const lightRays = [];
+
+  function init() {
+    // Pebbles
+    for (let i = 0; i < 30; i++) {
+      const x = Math.random() * (width - 10);
+      const radius = Math.random() * 5 + 3;
+      const color = `hsl(${Math.random() * 360}, 40%, 60%)`;
+      pebbles.push({ x, y: height - 15 - radius, radius, color });
+    }
+
+    // Light rays
+    for (let i = 0; i < 6; i++) {
+      const x = Math.random() * width;
+      const angle = Math.random() * Math.PI / 180 * 10 - Math.PI / 36;
+      const length = Math.random() * height * 0.6;
+      const opacity = 0.04 + Math.random() * 0.02;
+      lightRays.push({ x, angle, length, opacity });
+    }
+  }
+
+  function draw() {
+    // Background gradient
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Sandy bottom
+    ctx.fillStyle = '#c2b280';
+    ctx.fillRect(0, height - 15, width, 15);
+
+    // Pebbles
+    for (const pebble of pebbles) {
+      ctx.beginPath();
+      ctx.arc(pebble.x, pebble.y, pebble.radius, 0, Math.PI * 2);
+      ctx.fillStyle = pebble.color;
+      ctx.fill();
+    }
+
+    // Light rays
+    for (const ray of lightRays) {
+      ctx.save();
+      ctx.translate(ray.x, 0);
+      ctx.rotate(ray.angle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -ray.length);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255, 255, 25, ' + ray.opacity + ')';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  init();
+  draw();
+</script>
+</body>
+</html>

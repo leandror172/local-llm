@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heptagon Ball Simulation</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #282c34; }
+  canvas { border: 1px solid white; }
+</style>
+</head>
+<body>
+<canvas id="simulationCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('simulationCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = 800;
+canvas.height = 800;
+
+const heptagonRadius = 350;
+const ballCount = 20;
+const ballRadius = 10;
+const gravity = 0.5;
+const friction = 0.98;
+const colors = [
+  '#f8b862', '#f6ad49', '#f39800', '#f08300', '#ec6d51',
+  '#ee7948', '#ed6d3d', '#ec6800', '#ec6800', '#ee7800',
+  '#eb6238', '#ea5506', '#ea5506', '#eb6101', '#e49e61',
+  '#e45e32', '#e17b34', '#dd7a56', '#db8449', '#d66a35'
+];
+
+class Ball {
+  constructor(x, y, radius, color) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.color = color;
+    this.vx = Math.random() * 2 - 1;
+    this.vy = Math.random() * 2 - 1;
+    this.spin = Math.random() * 0.5 - 0.25;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= friction;
+    this.vy *= friction;
+
+    // Apply gravity
+    this.vy += gravity;
+
+    // Collision detection with walls
+    if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+      this.vx = -this.vx * 0.95;
+    }
+    if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) {
+      this.vy = -this.vy * 0.95;
+    }
+
+    // Collision detection with heptagon
+    for (let i = 0; i <= 7; i++) {
+      const angle = (i / 7) * Math.PI * 2;
+      const x1 = canvas.width / 2 + heptagonRadius * Math.cos(angle);
+      const y1 = canvas.height / 2 + heptagonRadius * Math.sin(angle);
+      const x2 = canvas.width / 2 + heptagonRadius * Math.cos((i + 1) / 7 * Math.PI * 2);
+      const y2 = canvas.height / 2 + heptagonRadius * Math.sin((i + 1) / 7 * Math.PI * 2);
+
+      if (this.x - this.radius < x1 && this.x + this.radius > x2 &&
+          this.y - this.radius < y1 && this.y + this.radius > y2) {
+        const dx = this.x - canvas.width / 2;
+        const dy = this.y - canvas.height / 2;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const overlap = heptagonRadius - distance;
+
+        if (overlap > 0) {
+          this.x += dx / distance * overlap;
+          this.y += dy / distance * overlap;
+        }
+
+        const nx = (x1 - x2) / Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+        const ny = (y1 - y2) / Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+
+        const vnx = this.vx * nx + this.vy * ny;
+        const vny = this.vx * ny - this.vy * nx;
+
+        this.vx -= 2 * vnx * nx;
+        this.vy -= 2 * vny * ny;
+      }
+    }
+
+    // Ball collision detection
+    for (let i = 0; i < ballCount; i++) {
+      if (this !== balls[i]) {
+        const dx = this.x - balls[i].x;
+        const dy = this.y - balls[i].y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = this.radius + balls[i].radius;
+
+        if (distance < minDistance) {
+          const overlap = minDistance - distance;
+          this.x += dx / distance * overlap;
+          this.y += dy / distance * overlap;
+          balls[i].x -= dx / distance * overlap;
+          balls[i].y -= dy / distance * overlap;
+
+          const nx = dx / distance;
+          const ny = dy / distance;
+
+          const vnx1 = this.vx * nx + this.vy * ny;
+          const vny1 = this.vx * ny - this.vy * nx;
+          const vnx2 = balls[i].vx * nx + balls[i].vy * ny;
+          const vny2 = balls[i].vx * ny - balls[i].vy * nx;
+
+          this.vx -= 2 * (vnx1 - vnx2) * nx;
+          this.vy -= 2 * (vny1 - vny2) * ny;
+          balls[i].vx += 2 * (vnx2 - vnx1) * nx;
+          balls[i].vy += 2 * (vny2 - vny1) * ny;
+        }
+      }
+    }
+
+    // Spin effect
+    this.x += Math.cos(this.spin);
+    this.y += Math.sin(this.spin);
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(Math.atan2(this.vy, this.vx));
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.color.slice(1), 0, 0);
+  }
+}
+
+const balls = [];
+for (let i = 0; i < ballCount; i++) {
+  const angle = (i / ballCount) * Math.PI * 2;
+  balls.push(new Ball(canvas.width / 2 + heptagonRadius * Math.cos(angle), canvas.height / 2, ballRadius, colors[i]));
+}
+
+let rotationAngle = 0;
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (const ball of balls) {
+    ball.update();
+    ball.draw();
+  }
+
+  rotationAngle += 0.01;
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

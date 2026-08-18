@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 61,
+    "eval_duration": 1.07,
+    "wall_time": 1.7,
+    "tok_per_sec": 57.0,
+    "content_chars": 215,
+    "thinking_chars": 0,
+    "prompt_tokens": 201,
+    "json_valid": true,
+    "content_preview": "{\n  \"bugs\": [\n    {\n      \"description\": \"Division by zero\",\n      \"severity\": \"critical\"\n    }\n  ],\n  \"has_bugs\": true\n  \t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t, \"fix_suggestion\": \"Add a check for division by zero and ret"
+  },
+  "format=off": {
+    "eval_count": 48,
+    "eval_duration": 0.84,
+    "wall_time": 0.93,
+    "tok_per_sec": 57.2,
+    "content_chars": 141,
+    "thinking_chars": 0,
+    "prompt_tokens": 201,
+    "json_valid": false,
+    "content_preview": "```go\nfunc divide(a, b int) (int, error) {\n    if b == 0 {\n        return 0, fmt.Errorf(\"division by zero\")\n    }\n    return a / b, nil\n}\n```"
+  }
+}

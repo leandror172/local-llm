@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bouncing Ball Simulation</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
+  canvas { border: 1px solid black; }
+</style>
+</head>
+<body>
+<canvas id="simulationCanvas" width="600" height="600"></canvas>
+<script>
+const canvas = document.getElementById('simulationCanvas');
+const ctx = canvas.getContext('2d');
+
+const ballRadius = 20;
+let ballX = canvas.width / 2;
+let ballY = canvas.height / 2;
+let ballSpeedX = 2;
+let ballSpeedY = -2;
+
+const squareSize = 500;
+let rotationAngle = 0;
+const rotationSpeed = Math.PI / (8 * 16); // 8 seconds for one full rotation
+
+function drawBall(x, y) {
+  ctx.beginPath();
+  ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+  ctx.closePath();
+}
+
+function drawSquare() {
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(rotationAngle);
+  ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+  ctx.beginPath();
+  ctx.rect(50, 50, squareSize, squareSize);
+  ctx.strokeStyle = 'black';
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawTrail() {
+  ctx.beginPath();
+  ctx.moveTo(ballX, ballY);
+  ctx.lineTo(ballX + ballSpeedX * 10, ballY + ballSpeedY * 10);
+  ctx.strokeStyle = 'gray';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function updateBallPosition() {
+  ballX += ballSpeedX;
+  ballY += ballSpeedY;
+
+  if (ballX - ballRadius < 50 || ballX + ballRadius > canvas.width - 50) {
+    ballSpeedX *= -1;
+  }
+  if (ballY - ballRadius < 50 || ballY + ballRadius > canvas.height - 50) {
+    ballSpeedY *= -1;
+  }
+
+  rotationAngle += rotationSpeed;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawSquare();
+  drawBall(ballX, ballY);
+  drawTrail();
+  updateBallPosition();
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>

@@ -16,10 +16,12 @@ Arms:
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 from pathlib import Path
 
@@ -30,15 +32,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ollama_client import ollama_chat  # noqa: E402
 
 from writemodel_apply import (  # noqa: E402
+    KINDS,
     apply_code_anchored,
     apply_search_replace,
+    apply_unit,
     apply_whole_file,
     locate_function,
+    resolve_unit,
     strip_code_fences,
 )
-from writemodel_corpus import Task, generate_corpus  # noqa: E402
+from writemodel_corpus import Task, generate_class_task, generate_corpus  # noqa: E402
 
-ARMS = ("code_anchored", "whole_file", "model_anchored")
+ARMS = ("code_anchored", "whole_file", "model_anchored", "symbol_addressed")
+
+# Arm D's response schema (P3-T0). `path` and `body` are grammar-constrained because their
+# SHAPE is not what is under test — but `kind` is a FREE STRING on purpose. Constraining it to
+# an enum would make `unknown_kind` unobservable, and "the model used the wrong vocabulary"
+# and "the model named the wrong unit" have opposite remedies. A probe must not use a grammar
+# to hide the failure it exists to measure.
+_UNIT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "path": {"type": "array", "items": {"type": "string"}},
+        "kind": {"type": "string"},
+        "body": {"type": "string"},
+    },
+    "required": ["path", "kind", "body"],
+}
 
 _SYSTEM = "You are a precise Python engineer. Output only what is asked — no explanation."
 
@@ -75,14 +95,28 @@ def build_prompt(task: Task, arm: str) -> str:
             "Return one or more edit blocks in this EXACT format (verbatim search text):\n"
             "<<<<<<< SEARCH\n<lines to find>\n=======\n<replacement lines>\n>>>>>>> REPLACE"
         )
+    if arm == "symbol_addressed":
+        return (
+            f"{task.behavior}\n\nHere is the complete file:\n\n"
+            f"```python\n{task.source}```\n\n"
+            "Name the ONE unit to replace and give its new source. Reply as JSON:\n"
+            '  "path": the dotted address as a list, e.g. ["ClassName", "method_name"] '
+            'for a method or ["function_name"] for a top-level function\n'
+            '  "kind": "Function", "Method" or "Class"\n'
+            '  "body": the complete new source of THAT UNIT ONLY — no other functions, '
+            "no surrounding code, no fences"
+        )
     raise ValueError(f"unknown arm: {arm}")
 
 
-def call_model(prompt: str, model: str, timeout: int) -> tuple[str, int]:
+def call_model(
+    prompt: str, model: str, timeout: int, schema: dict | None = None
+) -> tuple[str, int]:
     """One model call; single retry on a cold-start timeout. Returns (content, eval_count)."""
     for attempt in (1, 2):
         try:
-            resp = ollama_chat(prompt, model=model, system=_SYSTEM, timeout=timeout, keep_alive="10m")
+            resp = ollama_chat(prompt, model=model, system=_SYSTEM, timeout=timeout,
+                               keep_alive="10m", format_schema=schema)
             return resp["content"], int(resp.get("eval_count") or 0)
         except TimeoutError:
             if attempt == 2:
@@ -100,7 +134,81 @@ def apply_output(task: Task, arm: str, content: str) -> str | None:
         return apply_whole_file(text)
     if arm == "model_anchored":
         return apply_search_replace(task.source, text)
+    if arm == "symbol_addressed":
+        emitted = _parse_unit(content)
+        if emitted is None:
+            return None
+        return apply_unit(task.source, emitted["path"], emitted["body"], kind=emitted["kind"])
     raise ValueError(f"unknown arm: {arm}")
+
+
+def _parse_unit(content: str) -> dict | None:
+    """The arm's JSON reply, or None if it is not usable. Grammar-constrained, so a miss here
+    is itself a finding rather than routine parsing noise."""
+    try:
+        obj = json.loads(strip_code_fences(content))
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(obj, dict):
+        return None
+    path, kind, body = obj.get("path"), obj.get("kind"), obj.get("body")
+    if not isinstance(path, list) or not all(isinstance(p, str) for p in path):
+        return None
+    if not isinstance(kind, str) or not isinstance(body, str):
+        return None
+    return {"path": path, "kind": kind, "body": body}
+
+
+def _symbol_metrics(task: Task, content: str) -> dict:
+    """Criteria 1, 2, 4 and 5 of P3-T0, measured per attempt.
+
+    These are recorded whether or not the edit applied: a run that fails is exactly where the
+    distribution of FAILURE MODES matters, and collapsing them into `applied: False` is what
+    the distinct resolve reasons exist to prevent.
+    """
+    m = {
+        "emitted_path": None, "emitted_kind": None,
+        "resolve_reason": "unparseable_reply",      # criterion 1
+        "span_ratio": None, "body_ratio": None,     # criterion 2
+        "body_fenced": None, "body_units": None, "body_parses": None,   # criterion 4
+        "body_has_import": None,                    # criterion 5
+    }
+    emitted = _parse_unit(content)
+    if emitted is None:
+        return m
+
+    file_lines = len(task.source.splitlines()) or 1
+    body = emitted["body"]
+    m["emitted_path"] = emitted["path"]
+    m["emitted_kind"] = emitted["kind"]
+    m["body_ratio"] = round(len(body.splitlines()) / file_lines, 3)
+    m["body_fenced"] = "```" in body
+
+    # Parse the DEFENCED body: a fence would otherwise make the body unparseable and take the
+    # neighbouring-code count down with it, so one criterion-4 defect would silently hide the
+    # other. `body_fenced` above already recorded the raw observation, independently.
+    try:
+        tree = ast.parse(textwrap.dedent(strip_code_fences(body)))
+    except SyntaxError:
+        m["body_parses"] = False
+    else:
+        m["body_parses"] = True
+        # >1 top-level unit means it emitted NEIGHBOURING code, not just the one asked for.
+        m["body_units"] = sum(
+            isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for n in tree.body
+        )
+        # Criterion 5: a function-local import is the predicted tell that the model needed a
+        # top-level statement it had no way to address. Legal Python, passes tests, invisible
+        # to every other criterion.
+        m["body_has_import"] = any(
+            isinstance(n, (ast.Import, ast.ImportFrom)) for n in ast.walk(tree)
+        )
+
+    span, reason = resolve_unit(task.source, emitted["path"], emitted["kind"])
+    m["resolve_reason"] = reason or "ok"
+    if span is not None:
+        m["span_ratio"] = round((span[1] - span[0] + 1) / file_lines, 3)
+    return m
 
 
 def _pytest(tmp: Path, *node_args: str) -> bool:
@@ -132,8 +240,15 @@ def run_cell(task: Task, arm: str, model: str, run_idx: int, timeout: int) -> di
     applied = False
     target_pass = no_regression = False
     eval_count = 0
+    metrics: dict = {}
     try:
-        content, eval_count = call_model(build_prompt(task, arm), model, timeout)
+        content, eval_count = call_model(
+            build_prompt(task, arm), model, timeout,
+            schema=_UNIT_SCHEMA if arm == "symbol_addressed" else None,
+        )
+        if arm == "symbol_addressed":
+            # Recorded BEFORE the apply, so a failed apply still reports its failure mode.
+            metrics = _symbol_metrics(task, content)
         new_source = apply_output(task, arm, content)
         applied = new_source is not None
         if applied:
@@ -152,6 +267,7 @@ def run_cell(task: Task, arm: str, model: str, run_idx: int, timeout: int) -> di
         "eval_count": eval_count,
         "ms": round((time.perf_counter() - t0) * 1000),
         "error": error,
+        **metrics,
     }
 
 
@@ -189,7 +305,10 @@ def report(records):
         brows = [r for r in records if r["bucket"] == bucket]
         if not brows:
             continue
-        print(f"\n{bucket.upper()}  (n={len(brows) // len(ARMS)} tasks × runs per arm)")
+        # Divide by the arms actually PRESENT, not by every arm that exists — a subset run
+        # otherwise reports "n=0 tasks" above real numbers.
+        n_arms = len({r["arm"] for r in brows}) or 1
+        print(f"\n{bucket.upper()}  (n={len(brows) // n_arms} rows per arm)")
         print(f"  {'arm':<15} {'applied':>8} {'target':>8} {'no-reg':>8} {'COMBINED':>9} {'toks':>7}")
         for arm in ARMS:
             rows = [r for r in brows if r["arm"] == arm]
@@ -198,9 +317,53 @@ def report(records):
             toks = round(sum(r["eval_count"] for r in rows) / len(rows))
             print(f"  {arm:<15} {_rate(rows,'applied'):>7}% {_rate(rows,'target_pass'):>7}% "
                   f"{_rate(rows,'no_regression'):>7}% {_rate(rows,'combined'):>8}% {toks:>7}")
+    _symbol_report(records)
     errs = [r for r in records if r["error"]]
     if errs:
         print(f"\n{len(errs)} cell error(s); first: {errs[0]['error']}")
+
+
+def _symbol_report(records):
+    """P3-T0's criteria for the symbol-addressed arm. Failure MODES, not just a pass rate —
+    the outcome table branches differently on each, so collapsing them decides nothing."""
+    rows = [r for r in records if r["arm"] == "symbol_addressed"]
+    if not rows:
+        return
+    print("\n" + "=" * 78)
+    print("P3-T0 — symbol-addressed arm: criteria")
+    print("=" * 78)
+
+    print("\n  criterion 1 — address fidelity (resolve reason)")
+    reasons: dict[str, int] = {}
+    for r in rows:
+        reasons[r.get("resolve_reason") or "?"] = reasons.get(r.get("resolve_reason") or "?", 0) + 1
+    for reason, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
+        print(f"    {reason:<22} {n:>4}  ({round(100 * n / len(rows))}%)")
+
+    resolved = [r for r in rows if r.get("span_ratio") is not None]
+    if resolved:
+        spans = sorted(r["span_ratio"] for r in resolved)
+        bodies = sorted(r["body_ratio"] for r in resolved if r.get("body_ratio") is not None)
+        print("\n  criterion 2 — degeneration to a coarse unit (fraction of the file)")
+        print(f"    span  median {spans[len(spans) // 2]:.3f}   max {spans[-1]:.3f}")
+        if bodies:
+            print(f"    body  median {bodies[len(bodies) // 2]:.3f}   max {bodies[-1]:.3f}")
+        coarse = sum(r["span_ratio"] > 0.5 for r in resolved)
+        print(f"    addressed >50% of the file: {coarse}/{len(resolved)}"
+              f"  ({round(100 * coarse / len(resolved))}%)  <- the design-killing case")
+
+    print("\n  criterion 4 — response shape")
+    parsed = [r for r in rows if r.get("body_parses") is not None]
+    if parsed:
+        print(f"    body fenced           {sum(bool(r.get('body_fenced')) for r in parsed):>4}/{len(parsed)}")
+        print(f"    body does not parse   {sum(r.get('body_parses') is False for r in parsed):>4}/{len(parsed)}")
+        multi = sum((r.get("body_units") or 0) > 1 for r in parsed)
+        print(f"    >1 unit in body       {multi:>4}/{len(parsed)}  <- emitted neighbouring code")
+
+    print("\n  criterion 5 — needed a unit it could not address")
+    imports = [r for r in parsed if r.get("body_has_import")]
+    print(f"    import INSIDE the body {len(imports):>3}/{len(parsed) if parsed else 0}"
+          "  <- the predicted function-local-import tell")
 
 
 def main():
@@ -208,6 +371,10 @@ def main():
     p.add_argument("--model", default="my-python-q25c14")
     p.add_argument("--arms", default=",".join(ARMS), help="comma-separated subset of arms")
     p.add_argument("--per-bucket", type=int, default=4, help="tasks per size bucket")
+    p.add_argument("--corpus", default="flat", choices=("flat", "class", "both"),
+                   help="flat = top-level-function tasks (the published arm A/B/C corpus); "
+                        "class = class-bearing tasks, REQUIRED for criterion 2 since a flat "
+                        "corpus has no class to name coarsely; both = the union")
     p.add_argument("--buckets", default="small,medium,large")
     p.add_argument("--runs", type=int, default=3, help="runs per (task, arm) cell")
     p.add_argument("--timeout", type=int, default=180)
@@ -217,7 +384,16 @@ def main():
 
     arms = [a for a in args.arms.split(",") if a in ARMS]
     buckets = set(args.buckets.split(","))
-    tasks = [t for t in generate_corpus(args.per_bucket) if t.bucket in buckets]
+    tasks = []
+    if args.corpus in ("flat", "both"):
+        tasks += generate_corpus(args.per_bucket)
+    if args.corpus in ("class", "both"):
+        tasks += [
+            generate_class_task(b, i)
+            for b in ("small", "medium", "large")
+            for i in range(args.per_bucket)
+        ]
+    tasks = [t for t in tasks if t.bucket in buckets]
     if args.limit:
         tasks = tasks[: args.limit]
     out_path = args.out or str(REPO_ROOT / "benchmarks" / "results" / "write-model-bench.jsonl")

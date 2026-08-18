@@ -1,0 +1,43 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotating Square</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
+  canvas { border: 1px solid black; }
+</style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="600"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let lastTime = null;
+
+function draw(time) {
+  if (lastTime === null) lastTime = time;
+  const deltaTime = time - lastTime;
+  lastTime = time;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(deltaTime * Math.PI / (8 * 1000));
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(-200, -200, 400, 400);
+  ctx.restore();
+
+  requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
+```

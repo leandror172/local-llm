@@ -1,0 +1,145 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rotating Heptagon with Falling Balls</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  canvas { display: block; background-color: #000; }
+</style>
+</head>
+<body>
+<canvas id="heptagonCanvas"></canvas>
+<script>
+const canvas = document.getElementById('heptagonCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 800;
+
+let angle = 0;
+const cx = canvas.width / 2;
+const cy = canvas.height / 2;
+const R = 300;
+const vertices = [];
+
+for (let i = 0; i < 7; i++) {
+  const x = cx + R * Math.cos(angle + i * 2 * Math.PI / 7);
+  const y = cy + R * Math.sin(angle + i * 2 * Math.PI / 7);
+  vertices.push({ x, y });
+}
+
+const ballRadius = 12;
+let balls = [];
+const colors = ['#f8b862', '#f6ad49', '#f39800', '#f08300', '#ec6d51', '#ee7948', '#ed6d3d', '#ec6800', '#ec6800', '#ee7800', '#eb6238', '#ea5506', '#ea5506', '#eb6101', '#e49e61', '#e45e32', '#e17b34', '#dd7a56', '#db8449', '#d66a35'];
+
+for (let i = 0; i < 20; i++) {
+  const ballX = cx + Math.random() * 40 - 20;
+  const ballY = cy + Math.random() * 40 - 20;
+  const vx = (Math.random() - 0.5) * 100;
+  const vy = (Math.random() - 0.5) * 100;
+  balls.push({ x: ballX, y: ballY, vx, vy, color: colors[i % colors.length], number: i + 1 });
+}
+
+function drawHeptagon() {
+  ctx.beginPath();
+  ctx.moveTo(vertices[0].x, vertices[0].y);
+  for (let i = 1; i < vertices.length; i++) {
+    ctx.lineTo(vertices[i].x, vertices[i].y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = 'white';
+  ctx.stroke();
+}
+
+function drawBall(ball) {
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+  ctx.fillStyle = ball.color;
+  ctx.fill();
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'black';
+  ctx.fillText(ball.number, ball.x, ball.y);
+}
+
+function update() {
+  angle += Math.PI / 350;
+  for (let i = 0; i < vertices.length; i++) {
+    const x = cx + R * Math.cos(angle + i * 2 * Math.PI / 7);
+    const y = cy + R * Math.sin(angle + i * 2 * Math.PI / 7);
+    vertices[i].x = x;
+    vertices[i].y = y;
+  }
+
+  const dt = 1 / 60; // Assuming 60 FPS
+  for (let i = 0; i < balls.length; i++) {
+    const ball = balls[i];
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+    ball.vy += 500 * dt;
+
+    for (let j = 0; j < vertices.length; j++) {
+      const v1 = vertices[j];
+      const v2 = vertices[(j + 1) % vertices.length];
+      const edgeX = v2.x - v1.x;
+      const edgeY = v2.y - v1.y;
+      const normalX = -edgeY;
+      const normalY = edgeX;
+      const len = Math.sqrt(normalX * normalX + normalY * normalY);
+      normalX /= len;
+      normalY /= len;
+
+      const dist = (ball.x - v1.x) * normalX + (ball.y - v1.y) * normalY;
+      if (dist < ballRadius) {
+        ball.x += normalX * (ballRadius - dist);
+        ball.y += normalY * (ballRadius - dist);
+        const dotVN = ball.vx * normalX + ball.vy * normalY;
+        ball.vx -= 2 * dotVN * normalX;
+        ball.vy -= 2 * dotVN * normalY;
+        ball.vx *= 0.85;
+        ball.vy *= 0.85;
+      }
+    }
+
+    for (let j = i + 1; j < balls.length; j++) {
+      const b1 = balls[i];
+      const b2 = balls[j];
+      const dx = b2.x - b1.x;
+      const dy = b2.y - b1.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 2 * ballRadius && dist > 0) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const dvx = b1.vx - b2.vx;
+        const dvy = b1.vy - b2.vy;
+        const dvn = dvx * nx + dvy * ny;
+        if (dvn > 0) {
+          b1.vx -= dvn * nx;
+          b1.vy -= dvn * ny;
+          b2.vx += dvn * nx;
+          b2.vy += dvn * ny;
+          const overlap = 2 * ballRadius - dist;
+          b1.x -= overlap / 2 * nx;
+          b1.y -= overlap / 2 * ny;
+          b2.x += overlap / 2 * nx;
+          b2.y += overlap / 2 * ny;
+        }
+      }
+    }
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawHeptagon();
+  for (let i = 0; i < balls.length; i++) {
+    drawBall(balls[i]);
+  }
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
+```

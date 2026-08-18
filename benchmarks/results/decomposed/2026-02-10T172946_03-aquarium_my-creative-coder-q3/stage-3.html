@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aquarium Background</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<canvas></canvas>
+<script>
+  const canvas = document.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let width, height;
+
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, '#87CEEB');
+  gradient.addColorStop(1, '#001a33');
+
+  const pebbles = [];
+  const lightRays = [];
+  const bubbles = [];
+  const seaweed = [];
+
+  function init() {
+    // Pebbles
+    for (let i = 0; i < 30; i++) {
+      const x = Math.random() * (width - 10);
+      const radius = Math.random() * 5 + 3;
+      const color = `hsl(${Math.random() * 360}, 40%, 60%)`;
+      pebbles.push({ x, y: height - 15 - radius, radius, color });
+    }
+
+    // Light rays
+    for (let i = 0; i < 6; i++) {
+      const x = Math.random() * width;
+      const angle = Math.random() * Math.PI / 180 * 10 - Math.PI / 36;
+      const length = Math.random() * height * 0.6;
+      const opacity = 0.04 + Math.random() * 0.02;
+      lightRays.push({ x, angle, length, opacity });
+    }
+
+    // Fish
+    for (let i = 0; i < 8; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * (height - 15 - 30) + 15;
+      const bodyLength = Math.random() * 30 + 30;
+      const color = `hsl(${Math.random() * 360}, 40%, 60%)`;
+      const speed = Math.random() * 50 + 30;
+      const direction = Math.random() > 0.5 ? 1 : -1;
+      fish.push({ x, y, vx: speed * direction, size: bodyLength, color, direction });
+    }
+
+    // Seaweed
+    for (let i = 0; i < 5 + Math.random() * 3; i++) {
+      const x = Math.random() * (width - 100) + 50;
+      const segmentCount = 4 + Math.random() * 3;
+      const segmentHeight = 20 + Math.random() * 30;
+      const color = `hsl(${Math.random() * 360}, 50%, 60%)`;
+      const swaySpeed = 0.01 + Math.random() * 0.02;
+      seaweed.push({
+        x, segmentCount, segmentHeight, color, swaySpeed, sandTop: height - 15
+      });
+    }
+  }
+
+  function draw() {
+    // Background gradient
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Sandy bottom
+    ctx.fillStyle = '#c2b280';
+    ctx.fillRect(0, height - 15, width, 15);
+
+    // Seaweed
+    const time = performance.now() * 0.001;
+    for (const plant of seaweed) {
+      ctx.beginPath();
+      ctx.moveTo(plant.x, plant.sandTop);
+      for (let segment = 0; segment <= plant.segmentCount; segment++) {
+        const targetY = plant.sandTop - (segment + 1) * plant.segmentHeight;
+        const swayX = Math.sin(time / 1000 * plant.swaySpeed + segment * 0.8) * (segment + 1) * 5;
+        const cpX = plant.x + swayX;
+        const cpY = (targetY + (segment > 0 ? (plant.sandTop - segment * plant.segmentHeight) : plant.sandTop)) / 2;
+        ctx.quadraticCurveTo(cpX, cpY, plant.x + swayX * 0.5, targetY);
+      }
+      ctx.strokeStyle = plant.color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // Bubbles
+    for (let i = 0; i < bubbles.length; i++) {
+      const bubble = bubbles[i];
+      if (bubble.y < 0) {
+        bubbles.splice(i, 1);
+        i--;
+        continue;
+      }
+      bubble.y -= bubble.riseSpeed * (1 / 60);
+      bubble.radius += 0.01;
+      ctx.beginPath();
+      ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.stroke();
+    }
+
+    // Spawn new bubble with 2% chance
+    if (Math.random() < 0.02) {
+      const x = Math.random() * width;
+      const radius = 2 + Math.random() * 2;
+      const riseSpeed = 20 + Math.random() * 20;
+      bubbles.push({ x, y: height - 15 - radius, radius, riseSpeed });
+      if (bubbles.length > 30) {
+        bubbles.shift();
+      }
+    }
+
+    // Fish
+    for (const fish of fish) {
+      const { x, y, vx, size, color, direction } = fish;
+
+      // Update position
+      const dt = 1 / 60; // Assuming 60fps
+      const newX = x + vx * direction * dt;
+
+      // Check for edge collision with 50px margin
+      const margin = 50;
+      if (newX < margin || newX > width - margin) {
+        fish.direction *= -1;
+        fish.vx *= -1;
+      }
+
+      // Update fish position
+      fish.x = newX;
+
+      // Draw fish
+      ctx.save();
+      ctx.translate(fish.x, fish.y);
+      ctx.scale(direction, 1);
+
+      // Body
+      ctx.beginPath();
+      ctx.ellipse(0, 0, size / 2, size / 4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Tail fin
+      const tailX = -size / 2;
+      ctx.beginPath();
+      ctx.moveTo(tailX, 0);
+      ctx.lineTo(tailX - size / 3, -size / 4);
+      ctx.lineTo(tailX - size / 3, size / 4);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Eye
+      const eyeX = size / 4;
+      ctx.beginPath();
+      ctx.arc(eyeX, -size / 8, size / 10, 0, Math.PI * 2);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(eyeX + 2, -size / 8, size / 20, 0, Math.PI * 2);
+      ctx.fillStyle = 'black';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // Pebbles
+    for (const pebble of pebbles) {
+      ctx.beginPath();
+      ctx.arc(pebble.x, pebble.y, pebble.radius, 0, Math.PI * 2);
+      ctx.fillStyle = pebble.color;
+      ctx.fill();
+    }
+
+    // Light rays
+    for (const ray of lightRays) {
+      ctx.save();
+      ctx.translate(ray.x, 0);
+      ctx.rotate(ray.angle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -ray.length);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255, 255, 25, ' + ray.opacity + ')';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  init();
+  draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rotating Heptagon</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  canvas { display: block; background-color: #000; }
+</style>
+</head>
+<body>
+<canvas id="heptagonCanvas"></canvas>
+<script>
+const canvas = document.getElementById('heptagonCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 800;
+
+let angle = 0;
+const cx = canvas.width / 2;
+const cy = canvas.height / 2;
+const R = 300;
+const vertices = [];
+
+for (let i = 0; i < 7; i++) {
+  const x = cx + R * Math.cos(angle + i * 2 * Math.PI / 7);
+  const y = cy + R * Math.sin(angle + i * 2 * Math.PI / 7);
+  vertices.push({ x, y });
+}
+
+function drawHeptagon() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  ctx.moveTo(vertices[0].x, vertices[0].y);
+  for (let i = 1; i < vertices.length; i++) {
+    ctx.lineTo(vertices[i].x, vertices[i].y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = 'white';
+  ctx.stroke();
+}
+
+function update() {
+  angle += Math.PI / 350; // 2π / (5 * 70) for one full rotation every 5 seconds
+  drawHeptagon();
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
+```

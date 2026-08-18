@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 56,
+    "eval_duration": 0.87,
+    "wall_time": 23.45,
+    "tok_per_sec": 64.4,
+    "content_chars": 176,
+    "thinking_chars": 0,
+    "prompt_tokens": 183,
+    "json_valid": true,
+    "content_preview": "{\n  \"category\": \"transport\",\n  \"amount\": 2.75,\n  \"confidence\": 1.0\n  , \"reasoning\": \"The description mentions 'Subway fare', which is a common form of public transportation.\"\n}"
+  },
+  "format=off": {
+    "eval_count": 142,
+    "eval_duration": 2.22,
+    "wall_time": 2.45,
+    "tok_per_sec": 64.0,
+    "content_chars": 761,
+    "thinking_chars": 0,
+    "prompt_tokens": 183,
+    "json_valid": false,
+    "content_preview": "```java\npublic record Expense(String category, String description, double amount) {}\n\npublic class ExpenseClassifier {\n    public static Expense classifyExpense(String description) throws IllegalArgum"
+  }
+}

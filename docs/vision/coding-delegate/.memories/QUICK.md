@@ -5,11 +5,25 @@ label). Keep under 30 lines.*
 
 ## Status
 
-**P4 complete. P3 is next.** Suite 408; live gate `make accept-p4`.
-In flight: `feature/oficina-judge-payload` → **PR #87** (T-129/T-130).
+**P4 complete. P3 IN PROGRESS.** Suite 416; live gate `make accept-p4`.
+**PR #87 and #88 both MERGED** (#88 on 2026-08-13) — master carries P1–P4 plus the P3 plan
+and T-133. In flight: `feature/oficina-p3-unit-addressing` (P3-T0's deterministic half).
 
 Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE.md:
 
+- **s137** (08-18) — **P3-T0's BENCHMARK HALF BUILT AND MEASURED; the naming half clears its
+  gate.** Dotted addressing (`find_units`/`resolve_unit`/`apply_unit`) + class-bearing corpus +
+  a 4th `symbol_addressed` arm; 67 tests. **Measured: 43 output tokens FLAT vs whole-file's
+  120/216/479 by bucket, both arms 100% correct**; address fidelity 12/12, degeneration 0/12.
+  Four findings the plan lacked — the **~10.9% unaddressable-by-construction bound** (the
+  census's unread complement), **harness-owned indentation**, the corpus having **no classes**
+  at all, and one vehicle named for two questions. Also corrected: **"16K is VRAM-fit" is FALSE
+  on this host** (9.31 GiB resident / 1.76 on CPU with a quiet card). Criterion 3 (real file)
+  and criterion 5 remain unrun. § "The judge's payload" is unaffected.
+- **s134–s136** (07-30 → 08-11) — P3 planned, then **re-grounded twice**; P3-D1 still OPEN.
+  T-133 shipped (`context.callers` wired, `acceptance.validators` deleted). Headline:
+  **a 4-arm external prior-art survey never enumerated our own repo**, where the operation
+  was already built and measured. New T-135.
 - **s133** (07-29) — judge PAYLOAD: prompt made prefix-cacheable, rubrics declare
   `applies_to`, greenfield gets its own ladder. New T-131. § "The judge's payload".
 - **s132** (07-28) — P4 reviewed, simplified, re-accepted live; **P4-D8/D9/D10** frozen

@@ -1,0 +1,13 @@
+{
+  "stage": 3,
+  "model": "my-creative-coder",
+  "prompt_file": "prompts/decomposed/02-heptagon-balls/stage-3.md",
+  "prompt_chars": 3906,
+  "injected_chars": 2440,
+  "eval_count": 1435,
+  "eval_duration": 23.08,
+  "wall_time": 24.89,
+  "tok_per_sec": 62.2,
+  "thinking_chars": 0,
+  "html_chars": 4116
+}

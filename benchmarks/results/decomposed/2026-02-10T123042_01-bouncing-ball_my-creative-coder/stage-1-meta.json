@@ -1,0 +1,13 @@
+{
+  "stage": 1,
+  "model": "my-creative-coder",
+  "prompt_file": "prompts/decomposed/01-bouncing-ball/stage-1.md",
+  "prompt_chars": 523,
+  "injected_chars": 0,
+  "eval_count": 303,
+  "eval_duration": 4.62,
+  "wall_time": 12.73,
+  "tok_per_sec": 65.6,
+  "thinking_chars": 0,
+  "html_chars": 1012
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "stage": 1,
+    "status": "OK",
+    "tokens": 747,
+    "wall_time": 27.55,
+    "tok_per_sec": 62.2,
+    "html_chars": 2480
+  },
+  {
+    "stage": 2,
+    "status": "OK",
+    "tokens": 1374,
+    "wall_time": 24.06,
+    "tok_per_sec": 61.8,
+    "html_chars": 4200
+  },
+  {
+    "stage": 3,
+    "status": "OK",
+    "tokens": 2126,
+    "wall_time": 37.88,
+    "tok_per_sec": 60.4,
+    "html_chars": 6562
+  }
+]

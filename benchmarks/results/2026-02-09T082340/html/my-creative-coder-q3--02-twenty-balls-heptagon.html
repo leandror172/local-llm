@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Heptagon Bounce</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>I:\workspaces\llm\benchmarks\results\2026-02-09T082340\html
+    <canvas id="canvas" width="800" height="800"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const heptagonCenterX = canvas.width / 2;
+        const heptagonCenterY = canvas.height / 2;
+        const heptagonRadius = 200;
+        let heptagonRotationAngle = 0;
+        const angularVelocity = (360 / (5 * 60)) * (Math.PI / 180);
+
+        const balls = [];
+        const ballRadius = 10;
+        const colors = [
+            '#f8b862', '#f6ad49', '#f39800', '#f08300', '#ec6d51', '#ee7948', '#ed6d3d', '#ec6800', '#ec6800', '#ee7800', '#eb6238', '#ea5506', '#ea5506', '#eb6101', '#e49e61', '#e45e32', '#e17b34', '#dd7a56', '#db8449', '#d66a35'
+        ];
+
+        for (let i = 0; i < 20; i++) {
+            balls.push({
+                x: heptagonCenterX,
+                y: heptagonCenterY,
+                vx: 0,
+                vy: 0,
+                radius: ballRadius,
+                color: colors[i],
+                number: i + 1,
+                spinAngle: 0,
+                spinVelocity: 0
+            });
+        }
+
+        const gravity = 0.5;
+        const friction = 0.99;
+
+        function getHeptagonVertices(centerX, centerY, radius, rotationAngle) {
+            const vertices = [];
+            const angleStep = (2 * Math.PI) / 7;
+            for (let i = 0; i < 7; i++) {
+                const angle = rotationAngle + i * angleStep;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                vertices.push({ x, y });
+            }
+            return vertices;
+        }
+
+        function isPointInsidePolygon(point, polygon) {
+            let inside = false;
+            for (let i = 0; i < polygon.length; i++) {
+                const a = polygon[i];
+                const b = polygon[(i + 1) % polygon.length];
+                const cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
+                if (cross < 0) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        function distanceFromPointToLineSegment(point, lineStart, lineEnd) {
+            const x = point.x;
+            const y = point.y;
+            const x1 = lineStart.x;
+            const y1 = lineStart.y;
+            const x2 = lineEnd.x;
+            const y2 = lineEnd.y;
+
+            const denominator = (y2 - y1) * (x2 - x1);
+            const numerator = (y2 - y1) * (x - x1) - (x2 - x1) * (y - y1);
+            const t = numerator / denominator;
+
+            const tClamped = Math.max(0, Math.min(1, t));
+            const closestX = x1 + tClamped * (x2 - x1);
+            const closestY = y1 + tClamped * (y2 - y1);
+
+            const dx = x - closestX;
+            const dy = y - closestY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            heptagonRotationAngle += angularVelocity;
+            if (heptagonRotationAngle >= 2 * Math.PI) {
+                heptagonRotationAngle -= 2 * Math.PI;
+            }
+
+            const heptagonVertices = getHeptagonVertices(heptagonCenterX, heptagonCenterY, heptagonRadius, heptagonRotationAngle);
+
+            ctx.beginPath();
+            ctx.moveTo(heptagonVertices[0].x, heptagonVertices[0].y);
+            for (let i = 1; i < heptagonVertices.length; i++) {
+                ctx.lineTo(heptagonVertices[i].x, heptagonVertices[i].y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            for (let ball of balls) {
+                ball.vy += gravity;
+                ball.vx *= friction;
+                ball.vy *= friction;
+
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                for (let otherBall of balls) {
+                    if (ball === otherBall) continue;
+                    const dx = otherBall.x - ball.x;
+                    const dy = otherBall.y - ball.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < ball.radius + otherBall.radius) {
+                        const nx = dx / distance;
+                        const ny = dy / distance;
+
+                        const vRelX = ball.vx - otherBall.vx;
+                        const vRelY = ball.vy - otherBall.vy;
+
+                        const vRelNormal = vRelX * nx + vRelY * ny;
+
+                        const newV1x = ball.vx - 2 * vRelNormal * nx;
+                        const newV1y = ball.vy - 2 * vRelNormal * ny;
+                        const newV2x = otherBall.vx + 2 * vRelNormal * nx;
+                        const newV2y = otherBall.vy + 2 * vRelNormal * ny;
+
+                        ball.vx = newV1x;
+                        ball.vy = newV1y;
+                        otherBall.vx = newV2x;
+                        otherBall.vy = newV2y;
+                    }
+                }
+
+                if (!isPointInsidePolygon({ x: ball.x, y: ball.y }, heptagonVertices)) {
+                    let closestEdge = null;
+                    let minDistance = Infinity;
+                    for (let i = 0; i < heptagonVertices.length; i++) {
+                        const a = heptagonVertices[i];
+                        const b = heptagonVertices[(i + 1) % heptagonVertices.length];
+                        const distance = distanceFromPointToLineSegment({ x: ball.x, y: ball.y }, a, b);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestEdge = { a, b };
+                        }
+                    }
+
+                    if (closestEdge) {
+                        const dx = closestEdge.b.x - closestEdge.a.x;
+                        const dy = closestEdge.b.y - closestEdge.a.y;
+                        const normalX = dy;
+                        const normalY = -dx;
+                        const normalLength = Math.sqrt(normalX * normalX + normalY * normalY);
+                        const normal = { x: normalX / normalLength, y: normalY / normalLength };
+
+                        const dot = ball.vx * normal.x + ball.vy * normal.y;
+                        ball.vx -= 2 * dot * normal.x;
+                        ball.vy -= 2 * dot * normal.y;
+
+                        ball.vx *= friction;
+                        ball.vy *= friction;
+                    }
+                }
+
+                ball.spinVelocity *= friction;
+                ball.spinAngle += ball.spinVelocity;
+
+                ctx.save();
+                ctx.translate(ball.x, ball.y);
+                ctx.rotate(ball.spinAngle);
+                ctx.fillStyle = ball.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(ball.number.toString(), 0, 0);
+                ctx.restore();
+            }
+        }
+
+        animate();
+    </script>
+</body>
+</html>

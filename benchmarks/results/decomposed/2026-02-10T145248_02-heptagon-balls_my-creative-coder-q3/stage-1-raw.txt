@@ -1,0 +1,50 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rotating Heptagon</title>
+    <style>
+        body { margin: 0; background: #000; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="canvas" width="800" height="800"></canvas>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const R = 300;
+    let angle = 0;
+    let lastTime = 0;
+
+    function drawHeptagon(currentTime) {
+        const delta = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+        angle += delta * (2 * Math.PI / 5);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        for (let i = 0; i < 7; i++) {
+            const theta = angle + i * (2 * Math.PI / 7);
+            const x = cx + R * Math.cos(theta);
+            const y = cy + R * Math.sin(theta);
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.closePath();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        requestAnimationFrame(drawHeptagon);
+    }
+
+    requestAnimationFrame(drawHeptagon);
+</script>
+</body>
+</html>
+```

@@ -1,0 +1,133 @@
+model=my-python-q25c14 arms=['code_anchored', 'whole_file', 'model_anchored'] tasks=12 runs=3 → 108 generations
+out=/mnt/i/workspaces/llm/benchmarks/results/write-model-bench.jsonl
+
+[  1/108] small-00-scale     code_anchored   OK  tgt=1 reg=1 3595ms
+[  2/108] small-00-scale     code_anchored   OK  tgt=1 reg=1 3153ms
+[  3/108] small-00-scale     code_anchored   OK  tgt=1 reg=1 3243ms
+[  4/108] small-00-scale     whole_file      OK  tgt=1 reg=1 6368ms
+[  5/108] small-00-scale     whole_file      OK  tgt=1 reg=1 6153ms
+[  6/108] small-00-scale     whole_file      OK  tgt=1 reg=1 6249ms
+[  7/108] small-00-scale     model_anchored  OK  tgt=1 reg=1 7806ms
+[  8/108] small-00-scale     model_anchored  OK  tgt=1 reg=1 7160ms
+[  9/108] small-00-scale     model_anchored  OK  tgt=1 reg=1 6736ms
+[ 10/108] small-01-clamp     code_anchored   OK  tgt=1 reg=1 6657ms
+[ 11/108] small-01-clamp     code_anchored   OK  tgt=1 reg=1 6824ms
+[ 12/108] small-01-clamp     code_anchored   OK  tgt=1 reg=1 6767ms
+[ 13/108] small-01-clamp     whole_file      OK  tgt=1 reg=1 7004ms
+[ 14/108] small-01-clamp     whole_file      OK  tgt=1 reg=1 6977ms
+[ 15/108] small-01-clamp     whole_file      OK  tgt=1 reg=1 9580ms
+[ 16/108] small-01-clamp     model_anchored  OK  tgt=1 reg=1 10704ms
+[ 17/108] small-01-clamp     model_anchored  OK  tgt=1 reg=1 9621ms
+[ 18/108] small-01-clamp     model_anchored  OK  tgt=1 reg=1 10344ms
+[ 19/108] small-02-nth_even  code_anchored   OK  tgt=1 reg=1 3268ms
+[ 20/108] small-02-nth_even  code_anchored   OK  tgt=1 reg=1 3010ms
+[ 21/108] small-02-nth_even  code_anchored   OK  tgt=1 reg=1 3190ms
+[ 22/108] small-02-nth_even  whole_file      OK  tgt=1 reg=1 6032ms
+[ 23/108] small-02-nth_even  whole_file      OK  tgt=1 reg=1 6031ms
+[ 24/108] small-02-nth_even  whole_file      OK  tgt=1 reg=1 5988ms
+[ 25/108] small-02-nth_even  model_anchored  OK  tgt=1 reg=1 6565ms
+[ 26/108] small-02-nth_even  model_anchored  OK  tgt=1 reg=1 6569ms
+[ 27/108] small-02-nth_even  model_anchored  OK  tgt=1 reg=1 6514ms
+[ 28/108] small-03-weighted  code_anchored   OK  tgt=1 reg=1 4436ms
+[ 29/108] small-03-weighted  code_anchored   OK  tgt=1 reg=1 4492ms
+[ 30/108] small-03-weighted  code_anchored   OK  tgt=1 reg=1 4800ms
+[ 31/108] small-03-weighted  whole_file      OK  tgt=1 reg=1 7334ms
+[ 32/108] small-03-weighted  whole_file      OK  tgt=1 reg=1 7251ms
+[ 33/108] small-03-weighted  whole_file      OK  tgt=1 reg=1 7486ms
+[ 34/108] small-03-weighted  model_anchored  OK  tgt=1 reg=1 9008ms
+[ 35/108] small-03-weighted  model_anchored  OK  tgt=1 reg=1 8976ms
+[ 36/108] small-03-weighted  model_anchored  OK  tgt=1 reg=1 4979ms
+[ 37/108] medium-00-scale    code_anchored   OK  tgt=1 reg=1 3220ms
+[ 38/108] medium-00-scale    code_anchored   OK  tgt=1 reg=1 3320ms
+[ 39/108] medium-00-scale    code_anchored   OK  tgt=1 reg=1 3436ms
+[ 40/108] medium-00-scale    whole_file      OK  tgt=1 reg=1 20888ms
+[ 41/108] medium-00-scale    whole_file      OK  tgt=1 reg=1 21692ms
+[ 42/108] medium-00-scale    whole_file      OK  tgt=1 reg=1 20746ms
+[ 43/108] medium-00-scale    model_anchored  OK  tgt=1 reg=1 7057ms
+[ 44/108] medium-00-scale    model_anchored  OK  tgt=1 reg=1 7534ms
+[ 45/108] medium-00-scale    model_anchored  OK  tgt=1 reg=1 7254ms
+[ 46/108] medium-01-clamp    code_anchored   OK  tgt=1 reg=1 6846ms
+[ 47/108] medium-01-clamp    code_anchored   OK  tgt=1 reg=1 7353ms
+[ 48/108] medium-01-clamp    code_anchored   OK  tgt=1 reg=1 7981ms
+[ 49/108] medium-01-clamp    whole_file      OK  tgt=1 reg=1 24726ms
+[ 50/108] medium-01-clamp    whole_file      OK  tgt=1 reg=1 24685ms
+[ 51/108] medium-01-clamp    whole_file      OK  tgt=1 reg=1 24914ms
+[ 52/108] medium-01-clamp    model_anchored  OK  tgt=1 reg=1 10706ms
+[ 53/108] medium-01-clamp    model_anchored  OK  tgt=1 reg=1 11046ms
+[ 54/108] medium-01-clamp    model_anchored  OK  tgt=1 reg=1 8136ms
+[ 55/108] medium-02-nth_even code_anchored   OK  tgt=1 reg=1 3401ms
+[ 56/108] medium-02-nth_even code_anchored   OK  tgt=1 reg=1 3129ms
+[ 57/108] medium-02-nth_even code_anchored   OK  tgt=1 reg=1 3353ms
+[ 58/108] medium-02-nth_even whole_file      OK  tgt=1 reg=1 20501ms
+[ 59/108] medium-02-nth_even whole_file      OK  tgt=1 reg=1 20396ms
+[ 60/108] medium-02-nth_even whole_file      OK  tgt=1 reg=1 20972ms
+[ 61/108] medium-02-nth_even model_anchored  OK  tgt=1 reg=1 6510ms
+[ 62/108] medium-02-nth_even model_anchored  OK  tgt=1 reg=1 6856ms
+[ 63/108] medium-02-nth_even model_anchored  OK  tgt=1 reg=1 6539ms
+[ 64/108] medium-03-weighted code_anchored   OK  tgt=1 reg=1 4759ms
+[ 65/108] medium-03-weighted code_anchored   OK  tgt=1 reg=1 4627ms
+[ 66/108] medium-03-weighted code_anchored   OK  tgt=1 reg=1 4464ms
+[ 67/108] medium-03-weighted whole_file      OK  tgt=1 reg=1 23348ms
+[ 68/108] medium-03-weighted whole_file      OK  tgt=1 reg=1 22404ms
+[ 69/108] medium-03-weighted whole_file      OK  tgt=1 reg=1 21750ms
+[ 70/108] medium-03-weighted model_anchored  OK  tgt=1 reg=1 8817ms
+[ 71/108] medium-03-weighted model_anchored  OK  tgt=1 reg=1 9017ms
+[ 72/108] medium-03-weighted model_anchored  OK  tgt=1 reg=1 9926ms
+[ 73/108] large-00-scale     code_anchored   OK  tgt=1 reg=1 3296ms
+[ 74/108] large-00-scale     code_anchored   OK  tgt=1 reg=1 3137ms
+[ 75/108] large-00-scale     code_anchored   OK  tgt=1 reg=1 3202ms
+[ 76/108] large-00-scale     whole_file      OK  tgt=1 reg=1 49310ms
+[ 77/108] large-00-scale     whole_file      OK  tgt=1 reg=1 49676ms
+[ 78/108] large-00-scale     whole_file      OK  tgt=1 reg=1 51253ms
+[ 79/108] large-00-scale     model_anchored  OK  tgt=1 reg=1 6920ms
+[ 80/108] large-00-scale     model_anchored  OK  tgt=1 reg=1 7128ms
+[ 81/108] large-00-scale     model_anchored  OK  tgt=1 reg=1 6990ms
+[ 82/108] large-01-clamp     code_anchored   OK  tgt=1 reg=1 6704ms
+[ 83/108] large-01-clamp     code_anchored   OK  tgt=1 reg=1 6953ms
+[ 84/108] large-01-clamp     code_anchored   OK  tgt=1 reg=1 6945ms
+[ 85/108] large-01-clamp     whole_file      OK  tgt=1 reg=1 52734ms
+[ 86/108] large-01-clamp     whole_file      OK  tgt=1 reg=1 52535ms
+[ 87/108] large-01-clamp     whole_file      OK  tgt=1 reg=1 52119ms
+[ 88/108] large-01-clamp     model_anchored  OK  tgt=1 reg=1 10687ms
+[ 89/108] large-01-clamp     model_anchored  OK  tgt=1 reg=1 10534ms
+[ 90/108] large-01-clamp     model_anchored  OK  tgt=1 reg=1 10757ms
+[ 91/108] large-02-nth_even  code_anchored   OK  tgt=1 reg=1 3252ms
+[ 92/108] large-02-nth_even  code_anchored   OK  tgt=1 reg=1 3169ms
+[ 93/108] large-02-nth_even  code_anchored   OK  tgt=1 reg=1 3306ms
+[ 94/108] large-02-nth_even  whole_file      OK  tgt=1 reg=1 48648ms
+[ 95/108] large-02-nth_even  whole_file      OK  tgt=1 reg=1 48916ms
+[ 96/108] large-02-nth_even  whole_file      OK  tgt=1 reg=1 49054ms
+[ 97/108] large-02-nth_even  model_anchored  OK  tgt=1 reg=1 6376ms
+[ 98/108] large-02-nth_even  model_anchored  OK  tgt=1 reg=1 6574ms
+[ 99/108] large-02-nth_even  model_anchored  OK  tgt=1 reg=1 6605ms
+[100/108] large-03-weighted  code_anchored   OK  tgt=1 reg=1 4398ms
+[101/108] large-03-weighted  code_anchored   OK  tgt=1 reg=1 4284ms
+[102/108] large-03-weighted  code_anchored   OK  tgt=1 reg=1 4348ms
+[103/108] large-03-weighted  whole_file      OK  tgt=1 reg=1 50601ms
+[104/108] large-03-weighted  whole_file      OK  tgt=1 reg=1 49644ms
+[105/108] large-03-weighted  whole_file      OK  tgt=1 reg=1 50883ms
+[106/108] large-03-weighted  model_anchored  OK  tgt=1 reg=1 7920ms
+[107/108] large-03-weighted  model_anchored  OK  tgt=1 reg=1 8835ms
+[108/108] large-03-weighted  model_anchored  OK  tgt=1 reg=1 9185ms
+
+==============================================================================
+WRITE-MODEL BENCHMARK — rates by size bucket (higher = better)
+==============================================================================
+
+SMALL  (n=12 tasks × runs per arm)
+  arm              applied   target   no-reg  COMBINED    toks
+  code_anchored       100%     100%     100%      100%      25
+  whole_file          100%     100%     100%      100%      40
+  model_anchored      100%     100%     100%      100%      46
+
+MEDIUM  (n=12 tasks × runs per arm)
+  arm              applied   target   no-reg  COMBINED    toks
+  code_anchored       100%     100%     100%      100%      25
+  whole_file          100%     100%     100%      100%     134
+  model_anchored      100%     100%     100%      100%      48
+
+LARGE  (n=12 tasks × runs per arm)
+  arm              applied   target   no-reg  COMBINED    toks
+  code_anchored       100%     100%     100%      100%      25
+  whole_file          100%     100%     100%      100%     310
+  model_anchored      100%     100%     100%      100%      49

@@ -294,6 +294,22 @@ by construction.** What remains genuinely unpriced is what E-D1 actually named: 
 surface** — response-shape validation, deterministic import merging, the constants boundary.
 Not the locator, and not the apply.
 
+**Two riders on that principle, both s137.**
+
+*(a) The benchmark's purity is correct THERE and would be a defect if carried forward.*
+`writemodel_apply.py` opens with *"Pure functions, no model calls, no I/O"*, so
+`apply_code_anchored` splicing a string in memory is right for a measurement instrument. But
+`patch_file` is where the same operation acquires its atomic tmp+rename write and its uniqueness
+check, and this entry's own § above records the original design as **`locate_unit` → `patch_file`**.
+So: **the locator is the piece that graduates to production; the benchmark's applier is not.**
+Writing that down here because the pure applier is the thing a future session will find first,
+and nothing in the module says "do not ship this shape."
+
+*(b) "Deterministic import merging" now has a size.* Item 6 above converts that line-item from a
+named cost into a measured boundary — ~10.9% of Python top-level lines are unaddressable by
+construction — and criterion 5 of P3-T0 goes looking for the failure it produces. It is still
+unpriced as *work*; it is no longer unbounded as a *risk*.
+
 **The resolver — in-process AST, NOT SCIP (decided s136; supersedes survey § 9).** The survey
 recommends emitting a Serena-shaped tuple and resolving it against SCIP's `enclosing_range`
 (*"~30 lines"*). Three facts already on file decide against it:
@@ -545,6 +561,30 @@ Own-corpus measurement: **`ref:unit-addressing-census`**. The load-bearing resul
    Arms 1 and 3 converged on this independently; no grammar addresses them stably.
    **Fallback = whole-file for that iteration, which is E-D1's existing mechanism**, so the
    refusal costs nothing to build.
+6. **The refusal region is LARGER than item 5 states, and the census already measured it
+   (s137).** `ref:unit-addressing-census` reports *"89.1% of Python top-level lines already sit
+   under a name"* — and **the complement is the answer to a question nobody asked it.** The
+   remaining ~10.9% is imports, module constants and the module docstring: statements with no
+   name, therefore **unaddressable by a dotted path by construction**, not by omission. Item 5's
+   list is about constructs whose *address is unstable*; this is a class with **no address at
+   all**. The two were never connected, and it is the same number the census published.
+
+   **Consequence for (B), stated as a bound rather than discovered later:** an edit that must
+   add a top-level statement — most commonly **a new import** — cannot be expressed as
+   `replace_unit`. `ref:oficina-write-model-report` § AMENDMENT already named *"import merging"*
+   among the edit-language costs *"never priced"*; it is still unpriced, and this is where the
+   bill lands. **(B)'s coverage is therefore bounded by the fraction of real edits needing no
+   new top-level statement, and that fraction is UNMEASURED** — the census counted *lines*, not
+   *edits*, so it does not answer this and must not be read as if it did.
+
+   The mechanical fallback costs nothing (whole-file for that iteration, per item 5). What it
+   costs is the **feasibility win**: an edit needing an import falls back to the path that
+   cannot reach the file, so `loop.py` stays unreachable for exactly that class of change.
+
+   **Recorded as executable spec, not prose** (`benchmarks/lib/test_writemodel_apply.py`):
+   `test_find_module_constant_is_not_addressable` and `test_find_import_is_not_addressable`
+   assert `[]`. A test cannot go stale silently, which is the failure mode this document has
+   now recorded four times against itself.
 
 ***Recommendation:* (B), symbol-addressed, size-gated — and now evidenced rather than reasoned,
 but STILL not freezable today.** What changed: the mechanism argument acquired a production
@@ -876,17 +916,60 @@ arm C, a mechanism this entry does not propose.
    no prose, no neighbouring code? The same 14B *"fenced its own block contents at runtime"* in
    the s124 benchmark, and E-D5 already strips fences at the write step for exactly this reason.
    This is the *"response-shape validation"* item E-D1 priced and nobody has built.
+5. **What the coder does when it needs a unit it CANNOT address** (added s137, from the
+   coverage bound recorded at P3-D1 item 6). The predicted behaviour — **prediction, to be
+   confirmed or falsified, not assumed** — is that a model needing `import itertools` emits it
+   as the first line of `body`, producing a **function-local import**.
+
+   That is the reason this criterion exists rather than being folded into criterion 4: a
+   function-local import is legal Python, it passes the tests, and it **slips past all four of
+   the criteria above**. It is not a coarse unit (2), it applies cleanly (3), and it is not a
+   fence or prose or *neighbouring* code (4) — because it is *inside* the addressed unit. A
+   silent failure with no criterion pointing at it is exactly what this probe exists to
+   prevent, so it gets its own count.
+
+   Record the rate, not just the occurrence: **what share of attempts needed a top-level
+   statement at all** is the unmeasured fraction P3-D1 item 6 names, and this probe is the
+   cheapest place to get a first read on it.
+
+**The method below names ONE vehicle for TWO questions, and the vehicle cannot run the
+target — corrected s137.** `run_tests` writes the edited module to `module_under_test.py` in a
+tmp dir and runs generated tests that `import *` from it. A real `parser.py`, with its real
+imports and the repo's real test suite, does not fit that harness at all. **But oficina already
+does exactly this** — s137 drove four runs against real files with real committed tests in a git
+worktree. So the split is:
+
+| Question | Vehicle | Why |
+|---|---|---|
+| Criteria 1/2/4/5 — can the coder NAME a unit, and how coarsely? | **the benchmark** (arm D, `--corpus class`) | needs a controlled A/B against whole-file on one corpus, many runs, cheap |
+| Criterion 3 — does it work end-to-end on a file whole-file cannot reach? | **oficina** | already runs real files against real tests; the benchmark would have to rebuild it |
+
+Making the benchmark run real files would be reimplementing oficina inside it — the exact
+inversion of the T-104 principle this entry cites elsewhere (*"oficina composes the
+ollama-bridge tools, it does not reimplement them"*).
 
 **Method:**
 
 - **Target:** one file from T-122's blocked set that fails on the **window** only —
-  `parser.py` or `intake.py`.
+  `parser.py` or `intake.py`. **Via oficina, not the benchmark** (see above).
 - **NOT `loop.py`.** It produced nothing in 7,066 s at 32K, so it measures throughput and would
   say nothing about output language. (It is also the file whose refusal at 16K took 0.48 s — the
   contrast worth keeping: T-112 refuses what cannot fit before spending anything, while nothing
   refuses what cannot finish, T-131.)
 - **Change:** small, real, on a file the whole-file path cannot reach at all today.
 - **N attempts**, reporting the distribution and the failure modes — not a single run.
+
+**Two corpora, and only one of them is gated — do not conflate them (s137).** The hardening
+below refers to `writemodel_corpus.py`, the *generated benchmark* corpus that GPU runs consume.
+That work is governed by an E-D1 trigger which `coding-delegate/.memories/QUICK.md` records as
+**not fired** (*"harden write-model corpus IF a real edit run drops sibling code … docstring
+deletions are DOC omissions, not code"*). This plan asks for the same hardening on a **different
+rationale** — a fair comparison, since the existing filler was *"the best possible case for
+whole-file fidelity"* — which is not the trigger's rationale and does not fire it. **Two live
+rationales for one piece of work, one of them gated: recorded rather than silently resolved**
+(the "grep the plans, not just the code" lesson from T-133). The *unit-test* fixture in
+`test_writemodel_apply.py` is a third thing entirely and is gated by nothing; it was hardened in
+s137 for the span hazards of `ref:unit-addressing-census` Finding 3.
 
 **Vehicle — do not build a new probe (s136).** All three apply arms already exist in
 `benchmarks/lib/writemodel_{apply,corpus,bench}.py`, driven by `run-write-model-bench.sh`. The
@@ -920,6 +1003,56 @@ instruction is **"do not ship ADD/DEL/CON tagging."**)*
 | Names units that do not exist (criterion 1) | **T-122 collapses to (c)** — route large edits to Claude — by measurement, consistent with `ref:delegate-non-goals` |
 | `body` carries fences/prose/neighbours (criterion 4) | Not fatal — this is the response-shape validation E-D1 priced; it becomes a build item with a measured need rather than a predicted one |
 | **Hardened corpus shows whole-file dropping code** | **E-D1's own fallback trigger fires on its own prescribed evidence.** The narrow ask stops being narrow — revisit default-vs-fallback, which E-D1 explicitly reserved for this |
+
+### RESULTS — benchmark half, run 2026-08-18 (s137)
+
+`my-python-q25c14-16k`, class-bearing corpus, 6 tasks × 2 runs × 2 arms = 24 generations.
+Raw: `benchmarks/results/p3t0-symbol-addressed.jsonl`.
+
+**Token cost at equal correctness — both arms scored 100% combined in every bucket:**
+
+| bucket | whole-file | symbol-addressed | ratio | whole-file wall | symbol wall |
+|---|---|---|---|---|---|
+| small | 120 tok | **43** | 2.8× | 8.8 s | 5.0 s |
+| medium | 216 tok | **43** | 5.0× | 16.0 s | 4.6 s |
+| large | 479 tok | **43** | **11.1×** | 36.9 s | 5.1 s |
+
+**43 tokens, flat across every size**, against whole-file's linear growth. This reproduces arm
+A's *"25 output tokens flat"* for the case arm A never covered — the address is now **emitted by
+the model** rather than supplied by the harness, and it stayed size-invariant anyway.
+
+**Criteria:**
+
+1. **Address fidelity — 12/12 `ok`.** Every emitted `path`/`kind` resolved to exactly one unit.
+   No `no_match`, no `multi_match`, no `kind_mismatch`, no `unknown_kind`.
+2. **Degeneration — did NOT occur.** Span median **0.047**, max **0.091**; **0/12 addressed more
+   than 50% of the file.** The model named the method, never the enclosing class. This is the
+   criterion the entry calls *"the one that can kill the design, and still the silent one"*, and
+   on this corpus it is silent because it did not happen.
+4. **Response shape — 0/12 defects.** No fences, every body parsed, never more than one unit.
+
+### What this does NOT establish — stated with the numbers, not after them
+
+- **Criterion 5 was NOT EXERCISED, and its `0/12` is worthless.** No task in this corpus needs a
+  new top-level statement — every defect is an arithmetic fix inside one method body — so
+  "no function-local imports" reports that the case never arose, not that it is rare. Reading it
+  as a result would be the *"a check that can only pass teaches nothing"* error in its purest
+  form. **The prediction at P3-D1 item 6 remains untested.**
+- **n is small and the corpus is easy.** 12 attempts per arm over **two** defect kinds
+  (`scale`, `clamp`) on generated classes whose siblings are trivially correct. **Whole-file also
+  scored 100%**, so this corpus still does not stress omission — E-D1's *"best possible case for
+  whole-file fidelity"* caveat is only partly retired by adding classes.
+- **The token ratio is a floor, not a ceiling.** The large bucket is ~100 lines; `loop.py` is
+  638. Whole-file cost scales with the file and symbol cost does not, so the gap widens exactly
+  where T-122 bites.
+- **Criterion 3 is untouched here.** Applicability end-to-end on a file whole-file cannot reach
+  is the oficina half, not the benchmark half.
+
+**Reading for P3-D1.** The outcome table's first row is the one that matched — *resolves
+uniquely, units stay fine-grained*. That **clears the gate the probe was built to test** and
+removes the "magnitude unmeasured" objection for the naming half specifically. It does **not**
+by itself justify freezing (B): the unaddressable-statement bound (item 6) is still unmeasured,
+and the real-file half has not run.
 <!-- /ref:delegate-p3-probe -->
 
 ---

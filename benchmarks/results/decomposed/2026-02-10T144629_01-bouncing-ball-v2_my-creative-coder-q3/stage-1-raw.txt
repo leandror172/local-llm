@@ -1,0 +1,63 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rotating Square</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="600"></canvas>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const squareSize = 400;
+    const rotationDuration = 8000; // milliseconds
+    const startAngle = -Math.PI / 2; // Start with square aligned to the right
+
+    let lastTime = 0;
+    let currentAngle = startAngle;
+
+    function animate(currentTime) {
+        const deltaTime = (currentTime - lastTime) / 1000; // seconds
+        lastTime = currentTime;
+
+        // Calculate the angle based on delta time
+        const rotationSpeed = (2 * Math.PI) / rotationDuration;
+        currentAngle += rotationSpeed * deltaTime;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Save context state
+        ctx.save();
+
+        // Translate to center
+        ctx.translate(centerX, centerY);
+
+        // Rotate
+        ctx.rotate(currentAngle);
+
+        // Draw square
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.rect(-squareSize / 2, -squareSize / 2, squareSize, squareSize);
+        ctx.stroke();
+
+        // Restore context state
+        ctx.restore();
+
+        requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+</script>
+</body>
+</html>
+```

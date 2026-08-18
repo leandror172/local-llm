@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rotating Heptagon with Falling Ball</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  canvas { display: block; background-color: #000; }
+</style>
+</head>
+<body>
+<canvas id="heptagonCanvas"></canvas>
+<script>
+const canvas = document.getElementById('heptagonCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 800;
+
+let angle = 0;
+const cx = canvas.width / 2;
+const cy = canvas.height / 2;
+const R = 300;
+const vertices = [];
+
+for (let i = 0; i < 7; i++) {
+  const x = cx + R * Math.cos(angle + i * 2 * Math.PI / 7);
+  const y = cy + R * Math.sin(angle + i * 2 * Math.PI / 7);
+  vertices.push({ x, y });
+}
+
+const ballRadius = 12;
+let ballX = cx;
+let ballY = cy - ballRadius;
+let vx = 0;
+let vy = 0;
+
+function drawHeptagon() {
+  ctx.beginPath();
+  ctx.moveTo(vertices[0].x, vertices[0].y);
+  for (let i = 1; i < vertices.length; i++) {
+    ctx.lineTo(vertices[i].x, vertices[i].y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = 'white';
+  ctx.stroke();
+}
+
+function drawBall() {
+  ctx.beginPath();
+  ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+  ctx.fillStyle = 'red';
+  ctx.fill();
+}
+
+function update() {
+  angle += Math.PI / 350;
+  for (let i = 0; i < vertices.length; i++) {
+    const x = cx + R * Math.cos(angle + i * 2 * Math.PI / 7);
+    const y = cy + R * Math.sin(angle + i * 2 * Math.PI / 7);
+    vertices[i].x = x;
+    vertices[i].y = y;
+  }
+
+  const dt = 1 / 60; // Assuming 60 FPS
+  ballX += vx * dt;
+  ballY += vy * dt;
+  vy += 500 * dt;
+
+  for (let i = 0; i < vertices.length; i++) {
+    const v1 = vertices[i];
+    const v2 = vertices[(i + 1) % vertices.length];
+    const edgeX = v2.x - v1.x;
+    const edgeY = v2.y - v1.y;
+    const normalX = -edgeY;
+    const normalY = edgeX;
+    const len = Math.sqrt(normalX * normalX + normalY * normalY);
+    normalX /= len;
+    normalY /= len;
+
+    const dist = (ballX - v1.x) * normalX + (ballY - v1.y) * normalY;
+    if (dist < ballRadius) {
+      ballX += normalX * (ballRadius - dist);
+      ballY += normalY * (ballRadius - dist);
+      const dotVN = vx * normalX + vy * normalY;
+      vx -= 2 * dotVN * normalX;
+      vy -= 2 * dotVN * normalY;
+      vx *= 0.85;
+      vy *= 0.85;
+    }
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawHeptagon();
+  drawBall();
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>

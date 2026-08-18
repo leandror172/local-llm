@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bouncing Ball Simulation</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
+  canvas { border: 1px solid black; }
+</style>
+</head>
+<body>
+<canvas id="simulationCanvas" width="600" height="600"></canvas>
+<script>
+const canvas = document.getElementById('simulationCanvas');
+const ctx = canvas.getContext('2d');
+
+const ballRadius = 15;
+const squareSize = 400;
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+
+let angle = 0;
+const angularVelocity = (2 * Math.PI) / (8 * 60); // 8 seconds for one full rotation
+
+function drawBall(x, y) {
+  ctx.beginPath();
+  ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+  ctx.fillStyle = 'blue';
+  ctx.fill();
+}
+
+function drawTrail(trail) {
+  ctx.strokeStyle = 'rgba(0, 0, 255, 0.3)';
+  ctx.beginPath();
+  trail.forEach(point => ctx.lineTo(point.x, point.y));
+  ctx.stroke();
+}
+
+function updateBallPosition() {
+  angle += angularVelocity;
+  const x = centerX + Math.cos(angle) * (squareSize / 2 - ballRadius);
+  const y = centerY + Math.sin(angle) * (squareSize / 2 - ballRadius);
+
+  return { x, y };
+}
+
+function main(timestamp) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const ballPosition = updateBallPosition();
+  drawTrail(trail);
+  drawBall(ballPosition.x, ballPosition.y);
+
+  trail.push({ x: ballPosition.x, y: ballPosition.y });
+  if (trail.length > 100) trail.shift();
+
+  requestAnimationFrame(main);
+}
+
+const trail = [];
+requestAnimationFrame(main);
+</script>
+</body>
+</html>
