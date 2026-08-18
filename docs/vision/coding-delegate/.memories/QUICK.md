@@ -5,9 +5,12 @@ label). Keep under 30 lines.*
 
 ## Status
 
-**P4 complete. P3 IN PROGRESS.** Suite 416; live gate `make accept-p4`.
-**PR #87 and #88 both MERGED** (#88 on 2026-08-13) — master carries P1–P4 plus the P3 plan
-and T-133. In flight: `feature/oficina-p3-unit-addressing` (P3-T0's deterministic half).
+**P4 complete. P3 IN PROGRESS.** Suite 416 (mcp-server; repo-wide **894** via root `make test`, T-136 s138); live gate `make accept-p4`.
+**PR #87, #88 and #89 ALL MERGED** (#89 on 2026-08-18) — master carries P1–P4, the P3 plan,
+T-133, and **P3-T0's benchmark half** (dotted addressing + the `symbol_addressed` arm:
+43 output tokens FLAT vs whole-file's 120/216/479, both arms 100% correct). Nothing in flight.
+**P3-D1 still OPEN** — criterion 3 (real file, end-to-end) and criterion 5 (the
+unaddressable-statement rate) are the remaining gate evidence.
 
 Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE.md:
 

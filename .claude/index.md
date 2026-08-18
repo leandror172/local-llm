@@ -235,6 +235,31 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | `~/workspaces/scripts/ollama-guard.sh` *(machine-local)* | Shadows the `ollama` CLI: reroutes to `:11435` when the proxy is down, refuses only when a bare `ollama` would spawn a rogue empty-store server. Bypass: `OLLAMA_ALLOW_SERVE=1` | Sourced from `~/.bashrc`; edit if the port topology changes |
 | `~/workspaces/scripts/ollama-motd.sh` *(machine-local)* | One-line ollama health report per WSL boot (sentinel in `$XDG_RUNTIME_DIR`; nags until healthy) | Sourced from `~/.bashrc` (interactive only) |
 
+### Test Runners (one command per area; the root one covers all)
+
+> **The run is the source of truth for counts, not this table.** Counts below are from
+> s138 and carry a date for that reason: `overlays/Makefile` asserted "196 tests total"
+> in its help text and was 100 stale before anyone ran the suite to check (T-136).
+>
+> **Adding an area with tests?** Add its `run-tests.sh` to `SUITES` in
+> `scripts/run-all-tests.sh` and a target in the root `Makefile`. To check the list is
+> complete, run `git ls-files | grep 'test_.*\.py$' | sed 's|/[^/]*$||' | sort -u` and
+> compare — the first draft of the aggregator missed two suites by enumerating Makefiles
+> instead of test directories. **Deliberately excluded:**
+> `benchmarks/test-fixtures/ollama-client/` (fixture data, not a suite) and
+> `make -C mcp-server accept-p4` (live model calls, not a test).
+
+| Entry point | Runs | Notes |
+|-------------|------|-------|
+| **`make test`** (repo root) → `scripts/run-all-tests.sh` | **all six suites — 894** (s138) | Per-suite summary + total; nonzero exit if any fails. Every suite runs even when an earlier one fails, so the summary is complete. Narrow: `make test-mcp ARGS='-k foo'` / `test-overlays` / `test-benchmarks` |
+| `mcp-server/scripts/run-tests.sh` | ollama-bridge + oficina — **416** | `uv run pytest tests/`. The single definition: `make test` inside `mcp-server` and the root aggregator both delegate here, so the command exists in one place |
+| `overlays/scripts/run-all-tests.sh` | every overlay suite — **296** | ref-indexing (bash) + session-tracking + installer (pytest). Established the delegate-to-scripts convention the root copies |
+| `benchmarks/lib/run-tests.sh` | benchmark instrument — **67** | Model-free, <1 s. `find_units`/`resolve_unit`/`apply_unit` + corpus ground truth — the instrument every P3 measurement is read through. **Ran in no suite at all until s138** (T-136) |
+| `docs/portfolio/hf-space/run-tests.sh` | engineer-profile Space app — **68** | Hermetic: `conftest.py` mocks `gradio`/`huggingface_hub`/`anthropic` before `app.py` imports, so no venv, network or HF token is needed |
+| `.claude/hooks/tests/run-tests.sh` | hook scripts — **26** | Hermetic. Prints a `N passed, M failed` summary **so the aggregator can count it** — a suite reporting no total is counted as zero, which reads as false health |
+| `personas/run-tests.sh` | personas module — **21** | pytest |
+| `make -C mcp-server accept-p4` | live P4 judge-gate acceptance | **NOT a test target** — real Ollama calls, ~35 s. Deliberately outside `make test` |
+
 ### Benchmark Bash Wrappers (use these, not the .py files)
 | Wrapper | Wraps | Purpose |
 |---------|-------|---------|
@@ -245,6 +270,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | `benchmarks/lib/run-fewshot-test.sh` | `ollama-probe.py` | A/B test: baseline vs few-shot on same prompt |
 | `benchmarks/lib/run-compare-models.sh` | `compare-models.py` | Multi-model comparison: same prompt → N models → verdict → DPO pairs |
 | `benchmarks/lib/run-record-verdicts.sh` | `record-verdicts.py` | Record verdicts after the fact (when compare ran non-interactively); supports `--list`, `--entry N` |
+| `benchmarks/lib/run-tests.sh` | `test_writemodel_*.py` | Model-free unit tests for the benchmark's own instrument — see **Test Runners** above |
 | `benchmarks/lib/run-write-model-bench.sh` | `writemodel_bench.py` | oficina write-model benchmark (T-104): 3 apply arms (code-anchored / whole-file / model-anchored) × size-bucketed corpus × N runs; reports by size bucket. `--per-bucket`/`--arms`/`--runs`/`--limit`. Serial 14B — full sweep is a multi-hour sit; smoke with `--limit`. `ref:oficina-write-model-benchmark` |
 
 ### Benchmark Python/JS Libraries (never call directly)
