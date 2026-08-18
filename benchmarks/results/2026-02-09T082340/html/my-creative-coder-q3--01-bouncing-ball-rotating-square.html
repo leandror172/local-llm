@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rotating Square Ball Bounce</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 600;
+  canvas.height = 600;
+
+  // Square properties
+  const square = {
+    cx: canvas.width / 2,
+    cy: canvas.height / 2,
+    size: 400, // half size is 200
+    theta: 0,
+    angularVelocity: Math.PI / 4 // radians per second
+  };
+
+  // Ball properties
+  const ball = {
+    x: square.cx,
+    y: square.cy,
+    vx: 2,
+    vy: 2,
+    radius: 10,
+    trail: []
+  };
+
+  let lastTime = 0;
+
+  function animate(currentTime) {
+    const deltaTime = (currentTime - lastTime) / 1000;
+    lastTime = currentTime;
+
+    // Update square rotation
+    square.theta += square.angularVelocity * deltaTime;
+
+    // Update ball position
+    ball.x += ball.vx * deltaTime;
+    ball.y += ball.vy * deltaTime;
+
+    // Collision detection with square walls
+    const dx = ball.x - square.cx;
+    const dy = ball.y - square.cy;
+    const localX = dx * Math.cos(square.theta) + dy * Math.sin(square.theta);
+    const localY = -dx * Math.sin(square.theta) + dy * Math.cos(square.theta);
+    const halfSize = square.size / 2;
+
+    // Check if ball is outside the square
+    if (localX > halfSize || localX < -halfSize || localY > halfSize || localY < -halfSize) {
+      // Determine which wall was hit
+      let newX = ball.x, newY = ball.y;
+      if (localX > halfSize) {
+        // Right wall
+        newX = square.cx + halfSize * Math.cos(square.theta) - dy * Math.sin(square.theta);
+        newY = square.cy + halfSize * Math.sin(square.theta) + dx * Math.sin(square.theta);
+        ball.vx *= -1;
+      } else if (localX < -halfSize) {
+        // Left wall
+        newX = square.cx - halfSize * Math.cos(square.theta) - dy * Math.sin(square.theta);
+        newY = square.cy - halfSize * Math.sin(square.theta) + dx * Math.sin(square.theta);
+        ball.vx *= -1;
+      } else if (localY > halfSize) {
+        // Top wall
+        newX = square.cx + halfSize * Math.sin(square.theta) - dy * Math.cos(square.theta);
+        newY = square.cy + halfSize * Math.cos(square.theta) + dx * Math.cos(square.theta);
+        ball.vy *= -1;
+      } else if (localY < -halfSize) {
+        // Bottom wall
+        newX = square.cx - halfSize * Math.sin(square.theta) - dy * Math.cos(square.theta);
+        newY = square.cy - halfSize * Math.cos(square.theta) + dx * Math.cos(square.theta);
+        ball.vy *= -1;
+      }
+      ball.x = newX;
+      ball.y = newY;
+    }
+
+    // Draw the square
+    ctx.save();
+    ctx.translate(square.cx, square.cy);
+    ctx.rotate(square.theta);
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(-square.size / 2, -square.size / 2, square.size, square.size);
+    ctx.restore();
+
+    // Draw the ball
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'red';
+    ctx.fill();
+
+    // Draw the trail
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < ball.trail.length; i++) {
+      const point = ball.trail[i];
+      ctx.lineTo(point.x, point.y);
+    }
+    ctx.stroke();
+
+    // Update trail
+    ball.trail.push({ x: ball.x, y: ball.y });
+    if (ball.trail.length > 100) {
+      ball.trail.shift();
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  // Start animation
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>

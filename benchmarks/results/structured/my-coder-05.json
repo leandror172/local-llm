@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 43,
+    "eval_duration": 0.73,
+    "wall_time": 6.88,
+    "tok_per_sec": 59.2,
+    "content_chars": 124,
+    "thinking_chars": 0,
+    "prompt_tokens": 173,
+    "json_valid": true,
+    "content_preview": "{\n  \"value\": 42,\n  \"is_even\": true,\n  \"is_prime\": false,\n  \"fun_fact\": \"The answer to life, the universe, and everything.\"\n}"
+  },
+  "format=off": {
+    "eval_count": 58,
+    "eval_duration": 0.89,
+    "wall_time": 1.03,
+    "tok_per_sec": 65.3,
+    "content_chars": 277,
+    "thinking_chars": 0,
+    "prompt_tokens": 173,
+    "json_valid": false,
+    "content_preview": "The number 42 is a well-known answer to the ultimate question of life, the universe, and everything in Douglas Adams' science fiction series \"The Hitchhiker's Guide to the Galaxy.\" It has become a cul"
+  }
+}

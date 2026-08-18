@@ -1,0 +1,13 @@
+{
+  "stage": 1,
+  "model": "my-creative-coder",
+  "prompt_file": "prompts/decomposed/03-aquarium/stage-1.md",
+  "prompt_chars": 929,
+  "injected_chars": 0,
+  "eval_count": 747,
+  "eval_duration": 12.01,
+  "wall_time": 27.55,
+  "tok_per_sec": 62.2,
+  "thinking_chars": 0,
+  "html_chars": 2480
+}

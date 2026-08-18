@@ -1,0 +1,19 @@
+[
+  {
+    "file": "my-creative-coder-q3--03-aquarium-screensaver.html",
+    "path": "/mnt/i/workspaces/llm/benchmarks/results/2026-02-11T224710/html/my-creative-coder-q3--03-aquarium-screensaver.html",
+    "status": "fail",
+    "errors": [
+      {
+        "type": "uncaught_exception",
+        "text": "Cannot access 'fish' before initialization",
+        "line": 228
+      }
+    ],
+    "warnings": [],
+    "error_count": 1,
+    "warning_count": 0,
+    "load_time_ms": 2051,
+    "validated_at": "2026-02-12T02:11:46.898Z"
+  }
+]

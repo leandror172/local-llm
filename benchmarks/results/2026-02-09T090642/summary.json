@@ -1,0 +1,50 @@
+{
+  "run_id": "2026-02-09T090642",
+  "timestamp": "2026-02-09 09:16:48",
+  "models": {
+    "my-coder-q3": {
+      "base_model": "qwen3:8b",
+      "category": "backend"
+    }
+  },
+  "results": [
+    {
+      "model": "my-coder-q3",
+      "prompt_id": "01-go-lru-cache",
+      "category": "backend",
+      "description": "Concurrent-safe LRU cache with TTL expiration in Go",
+      "status": "success",
+      "eval_count": 9372,
+      "tok_s": 51.8,
+      "prompt_eval_count": 187,
+      "total_seconds": 183.51,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "code/my-coder-q3--01-go-lru-cache.go",
+      "extracted_lines": 199
+    },
+    {
+      "model": "my-coder-q3",
+      "prompt_id": "02-java-csv-parser",
+      "category": "backend",
+      "description": "Stream-based CSV parser with error handling in Java",
+      "status": "timeout",
+      "timeout": 300
+    },
+    {
+      "model": "my-coder-q3",
+      "prompt_id": "03-merge-intervals",
+      "category": "backend",
+      "description": "Merge overlapping intervals algorithm",
+      "status": "success",
+      "eval_count": 6155,
+      "tok_s": 53.5,
+      "prompt_eval_count": 210,
+      "total_seconds": 116.89,
+      "load_seconds": 0.06,
+      "think_tokens": 0,
+      "extracted_file": "code/my-coder-q3--03-merge-intervals.java",
+      "extracted_lines": 52
+    }
+  ]
+}

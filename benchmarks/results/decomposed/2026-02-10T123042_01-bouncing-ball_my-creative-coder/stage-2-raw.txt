@@ -1,0 +1,81 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotating Square with Bouncing Ball</title>
+<style>
+  body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
+  canvas { border: 1px solid black; }
+</style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="600"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let lastTime = null;
+let angle = 0;
+
+function draw(time) {
+  if (lastTime === null) lastTime = time;
+  const deltaTime = time - lastTime;
+  lastTime = time;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(angle);
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(-200, -200, 400, 400);
+  ctx.restore();
+
+  angle += deltaTime * Math.PI / (8 * 1000);
+
+  const ballRadius = 10;
+  let ballX = canvas.width / 2;
+  let ballY = canvas.height / 2;
+  let ballVx = 200;
+  let ballVy = 150;
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(-angle);
+
+  ballX -= canvas.width / 2;
+  ballY -= canvas.height / 2;
+  ballX += ballVx * deltaTime;
+  ballY += ballVy * deltaTime;
+
+  if (Math.abs(ballX) + ballRadius > 200 || Math.abs(ballY) + ballRadius > 200) {
+    if (ballX + ballRadius > 200) {
+      ballVx = -ballVx;
+    } else if (ballX - ballRadius < -200) {
+      ballVx = -ballVx;
+    }
+    if (ballY + ballRadius > 200) {
+      ballVy = -ballVy;
+    } else if (ballY - ballRadius < -200) {
+      ballVy = -ballVy;
+    }
+  }
+
+  ctx.beginPath();
+  ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+  ctx.fillStyle = 'red';
+  ctx.fill();
+
+  ctx.restore();
+
+  requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
+```

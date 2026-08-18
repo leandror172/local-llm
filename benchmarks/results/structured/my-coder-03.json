@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 73,
+    "eval_duration": 1.14,
+    "wall_time": 2.31,
+    "tok_per_sec": 64.1,
+    "content_chars": 258,
+    "thinking_chars": 0,
+    "prompt_tokens": 217,
+    "json_valid": true,
+    "content_preview": "{\n  \"model\": \"qwen2.5-coder-7b\"\n  , \"think_mode\": true\n  , \"complexity\": \"simple\"\n  , \"reason\": \"This task requires generating a simple unit test for a Go HTTP handler, which is straightforward and do"
+  },
+  "format=off": {
+    "eval_count": 180,
+    "eval_duration": 2.8,
+    "wall_time": 3.05,
+    "tok_per_sec": 64.4,
+    "content_chars": 727,
+    "thinking_chars": 0,
+    "prompt_tokens": 217,
+    "json_valid": false,
+    "content_preview": "```go\npackage main\n\nimport (\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"testing\"\n)\n\n// ExampleHandler is a simple HTTP handler that responds with \"Hello, World!\"\nfunc ExampleHandler(w http.ResponseWriter, r *"
+  }
+}

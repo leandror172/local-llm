@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 107,
+    "eval_duration": 1.9,
+    "wall_time": 2.69,
+    "tok_per_sec": 56.4,
+    "content_chars": 392,
+    "thinking_chars": 0,
+    "prompt_tokens": 225,
+    "json_valid": true,
+    "content_preview": "{\"model\": \"qwen2.5-coder-7b\", \"think_mode\": false, \"complexity\": \"medium\", \"reason\": \"The qwen2.5-coder-7b model is best suited for writing unit tests in Go, as it has been fine-tuned for coding tasks"
+  },
+  "format=off": {
+    "eval_count": 11,
+    "eval_duration": 0.18,
+    "wall_time": 0.26,
+    "tok_per_sec": 62.1,
+    "content_chars": 16,
+    "thinking_chars": 0,
+    "prompt_tokens": 225,
+    "json_valid": false,
+    "content_preview": "qwen2.5-coder-7b"
+  }
+}

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquarium Screensaver</title>
+<style>
+  body, html { margin: 0; padding: 0; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="aquarium"></canvas>
+<script>
+const canvas = document.getElementById('aquarium');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const numFish = 8;
+const fish = [];
+for (let i = 0; i < numFish; i++) {
+  fish.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    dx: (Math.random() - 0.5) * 2,
+    dy: (Math.random() - 0.5) * 2,
+    size: Math.random() * 10 + 20,
+    color: `hsl(${Math.random() * 360}, 70%, 50%)`
+  });
+}
+
+const bubbles = [];
+function createBubble(x, y) {
+  bubbles.push({
+    x,
+    y,
+    size: Math.random() * 2 + 1,
+    growthRate: Math.random() * 0.1 + 0.01
+  });
+}
+
+const seaweed = [];
+for (let i = 0; i < 5; i++) {
+  const width = Math.random() * 30 + 10;
+  seaweed.push({
+    x: Math.random() * canvas.width,
+    y: canvas.height - width / 2,
+    width,
+    speed: Math.random() * 0.1 + 0.05
+  });
+}
+
+const pebbles = [];
+for (let i = 0; i < 50; i++) {
+  pebbles.push({
+    x: Math.random() * canvas.width,
+    y: canvas.height - 20,
+    size: Math.random() * 3 + 1
+  });
+}
+
+function drawGradient() {
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, 'blue');
+  gradient.addColorStop(1, 'darkblue');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawFish(fish) {
+  ctx.save();
+  ctx.translate(fish.x, fish.y);
+  ctx.rotate(Math.atan2(fish.dy, fish.dx));
+  ctx.beginPath();
+  ctx.moveTo(0, -fish.size / 2);
+  ctx.lineTo(-fish.size / 4, fish.size / 2);
+  ctx.lineTo(fish.size / 4, fish.size / 2);
+  ctx.closePath();
+  ctx.fillStyle = fish.color;
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBubble(bubble) {
+  ctx.beginPath();
+  ctx.arc(bubble.x, bubble.y, bubble.size, 0, Math.PI * 2);
+  ctx.fillStyle = 'white';
+  ctx.fill();
+}
+
+function drawSeaweed(seaweed) {
+  ctx.save();
+  ctx.translate(seaweed.x, seaweed.y);
+  ctx.rotate(Math.random() * 0.1 - 0.05);
+  ctx.beginPath();
+  for (let i = 0; i < seaweed.width / 2; i++) {
+    ctx.lineTo(i * 2, -i * 2);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'green';
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPebble(pebble) {
+  ctx.beginPath();
+  ctx.arc(pebble.x, pebble.y, pebble.size, 0, Math.PI * 2);
+  ctx.fillStyle = 'sandybrown';
+  ctx.fill();
+}
+
+function drawLightRays() {
+  ctx.save();
+  ctx.translate(canvas.width / 2, 0);
+  for (let i = 0; i < 10; i++) {
+    const angle = Math.PI * 2 * i / 10;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(angle) * canvas.width / 4, Math.sin(angle) * canvas.height / 4);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random()})`;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function updateFish(fish) {
+  fish.x += fish.dx;
+  fish.y += fish.dy;
+  if (fish.x < -fish.size || fish.x > canvas.width + fish.size) {
+    fish.x = Math.random() * canvas.width;
+  }
+  if (fish.y < -fish.size || fish.y > canvas.height + fish.size) {
+    fish.y = Math.random() * canvas.height;
+  }
+}
+
+function updateBubble(bubble) {
+  bubble.y -= bubble.growthRate;
+  bubble.size += bubble.growthRate;
+  if (bubble.y < -bubble.size) {
+    createBubble(Math.random() * canvas.width, canvas.height);
+  }
+}
+
+function updateSeaweed(seaweed) {
+  seaweed.x -= seaweed.speed;
+  if (seaweed.x < -seaweed.width) {
+    seaweed.x = canvas.width + seaweed.width;
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGradient();
+  drawLightRays();
+  fish.forEach(drawFish);
+  bubbles.forEach(drawBubble);
+  seaweed.forEach(drawSeaweed);
+  pebbles.forEach(drawPebble);
+  fish.forEach(updateFish);
+  bubbles.forEach(updateBubble);
+  seaweed.forEach(updateSeaweed);
+  requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+</script>
+</body>
+</html>

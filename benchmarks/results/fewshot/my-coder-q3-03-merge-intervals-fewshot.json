@@ -1,0 +1,13 @@
+{
+  "think=False": {
+    "eval_count": 521,
+    "eval_duration": 9.12,
+    "wall_time": 9.8,
+    "tok_per_sec": 57.1,
+    "content_chars": 1922,
+    "thinking_chars": 0,
+    "prompt_tokens": 1101,
+    "json_valid": false,
+    "content_preview": "```go\npackage interval\n\nimport (\n\t\"errors\"\n\t\"sort\"\n)\n\n// Interval represents a range with a start and end value.\ntype Interval[T comparable] struct {\n\tStart T\n\tEnd   T\n}\n\n// Merge merges overlapping i"
+  }
+}

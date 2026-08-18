@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquarium Background</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="aquarium"></canvas>
+<script>
+const canvas = document.getElementById('aquarium');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+gradient.addColorStop(0, '#87CEEB');
+gradient.addColorStop(1, '#001a33');
+
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+const sandyBottomY = canvas.height * 0.85;
+ctx.fillStyle = '#c2b280';
+ctx.fillRect(0, sandyBottomY, canvas.width, canvas.height - sandyBottomY);
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+const pebbles = [];
+for (let i = 0; i < 30; i++) {
+  pebbles.push({
+    x: getRandomInt(0, canvas.width),
+    y: sandyBottomY,
+    size: getRandomInt(3, 8),
+    color: `hsl(${getRandomInt(10, 40)}, 50%, 60%)`
+  });
+}
+
+function drawPebbles() {
+  ctx.fillStyle = '#c2b280';
+  pebbles.forEach(pebble => {
+    ctx.beginPath();
+    ctx.arc(pebble.x, pebble.y, pebble.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+const lightRays = [];
+for (let i = 0; i < getRandomInt(5, 7); i++) {
+  const angle = Math.random() * Math.PI / 6;
+  lightRays.push({
+    x: canvas.width / 2,
+    y: 0,
+    dx: Math.cos(angle),
+    dy: Math.sin(angle),
+    opacity: Math.random() * (0.06 - 0.03) + 0.03
+  });
+}
+
+function drawLightRays() {
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  lightRays.forEach(ray => {
+    ctx.beginPath();
+    ctx.moveTo(ray.x, ray.y);
+    ctx.lineTo(ray.x + ray.dx * canvas.width / 2, ray.y + ray.dy * canvas.height);
+    ctx.lineTo(ray.x - ray.dx * canvas.width / 4, ray.y + ray.dy * canvas.height);
+    ctx.closePath();
+    ctx.fillStyle = 'white';
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#c2b280';
+  ctx.fillRect(0, sandyBottomY, canvas.width, canvas.height - sandyBottomY);
+  drawPebbles();
+  drawLightRays();
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>

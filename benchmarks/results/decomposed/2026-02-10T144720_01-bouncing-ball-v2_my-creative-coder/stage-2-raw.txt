@@ -1,0 +1,95 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotating Square with Bouncing Ball</title>
+<style>
+  body { margin: 0; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 600;
+canvas.height = 600;
+
+let lastTime = null;
+const squareSize = 400;
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+const rotationSpeed = (2 * Math.PI) / (8 * 1000); // radians per millisecond
+const ballRadius = 10;
+const ballVelocity = { x: 200, y: 150 };
+
+let wx = centerX;
+let wy = centerY;
+let vx = ballVelocity.x;
+let vy = ballVelocity.y;
+
+function drawSquare(time) {
+  if (!lastTime) lastTime = time;
+  const deltaTime = time - lastTime;
+  lastTime = time;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(deltaTime * rotationSpeed);
+  ctx.strokeStyle = 'blue';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-squareSize / 2, -squareSize / 2, squareSize, squareSize);
+
+  // Transform ball position from world to local
+  const angle = deltaTime * rotationSpeed;
+  const halfSize = squareSize / 2;
+  let localX = (wx - centerX) * Math.cos(-angle) - (wy - centerY) * Math.sin(-angle);
+  let localY = (wx - centerX) * Math.sin(-angle) + (wy - centerY) * Math.cos(-angle);
+
+  // Transform velocity from world to local
+  let localVx = vx * Math.cos(-angle) - vy * Math.sin(-angle);
+  let localVy = vx * Math.sin(-angle) + vy * Math.cos(-angle);
+
+  // Check collision against axis-aligned walls in local space
+  if (localX + ballRadius > halfSize) {
+    localX = halfSize - ballRadius;
+    localVx = -localVx;
+  }
+  if (localX - ballRadius < -halfSize) {
+    localX = -halfSize + ballRadius;
+    localVx = -localVx;
+  }
+  if (localY + ballRadius > halfSize) {
+    localY = halfSize - ballRadius;
+    localVy = -localVy;
+  }
+  if (localY - ballRadius < -halfSize) {
+    localY = -halfSize + ballRadius;
+    localVy = -localVy;
+  }
+
+  // Transform corrected position and velocity back to world space
+  wx = localX * Math.cos(angle) - localY * Math.sin(angle) + centerX;
+  wy = localX * Math.sin(angle) + localY * Math.cos(angle) + centerY;
+  vx = localVx * Math.cos(angle) - localVy * Math.sin(angle);
+  vy = localVx * Math.sin(angle) + localVy * Math.cos(-angle);
+
+  // Draw the ball at (wx, wy)
+  ctx.fillStyle = 'red';
+  ctx.beginPath();
+  ctx.arc(wx, wy, ballRadius, 0, 2 * Math.PI);
+  ctx.fill();
+
+  requestAnimationFrame(drawSquare);
+}
+
+requestAnimationFrame(drawSquare);
+</script>
+</body>
+</html>
+```

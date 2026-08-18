@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rotating Square with Bouncing Ball</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="600"></canvas>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const squareSize = 400;
+    const rotationDuration = 8000; // milliseconds
+    const startAngle = -Math.PI / 2; // Start with square aligned to the right
+
+    let lastTime = 0;
+    let currentAngle = startAngle;
+
+    // Ball properties
+    let wx = centerX;
+    let wy = centerY;
+    let vx = 200;
+    let vy = 150;
+    const radius = 10;
+    const halfSize = squareSize / 2;
+
+    // Trail properties
+    const trailLength = 60;
+    const trail = [];
+
+    function animate(currentTime) {
+        const deltaTime = (currentTime - lastTime) / 1000; // seconds
+        lastTime = currentTime;
+
+        // Calculate the angle based on delta time
+        const rotationSpeed = (2 * Math.PI) / rotationDuration;
+        currentAngle += rotationSpeed * deltaTime;
+
+        // Update ball position in world space
+        wx += vx * deltaTime;
+        wy += vy * deltaTime;
+
+        // Step 3: Transform ball position to local space
+        const cosAngle = Math.cos(currentAngle);
+        const sinAngle = Math.sin(currentAngle);
+        const localX = (wx - centerX) * cosAngle - (wy - centerY) * sinAngle;
+        const localY = (wx - centerX) * sinAngle + (wy - centerY) * cosAngle;
+
+        // Step 4: Transform velocity to local space
+        const localVx = vx * cosAngle - vy * sinAngle;
+        const localVy = vx * sinAngle + vy * cosAngle;
+
+        // Step 5: Check collision against axis-aligned walls in local space
+        if (localX + radius > halfSize) {
+            localX = halfSize - radius;
+            localVx = -localVx;
+        }
+        if (localX - radius < -halfSize) {
+            localX = -halfSize + radius;
+            localVx = -localVx;
+        }
+        if (localY + radius > halfSize) {
+            localY = halfSize - radius;
+            localVy = -localVy;
+        }
+        if (localY - radius < -halfSize) {
+            localY = -halfSize + radius;
+            localVy = -localVy;
+        }
+
+        // Step 6: Transform corrected position and velocity back to world space
+        const cosNegAngle = Math.cos(-currentAngle);
+        const sinNegAngle = Math.sin(-currentAngle);
+        wx = localX * cosNegAngle - localY * sinNegAngle + centerX;
+        wy = localX * sinNegAngle + localY * cosNegAngle + centerY;
+
+        // Transform velocity back to world space
+        vx = localVx * cosNegAngle - localVy * sinNegAngle;
+        vy = localVx * sinNegAngle + localVy * cosNegAngle;
+
+        // Update trail
+        trail.push({ x: wx, y: wy });
+        if (trail.length > trailLength) {
+            trail.shift();
+        }
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Save context state
+        ctx.save();
+
+        // Translate to center
+        ctx.translate(centerX, centerY);
+
+        // Rotate
+        ctx.rotate(currentAngle);
+
+        // Draw square
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.rect(-squareSize / 2, -squareSize / 2, squareSize, squareSize);
+        ctx.stroke();
+
+        // Draw trail
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
+        for (let i = 0; i < trail.length; i++) {
+            const alpha = (i / trailLength);
+            ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(trail[i].x - centerX, trail[i].y - centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw ball
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(wx - centerX, wy - centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Restore context state
+        ctx.restore();
+
+        requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+</script>
+</body>
+</html>

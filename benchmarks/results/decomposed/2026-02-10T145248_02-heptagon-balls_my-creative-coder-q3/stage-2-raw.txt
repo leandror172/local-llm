@@ -1,0 +1,121 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rotating Heptagon with Ball</title>
+    <style>
+        body { margin: 0; background: #000; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="canvas" width="800" height="800"></canvas>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const R = 300;
+    let angle = 0;
+    let lastTime = 0;
+
+    // Ball properties
+    const ball = {
+        x: cx,
+        y: cy,
+        vx: 0,
+        vy: 0,
+        radius: 12
+    };
+
+    function drawHeptagon(currentTime) {
+        const delta = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+        angle += delta * (2 * Math.PI / 5);
+
+        // Recompute heptagon vertices
+        const vertices = [];
+        for (let i = 0; i < 7; i++) {
+            const theta = angle + i * (2 * Math.PI / 7);
+            const x = cx + R * Math.cos(theta);
+            const y = cy + R * Math.sin(theta);
+            vertices.push({ x, y });
+        }
+
+        // Update ball position and apply gravity
+        const dt = delta;
+        ball.x += ball.vx * dt;
+        ball.y += ball.vy * dt;
+        ball.vy += 500 * dt;
+
+        // Collision detection with heptagon edges
+        for (let i = 0; i < 7; i++) {
+            const v1 = vertices[i];
+            const v2 = vertices[(i + 1) % 7];
+
+            // Compute edge vector
+            const edgeX = v2.x - v1.x;
+            const edgeY = v2.y - v1.y;
+
+            // Compute inward normal
+            const normalX = -edgeY;
+            const normalY = edgeX;
+
+            // Normalize normal
+            const len = Math.hypot(normalX, normalY);
+            const nX = normalX / len;
+            const nY = normalY / len;
+
+            // Compute signed distance from ball to edge line
+            const dist = (ball.x - v1.x) * nX + (ball.y - v1.y) * nY;
+
+            if (dist < ball.radius) {
+                // Push ball back to the surface
+                ball.x += nX * (ball.radius - dist);
+                ball.y += nY * (ball.radius - dist);
+
+                // Reflect velocity
+                const dotVN = ball.vx * nX + ball.vy * nY;
+                ball.vx -= 2 * dotVN * nX;
+                ball.vy -= 2 * dotVN * nY;
+
+                // Apply friction
+                ball.vx *= 0.999;
+                ball.vy *= 0.999;
+            }
+        }
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw heptagon
+        ctx.beginPath();
+        for (let i = 0; i < 7; i++) {
+            const theta = angle + i * (2 * Math.PI / 7);
+            const x = cx + R * Math.cos(theta);
+            const y = cy + R * Math.sin(theta);
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.closePath();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw ball
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        requestAnimationFrame(drawHeptagon);
+    }
+
+    requestAnimationFrame(drawHeptagon);
+</script>
+</body>
+</html>
+```

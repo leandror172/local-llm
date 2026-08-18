@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 51,
+    "eval_duration": 0.9,
+    "wall_time": 46.56,
+    "tok_per_sec": 56.4,
+    "content_chars": 193,
+    "thinking_chars": 0,
+    "prompt_tokens": 191,
+    "json_valid": true,
+    "content_preview": "{\"category\": \"transport\", \"amount\": 2.75, \"confidence\": 0.95, \"reasoning\": \"The phrase 'Mass Transit - Subway fare' clearly indicates a transportation expense, specifically for subway travel.\"}"
+  },
+  "format=off": {
+    "eval_count": 188,
+    "eval_duration": 3.34,
+    "wall_time": 3.5,
+    "tok_per_sec": 56.3,
+    "content_chars": 1027,
+    "thinking_chars": 0,
+    "prompt_tokens": 191,
+    "json_valid": false,
+    "content_preview": "```java\n// ExpenseClassifier.java\npublic record ExpenseClassifier() {\n    public String classifyExpense(String expenseDescription) {\n        if (expenseDescription == null) {\n            throw new Ill"
+  }
+}

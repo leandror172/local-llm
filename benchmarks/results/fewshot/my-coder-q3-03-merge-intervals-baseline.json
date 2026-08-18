@@ -1,0 +1,13 @@
+{
+  "think=False": {
+    "eval_count": 978,
+    "eval_duration": 16.98,
+    "wall_time": 21.5,
+    "tok_per_sec": 57.6,
+    "content_chars": 4175,
+    "thinking_chars": 0,
+    "prompt_tokens": 301,
+    "json_valid": false,
+    "content_preview": "```java\n// IntervalMerger.java\nimport java.util.*;\n\npublic class IntervalMerger {\n    public static List<int[]> mergeIntervals(List<int[]> intervals) {\n        if (intervals == null) {\n            thr"
+  }
+}

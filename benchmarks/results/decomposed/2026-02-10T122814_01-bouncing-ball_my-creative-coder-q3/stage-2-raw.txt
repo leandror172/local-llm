@@ -1,0 +1,106 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rotating Square with Bouncing Ball</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 600;
+    canvas.height = 600;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const squareSize = 400;
+    let lastTime = 0;
+    let rotationAngle = 0;
+
+    // Ball properties
+    const ballRadius = 10;
+    let ballPosition = { x: 0, y: 0 };
+    let ballVelocity = { x: 200, y: 150 };
+
+    function animate(currentTime) {
+        const deltaTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Update ball position
+        ballPosition.x += ballVelocity.x * deltaTime;
+        ballPosition.y += ballVelocity.y * deltaTime;
+
+        // Transform ball position to local space
+        const localX = ballPosition.x - centerX;
+        const localY = ballPosition.y - centerY;
+        const localAngle = -rotationAngle;
+
+        // Rotate local position to match square's rotation
+        const cos = Math.cos(localAngle);
+        const sin = Math.sin(localAngle);
+        const localXRot = localX * cos - localY * sin;
+        const localYRot = localX * sin + localY * cos;
+
+        // Check for collision with walls in local space
+        const halfSize = squareSize / 2;
+        const radius = ballRadius;
+
+        if (localXRot - radius < -halfSize) {
+            // Left wall collision
+            ballPosition.x -= (localXRot - radius + halfSize) * 2;
+            ballVelocity.x *= -1;
+        } else if (localXRot + radius > halfSize) {
+            // Right wall collision
+            ballPosition.x -= (localXRot + radius - halfSize) * 2;
+            ballVelocity.x *= -1;
+        }
+
+        if (localYRot - radius < -halfSize) {
+            // Top wall collision
+            ballPosition.y -= (localYRot - radius + halfSize) * 2;
+            ballVelocity.y *= -1;
+        } else if (localYRot + radius > halfSize) {
+            // Bottom wall collision
+            ballPosition.y -= (localYRot + radius - halfSize) * 2;
+            ballVelocity.y *= -1;
+        }
+
+        // Transform ball position back to world space
+        const worldX = centerX + localXRot * cos - localYRot * sin;
+        const worldY = centerY + localXRot * sin + localYRot * cos;
+
+        // Draw square
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(rotationAngle);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-squareSize / 2, -squareSize / 2, squareSize, squareSize);
+        ctx.restore();
+
+        // Draw ball
+        ctx.save();
+        ctx.translate(worldX, worldY);
+        ctx.beginPath();
+        ctx.arc(0, 0, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.restore();
+
+        // Update rotation
+        rotationAngle += deltaTime * (2 * Math.PI / 8);
+        requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+</script>
+</body>
+</html>
+```

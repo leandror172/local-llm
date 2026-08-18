@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 92,
+    "eval_duration": 1.63,
+    "wall_time": 2.08,
+    "tok_per_sec": 56.3,
+    "content_chars": 301,
+    "thinking_chars": 0,
+    "prompt_tokens": 189,
+    "json_valid": true,
+    "content_preview": "{\n  \"language\": \"java\",\n  \"function_name\": \"mergeSortedArrays\",\n  \"parameters\": [\n    {\n      \"name\": \"a\",\n      \"type\": \"int[]\"\n    },\n    {\n      \"name\": \"b\",\n      \"type\": \"int[]\"\n    }\n  ],\n  \"ret"
+  },
+  "format=off": {
+    "eval_count": 232,
+    "eval_duration": 4.15,
+    "wall_time": 4.29,
+    "tok_per_sec": 55.9,
+    "content_chars": 868,
+    "thinking_chars": 0,
+    "prompt_tokens": 189,
+    "json_valid": false,
+    "content_preview": "```java\npublic record MergeSortedArraysResult(int[] mergedArray, boolean success) {\n    public MergeSortedArraysResult(int[] mergedArray) {\n        this(mergedArray, true);\n    }\n}\n\npublic MergeSorted"
+  }
+}

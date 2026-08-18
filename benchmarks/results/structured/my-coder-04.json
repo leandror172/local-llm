@@ -1,0 +1,24 @@
+{
+  "format=on": {
+    "eval_count": 78,
+    "eval_duration": 1.21,
+    "wall_time": 2.5,
+    "tok_per_sec": 64.6,
+    "content_chars": 256,
+    "thinking_chars": 0,
+    "prompt_tokens": 181,
+    "json_valid": true,
+    "content_preview": "{ \"language\": \"java\", \"function_name\": \"mergeSortedArrays\", \"parameters\": [ { \"name\": \"arr1\", \"type\": \"int[]\" }, { \"name\": \"arr2\", \"type\": \"int[]\" } ], \"return_type\": \"int[]\" , \"description\": \"Merges "
+  },
+  "format=off": {
+    "eval_count": 33,
+    "eval_duration": 0.5,
+    "wall_time": 0.61,
+    "tok_per_sec": 66.5,
+    "content_chars": 150,
+    "thinking_chars": 0,
+    "prompt_tokens": 181,
+    "json_valid": false,
+    "content_preview": "```java\npublic static int[] mergeSortedArrays(int[] arr1, int[] arr2) throws IllegalArgumentException {\n    // Function implementation goes here\n}\n```"
+  }
+}
