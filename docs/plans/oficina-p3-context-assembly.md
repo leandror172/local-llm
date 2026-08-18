@@ -932,10 +932,26 @@ arm C, a mechanism this entry does not propose.
    statement at all** is the unmeasured fraction P3-D1 item 6 names, and this probe is the
    cheapest place to get a first read on it.
 
+**The method below names ONE vehicle for TWO questions, and the vehicle cannot run the
+target — corrected s137.** `run_tests` writes the edited module to `module_under_test.py` in a
+tmp dir and runs generated tests that `import *` from it. A real `parser.py`, with its real
+imports and the repo's real test suite, does not fit that harness at all. **But oficina already
+does exactly this** — s137 drove four runs against real files with real committed tests in a git
+worktree. So the split is:
+
+| Question | Vehicle | Why |
+|---|---|---|
+| Criteria 1/2/4/5 — can the coder NAME a unit, and how coarsely? | **the benchmark** (arm D, `--corpus class`) | needs a controlled A/B against whole-file on one corpus, many runs, cheap |
+| Criterion 3 — does it work end-to-end on a file whole-file cannot reach? | **oficina** | already runs real files against real tests; the benchmark would have to rebuild it |
+
+Making the benchmark run real files would be reimplementing oficina inside it — the exact
+inversion of the T-104 principle this entry cites elsewhere (*"oficina composes the
+ollama-bridge tools, it does not reimplement them"*).
+
 **Method:**
 
 - **Target:** one file from T-122's blocked set that fails on the **window** only —
-  `parser.py` or `intake.py`.
+  `parser.py` or `intake.py`. **Via oficina, not the benchmark** (see above).
 - **NOT `loop.py`.** It produced nothing in 7,066 s at 32K, so it measures throughput and would
   say nothing about output language. (It is also the file whose refusal at 16K took 0.48 s — the
   contrast worth keeping: T-112 refuses what cannot fit before spending anything, while nothing
