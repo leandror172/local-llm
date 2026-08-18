@@ -1003,6 +1003,56 @@ instruction is **"do not ship ADD/DEL/CON tagging."**)*
 | Names units that do not exist (criterion 1) | **T-122 collapses to (c)** — route large edits to Claude — by measurement, consistent with `ref:delegate-non-goals` |
 | `body` carries fences/prose/neighbours (criterion 4) | Not fatal — this is the response-shape validation E-D1 priced; it becomes a build item with a measured need rather than a predicted one |
 | **Hardened corpus shows whole-file dropping code** | **E-D1's own fallback trigger fires on its own prescribed evidence.** The narrow ask stops being narrow — revisit default-vs-fallback, which E-D1 explicitly reserved for this |
+
+### RESULTS — benchmark half, run 2026-08-18 (s137)
+
+`my-python-q25c14-16k`, class-bearing corpus, 6 tasks × 2 runs × 2 arms = 24 generations.
+Raw: `benchmarks/results/p3t0-symbol-addressed.jsonl`.
+
+**Token cost at equal correctness — both arms scored 100% combined in every bucket:**
+
+| bucket | whole-file | symbol-addressed | ratio | whole-file wall | symbol wall |
+|---|---|---|---|---|---|
+| small | 120 tok | **43** | 2.8× | 8.8 s | 5.0 s |
+| medium | 216 tok | **43** | 5.0× | 16.0 s | 4.6 s |
+| large | 479 tok | **43** | **11.1×** | 36.9 s | 5.1 s |
+
+**43 tokens, flat across every size**, against whole-file's linear growth. This reproduces arm
+A's *"25 output tokens flat"* for the case arm A never covered — the address is now **emitted by
+the model** rather than supplied by the harness, and it stayed size-invariant anyway.
+
+**Criteria:**
+
+1. **Address fidelity — 12/12 `ok`.** Every emitted `path`/`kind` resolved to exactly one unit.
+   No `no_match`, no `multi_match`, no `kind_mismatch`, no `unknown_kind`.
+2. **Degeneration — did NOT occur.** Span median **0.047**, max **0.091**; **0/12 addressed more
+   than 50% of the file.** The model named the method, never the enclosing class. This is the
+   criterion the entry calls *"the one that can kill the design, and still the silent one"*, and
+   on this corpus it is silent because it did not happen.
+4. **Response shape — 0/12 defects.** No fences, every body parsed, never more than one unit.
+
+### What this does NOT establish — stated with the numbers, not after them
+
+- **Criterion 5 was NOT EXERCISED, and its `0/12` is worthless.** No task in this corpus needs a
+  new top-level statement — every defect is an arithmetic fix inside one method body — so
+  "no function-local imports" reports that the case never arose, not that it is rare. Reading it
+  as a result would be the *"a check that can only pass teaches nothing"* error in its purest
+  form. **The prediction at P3-D1 item 6 remains untested.**
+- **n is small and the corpus is easy.** 12 attempts per arm over **two** defect kinds
+  (`scale`, `clamp`) on generated classes whose siblings are trivially correct. **Whole-file also
+  scored 100%**, so this corpus still does not stress omission — E-D1's *"best possible case for
+  whole-file fidelity"* caveat is only partly retired by adding classes.
+- **The token ratio is a floor, not a ceiling.** The large bucket is ~100 lines; `loop.py` is
+  638. Whole-file cost scales with the file and symbol cost does not, so the gap widens exactly
+  where T-122 bites.
+- **Criterion 3 is untouched here.** Applicability end-to-end on a file whole-file cannot reach
+  is the oficina half, not the benchmark half.
+
+**Reading for P3-D1.** The outcome table's first row is the one that matched — *resolves
+uniquely, units stay fine-grained*. That **clears the gate the probe was built to test** and
+removes the "magnitude unmeasured" objection for the naming half specifically. It does **not**
+by itself justify freezing (B): the unaddressable-statement bound (item 6) is still unmeasured,
+and the real-file half has not run.
 <!-- /ref:delegate-p3-probe -->
 
 ---
