@@ -4,6 +4,10 @@
 # fixtures / monkeypatched $HOME), so they pass from any checkout — no repo
 # coupling. Add a new overlay suite by dropping a scripts/test-<name>.sh runner,
 # adding a target below, and listing it in scripts/run-all-tests.sh.
+#
+# Test COUNTS are deliberately not stated here. They were — "196 tests total", with a
+# per-suite breakdown — and had drifted to 296 before anyone ran the suite to check
+# (T-136). A count in help text is a claim with no checker. The run reports the number.
 
 # Directory of this Makefile, so targets work regardless of invocation dir
 # (`make -C overlays test`, `cd overlays && make test`, etc.).
@@ -13,12 +17,12 @@ SCRIPTS := $(HERE)scripts
 .PHONY: help test test-ref-indexing test-session-tracking test-installer
 
 help:
-	@echo "overlays — test targets (196 tests total)"
+	@echo "overlays — test targets"
 	@echo
 	@echo "  make test                   Run every overlay suite, print a summary"
-	@echo "  make test-ref-indexing      ref-lookup.sh hermetic tests   (bash,   9)"
-	@echo "  make test-session-tracking  handoff pipeline tests         (pytest, 174)"
-	@echo "  make test-installer         installer --verify tests       (pytest, 13)"
+	@echo "  make test-ref-indexing      ref-lookup.sh hermetic tests   (bash)"
+	@echo "  make test-session-tracking  handoff pipeline tests         (pytest)"
+	@echo "  make test-installer         installer --verify tests       (pytest)"
 	@echo
 	@echo "Pass pytest args to one suite:  make test-session-tracking ARGS='-k harvest'"
 
