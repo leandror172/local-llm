@@ -294,6 +294,22 @@ by construction.** What remains genuinely unpriced is what E-D1 actually named: 
 surface** — response-shape validation, deterministic import merging, the constants boundary.
 Not the locator, and not the apply.
 
+**Two riders on that principle, both s137.**
+
+*(a) The benchmark's purity is correct THERE and would be a defect if carried forward.*
+`writemodel_apply.py` opens with *"Pure functions, no model calls, no I/O"*, so
+`apply_code_anchored` splicing a string in memory is right for a measurement instrument. But
+`patch_file` is where the same operation acquires its atomic tmp+rename write and its uniqueness
+check, and this entry's own § above records the original design as **`locate_unit` → `patch_file`**.
+So: **the locator is the piece that graduates to production; the benchmark's applier is not.**
+Writing that down here because the pure applier is the thing a future session will find first,
+and nothing in the module says "do not ship this shape."
+
+*(b) "Deterministic import merging" now has a size.* Item 6 above converts that line-item from a
+named cost into a measured boundary — ~10.9% of Python top-level lines are unaddressable by
+construction — and criterion 5 of P3-T0 goes looking for the failure it produces. It is still
+unpriced as *work*; it is no longer unbounded as a *risk*.
+
 **The resolver — in-process AST, NOT SCIP (decided s136; supersedes survey § 9).** The survey
 recommends emitting a Serena-shaped tuple and resolving it against SCIP's `enclosing_range`
 (*"~30 lines"*). Three facts already on file decide against it:
@@ -545,6 +561,30 @@ Own-corpus measurement: **`ref:unit-addressing-census`**. The load-bearing resul
    Arms 1 and 3 converged on this independently; no grammar addresses them stably.
    **Fallback = whole-file for that iteration, which is E-D1's existing mechanism**, so the
    refusal costs nothing to build.
+6. **The refusal region is LARGER than item 5 states, and the census already measured it
+   (s137).** `ref:unit-addressing-census` reports *"89.1% of Python top-level lines already sit
+   under a name"* — and **the complement is the answer to a question nobody asked it.** The
+   remaining ~10.9% is imports, module constants and the module docstring: statements with no
+   name, therefore **unaddressable by a dotted path by construction**, not by omission. Item 5's
+   list is about constructs whose *address is unstable*; this is a class with **no address at
+   all**. The two were never connected, and it is the same number the census published.
+
+   **Consequence for (B), stated as a bound rather than discovered later:** an edit that must
+   add a top-level statement — most commonly **a new import** — cannot be expressed as
+   `replace_unit`. `ref:oficina-write-model-report` § AMENDMENT already named *"import merging"*
+   among the edit-language costs *"never priced"*; it is still unpriced, and this is where the
+   bill lands. **(B)'s coverage is therefore bounded by the fraction of real edits needing no
+   new top-level statement, and that fraction is UNMEASURED** — the census counted *lines*, not
+   *edits*, so it does not answer this and must not be read as if it did.
+
+   The mechanical fallback costs nothing (whole-file for that iteration, per item 5). What it
+   costs is the **feasibility win**: an edit needing an import falls back to the path that
+   cannot reach the file, so `loop.py` stays unreachable for exactly that class of change.
+
+   **Recorded as executable spec, not prose** (`benchmarks/lib/test_writemodel_apply.py`):
+   `test_find_module_constant_is_not_addressable` and `test_find_import_is_not_addressable`
+   assert `[]`. A test cannot go stale silently, which is the failure mode this document has
+   now recorded four times against itself.
 
 ***Recommendation:* (B), symbol-addressed, size-gated — and now evidenced rather than reasoned,
 but STILL not freezable today.** What changed: the mechanism argument acquired a production
@@ -876,6 +916,21 @@ arm C, a mechanism this entry does not propose.
    no prose, no neighbouring code? The same 14B *"fenced its own block contents at runtime"* in
    the s124 benchmark, and E-D5 already strips fences at the write step for exactly this reason.
    This is the *"response-shape validation"* item E-D1 priced and nobody has built.
+5. **What the coder does when it needs a unit it CANNOT address** (added s137, from the
+   coverage bound recorded at P3-D1 item 6). The predicted behaviour — **prediction, to be
+   confirmed or falsified, not assumed** — is that a model needing `import itertools` emits it
+   as the first line of `body`, producing a **function-local import**.
+
+   That is the reason this criterion exists rather than being folded into criterion 4: a
+   function-local import is legal Python, it passes the tests, and it **slips past all four of
+   the criteria above**. It is not a coarse unit (2), it applies cleanly (3), and it is not a
+   fence or prose or *neighbouring* code (4) — because it is *inside* the addressed unit. A
+   silent failure with no criterion pointing at it is exactly what this probe exists to
+   prevent, so it gets its own count.
+
+   Record the rate, not just the occurrence: **what share of attempts needed a top-level
+   statement at all** is the unmeasured fraction P3-D1 item 6 names, and this probe is the
+   cheapest place to get a first read on it.
 
 **Method:**
 
@@ -887,6 +942,18 @@ arm C, a mechanism this entry does not propose.
   refuses what cannot finish, T-131.)
 - **Change:** small, real, on a file the whole-file path cannot reach at all today.
 - **N attempts**, reporting the distribution and the failure modes — not a single run.
+
+**Two corpora, and only one of them is gated — do not conflate them (s137).** The hardening
+below refers to `writemodel_corpus.py`, the *generated benchmark* corpus that GPU runs consume.
+That work is governed by an E-D1 trigger which `coding-delegate/.memories/QUICK.md` records as
+**not fired** (*"harden write-model corpus IF a real edit run drops sibling code … docstring
+deletions are DOC omissions, not code"*). This plan asks for the same hardening on a **different
+rationale** — a fair comparison, since the existing filler was *"the best possible case for
+whole-file fidelity"* — which is not the trigger's rationale and does not fire it. **Two live
+rationales for one piece of work, one of them gated: recorded rather than silently resolved**
+(the "grep the plans, not just the code" lesson from T-133). The *unit-test* fixture in
+`test_writemodel_apply.py` is a third thing entirely and is gated by nothing; it was hardened in
+s137 for the span hazards of `ref:unit-addressing-census` Finding 3.
 
 **Vehicle — do not build a new probe (s136).** All three apply arms already exist in
 `benchmarks/lib/writemodel_{apply,corpus,bench}.py`, driven by `run-write-model-bench.sh`. The
