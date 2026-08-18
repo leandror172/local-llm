@@ -6,6 +6,7 @@ from writemodel_apply import (
     KINDS,
     apply_code_anchored,
     apply_search_replace,
+    apply_unit,
     apply_whole_file,
     find_units,
     locate_function,
@@ -433,3 +434,72 @@ def test_resolve_without_kind_is_permissive():
     assert resolve_unit(UNITS_SRC, ["plain"]) == ((9, 10), None)
     assert resolve_unit(UNITS_SRC, ["Shape"]) == ((31, 55), None)
     assert resolve_unit(UNITS_SRC, ["Shape", "area"]) == ((36, 38), None)
+
+
+# --- apply_unit: the dotted-path applier (P3-T0) ------------------------------
+#
+# apply_code_anchored splices at column 0, which is correct for a top-level function and
+# WRONG for a method. Under symbol addressing the harness owns indentation, per first
+# principle 1 ("harness code does all mechanics ... models only decide content") — asking a
+# 14B to track enclosing indentation is anchor burden wearing a different hat.
+
+
+def test_apply_unit_replaces_a_top_level_function():
+    out = apply_unit(UNITS_SRC, ["plain"], "def plain():\n    return 99")
+    assert out is not None
+    assert "return 99" in out
+    assert "def commented():" in out          # siblings survive
+    assert "class Shape:" in out
+
+
+def test_apply_unit_reindents_a_method_to_its_span():
+    # The model emits the unit at column 0; the harness places it at the span's indentation.
+    out = apply_unit(UNITS_SRC, ["Shape", "area"], "def area(self):\n    return 99")
+    assert out is not None
+    assert "    def area(self):\n        return 99\n" in out
+    import ast
+    ast.parse(out)                            # the whole point: it must still parse
+
+
+def test_apply_unit_accepts_already_indented_input():
+    # A model that DID indent correctly must not be double-indented.
+    out = apply_unit(UNITS_SRC, ["Shape", "area"], "    def area(self):\n        return 99")
+    assert out is not None
+    assert "    def area(self):\n        return 99\n" in out
+    assert "        def area" not in out
+    import ast
+    ast.parse(out)
+
+
+def test_apply_unit_replaces_a_method_of_a_nested_class():
+    out = apply_unit(UNITS_SRC, ["Shape", "Inner", "deep"], "def deep(self):\n    return 99")
+    assert out is not None
+    assert "        def deep(self):\n            return 99\n" in out
+    import ast
+    ast.parse(out)
+
+
+def test_apply_unit_replaces_the_decorated_span_including_its_decorator():
+    out = apply_unit(UNITS_SRC, ["Shape", "name"], "def name(self):\n    return 'x'")
+    assert out is not None
+    assert "@property" not in out             # the decorator was INSIDE the replaced span
+    import ast
+    ast.parse(out)
+
+
+def test_apply_unit_refuses_a_path_that_does_not_resolve_uniquely():
+    # Both failure directions are LOUD — the applier never guesses which duplicate was meant,
+    # and never silently no-ops on an absent path.
+    assert apply_unit(UNITS_SRC, ["duplicated"], "def duplicated():\n    return 0") is None
+    assert apply_unit(UNITS_SRC, ["nope"], "def nope():\n    return 0") is None
+
+
+def test_apply_unit_refuses_an_unaddressable_target():
+    # A closure has no address, so an edit aimed at one must fail rather than land somewhere.
+    assert apply_unit(UNITS_SRC, ["outer", "local"], "def local():\n    return 0") is None
+
+
+def test_apply_unit_honours_a_kind_check():
+    assert apply_unit(UNITS_SRC, ["Shape"], "def Shape():\n    pass", kind="Method") is None
+    out = apply_unit(UNITS_SRC, ["Shape", "area"], "def area(self):\n    return 1", kind="Method")
+    assert out is not None
