@@ -305,7 +305,10 @@ def report(records):
         brows = [r for r in records if r["bucket"] == bucket]
         if not brows:
             continue
-        print(f"\n{bucket.upper()}  (n={len(brows) // len(ARMS)} tasks × runs per arm)")
+        # Divide by the arms actually PRESENT, not by every arm that exists — a subset run
+        # otherwise reports "n=0 tasks" above real numbers.
+        n_arms = len({r["arm"] for r in brows}) or 1
+        print(f"\n{bucket.upper()}  (n={len(brows) // n_arms} rows per arm)")
         print(f"  {'arm':<15} {'applied':>8} {'target':>8} {'no-reg':>8} {'COMBINED':>9} {'toks':>7}")
         for arm in ARMS:
             rows = [r for r in brows if r["arm"] == arm]
