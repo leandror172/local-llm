@@ -268,8 +268,25 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   evaluator's stages AND be needed by `evaluate()` (cycle). The generation-side values
   (system/persona) in an evaluation module are an accepted altitude wart, noted in-code.
 - **Coder defaults are the 16K-ctx personas** (`my-*-q25c14-16k`): 32K live footprint
-  14.2 GiB cannot fit the 12 GB card (2.5 tok/s offloaded); 16K = 11.1 GiB VRAM-fit at
-  13–21 tok/s.
+  14.2 GiB cannot fit the 12 GB card (2.5 tok/s offloaded); 16K = 11.07 GiB.
+  **CORRECTED s137 — "16K is VRAM-fit" is FALSE on this host, and not merely
+  host-dependent.** Measured 2026-08-18 with the card deliberately quiet (every other model
+  evicted, `/api/ps` empty, only **1,860 MiB** held by the Windows desktop): the 16K coder
+  loads **9.31 GiB resident / 1.76 GiB ON CPU**. It never fully fits. The arithmetic is
+  fixed and leaves no configuration in which it does: the card is 12,288 MiB, the model
+  wants 11.07 GiB ≈ 11,336 MiB, and Windows holds ~1,800 MiB **at minimum** while a desktop
+  session exists → ~10.2 GiB available, ~0.9 GiB short. **So the recorded 13–21 tok/s is an
+  upper bound never reached here, and every oficina run has been paying partial-offload
+  throughput.** Under desktop load it is worse: at 2,467 MiB held the same model measured
+  **8.22 / 2.85 GiB** at **22%** GPU utilisation; quiet, it runs at **72%**. Freeing host
+  VRAM is therefore a real and large lever (it roughly halved the spill), but it cannot
+  close the gap. **Consequences:** treat 16K as *partial-offload-by-default*, not as the
+  safe tier; and note the s127 entry was right that 32K cannot fit while being wrong that
+  16K can — the re-probe it asks for (T-113) now has a second reason to run. **Measurement
+  gap found alongside:** generation tok/s is **not computable from `calls.jsonl`** —
+  `prompt_eval_duration_ms` is logged per the T-129 duration-not-count rule, but
+  `eval_duration` is not, so the rate can only be bounded by wall clock (≥5.1 tok/s on the
+  s137 run). That is the exact number a contention diagnosis needs.
 - **Input-fit guard (T-112, s129) — the loop refuses what cannot fit.** `_context_overflow`
   weighs `ceil(len(prompt)/4) + the resolved num_predict` against the model's window, read
   live from `/api/show` via an injected `context_limit_for` seam (the loop resolves its own
