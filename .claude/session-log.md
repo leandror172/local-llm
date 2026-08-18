@@ -1,49 +1,49 @@
 # Session Log
 
-**Current Layer:** Layer 5+ — oficina P1–P4 built; P3 (context & prompt assembly) IN PROGRESS — T-133 shipped (PR #88), D1 re-grounded and still gated on P3-T0, register D2/D3/D7/D8/D9 unwalked
-**Current Session:** 2026-08-11 — Session 136: P3-D1 re-grounded — the apply mechanism was already BUILT AND MEASURED in s124; T-133 shipped; PR #88 open
+**Current Layer:** Layer 5+ — oficina P3 (context assembly); P3-T0's benchmark half measured, P3-D1 still OPEN
+**Current Session:** 2026-08-18 — Session 137: P3-T0 benchmark half BUILT + MEASURED — symbol-addressed editing is 43 output tokens FLAT; PR #89 open
 
 ---
-## 2026-08-11 - Session 136: P3-D1 re-grounded — the apply mechanism was already BUILT AND MEASURED in s124; T-133 shipped; PR #88 open
+## 2026-08-18 - Session 137: P3-T0 benchmark half BUILT + MEASURED — symbol-addressed editing is 43 output tokens FLAT; PR #89 open
 
 ### Context
 
-Opened as a "discuss next steps" session against the s135 handoff, whose Next named P3-T0 as the only thing that could decide P3-D1 and flagged an unpriced SCIP prerequisite. A user instruction to read the research we already had — and then the reading guide's own top entry, which had been skipped — turned it into a correction session: four claims in P3-D1 were falsified from primary sources inside this repo, and the phase's cheapest task then shipped.
+Resumed on P3-T0, which s136 had shrunk twice: the apply half was already built and measured (arm A, s124) and the resolver was decided (in-process AST), leaving only dotted `Class.method` resolution and a hardened corpus. Four design questions were settled with the user before any code — the failure channel, placement beside a frozen `locate_function`, `kind`-as-check, and the unit boundary — then an advisor pass added a fifth (`unknown_kind`) and sharpened the coverage-bound finding.
 
 ### What Was Done
 
-- **P3-D1 revision 3 (`1a35235`)** — recorded four corrections, each from a primary source in this repo rather than from further reasoning.
-- **Vision-level reconciliation (`3f43806`)** — the first pass of `docs/vision/coding-delegate/` against THIS entry; five results, including T-122's actual code path.
-- **"Who chooses" re-argued (`6ba0e09`)** — its stated decider does not hold, and the two-way framing hid the option the code already implements twice.
-- **T-133 shipped (`7bd9191`)** — `context.callers` wired as its own stable prompt segment, `acceptance.validators` deleted; suite **408 → 416**, `make accept-p4` green.
-- **Doc propagation (`4c10d15`)** — swept every record the schema change made stale; three real hits, one of them a recorded deferral this session had contradicted without saying so.
-- **PR #88 opened** (`MERGEABLE`, merge state `CLEAN`, 12 commits) — the branch's first code after 7 docs-only commits.
-- Checked the s135 handoff's flagged prerequisite empirically: **no `scip*` binary and no LSP server is installed** in this estate.
-- *(`f78d0c4`, the payload-scalar quote-stripping fix, was already at HEAD when the session opened — s135's tail, covered by no session log.)*
+- **P3-T0's deterministic half shipped, tests-first.** `find_units`/`resolve_unit` beside a **frozen** `locate_function`; `[]` means absent and unparseable RAISES, so no value carries two meanings. Five resolve reasons, each a different remedy. 50 tests.
+- **`apply_unit` shipped** — the dotted applier that **owns indentation** (dedent → re-indent to the resolved span). 58 tests.
+- **Class-bearing corpus + `Task.target_path`**, plus ground-truth tests nothing had: the generated original must FAIL its target test and PASS every filler. 67 tests total.
+- **4th benchmark arm `symbol_addressed`** — the model NAMES the unit (`{path, kind, body}`) instead of being handed it; per-criterion metrics recorded BEFORE the apply so failures still report their mode.
+- **The probe ran.** 24 generations, `my-python-q25c14-16k`, class corpus.
+- **Docs propagated** — `.claude/index.md`, three folder memories, root QUICK; plus two cross-session memories.
+- **`benchmarks/results/` unignored** (170 files, +1 MB) on the provenance argument.
+- **PR #89 opened**; four delegated runs pinned under `refs/oficina/<run_id>`.
 
 ### Decisions Made
 
-- **P3-D1's apply mechanism was never open.** `ref:oficina-write-model-report` **arm A** is exactly it — *"model returns only the rewritten function; code locates the span (`ast`), reads `old_string` from disk, exact-replace; apply-failure mode: none — 100% by construction"*, 25 output tokens flat across every size bucket. The harness constructs the anchor; the model never reproduces bytes. A model emitting its own anchors is **arm C**, a different arm, also already measured.
-- **Resolver: in-process AST per language, NOT SCIP** (supersedes survey § 9). Three grounds: the seed exists and already spans decorators (`writemodel_apply.py:36`, verdict 2); T-104 already chose `ast` + `go/parser`; and **a precomputed index is stale inside a batch** — op 1 invalidates it for ops 2..N, the same objection already made against line numbers. `locate_unit` stays a per-language `LanguagePack` member (verified as-built: the pack has exactly 4).
-- **First principle 1 is the decisive citation and had never been made** — *"harness code does all mechanics (**locate**, fetch, splice, verify, log)"*. An emitted anchor makes the MODEL locate; a symbol name makes the HARNESS locate. Principle 2's ellipsis un-joined: the request/fulfill clause is about *context* requests, not edit responses.
-- **T-133's two fields got opposite remedies for a recorded reason.** `callers` WIRED (measured evidence, no derivable substitute) as its **own** segment — folding it under `CONTEXT:` would make that header a false claim (P3-D3 half 1). `validators` DELETED (selection derives from the language; E-D2 refuses a spec field for a derivable fact).
-- **"Who chooses" recommendation revised to DERIVE WITH OVERRIDE** — `_resolve_output_shape(assembly)` following E-D9/T-114's shape exactly. Recorded as **re-argued, not frozen**; the probe still gates the entry. User settled both open sub-questions: an *optional* override does not violate E-D2's spirit; recording shape for reproducibility is *"might be a good idea"* and stays open.
-- **P3-D6 FROZEN AND BUILT**; the P3-vs-Axis-B routing conflict resolved in P3's favour **by mechanism** — `validators` is not a *kind*, so E-D8's trigger never covered it.
+- **Locator built ALONGSIDE `locate_function`, not folded into it** — it produced arm A's published numbers, and a changed instrument invalidates them (`ref:patterns-refactoring-duplicate-first`).
+- **`kind` is a CHECK, never a selector.** Using it to narrow a multi-match is first-match-wins with extra steps, which survey § 3 rejects. As a check it makes "said Method, named a Class" loud — narrowing criterion 2's silent region without closing it.
+- **`unknown_kind` is its own reason** (advisor's catch). "Wrong vocabulary" and "wrong unit" have opposite remedies — a prompt fix vs. abandoning the design — so they must not share a bucket. Same shape as T-130's `applies_to` inversion.
+- **The unit is whatever the language's parser ATTACHES** — decorators in Python, `decl.Doc` in Go, by construction rather than a hand-authored per-language list. A `#` comment above a `def` is therefore outside the unit.
+- **`kind` is a FREE STRING in the arm's response schema, not an enum** — constraining it would make `unknown_kind` unobservable. A probe must not use a grammar to hide the failure it exists to measure.
+- **Benchmark owns the controlled A/B; oficina owns real files.** The plan named one vehicle for two questions and that vehicle cannot run the stated target — making it do so would reimplement oficina inside it.
+- **`benchmarks/results/` tracked whole** rather than filtered to `*.md`, on the provenance argument `refs/oficina` rests on. Growth cost accepted deliberately.
 
 ### Next
 
-- **P3-T0 is materially smaller than it was.** The apply half is closed and the resolver is decided, so the probe measures only what arm A never covered: **dotted `Class.method` resolution** (`locate_function` is top-level-only) and **a hardened corpus** (arm A's filler was 20 identical `op_k` functions — *"the synthetic corpus accidentally optimized for whole-file"*). **Vehicle: the EXISTING benchmark** (`benchmarks/lib/writemodel_{apply,corpus,bench}.py`, `run-write-model-bench.sh`) plus E-D1's own prescribed corpus hardening — not a probe built from scratch. Criterion 1 is half deterministic and belongs in the 408→416 suite, not on the GPU.
-- **D2 / D3-half-1 / D7 remain unwalked** and are D1-independent; the plan marks **D3 half 1 "ready to freeze"**. Walking them turns P3 from one blocked entry into a frozen register.
-- **PR #88 is open and MERGEABLE** — note `checks: 0`, this repo has no CI, so the suite + `make accept-p4` results in the PR body are the only verification record.
-- Carried: **T-131** (weigh with T-111), **T-132** (root QUICK, own session — now **three** sessions behind), **Axis B**, T-125/126/127/128, new **T-135**.
+- **P3-T0's OFICINA half — criterion 3.** A real file from T-122's blocked set (`parser.py`/`intake.py`), which the benchmark structurally cannot run. This is the remaining gate evidence.
+- **Criterion 5 is UNEXERCISED, not passed.** No corpus task needs a new top-level statement, so its `0/12` says the case never arose. The P3-D1 item 6 prediction — a function-local `import` as the tell — is still untested and needs a task that genuinely requires one.
+- **Then D2 / D3-half-1 / D7**, all D1-independent; D3 half 1 is marked *ready to freeze*.
+- Carried: **T-136** (67 benchmark tests run in no suite), **T-137** (new), T-131, T-132 (root QUICK now 145 lines against its stated 30), T-135, T-125/126/127/128.
 
 ### Gotchas
 
-- **The survey enumerated external prior art exhaustively and never enumerated our own.** 13-agent source survey, four indexer SHAs, five fast-apply vendors — and the operation was already built and measured in `benchmarks/lib/`. Nothing in it is false; the set it searched was not the set that mattered. **`ref:corpus-divergence-pattern` at document altitude** — recorded as § 0a in the survey itself.
-- **The decorator span hazard was solved here in s124, in code, by a local model, verdict 2.** The s135 census re-derived it "by inspection" and the survey credited SCIP with solving it.
-- **P3-T0's criteria existed in TWO copies in one document and drifted within a single revision pass.** The probe copy was rewritten in s135; D1's summary copy still asked for *"the emitted `old_string`"*. Collapsed to one source (T-130's pattern) — the duplication survived a full re-grounding **inside one file**.
-- **A claim this branch's own survey falsified was left standing in the body that consumed it** — the udiff-l argument. § 0 corrected it; P3-D1 still argued from it in two places.
-- **The "who chooses" decider rested on a code path that does not execute.** All three oficina personas declare `PARAMETER num_ctx 16384`, so `_context_limit is None` only when `/api/show` fails — i.e. Ollama is down and the run dies anyway.
-- **The memory that OUTRANKS the plan docs was itself two sessions stale.** `coding-delegate/.memories/KNOWLEDGE.md`'s assembly paragraph listed neither `current_file` nor `mode`, both added by T-110 in s126 → **T-135**.
-- **A recorded deferral was contradicted without noticing.** `oficina-p2-go-widening.md` said deleting `validators` *"would flip accepted-and-ignored into unknown-key REJECTION"* and queued it for Axis B. The flip **is** the fix and the blast radius was measured (one occurrence, its own declaration) — but nothing in T-133's evidence chain pointed at that plan. **It surfaced only because the user asked for a doc sweep.**
-- Process: ran `python3 -m pytest` directly (project rule is `make test` / bash wrappers) and grepped files that then had to be `Read` anyway to edit.
+- **Two of my own claims were wrong and are retracted in place.** (1) Estimated ~2–3 tok/s from a 22% GPU-utilisation reading; the measurable floor was **≥5.1**. (2) Claimed **8 ref keys break on any clone** — **false**, they resolve via a tracked duplicate in `docs/findings/`. Both are the magnitude-vs-mechanism error the repo already records against itself.
+- **`ref-lookup.sh --paths` emits one `KEY<TAB>path` line per key**, a shape that structurally cannot represent two definitions. It showed the untracked copy and hid the tracked one; the follow-up check ("is *that* file tracked?") was answered honestly and confirmed a false premise. **`check-ref-integrity.py` had it right the whole time**, inside a **39-error backlog nobody reads** — a signal that fires unconditionally into a backlog carries as little as one that never fires.
+- **Delegation gave a clean natural experiment on brief construction.** Same file, same model, same session: a brief saying *"do not modify any existing function"* produced a deleted module docstring and `list[…]`→`List[…]` churn across four frozen functions; a brief that **enumerated the frozen names and gave the reason** produced 31 added / 0 removed. Enumerate-and-justify beats assert-a-principle — a datapoint for **P3-D4**.
+- **Both delegated models failed the SAME way on the corpus generator** — qwen2.5-coder:14b put a class docstring at column 0, gemma3:12b emitted every method `def` at column 0 with 8-space bodies. Not logic errors: **assembling correctly-indented multi-level text**, with the levels spelled out. That independently justifies `apply_unit`'s harness-owned re-indentation, which was derived from first principle 1 *before* the evidence existed.
+- **A negative constraint on a defensive reflex loses to the reflex.** The brief said, in capitals, *"Do NOT catch SyntaxError"*; the model wrote `try/except SyntaxError: return []`. Third instance of this shape here, and the negative-control test caught it all three times.
+- **My smoke test found a defect in the instrument, not the model** — a fenced body failed to parse, taking the neighbouring-code count down with it, so one criterion-4 defect silently hid the other. Third time this session a newly-tightened check's first failure was in the harness.
+- Process: `python3 -m pytest` run directly again — but **structurally this time**, since no wrapper exists for these tests (T-136), so the project's bash-wrapper rule is currently unfollowable here.
