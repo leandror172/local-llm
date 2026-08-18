@@ -14,6 +14,7 @@ Design: `ref:oficina-write-model-benchmark`.
 from __future__ import annotations
 
 import ast
+import textwrap
 from typing import Optional
 
 
@@ -201,6 +202,40 @@ def apply_code_anchored(source: str, name: str, new_function_text: str) -> Optio
     start, end = span  # 1-based inclusive
     lines = source.splitlines(keepends=True)
     block = new_function_text if new_function_text.endswith("\n") else new_function_text + "\n"
+    return "".join(lines[: start - 1]) + block + "".join(lines[end:])
+
+
+def apply_unit(
+    source: str, path: list[str], new_text: str, kind: Optional[str] = None
+) -> Optional[str]:
+    """Replace the unit at ``path`` with ``new_text``; None if it does not resolve uniquely.
+
+    THE HARNESS OWNS INDENTATION. ``apply_code_anchored`` splices verbatim, which is right for
+    a top-level function at column 0 and produces broken Python for a method. Requiring the
+    model to emit correctly-indented text would put enclosing-indentation tracking back on its
+    plate — anchor burden under another name — so instead the text is dedented to column 0 and
+    re-indented to the span that was actually resolved. First principle 1: harness code does
+    the mechanics, models decide content.
+
+    Refuses rather than guesses: a duplicate path, an absent path, an unaddressable closure
+    and a kind mismatch all return None instead of landing the edit somewhere plausible.
+    """
+    span, _reason = resolve_unit(source, path, kind)
+    if span is None:
+        return None
+    start, end = span  # 1-based inclusive
+    lines = source.splitlines(keepends=True)
+
+    first_line = next((ln for ln in lines[start - 1 : end] if ln.strip()), "")
+    indent = first_line[: len(first_line) - len(first_line.lstrip())]
+
+    # Blank lines stay blank — indenting them would leave trailing whitespace.
+    block = "".join(
+        f"{indent}{ln}" if ln.strip() else ln
+        for ln in textwrap.dedent(new_text).splitlines(keepends=True)
+    )
+    if not block.endswith("\n"):
+        block += "\n"
     return "".join(lines[: start - 1]) + block + "".join(lines[end:])
 
 
