@@ -113,6 +113,17 @@ so it structurally cannot show two definitions. `check-ref-integrity.py` had it 
 provenance argument. New **T-136** (67 benchmark tests run in no suite). Criterion 3 (real file, via
 oficina) and criterion 5 remain unrun.
 
+Session 138 (2026-08-18): **T-136 closed — ONE test command for the whole repo.** `make test` at the
+root runs **894 tests across SIX suites** (mcp-server 416 · overlays 296 · hf-space 68 · benchmarks 67 ·
+hooks 26 · personas 21); each target delegates to a `run-tests.sh` under its own area. **The old
+headline `416` was 47% of the repo** — the filing understated it sixfold. **Three instances of one
+pattern, the third mine:** `overlays/Makefile` claimed "196 tests total" against 296 (so counts were
+*deleted* from help text, not corrected — the run reports them); and the aggregator's own first draft
+listed THREE suites because it enumerated **Makefiles** rather than **test runners**. **Both defects in
+my instrument surfaced only via the negative control**, never the green run. **T-138 filed:** 53 of 62
+tracked `.sh` files are `100644` — `Permission denied` on any clone on a real filesystem, including
+`resume.sh` and all 8 benchmark wrappers. PR #90 open. No P3 work.
+
 ## Repo Structure
 
 ```
