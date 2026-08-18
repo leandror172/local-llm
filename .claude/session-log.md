@@ -1,49 +1,46 @@
 # Session Log
 
 **Current Layer:** Layer 5+ — oficina P3 (context assembly); P3-T0's benchmark half measured, P3-D1 still OPEN
-**Current Session:** 2026-08-18 — Session 137: P3-T0 benchmark half BUILT + MEASURED — symbol-addressed editing is 43 output tokens FLAT; PR #89 open
+**Current Session:** 2026-08-18 — Session 138: T-136 CLOSED — one test command for the whole repo: 894 tests across six suites, not 416; T-138 filed; PR #90 open
 
 ---
-## 2026-08-18 - Session 137: P3-T0 benchmark half BUILT + MEASURED — symbol-addressed editing is 43 output tokens FLAT; PR #89 open
+## 2026-08-18 - Session 138: T-136 CLOSED — one test command for the whole repo: 894 tests across six suites, not 416; T-138 filed; PR #90 open
 
 ### Context
 
-Resumed on P3-T0, which s136 had shrunk twice: the apply half was already built and measured (arm A, s124) and the resolver was decided (in-process AST), leaving only dotted `Class.method` resolution and a hardened corpus. Four design questions were settled with the user before any code — the failure channel, placement beside a frozen `locate_function`, `kind`-as-check, and the unit boundary — then an advisor pass added a fifth (`unknown_kind`) and sharpened the coverage-bound finding.
+Opened on "PR merged, local master updated — let's discuss next steps" after PR #89 landed. Orientation confirmed master at `4cd0589` (a real merge commit, not a squash) with `HEAD == origin/master`. The discussion surfaced that P3-T0's remaining gate evidence is a build rather than a probe, and that criterion 5 is schema-shaping and should precede criterion 3 — after which the user chose the T-136 debt item first, then criterion 5. No P3 code was written; criterion 5 was not started.
 
 ### What Was Done
 
-- **P3-T0's deterministic half shipped, tests-first.** `find_units`/`resolve_unit` beside a **frozen** `locate_function`; `[]` means absent and unparseable RAISES, so no value carries two meanings. Five resolve reasons, each a different remedy. 50 tests.
-- **`apply_unit` shipped** — the dotted applier that **owns indentation** (dedent → re-indent to the resolved span). 58 tests.
-- **Class-bearing corpus + `Task.target_path`**, plus ground-truth tests nothing had: the generated original must FAIL its target test and PASS every filler. 67 tests total.
-- **4th benchmark arm `symbol_addressed`** — the model NAMES the unit (`{path, kind, body}`) instead of being handed it; per-criterion metrics recorded BEFORE the apply so failures still report their mode.
-- **The probe ran.** 24 generations, `my-python-q25c14-16k`, class corpus.
-- **Docs propagated** — `.claude/index.md`, three folder memories, root QUICK; plus two cross-session memories.
-- **`benchmarks/results/` unignored** (170 files, +1 MB) on the provenance argument.
-- **PR #89 opened**; four delegated runs pinned under `refs/oficina/<run_id>`.
+- **feat(T-136): one test command for the whole repo — 894 tests, six suites.** Root `Makefile` + `scripts/run-all-tests.sh`, plus new runners `benchmarks/lib/run-tests.sh`, `mcp-server/scripts/run-tests.sh`, `docs/portfolio/hf-space/run-tests.sh`; `mcp-server/Makefile`'s `test` delegates instead of inlining `uv run pytest`; `overlays/Makefile` lost its hardcoded counts; `.claude/hooks/tests/run-tests.sh` gained a summary line. All five new scripts recorded `100755` in the index.
+- **docs(T-136): reconciled every quoted test count** across `.claude/index.md` (new **Test Runners** section + a completeness recipe), `.claude/session-context.md`, `mcp-server/.memories/QUICK.md`, `docs/vision/coding-delegate/.memories/QUICK.md`. T-136 closed, **T-138 filed**.
+- **PR #90 opened** (`chore/t136-repo-test-command`, 2 commits).
+- **Measured, not assumed, throughout:** the three suite counts independently (416 / 296 / 67) before writing anything, then hooks 26, personas 21, hf-space 68. Verified the aggregator in **both** directions with a deliberate failing test (exit 1, `FAIL` row, failure count surfaced) and arg pass-through with a check that could fail (`-k` → 8 selected / 59 deselected). `check-ref-integrity.py` held at **39 errors** — the known backlog, none added.
+- **New memory** `feedback_enumerate_before_asserting_a_set`, indexed in `MEMORY.md`.
+- Propagated the PR #89 merge into the coding-delegate folder memory, which still described the branch as in flight (the T-135 staleness class).
 
 ### Decisions Made
 
-- **Locator built ALONGSIDE `locate_function`, not folded into it** — it produced arm A's published numbers, and a changed instrument invalidates them (`ref:patterns-refactoring-duplicate-first`).
-- **`kind` is a CHECK, never a selector.** Using it to narrow a multi-match is first-match-wins with extra steps, which survey § 3 rejects. As a check it makes "said Method, named a Class" loud — narrowing criterion 2's silent region without closing it.
-- **`unknown_kind` is its own reason** (advisor's catch). "Wrong vocabulary" and "wrong unit" have opposite remedies — a prompt fix vs. abandoning the design — so they must not share a bucket. Same shape as T-130's `applies_to` inversion.
-- **The unit is whatever the language's parser ATTACHES** — decorators in Python, `decl.Doc` in Go, by construction rather than a hand-authored per-language list. A `#` comment above a `def` is therefore outside the unit.
-- **`kind` is a FREE STRING in the arm's response schema, not an enum** — constraining it would make `unknown_kind` unobservable. A probe must not use a grammar to hide the failure it exists to measure.
-- **Benchmark owns the controlled A/B; oficina owns real files.** The plan named one vehicle for two questions and that vehicle cannot run the stated target — making it do so would reimplement oficina inside it.
-- **`benchmarks/results/` tracked whole** rather than filtered to `*.md`, on the provenance argument `refs/oficina` rests on. Growth cost accepted deliberately.
+- **Fold nothing into `mcp-server`'s pytest; give each area a runner and aggregate.** The alternative — `testpaths = ["tests", "../benchmarks/lib"]` — would have merged two of six corpora and called the result one number, leaving `overlays`, `hooks`, `personas` and `hf-space` outside. That relocates the boundary rather than removing it, which is the failure T-136 is filed against.
+- **Delete asserted counts from help text rather than correcting them.** `overlays/Makefile` claimed "196 tests total" against an actual 296. Editing it to 296 re-arms the identical trap; a count in help text is a claim with no checker. The run reports the number.
+- **Include `docs/portfolio/hf-space/tests` (68) in `make test`** — user decision. `app.py` is this repo's code and the suite is hermetic by design (conftest mocks gradio / huggingface_hub / anthropic before import). `benchmarks/test-fixtures/ollama-client/` stays out as fixture data, and the exclusion is stated in the script rather than left accidental.
+- **Fix the producer, not the parser.** The hooks runner printed no total; teaching the aggregator that one runner's format would have left the next one to fail the same way, so the runner now emits `N passed, M failed`.
+- **T-138 filed rather than swept.** A `.sh` meant to be *sourced* should stay non-executable, so the 53 files need a real pass, not a bulk `--chmod=+x`.
+- **Branched rather than committing to master**, since every recent change lands via PR and `master` is the default branch.
 
 ### Next
 
-- **P3-T0's OFICINA half — criterion 3.** A real file from T-122's blocked set (`parser.py`/`intake.py`), which the benchmark structurally cannot run. This is the remaining gate evidence.
-- **Criterion 5 is UNEXERCISED, not passed.** No corpus task needs a new top-level statement, so its `0/12` says the case never arose. The P3-D1 item 6 prediction — a function-local `import` as the tell — is still untested and needs a task that genuinely requires one.
-- **Then D2 / D3-half-1 / D7**, all D1-independent; D3 half 1 is marked *ready to freeze*.
-- Carried: **T-136** (67 benchmark tests run in no suite), **T-137** (new), T-131, T-132 (root QUICK now 145 lines against its stated 30), T-135, T-125/126/127/128.
+- **P3-T0 criterion 5 — the unaddressable-statement rate — BEFORE criterion 3.** A `writemodel_corpus.py` task that genuinely requires a new top-level statement (an `import`, a module constant). No existing corpus task does, so s137's `0/12` reports that the case never arose. It is schema-shaping: the answer decides whether the edit schema needs an insert-top-level op.
+- **Then criterion 3 — which is a BUILD, not a probe.** `mcp-server/src/` has **zero** hits for `find_units`/`resolve_unit`/`apply_unit`; they exist only in `benchmarks/lib/`. Obtaining the last gate evidence requires prototyping P3-D1(B)'s emit+apply inside `loop.py` against a real file from T-122's blocked set (`parser.py`/`intake.py`, **not** `loop.py`).
+- Then **D2 / D3-half-1 / D7**, all D1-independent; D3 half 1 is marked *ready to freeze*.
+- **PR #90 needs review/merge.** Carried: **T-138** (new), T-137, T-131, T-132 (root QUICK 145 lines against its stated 30), T-135, T-125/126/127/128.
+- LTG index is stale — the post-commit hook reported `11 changed, 10 added, 0 removed`.
 
 ### Gotchas
 
-- **Two of my own claims were wrong and are retracted in place.** (1) Estimated ~2–3 tok/s from a 22% GPU-utilisation reading; the measurable floor was **≥5.1**. (2) Claimed **8 ref keys break on any clone** — **false**, they resolve via a tracked duplicate in `docs/findings/`. Both are the magnitude-vs-mechanism error the repo already records against itself.
-- **`ref-lookup.sh --paths` emits one `KEY<TAB>path` line per key**, a shape that structurally cannot represent two definitions. It showed the untracked copy and hid the tracked one; the follow-up check ("is *that* file tracked?") was answered honestly and confirmed a false premise. **`check-ref-integrity.py` had it right the whole time**, inside a **39-error backlog nobody reads** — a signal that fires unconditionally into a backlog carries as little as one that never fires.
-- **Delegation gave a clean natural experiment on brief construction.** Same file, same model, same session: a brief saying *"do not modify any existing function"* produced a deleted module docstring and `list[…]`→`List[…]` churn across four frozen functions; a brief that **enumerated the frozen names and gave the reason** produced 31 added / 0 removed. Enumerate-and-justify beats assert-a-principle — a datapoint for **P3-D4**.
-- **Both delegated models failed the SAME way on the corpus generator** — qwen2.5-coder:14b put a class docstring at column 0, gemma3:12b emitted every method `def` at column 0 with 8-space bodies. Not logic errors: **assembling correctly-indented multi-level text**, with the levels spelled out. That independently justifies `apply_unit`'s harness-owned re-indentation, which was derived from first principle 1 *before* the evidence existed.
-- **A negative constraint on a defensive reflex loses to the reflex.** The brief said, in capitals, *"Do NOT catch SyntaxError"*; the model wrote `try/except SyntaxError: return []`. Third instance of this shape here, and the negative-control test caught it all three times.
-- **My smoke test found a defect in the instrument, not the model** — a fenced body failed to parse, taking the neighbouring-code count down with it, so one criterion-4 defect silently hid the other. Third time this session a newly-tightened check's first failure was in the harness.
-- Process: `python3 -m pytest` run directly again — but **structurally this time**, since no wrapper exists for these tests (T-136), so the project's bash-wrapper rule is currently unfollowable here.
+- **The fix committed the bug it was fixing.** The aggregator's first draft listed THREE suites because it enumerated **Makefiles** rather than **test runners**; `.claude/hooks/tests/` and `personas/` have runners and no Makefile. `.claude/index.md` caught it — the index earned its keep against my own search. A correlate for membership always has a complement nobody looks at.
+- **The same error one step earlier, and the user caught that one.** I recommended *against* a root Makefile arguing "the repo has exactly one Makefile" — never run, and false: `overlays/Makefile` existed and already implemented the exact delegation pattern I called unnecessary. Two instances, one cause: asserting a set's size without enumerating it.
+- **Both defects in my own instrument were found by the negative control, not by the green run.** The hooks runner reporting no total would have shown 26 passing tests as `0 passed`; the summary totalled only passes, printing `779 passed` next to a `FAIL` flag. Expect a newly-written check's first real failure to be in the check.
+- **`overlays/Makefile`'s help was 100 tests stale** and nothing could have reported it — a hardcoded count has no checker. Found by running the suite instead of reading its header.
+- **53 of 62 tracked `.sh` files are non-executable in git** (T-138), invisible here because `core.filemode=false` and drvfs forces 777. `ls -l` cannot see this; `git ls-files -s` is the only instrument.
+- **The `cd`-persistence gotcha fired again** (s136 recorded it): a `cd docs/portfolio/hf-space` to run one check left the shell there, and the next heredoc write failed outright. It failed loudly this time — the dangerous version is a repo-root script silently resolving against the wrong directory.
