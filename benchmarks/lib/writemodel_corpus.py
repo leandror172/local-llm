@@ -53,6 +53,13 @@ class Task:
     behavior: str
     source: str               # the .py file to edit
     tests: str                # the pytest file (target + filler tests)
+    target_path: list[str] | None = None   # dotted address; defaults to the bare name
+
+    def __post_init__(self) -> None:
+        # A flat task addresses itself as ["scale"]; a class task as ["Ops", "scale"]. Deriving
+        # the default means no existing caller changes and there is no second field to drift.
+        if self.target_path is None:
+            self.target_path = [self.target_fn]
 
 
 def _filler(k: int) -> tuple[str, str]:
@@ -107,3 +114,85 @@ def generate_corpus(per_bucket: int = 4) -> list[Task]:
         for bucket in ("small", "medium", "large")
         for idx in range(per_bucket)
     ]
+
+
+CLASS_NAME = "Ops"
+
+
+def _method_sig(sig: str) -> str:
+    """``def f(a, b):`` -> ``def f(self, a, b):`` — the flat target becomes a method."""
+    head, params = sig.split("(", 1)
+    return f"{head}(self, {params}"
+
+
+def _sibling_method(k: int) -> tuple[str, str]:
+    """A trivially-correct method and its passing test — the CLASS's regression surface.
+
+    Siblings are what make a coarse address cost something. If the class were only its target
+    method, naming the class instead of the method would be free and the benchmark could not
+    detect the failure it exists to detect.
+    """
+    method = f"    def m_{k}(self, x):\n        return x - {k}\n"
+    test = f"def test_m_{k}():\n    assert {CLASS_NAME}().m_{k}(100) == {100 - k}\n"
+    return method, test
+
+
+def generate_class_task(bucket: str, idx: int) -> Task:
+    """Like ``generate_task``, but the defective target is a METHOD of a class.
+
+    This exists because a corpus of flat top-level functions **cannot express criterion 2** of
+    P3-T0 — "does the model name the CLASS instead of the METHOD". With no classes there is
+    nothing to name coarsely, so a symbol-addressed arm would score a clean pass that means
+    nothing. The file stays heterogeneous (a class AND plain top-level functions), which is
+    also the direction E-D1's prescribed hardening asks for.
+    """
+    n_filler = BUCKET_FILLER[bucket]
+    fn_name, bad_body, behavior_tail, test_expr, expected = DEFECTS[idx % len(DEFECTS)]
+
+    n_methods = max(4, n_filler // 2)
+    siblings = [_sibling_method(k) for k in range(n_methods)]
+    mid = n_methods // 2
+    target_method = f"    {_method_sig(TARGET_SIG[fn_name])}\n        {bad_body}\n"
+
+    # The target sits INSIDE the class, not at either edge — same reason generate_task puts it
+    # inside the file: an edge is the easy case for anything that drops content.
+    class_lines = [f"class {CLASS_NAME}:", '    """Operations."""', ""]
+    for method, _ in siblings[:mid]:
+        class_lines += [method.rstrip(), ""]
+    class_lines += [target_method.rstrip(), ""]
+    for method, _ in siblings[mid:]:
+        class_lines += [method.rstrip(), ""]
+    class_src = "\n".join(class_lines).rstrip()
+
+    fillers = [_filler(k) for k in range(n_filler)]
+    half = n_filler // 2
+    before = "\n".join(f for f, _ in fillers[:half])
+    after = "\n".join(f for f, _ in fillers[half:])
+
+    parts = ['"""Generated benchmark module (class-bearing)."""', ""]
+    if before:
+        parts += [before]
+    parts += [class_src]
+    if after:
+        parts += ["", after]
+    source = "\n".join(parts).rstrip() + "\n"
+
+    # test_expr comes from DEFECTS and differs per defect — clamp/nth_even/weighted do not take
+    # scale's arguments, so hardcoding any one signature breaks three tasks in four.
+    target_test_src = f"def test_target():\n    assert {CLASS_NAME}().{test_expr} == {expected}\n"
+    sibling_tests = "\n".join(t for _, t in siblings)
+    filler_tests = "\n".join(t for _, t in fillers)
+    tests = (
+        f"from module_under_test import *\n\n\n{target_test_src}\n{sibling_tests}\n{filler_tests}"
+    ).rstrip() + "\n"
+
+    return Task(
+        name=f"{bucket}-cls-{idx:02d}-{fn_name}",
+        bucket=bucket,
+        target_fn=fn_name,
+        target_test="test_target",
+        behavior=f"Modify the method `{CLASS_NAME}.{fn_name}` so that it will {behavior_tail}.",
+        source=source,
+        tests=tests,
+        target_path=[CLASS_NAME, fn_name],
+    )
