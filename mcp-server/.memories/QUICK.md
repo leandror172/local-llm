@@ -6,7 +6,8 @@
 
 Operational, system-wide availability. **18 tools** exposed to Claude Code (verified
 2026-07-21 by decorator site, not by `grep -c "@mcp.tool"` — that returns 19 because one
-hit is a docstring). **416 tests green** (`make test`); live P4 judge-gate acceptance is a
+hit is a docstring). **416 tests green** (`make test` here, `make test-mcp` from the root; the
+repo-wide total across six suites is **894** — root `make test`, T-136); live P4 judge-gate acceptance is a
 separate, deliberate non-test target — `make accept-p4`, real Ollama calls.
 All tools verified, call logging active. Server is the integration layer for all 3 repos.
 
@@ -65,7 +66,7 @@ mcp-server-side facts that live nowhere else:
   language (`language_pack`/`resolve_language`), and **the declaration was what created the silence**:
   `extra="forbid"` rejects undeclared keys, so removing the field restores the loud rejection.
 
-Suite 416; live gate `make accept-p4` (green at T-133, s136).
+Suite 416 (this package; repo-wide **894** via root `make test`); live gate `make accept-p4` (green at T-133, s136).
 
 ## Deeper Memory -> KNOWLEDGE.md
 

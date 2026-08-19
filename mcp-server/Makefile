@@ -25,7 +25,7 @@ help:
 	@echo "Override the log path: make logs LOG_FILE=/path/to/file.jsonl"
 
 test:
-	uv run pytest tests/ $(ARGS)
+	@$(SCRIPTS)/run-tests.sh $(ARGS)
 
 test-oficina:
 	uv run pytest tests/oficina/ $(ARGS)
