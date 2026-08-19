@@ -32,9 +32,16 @@ Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE
   **coverage bound**. The predicted function-local import is the BENIGN half (10 of 14 PASS,
   the silent case); the unpredicted half uses the module without importing it and never runs.
   **The plan's assumed refusal fallback does not exist — the model never refuses**, so the
-  fallback must be detected by the harness (first principle 1). (B) needs a second operation or
-  harness-side detection; the s137 token result is untouched, and **5b — how OFTEN a real edit
-  needs this — is still unmeasured**, so the bound's SIZE is unknown. Criterion 3 remains unrun. § "The judge's payload" is unaffected.
+  fallback must be detected by the harness (first principle 1). **5b MEASURED same session over 486 real edits: 23–48%**
+  depending on the cut (23.1% at the most favourable — bridge source, ≤10-line edits), so this
+  is **not a rare fallback**. **The prediction picked the second-largest class:** the module
+  **constant** outnumbers the import at every cut (30.4% vs 17.4% in oficina's own source) —
+  and a constant **HAS a name**, so that 30% is a **resolver gap** (`KINDS` omits assignments),
+  not a construction bound. Genuinely nameless: import ~17%, docstring ~4%. Plus a gap the plan
+  never named — **adding a NEW top-level unit (~17%)**, which `replace_unit` cannot create.
+  **Net: more favourable for (B) than 5a alone implied**, but "detect + fall back to whole-file
+  because it's smaller" is RETRACTED — falling back on a quarter to a half of edits means
+  falling back on exactly the files whole-file cannot reach. Criterion 3 remains unrun. § "The judge's payload" is unaffected.
 - **s134–s136** (07-30 → 08-11) — P3 planned, then **re-grounded twice**; P3-D1 still OPEN.
   T-133 shipped (`context.callers` wired, `acceptance.validators` deleted). Headline:
   **a 4-arm external prior-art survey never enumerated our own repo**, where the operation

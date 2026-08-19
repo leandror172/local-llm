@@ -147,7 +147,13 @@ Then **P3-T0 criterion 5a MEASURED (24 gens, 2 runs): (B) cannot ship on
 clean and tokens flat (47 vs 171), so it is a **coverage bound, not an addressing failure**.
 The predicted function-local import is the BENIGN half (10/14 pass — the silent case); the
 unpredicted half never runs. **The plan's refusal fallback does not exist — the model never
-refuses**, so detection is the harness's job (first principle 1). **The negative control caught
+refuses**, so detection is the harness's job (first principle 1). **Then 5b MEASURED (486 real
+edits, durable instrument + 13 tests): 23–48% of real edits touch something `replace_unit`
+cannot address** — not a rare fallback. **The dominant class is the module CONSTANT, not the
+import** (30.4% vs 17.4% in oficina's source) — and a constant **has a name**, so that slice is
+a **resolver gap** (`KINDS` omits assignments), not the "unaddressable by construction" bound
+the census recorded. A fourth gap surfaced that the plan never named: **adding a new top-level
+unit** (~17%). **The negative control caught
 a defect in my own new test** (it asserted an unreachable line and
 passed both ways). No P3 work. *(T-132 compaction now FOUR sessions behind — this file is ~175
 lines against its stated 30.)*
