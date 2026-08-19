@@ -238,7 +238,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 ### Test Runners (one command per area; the root one covers all)
 
 > **The run is the source of truth for counts, not this table.** Counts below are from
-> s138 and carry a date for that reason: `overlays/Makefile` asserted "196 tests total"
+> s139 and carry a date for that reason: `overlays/Makefile` asserted "196 tests total"
 > in its help text and was 100 stale before anyone ran the suite to check (T-136).
 >
 > **Adding an area with tests?** Add its `run-tests.sh` to `SUITES` in
@@ -251,13 +251,13 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 
 | Entry point | Runs | Notes |
 |-------------|------|-------|
-| **`make test`** (repo root) → `scripts/run-all-tests.sh` | **all six suites — 894** (s138) | Per-suite summary + total; nonzero exit if any fails. Every suite runs even when an earlier one fails, so the summary is complete. Narrow: `make test-mcp ARGS='-k foo'` / `test-overlays` / `test-benchmarks` |
+| **`make test`** (repo root) → `scripts/run-all-tests.sh` | **all six suites — 913** (s139) | Per-suite summary + total; nonzero exit if any fails. Every suite runs even when an earlier one fails, so the summary is complete. Narrow: `make test-mcp ARGS='-k foo'` / `test-overlays` / `test-benchmarks` |
 | `mcp-server/scripts/run-tests.sh` | ollama-bridge + oficina — **416** | `uv run pytest tests/`. The single definition: `make test` inside `mcp-server` and the root aggregator both delegate here, so the command exists in one place |
 | `overlays/scripts/run-all-tests.sh` | every overlay suite — **296** | ref-indexing (bash) + session-tracking + installer (pytest). Established the delegate-to-scripts convention the root copies |
-| `benchmarks/lib/run-tests.sh` | benchmark instrument — **67** | Model-free, <1 s. `find_units`/`resolve_unit`/`apply_unit` + corpus ground truth — the instrument every P3 measurement is read through. **Ran in no suite at all until s138** (T-136) |
+| `benchmarks/lib/run-tests.sh` | benchmark instrument — **74** | Model-free, <1 s. `find_units`/`resolve_unit`/`apply_unit` + corpus ground truth — the instrument every P3 measurement is read through. **Ran in no suite at all until s138** (T-136) |
 | `docs/portfolio/hf-space/run-tests.sh` | engineer-profile Space app — **68** | Hermetic: `conftest.py` mocks `gradio`/`huggingface_hub`/`anthropic` before `app.py` imports, so no venv, network or HF token is needed |
 | `.claude/hooks/tests/run-tests.sh` | hook scripts — **26** | Hermetic. Prints a `N passed, M failed` summary **so the aggregator can count it** — a suite reporting no total is counted as zero, which reads as false health |
-| `personas/run-tests.sh` | personas module — **21** | pytest |
+| `personas/run-tests.sh` | personas module — **33** | pytest |
 | `make -C mcp-server accept-p4` | live P4 judge-gate acceptance | **NOT a test target** — real Ollama calls, ~35 s. Deliberately outside `make test` |
 
 ### Benchmark Bash Wrappers (use these, not the .py files)
@@ -276,6 +276,7 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 ### Benchmark Python/JS Libraries (never call directly)
 | Library | Purpose |
 |---------|---------|
+| `personas/lib/ollama_client.py` | **The repo's SECOND Ollama client** — stdlib-urllib, synchronous, used by `personas/build-persona.py` and by every `benchmarks/lib/` harness that calls `ollama_chat`. It is NOT the MCP bridge (`mcp-server/src/ollama_mcp/client.py`) and **writes nothing to `calls.jsonl`**, so benchmark generations are invisible to the DPO corpus by design. **Its returned timing keys must stay spelled exactly as the bridge logs them** (`eval_duration_ms`, `prompt_eval_duration_ms`, `total_duration_ms`, plus `load_duration_ms` here) — two clients naming one Ollama field differently is what made T-137 unmeasurable for five months; `personas/tests/test_ollama_client_timings.py` asserts the overlap. **Adding a third caller of Ollama? Enumerate first:** `grep -rln 'api/chat\|api/generate' --include='*.py' .` returns seven sites, and the filed task assumed two |
 | `benchmarks/lib/ollama-probe.py` | Core probe tool: `--model --prompt-file --vary --examples --no-think --format-file` |
 | `benchmarks/lib/decomposed-run.py` | Pipeline runner for multi-stage prompts |
 | `benchmarks/lib/validate-html.js` | Puppeteer headless browser (Node.js) |
@@ -285,14 +286,15 @@ All wrappers `cd` into `ltg/` (instance files are CWD-relative) and exec the eng
 | `benchmarks/lib/generate-report.py` | Generate comparison reports from results |
 | `benchmarks/lib/writemodel_apply.py` | Write-model benchmark apply layer (T-104): `locate_function` (ast, top-level only, **frozen** — it produced arm A's published numbers), `apply_code_anchored`/`apply_whole_file`/`apply_search_replace`, SEARCH/REPLACE parser. **P3-T0 (s137) added dotted addressing beside it:** `find_units`/`resolve_unit`/`apply_unit` + `KINDS`. `[]` means absent and unparseable RAISES, so one value never carries two meanings; resolve reasons are `parse_error`/`no_match`/`multi_match`/`kind_mismatch`/`unknown_kind`, each a different remedy. `apply_unit` **owns indentation** (dedent→re-indent to the resolved span) because a method cannot be spliced at column 0. Unit-tested in `test_writemodel_apply.py` (58 tests, model-free) |
 | `benchmarks/lib/writemodel_corpus.py` | Write-model benchmark corpus generator: size-bucketed tasks (small/medium/large) with a defective target fn + filler fns each carrying a passing test (the regression surface scales with size). **`generate_class_task` (s137)** emits a class whose defective target is a METHOD — required for P3-T0 criterion 2, since a flat corpus has no class to name coarsely. `Task.target_path` is the dotted address, defaulting to `[target_fn]` |
-| `benchmarks/lib/writemodel_bench.py` | Write-model benchmark harness: prompt→ollama_chat→apply→pytest-split (target vs no-regression)→JSONL; `report()` by size bucket. **4th arm `symbol_addressed` (s137)**: the model NAMES the unit (`{path, kind, body}`, grammar-constrained) instead of being handed it; `_symbol_metrics` records P3-T0 criteria 1/2/4/5 per attempt, BEFORE the apply so failures still report their mode. `--corpus flat\|class\|both` |
+| `benchmarks/lib/writemodel_bench.py` | Write-model benchmark harness: prompt→ollama_chat→apply→pytest-split (target vs no-regression)→JSONL; `report()` by size bucket. **4th arm `symbol_addressed` (s137)**: the model NAMES the unit (`{path, kind, body}`, grammar-constrained) instead of being handed it; `_symbol_metrics` records P3-T0 criteria 1/2/4/5 per attempt, BEFORE the apply so failures still report their mode. `--corpus flat\|class\|both`. **Per-cell timings (s139, T-137):** each record carries `eval_count`/`eval_duration_ms`/`prompt_eval_duration_ms`/`load_duration_ms` from Ollama itself, zeroed on failed cells so `summarize()`'s row-sum cannot `KeyError`. Use `eval_duration_ms` for generation rate — **`ms` is wall clock for generate+apply+tests and is not a rate denominator** |
+| `benchmarks/lib/test_writemodel_bench.py` | **Timing-capture tests for the harness (s139, 7 tests, model-free).** `ollama_chat` and `run_tests` are stubbed. The invariant that matters is the ERROR path: a failed cell must still carry every stat key, because `summarize()` sums `eval_count` across all rows. Contains a note that `call_model`'s trailing `return "", {...}` is **unreachable** — an earlier draft tested it and passed with and against the fix |
 | `benchmarks/lib/test_writemodel_corpus.py` | **Ground-truth tests for the corpus generator (s137, 9 tests).** Asserts the generated original FAILS its target test and PASSES every filler — the property the whole benchmark rests on and which nothing checked before. Also pins that a class task's span is ≥3× its target method's, without which a coarse address costs nothing and criterion 2 cannot discriminate |
 
 **Data files (runtime artifacts, not scripts):**
 
 | Path | Content |
 |------|---------|
-| `~/.local/share/ollama-bridge/calls.jsonl` | All Ollama calls logged by MCP bridge. Fields: ts, model, prompt_hash, prompt, system, response, eval_count, eval_duration_ms, total_duration_ms, temperature, think, had_format. Training data for Layer 7 distillation. |
+| `~/.local/share/ollama-bridge/calls.jsonl` | All Ollama calls logged by MCP bridge. Fields: ts, model, prompt_hash, prompt, system, response, prompt_eval_count, eval_count, **eval_duration_ms**, total_duration_ms, temperature, think, had_format; plus `call_id`/`tool` (T-105) and `prompt_eval_duration_ms`/`run_id` on newer records. **Generation tok/s IS computable — `eval_count / (eval_duration_ms/1000)`, present in 738/738 call records since session 32.** T-137 asserted otherwise for five months. **`load_duration` is the one timing Ollama returns that is NOT logged here** (owned by T-131: it is the cold-vs-contended discriminator). Only the MCP bridge writes this file; benchmark generations never appear. Training data for Layer 7 distillation. |
 <!-- /ref:bash-wrappers -->
 
 ---
