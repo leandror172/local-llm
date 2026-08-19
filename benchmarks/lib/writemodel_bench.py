@@ -41,7 +41,12 @@ from writemodel_apply import (  # noqa: E402
     resolve_unit,
     strip_code_fences,
 )
-from writemodel_corpus import Task, generate_class_task, generate_corpus  # noqa: E402
+from writemodel_corpus import (  # noqa: E402
+    Task,
+    generate_class_task,
+    generate_corpus,
+    generate_import_task,
+)
 
 ARMS = ("code_anchored", "whole_file", "model_anchored", "symbol_addressed")
 
@@ -188,7 +193,13 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         "resolve_reason": "unparseable_reply",      # criterion 1
         "span_ratio": None, "body_ratio": None,     # criterion 2
         "body_fenced": None, "body_units": None, "body_parses": None,   # criterion 4
-        "body_has_import": None,                    # criterion 5
+        # Criterion 5a. Three outcomes, derivable from these two plus the task's own module:
+        #   has_import                      -> function-local import (the PREDICTED tell)
+        #   references and not has_import   -> used the module, never imported it anywhere
+        #   not references                  -> avoided it (hand-rolled); a counted outcome
+        "body_has_import": None,
+        "body_references_module": None,
+        "required_module": task.required_module,
     }
     emitted = _parse_unit(content)
     if emitted is None:
@@ -220,6 +231,14 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         m["body_has_import"] = any(
             isinstance(n, (ast.Import, ast.ImportFrom)) for n in ast.walk(tree)
         )
+        # Whether the body reaches for the module at all. Matched on ast.Name ids, NOT on
+        # text: `aftermath_of(x)` contains "math" and is not a use of it, and inflating the
+        # most interesting outcome with substring hits would be undetectable in the results.
+        if task.required_module is not None:
+            m["body_references_module"] = any(
+                isinstance(n, ast.Name) and n.id == task.required_module
+                for n in ast.walk(tree)
+            )
 
     span, reason = resolve_unit(task.source, emitted["path"], emitted["kind"])
     m["resolve_reason"] = reason or "ok"
@@ -390,10 +409,13 @@ def main():
     p.add_argument("--model", default="my-python-q25c14")
     p.add_argument("--arms", default=",".join(ARMS), help="comma-separated subset of arms")
     p.add_argument("--per-bucket", type=int, default=4, help="tasks per size bucket")
-    p.add_argument("--corpus", default="flat", choices=("flat", "class", "both"),
+    p.add_argument("--corpus", default="flat",
+                   choices=("flat", "class", "both", "import"),
                    help="flat = top-level-function tasks (the published arm A/B/C corpus); "
                         "class = class-bearing tasks, REQUIRED for criterion 2 since a flat "
-                        "corpus has no class to name coarsely; both = the union")
+                        "corpus has no class to name coarsely; both = the union; "
+                        "import = tasks whose fix REQUIRES a new top-level import, for "
+                        "criterion 5a — the case s137's 0/12 never exercised")
     p.add_argument("--buckets", default="small,medium,large")
     p.add_argument("--runs", type=int, default=3, help="runs per (task, arm) cell")
     p.add_argument("--timeout", type=int, default=180)
@@ -409,6 +431,12 @@ def main():
     if args.corpus in ("class", "both"):
         tasks += [
             generate_class_task(b, i)
+            for b in ("small", "medium", "large")
+            for i in range(args.per_bucket)
+        ]
+    if args.corpus == "import":
+        tasks += [
+            generate_import_task(b, i)
             for b in ("small", "medium", "large")
             for i in range(args.per_bucket)
         ]

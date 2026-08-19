@@ -126,3 +126,81 @@ class TestRunCellRecord:
         rec = wb.run_cell(task, "whole_file", "m", 0, 10)
         assert rec["ms"] != rec["eval_duration_ms"]
         assert rec["ms"] < 1_000, "stubbed cell should be fast; ms is real wall clock"
+
+
+# --- criterion 5a outcome classification (s139) -------------------------------
+#
+# `body_has_import` (s137) detects the PREDICTED tell. It cannot distinguish the other ways
+# an attempt can respond to needing an unaddressable statement, and the plan pre-registers
+# those as separate outcomes. Two metrics make the three cases derivable from one record:
+#
+#   has_import=True                           -> emitted a function-local import (predicted)
+#   references=True, has_import=False         -> USED the module and never imported it; the
+#                                                model did not register that it needed a
+#                                                top-level statement at all. NameError at run
+#                                                time, so it is caught -- but by the tests,
+#                                                not by any criterion, which is why it needs
+#                                                its own signal.
+#   references=False                          -> avoided the module (hand-rolled). Legitimate
+#                                                Python and it may even pass, so nothing else
+#                                                would flag it.
+
+import json
+
+from writemodel_corpus import generate_import_task
+
+
+def _unit(body: str, path=("gcd_ratio",), kind="Function") -> str:
+    return json.dumps({"op": "replace_unit", "path": list(path), "kind": kind, "body": body})
+
+
+@pytest.fixture
+def import_task():
+    return generate_import_task("small", 0)   # gcd_ratio / math
+
+
+class TestCriterion5aOutcomes:
+    def test_records_the_required_module_on_the_record(self, import_task):
+        """The record must be self-describing: reading a results file months later, 'was this
+        even an import task?' cannot depend on re-deriving it from the task name."""
+        m = wb._symbol_metrics(import_task, _unit("def gcd_ratio(a, b):\n    return (a, b)\n"))
+        assert m["required_module"] == "math"
+
+    def test_required_module_is_none_for_an_ordinary_task(self, task):
+        m = wb._symbol_metrics(task, _unit("def scale(x, factor):\n    return x\n", ("scale",)))
+        assert m["required_module"] is None
+
+    def test_function_local_import_is_flagged(self, import_task):
+        """The predicted behaviour."""
+        body = "def gcd_ratio(a, b):\n    import math\n    g = math.gcd(a, b)\n    return (a // g, b // g)\n"
+        m = wb._symbol_metrics(import_task, _unit(body))
+        assert m["body_has_import"] is True
+        assert m["body_references_module"] is True
+
+    def test_module_used_without_any_import_is_distinguishable(self, import_task):
+        """The case body_has_import alone cannot see: it reached for math and never imported
+        it anywhere. Distinct from hand-rolling, and distinct from the prediction."""
+        body = "def gcd_ratio(a, b):\n    g = math.gcd(a, b)\n    return (a // g, b // g)\n"
+        m = wb._symbol_metrics(import_task, _unit(body))
+        assert m["body_has_import"] is False
+        assert m["body_references_module"] is True
+
+    def test_hand_rolled_fix_is_distinguishable(self, import_task):
+        """Avoided the unaddressable statement entirely. A counted outcome, not a failure."""
+        body = (
+            "def gcd_ratio(a, b):\n"
+            "    x, y = a, b\n"
+            "    while y:\n"
+            "        x, y = y, x % y\n"
+            "    return (a // x, b // x)\n"
+        )
+        m = wb._symbol_metrics(import_task, _unit(body))
+        assert m["body_has_import"] is False
+        assert m["body_references_module"] is False
+
+    def test_module_reference_is_not_matched_inside_a_longer_name(self, import_task):
+        """`aftermath_of(x)` is not a use of `math`. Substring matching here would silently
+        inflate the most interesting outcome."""
+        body = "def gcd_ratio(a, b):\n    return aftermath_of(a), mathematics(b)\n"
+        m = wb._symbol_metrics(import_task, _unit(body))
+        assert m["body_references_module"] is False
