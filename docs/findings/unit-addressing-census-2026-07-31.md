@@ -153,4 +153,27 @@ and body (the Diff-XYZ evidence, P3-T0's job), and whether the grammar survives 
 `locate_unit` is confirmed as a per-language `LanguagePack` member — the seam already exists
 (`compile_stage`, `test_stage`, `system_prompt`, `coder_model`) and this is its fifth member. It
 cannot be one implementation: Python resolves by nesting, Go by receiver.
+
+## Downstream note (s139) — this finding was correct and was corrupted by a consumer
+
+**Nothing above changed.** Recorded because two consumers misquoted it in the same way, both
+citing this document as their authority:
+
+- P3-D1 item 6 rendered the ~10.9% complement as *"imports, **module constants** and the module
+  docstring: statements with no name"*. This finding says the opposite twice — the table
+  classifies `assign 64 (124 lines)` as **`named`**, and the text reads *"the entire remainder
+  is imports and module docstrings"*. The section above even retires the objection by name:
+  *"module level code has no address" — does not survive measurement*.
+- `benchmarks/lib/test_writemodel_apply.py` copied the same phrasing into a test comment.
+
+**Why it mattered:** criterion 5b (s139) measured the module constant as the **largest**
+unaddressable class in practice — 30.4% of oficina's own edits, against 17.4% for imports — so
+the mislabel had filed the biggest slice of the problem under *unfixable by construction*. It is
+in fact a **resolver gap**: `_UNIT_NODES` indexes only `FunctionDef`/`AsyncFunctionDef`/
+`ClassDef`, so a named assignment is never a candidate. Both consumers corrected s139.
+
+**The transferable part:** s136 recorded that *a falsified claim can survive in the body that
+consumed it.* This is the same failure running the other way — **a correct claim corrupted by
+its consumer, which then cited the original as authority**, so the error looked sourced. When
+a document is cited a lot, check what the citations say it says.
 <!-- /ref:unit-addressing-census -->

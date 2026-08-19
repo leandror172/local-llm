@@ -100,12 +100,16 @@ correct** (24 generations, `my-python-q25c14-16k`). Address fidelity **12/12** u
 design-killing degeneration case **0/12**. Shipped: dotted `find_units`/`resolve_unit`/`apply_unit`
 beside a frozen `locate_function`, a class-bearing corpus, a 4th benchmark arm, **67 tests**.
 **Four findings the plan lacked** — the **~10.9% unaddressable-by-construction bound** (the
-`ref:unit-addressing-census` complement nobody had read: imports/constants/module docstring have
-no dotted address at all, bounding what P3-D1(B) can cover); **the harness must own indentation**;
+`ref:unit-addressing-census` complement nobody had read: imports and the module docstring have
+no dotted address at all, bounding what P3-D1(B) can cover) *(s139: this line said
+"imports/constants" and the **constants were wrong** — the census counts `assign` as NAMED. See
+the s139 entry: it is the largest class and it is a resolver gap, not a construction bound.)*; **the harness must own indentation**;
 the synthetic corpus had **no classes**, making criterion 2 structurally unmeasurable; and the plan
 named **one vehicle for two questions**. **Corrected a load-bearing invariant: "16K is VRAM-fit" is
-FALSE on this host** — 9.31 GiB resident / **1.76 GiB on CPU** with the card deliberately quiet, so
-~13–21 tok/s was never reachable and every run has paid partial offload. **Two of my own claims
+FALSE on this host** — 9.31 GiB resident / **1.76 GiB on CPU** with the card deliberately quiet.
+*(s139: the load event stands, the INFERENCE from it does not — 49 logged calls on that model
+run min 5.4 / median 14.6 / max 24.6 tok/s, so "13–21 never reachable" is false; the split is
+load-time-stale and whether those calls were offloaded is UNMEASURED.)* **Two of my own claims
 were wrong and are retracted in place:** ~2–3 tok/s was really ≥5.1, and "8 ref keys break on clone"
 was false — they resolve via a tracked duplicate, and `ref-lookup.sh --paths` emits one line per KEY
 so it structurally cannot show two definitions. `check-ref-integrity.py` had it right inside a
@@ -123,6 +127,38 @@ listed THREE suites because it enumerated **Makefiles** rather than **test runne
 my instrument surfaced only via the negative control**, never the green run. **T-138 filed:** 53 of 62
 tracked `.sh` files are `100644` — `Permission denied` on any clone on a real filesystem, including
 `resume.sh` and all 8 benchmark wrappers. PR #90 open. No P3 work.
+
+Session 139 (2026-08-19): **T-137 CLOSED — and its PREMISE WAS FALSE, which is the finding.**
+It claimed `calls.jsonl` lacked `eval_duration` and named `client.py`; measured **738/738 records
+carry `eval_duration_ms`**, added session 32 (`8666c0ea`) — and `mcp-server/.memories/KNOWLEDGE.md`
+**had listed it in the schema the whole time**. Implementing it as filed would have shipped, gone
+green, and changed nothing. **The real silence was a SECOND Ollama client:** `benchmarks/lib/`
+imports `ollama_chat` from `personas/lib/ollama_client.py`, which dropped every timing but
+`total_duration` and **logs nothing at all** — s137's 24 generations are in `calls.jsonl` **zero**
+times. Enumerating by the defining property (`grep -rln 'api/chat\|api/generate'`) found **seven**
+call sites, not two, and the two ad-hoc scripts (`decomposed-run.py`, `ollama-probe.py`) had it
+right — **the shared library was narrower than the scripts bypassing it.** Fixed both seams
+(+`load_duration_ms`, T-131's discriminator); suite **894→913**. **A load-bearing invariant walked
+back — the INFERENCE, not the measurement:** s137's 9.31 GiB / 1.76 GiB load event stands, but
+"13–21 tok/s never reachable, every run pays partial offload" does not — 49 logged calls on that
+model run **5.4 / 14.6 / 24.6** (min/med/max); the split is load-time-stale and whether those calls
+were offloaded is **UNMEASURED**. Corrected in 5 live consumers found by grep, not by counting.
+Then **P3-T0 criterion 5a MEASURED (24 gens, 2 runs): (B) cannot ship on
+`replace_unit` alone** — the coder never added a correct top-level import, symbol-addressed
+**4/12 and 6/12** vs whole-file **12/12 twice**, `avoided_the_module` **0/24**. Criteria 1/2/4
+clean and tokens flat (47 vs 171), so it is a **coverage bound, not an addressing failure**.
+The predicted function-local import is the BENIGN half (10/14 pass — the silent case); the
+unpredicted half never runs. **The plan's refusal fallback does not exist — the model never
+refuses**, so detection is the harness's job (first principle 1). **Then 5b MEASURED (486 real
+edits, durable instrument + 13 tests): 23–48% of real edits touch something `replace_unit`
+cannot address** — not a rare fallback. **The dominant class is the module CONSTANT, not the
+import** (30.4% vs 17.4% in oficina's source) — and a constant **has a name**, so that slice is
+a **resolver gap** (`KINDS` omits assignments), not the "unaddressable by construction" bound
+the census recorded. A fourth gap surfaced that the plan never named: **adding a new top-level
+unit** (~17%). **The negative control caught
+a defect in my own new test** (it asserted an unreachable line and
+passed both ways). No P3 work. *(T-132 compaction now FOUR sessions behind — this file is ~175
+lines against its stated 30.)*
 
 ## Repo Structure
 

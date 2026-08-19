@@ -1,6 +1,14 @@
 # oficina P2 — edit mode (whole-file-with-context) — build plan
 
 **Status:** Plan, session 126 (2026-07-22). **NOT built — implementation gated on explicit user go.**
+
+> **s139 — P3-T0 has now measured the mechanism E-D1 weighed and deferred.** Symbol-addressed
+> output costs **43 tokens flat** against whole-file's 120/216/479 at equal correctness — but it
+> **cannot express a new top-level statement**, and a 486-edit census puts the share of real
+> edits needing one at **23–48%**. So **E-D1's preserved whole-file fallback is load-bearing far
+> more often than "rare"**, and the model **never signals** that it needs it: all 24 probe
+> attempts were confident and well-formed, half of them silently wrong. Detail and caveats:
+> `docs/plans/oficina-p3-context-assembly.md` § RESULTS ([ref:delegate-p3-probe]).
 **Task:** T-110 (proposed id; register in `.claude/tasks.md` at handoff — T-109 was claimed
 2026-07-22 by a cross-session entry from expenses/code s63). Amends the T-104 M2 decision.
 **Branch (when built):** `feature/oficina-p2-edit-mode`, fresh from master.

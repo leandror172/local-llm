@@ -41,7 +41,12 @@ from writemodel_apply import (  # noqa: E402
     resolve_unit,
     strip_code_fences,
 )
-from writemodel_corpus import Task, generate_class_task, generate_corpus  # noqa: E402
+from writemodel_corpus import (  # noqa: E402
+    Task,
+    generate_class_task,
+    generate_corpus,
+    generate_import_task,
+)
 
 ARMS = ("code_anchored", "whole_file", "model_anchored", "symbol_addressed")
 
@@ -109,20 +114,37 @@ def build_prompt(task: Task, arm: str) -> str:
     raise ValueError(f"unknown arm: {arm}")
 
 
+# Recorded per cell. `load_duration_ms` separates "slow because cold" from "slow
+# because contended" — the discriminator T-131 needs and the one a wall-clock
+# figure cannot supply.
+_STATS_KEYS = (
+    "eval_count",
+    "eval_duration_ms",
+    "prompt_eval_duration_ms",
+    "load_duration_ms",
+)
+
+
 def call_model(
     prompt: str, model: str, timeout: int, schema: dict | None = None
-) -> tuple[str, int]:
-    """One model call; single retry on a cold-start timeout. Returns (content, eval_count)."""
+) -> tuple[str, dict]:
+    """One model call; single retry on a cold-start timeout.
+
+    Returns (content, stats). `stats` carries Ollama's own timings, so a cell's
+    generation rate is READ rather than bounded by wall clock — the `ms` field
+    below also contains apply + test time, which is why s137 could only report
+    "at least" a figure (T-137).
+    """
     for attempt in (1, 2):
         try:
             resp = ollama_chat(prompt, model=model, system=_SYSTEM, timeout=timeout,
                                keep_alive="10m", format_schema=schema)
-            return resp["content"], int(resp.get("eval_count") or 0)
+            return resp["content"], {k: resp.get(k) or 0 for k in _STATS_KEYS}
         except TimeoutError:
             if attempt == 2:
                 raise
             time.sleep(3)
-    return "", 0
+    return "", {k: 0 for k in _STATS_KEYS}
 
 
 def apply_output(task: Task, arm: str, content: str) -> str | None:
@@ -159,6 +181,31 @@ def _parse_unit(content: str) -> dict | None:
     return {"path": path, "kind": kind, "body": body}
 
 
+def _references_module(tree: ast.AST, module: str) -> bool:
+    """Does this tree use `module` — by attribute access, or by importing from it?
+
+    Three forms, and the second is the one a naive check misses. `from itertools import
+    accumulate` names the module ONLY in the import statement; the call site is a bare
+    `accumulate`, so scanning for `ast.Name(id="itertools")` reports "never referenced" about a
+    body that plainly uses it. That was observed in this probe's first five live records, and
+    left alone it would have folded every from-import into the hand-rolled count.
+
+    Matched structurally, never on text: `aftermath_of(x)` contains "math" and is not a use of
+    it, and a substring hit would inflate the most interesting outcome invisibly.
+    """
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Name) and n.id == module:
+            return True
+        if isinstance(n, ast.Import):
+            if any(a.name == module or a.name.startswith(module + ".") for a in n.names):
+                return True
+        if isinstance(n, ast.ImportFrom):
+            mod = n.module or ""
+            if mod == module or mod.startswith(module + "."):
+                return True
+    return False
+
+
 def _symbol_metrics(task: Task, content: str) -> dict:
     """Criteria 1, 2, 4 and 5 of P3-T0, measured per attempt.
 
@@ -171,7 +218,18 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         "resolve_reason": "unparseable_reply",      # criterion 1
         "span_ratio": None, "body_ratio": None,     # criterion 2
         "body_fenced": None, "body_units": None, "body_parses": None,   # criterion 4
-        "body_has_import": None,                    # criterion 5
+        # `body_parses` is ast.parse, which builds an AST for a module-level `return` without
+        # complaining — the SyntaxError comes from compile(), not the parser. A body emitted
+        # WITHOUT its own `def` line therefore parses, splices in, and makes the module
+        # unimportable. Measured twice live (s139).
+        "body_compiles": None,
+        # Criterion 5a. Three outcomes, derivable from these two plus the task's own module:
+        #   has_import                      -> function-local import (the PREDICTED tell)
+        #   references and not has_import   -> used the module, never imported it anywhere
+        #   not references                  -> avoided it (hand-rolled); a counted outcome
+        "body_has_import": None,
+        "body_references_module": None,
+        "required_module": task.required_module,
     }
     emitted = _parse_unit(content)
     if emitted is None:
@@ -193,6 +251,12 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         m["body_parses"] = False
     else:
         m["body_parses"] = True
+        try:
+            compile(textwrap.dedent(strip_code_fences(body)), "<body>", "exec")
+        except (SyntaxError, ValueError):
+            m["body_compiles"] = False
+        else:
+            m["body_compiles"] = True
         # >1 top-level unit means it emitted NEIGHBOURING code, not just the one asked for.
         m["body_units"] = sum(
             isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for n in tree.body
@@ -203,6 +267,11 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         m["body_has_import"] = any(
             isinstance(n, (ast.Import, ast.ImportFrom)) for n in ast.walk(tree)
         )
+        # Whether the body reaches for the module at all. Matched on ast.Name ids, NOT on
+        # text: `aftermath_of(x)` contains "math" and is not a use of it, and inflating the
+        # most interesting outcome with substring hits would be undetectable in the results.
+        if task.required_module is not None:
+            m["body_references_module"] = _references_module(tree, task.required_module)
 
     span, reason = resolve_unit(task.source, emitted["path"], emitted["kind"])
     m["resolve_reason"] = reason or "ok"
@@ -239,10 +308,10 @@ def run_cell(task: Task, arm: str, model: str, run_idx: int, timeout: int) -> di
     error = None
     applied = False
     target_pass = no_regression = False
-    eval_count = 0
+    stats: dict = {k: 0 for k in _STATS_KEYS}
     metrics: dict = {}
     try:
-        content, eval_count = call_model(
+        content, stats = call_model(
             build_prompt(task, arm), model, timeout,
             schema=_UNIT_SCHEMA if arm == "symbol_addressed" else None,
         )
@@ -264,15 +333,36 @@ def run_cell(task: Task, arm: str, model: str, run_idx: int, timeout: int) -> di
         "target_pass": target_pass,
         "no_regression": no_regression,
         "combined": applied and target_pass and no_regression,
-        "eval_count": eval_count,
+        **stats,
+        # Wall clock for the WHOLE cell (generate + apply + run tests), which is
+        # why it is not a generation-rate denominator. Use eval_duration_ms.
         "ms": round((time.perf_counter() - t0) * 1000),
         "error": error,
         **metrics,
     }
 
 
+def _warm(model: str, timeout: int) -> None:
+    """One throwaway call so the model is resident before the sweep's first cell.
+
+    Without it, cell 1 pays the model load and cells 2..N do not, so the first row of every
+    sweep sits in a different measurement regime and nothing in the output says so. This does
+    NOT replace recording `load_duration_ms`: on a 12 GB card shared with a desktop the model
+    can be evicted mid-sweep, and that reload has to stay visible.
+
+    Failure is deliberately swallowed. A warm-up is an optimisation, not a precondition — and
+    if it does fail, the cold load simply shows up in cell 1's `load_duration_ms`, which is the
+    reason that field is measured rather than assumed away.
+    """
+    try:
+        ollama_chat(".", model=model, system=_SYSTEM, timeout=timeout, keep_alive="10m")
+    except Exception:  # noqa: BLE001 — see docstring
+        pass
+
+
 def run_all(tasks, arms, model, runs, timeout, out_path):
     """Serial sweep (VRAM ceiling). Append each record to JSONL as it lands (crash-survivable)."""
+    _warm(model, timeout)
     records = []
     total = len(tasks) * len(arms) * runs
     n = 0
@@ -323,6 +413,25 @@ def report(records):
         print(f"\n{len(errs)} cell error(s); first: {errs[0]['error']}")
 
 
+def _classify_5a(row: dict) -> str | None:
+    """Which criterion-5a outcome this attempt is, or None if the row cannot say.
+
+    None for a non-import task (no required module, so every 5a outcome is meaningless) and
+    for an unparseable body (it supports no claim about what the model needed). Silence rather
+    than a guess: folding either into `avoided_the_module` would invent the most convenient
+    answer and inflate the count that matters most.
+    """
+    if row.get("required_module") is None or row.get("body_parses") is not True:
+        return None
+    if row.get("body_has_import"):
+        # Checked FIRST: `import math` + `math.gcd(...)` sets both flags, and that overlap is
+        # the normal shape of the predicted case, not an edge case.
+        return "function_local_import"
+    if row.get("body_references_module"):
+        return "used_without_importing"
+    return "avoided_the_module"
+
+
 def _symbol_report(records):
     """P3-T0's criteria for the symbol-addressed arm. Failure MODES, not just a pass rate —
     the outcome table branches differently on each, so collapsing them decides nothing."""
@@ -359,11 +468,32 @@ def _symbol_report(records):
         print(f"    body does not parse   {sum(r.get('body_parses') is False for r in parsed):>4}/{len(parsed)}")
         multi = sum((r.get("body_units") or 0) > 1 for r in parsed)
         print(f"    >1 unit in body       {multi:>4}/{len(parsed)}  <- emitted neighbouring code")
+        # ZERO units is the mirror defect and was invisible until s139: a body declared
+        # `kind: Function` that contains no function is a FRAGMENT, not a unit. It splices in,
+        # and a bare `return` at module level makes the file unimportable — taking every filler
+        # test down with it, which reads as a catastrophic edit rather than a shape defect.
+        none_ = sum(r.get("body_units") == 0 for r in parsed)
+        print(f"    0 units in body       {none_:>4}/{len(parsed)}  <- a fragment, not a unit")
+        broken = sum(r.get("body_compiles") is False for r in parsed)
+        print(f"    body does not COMPILE {broken:>4}/{len(parsed)}  <- parses but cannot import")
 
-    print("\n  criterion 5 — needed a unit it could not address")
-    imports = [r for r in parsed if r.get("body_has_import")]
-    print(f"    import INSIDE the body {len(imports):>3}/{len(parsed) if parsed else 0}"
-          "  <- the predicted function-local-import tell")
+    print("\n  criterion 5a — needed a statement it could not address")
+    labelled = [c for c in (_classify_5a(r) for r in rows) if c is not None]
+    if not labelled:
+        print("    no import-requiring tasks in this run — criterion 5a NOT EXERCISED.")
+        print("    (s137 reported 0/12 here from exactly this state: run --corpus import.)")
+        return
+    for label, gloss in (
+        ("function_local_import", "the PREDICTED tell — legal, passes, invisible to 1/2/3/4"),
+        ("used_without_importing", "reached for the module, never imported it — NameError"),
+        ("avoided_the_module", "hand-rolled instead; may well pass, nothing else flags it"),
+    ):
+        n = labelled.count(label)
+        print(f"    {label:<24} {n:>3}/{len(labelled)}  ({round(100 * n / len(labelled))}%)"
+              f"  <- {gloss}")
+    print("\n    NOT a rate: this corpus is DESIGNED to require a top-level statement, so the")
+    print("    share of edits needing one is 100% by construction. Criterion 5b — the real-edit")
+    print("    fraction bounding (B)'s coverage — is UNMEASURED and needs a natural sample.")
 
 
 def main():
@@ -371,10 +501,13 @@ def main():
     p.add_argument("--model", default="my-python-q25c14")
     p.add_argument("--arms", default=",".join(ARMS), help="comma-separated subset of arms")
     p.add_argument("--per-bucket", type=int, default=4, help="tasks per size bucket")
-    p.add_argument("--corpus", default="flat", choices=("flat", "class", "both"),
+    p.add_argument("--corpus", default="flat",
+                   choices=("flat", "class", "both", "import"),
                    help="flat = top-level-function tasks (the published arm A/B/C corpus); "
                         "class = class-bearing tasks, REQUIRED for criterion 2 since a flat "
-                        "corpus has no class to name coarsely; both = the union")
+                        "corpus has no class to name coarsely; both = the union; "
+                        "import = tasks whose fix REQUIRES a new top-level import, for "
+                        "criterion 5a — the case s137's 0/12 never exercised")
     p.add_argument("--buckets", default="small,medium,large")
     p.add_argument("--runs", type=int, default=3, help="runs per (task, arm) cell")
     p.add_argument("--timeout", type=int, default=180)
@@ -390,6 +523,12 @@ def main():
     if args.corpus in ("class", "both"):
         tasks += [
             generate_class_task(b, i)
+            for b in ("small", "medium", "large")
+            for i in range(args.per_bucket)
+        ]
+    if args.corpus == "import":
+        tasks += [
+            generate_import_task(b, i)
             for b in ("small", "medium", "large")
             for i in range(args.per_bucket)
         ]

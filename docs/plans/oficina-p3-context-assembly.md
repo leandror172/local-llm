@@ -564,10 +564,27 @@ Own-corpus measurement: **`ref:unit-addressing-census`**. The load-bearing resul
 6. **The refusal region is LARGER than item 5 states, and the census already measured it
    (s137).** `ref:unit-addressing-census` reports *"89.1% of Python top-level lines already sit
    under a name"* — and **the complement is the answer to a question nobody asked it.** The
-   remaining ~10.9% is imports, module constants and the module docstring: statements with no
-   name, therefore **unaddressable by a dotted path by construction**, not by omission. Item 5's
-   list is about constructs whose *address is unstable*; this is a class with **no address at
-   all**. The two were never connected, and it is the same number the census published.
+   remaining ~10.9% is imports and the module docstring: statements with no name, therefore
+   **unaddressable by a dotted path by construction**, not by omission. Item 5's list is about
+   constructs whose *address is unstable*; this is a class with **no address at all**. The two
+   were never connected, and it is the same number the census published.
+
+   > **CORRECTED s139 — this entry had CORRUPTED the census it cites, and the corruption was
+   > the load-bearing part.** It read *"imports, **module constants** and the module
+   > docstring"*. The census says the opposite in two places: its table classifies
+   > `assign 64 (124 lines)` as **`named`**, and its text reads *"89.1% … already sit under a
+   > name, and **the entire remainder is imports and module docstrings**."* A module constant
+   > binds a name; it was never in the complement. **The census was right and is unchanged.**
+   > What is true about constants is narrower and fixable: `KINDS = ("Function", "Method",
+   > "Class")` and `_UNIT_NODES` covers only `FunctionDef`/`AsyncFunctionDef`/`ClassDef`, so
+   > **the resolver does not index assignments** — a gap in our code, not a property of Python.
+   > This matters because criterion 5b measured the constant as the **largest** unaddressable
+   > class (30.4% of oficina's own edits vs 17.4% for imports), so the mislabel had moved the
+   > biggest slice of the problem into the category marked *unfixable by construction*.
+   > Same shape as s136's finding, running the other way: there a falsified claim survived in
+   > the body that consumed it; here a **correct** claim was corrupted by its consumer, which
+   > then cited the original as its authority. Propagated to
+   > `test_writemodel_apply.py`, also corrected.
 
    **Consequence for (B), stated as a bound rather than discovered later:** an edit that must
    add a top-level statement — most commonly **a new import** — cannot be expressed as
@@ -928,9 +945,29 @@ arm C, a mechanism this entry does not propose.
    silent failure with no criterion pointing at it is exactly what this probe exists to
    prevent, so it gets its own count.
 
-   Record the rate, not just the occurrence: **what share of attempts needed a top-level
-   statement at all** is the unmeasured fraction P3-D1 item 6 names, and this probe is the
-   cheapest place to get a first read on it.
+   **SPLIT s139 — this criterion asked ONE vehicle for TWO questions, the same defect s137
+   found one level up** (criteria 1/2/4/5 → the benchmark, criterion 3 → oficina). The two
+   halves need opposite corpora and only one of them is answerable here:
+
+   - **5a — BEHAVIOUR (answered here).** *Given that the coder needs a top-level statement it
+     cannot address, what does it emit?* Vehicle: a corpus task **designed** so the only
+     correct repair requires a new `import` or module constant. n≈12, `my-python-q25c14-16k`.
+     Outcomes to count: function-local import (the prediction) · refusal or partial edit ·
+     silent wrong fix that avoids the import · anything unanticipated.
+   - **5b — RATE (NOT answered here, and must not be reported as if it were).** *What share of
+     real edits need a top-level statement at all?* **A designed task makes this 100% by
+     construction**, so running 5a and quoting its share would be measuring the corpus I chose
+     and reading it as a property of the world. This is the fraction P3-D1 item 6 names as
+     bounding (B)'s coverage, and it needs a **natural** sample — real edits, not generated
+     ones. Nearest honest instrument: mine repo history for commits that add an import to an
+     existing file (`git log -p` over `mcp-server/src/`), or read it off criterion 3's real-file
+     runs. **Until then (B)'s coverage bound stays UNMEASURED and should be stated that way.**
+
+   **Design constraint on 5a's task, and it is the probe's negative control:** the task must
+   admit **no addressable repair**. If the defect can be fixed without the new top-level
+   statement, the coder will simply do that, and the criterion returns another unexercised
+   zero wearing a different mask — the exact failure s137's `0/12` already is. Assert this in
+   the corpus ground-truth tests (`test_writemodel_corpus.py`'s discipline), not in prose.
 
 **The method below names ONE vehicle for TWO questions, and the vehicle cannot run the
 target — corrected s137.** `run_tests` writes the edited module to `module_under_test.py` in a
@@ -1053,6 +1090,153 @@ uniquely, units stay fine-grained*. That **clears the gate the probe was built t
 removes the "magnitude unmeasured" objection for the naming half specifically. It does **not**
 by itself justify freezing (B): the unaddressable-statement bound (item 6) is still unmeasured,
 and the real-file half has not run.
+
+### RESULTS — criterion 5a, run 2026-08-19 (s139)
+
+`my-python-q25c14-16k`, **import-requiring** corpus (`--corpus import`), 6 tasks × 2 arms × 2
+runs = 24 generations. Raw: `benchmarks/results/criterion5a-import-20260819.jsonl`.
+**Reported over TWO independent runs**, because the split between outcomes moves at n=12 and
+one run would have read as more precise than it is.
+
+| | run 2 | run 3 |
+|---|---|---|
+| symbol-addressed **combined** | **4/12 (33%)** | **6/12 (50%)** |
+| whole-file **combined** (control) | **12/12 (100%)** | **12/12 (100%)** |
+| `function_local_import` | 6 — 4 pass | 8 — 6 pass |
+| `used_without_importing` | 6 — **0 pass** | 4 — **0 pass** |
+| `avoided_the_module` | **0** | **0** |
+| mean output tokens | 47 vs 171 | 47 vs 171 |
+
+**Criteria 1, 2 and 4 are clean, so this is NOT an addressing failure.** Address fidelity
+12/12 `ok`; degeneration 0/12; no fences, no prose, no neighbouring code. The token advantage
+also holds — ~47 flat against whole-file's 171 mean. **What collapses is correctness, and only
+on this task class.**
+
+**What is robust across all 24 attempts, rather than across one run:**
+
+1. **The coder never once added a correct top-level import** — it cannot; the schema has no
+   operation that expresses one. Every attempt either put the import *inside* the unit or
+   reached for the module without importing it anywhere.
+2. **`used_without_importing` never passes: 0 of 10.** The body references `math`/`itertools`
+   and nothing imports them, so the edit is dead on arrival.
+3. **`avoided_the_module` never happened: 0 of 24.** The pre-registered worry that a designed
+   task would simply be hand-rolled around did not materialise, so the corpus does exercise
+   the criterion it was built for.
+4. **The control passes every time: 24/24.** Whole-file adds the import correctly on every
+   attempt at every size. The task is entirely solvable; the failure is specific to (B).
+
+**The prediction (P3-D1 item 6) was HALF right, and the missing half is worse.** The
+function-local import happened — 14 of 24 — and is the *benign* branch: **10 of those 14 pass
+all tests**, which is precisely the silent degradation criterion 5 exists to catch, invisible
+to criteria 1–4 *and* to the test suite. The unpredicted branch is the model **using the module
+without importing it at all**, which never runs. That outcome was only visible because
+`body_references_module` was added this session; under `body_has_import` alone it was
+indistinguishable from hand-rolling — the opposite reading.
+
+**The plan's assumed fallback does not exist.** Item 5 records *"Fallback = whole-file for that
+iteration … so the refusal costs nothing to build."* **The model never refuses.** It emits a
+confident, well-formed, correctly-addressed operation in every one of the 24 attempts. So the
+fallback cannot be triggered by a model signal and must be **detected mechanically by the
+harness** — which is cheap, and is first principle 1 (*"harness code does all mechanics"*)
+rather than a new burden: an emitted `body` either contains an import, or references a name the
+target file never binds. Both are AST checks on output the harness already parses.
+
+**A second defect surfaced, and only by reproducing a raw output.** Two cells emitted the
+import plus a bare `return list(...)` — **the body without its `def` line**. Spliced in, that
+puts a `return` at module level, the module fails to import, and *every filler test dies with
+it*, which reads as a catastrophic edit rather than a shape defect. The run had recorded
+`body_parses: True` and *"body does not parse 0/12"*: both true and neither useful, because
+`ast.parse` builds an AST for a module-level `return` quite happily — the `SyntaxError` comes
+from `compile()`. The signal that *was* present is **`body_units == 0`**, a body declared
+`kind: Function` containing no function; it had been recorded on every run and reported on
+none, since the report only ever flagged `> 1` unit. Both are now reported, and a
+`body_compiles` check added. **Diagnosing it cost two fresh generations, because the JSONL
+records no model output** — a surprising cell cannot be explained after the fact. → **T-139.**
+
+**The outcome table above has NO ROW for criterion 5**, so nothing here can be read as a
+pre-registered consequence. Proposed row, authored AFTER seeing the result and flagged as such:
+
+| Probe result | Consequence |
+|---|---|
+| **Coder needs a top-level statement it cannot address (criterion 5a)** | **(B) needs a second operation or a mechanical fallback — it cannot be shipped on `replace_unit` alone.** The coverage bound is real, the model does not degrade gracefully into it, and half its failures are silent. Decide between an `insert_top_level` op and harness-side detection + whole-file fallback; the latter is smaller and is already first principle 1. **Does NOT reverse the s137 result** — token cost and addressing quality are unaffected, and 5b (how *often* a real edit needs this) remains unmeasured, so the size of the bound is still unknown. |
+
+**Two earlier runs were discarded, stated so the count of runs is not silently three:** run 1
+used a `body_references_module` that missed the `from X import Y` form (fixed; every from-import
+would have been miscounted as hand-rolling); run 2 predates `body_compiles` and the zero-unit
+report, and its numbers are shown above rather than dropped, so it is checkable that the
+instrument changed and the conclusion did not.
+
+
+### RESULTS — criterion 5b, the real-edit rate, 2026-08-19 (s139)
+
+**486 real edits** from this repo's non-merge history — one (commit, file) pair per edit, since
+that is oficina's unit of work. Structural, not textual: both revisions are parsed and their
+top-level sets compared, because a `+import math` diff line may be a *function-local* import
+and a parenthesized multi-line import has its added lines indented. Cross-checked against a
+grep: **8.4% textual vs 10.7% structural**, and the gap is the parenthesized form, so the
+structural figure is the correct one. Instrument: `benchmarks/lib/run-unaddressable-census.sh`
+(+ 13 tests; a `tree.body` → `ast.walk` mutation fails 5 of them). Raw:
+`benchmarks/results/criterion5b-unaddressable-census-20260819.json`.
+
+| population | n | **unaddressable** | import | constant | docstring | new unit |
+|---|---|---|---|---|---|---|
+| all edits | 486 | 51.2% | 27.2% | 26.1% | 9.3% | 47.5% |
+| ≤10 lines | 131 | **34.4%** | 10.7% | 20.6% | 4.6% | 3.1% |
+| ≤40 lines | 313 | 40.3% | 17.6% | 20.1% | 6.4% | 30.4% |
+| `mcp-server/src/` ≤10 lines | 39 | **23.1%** | 5.1% | 15.4% | 2.6% | 2.6% |
+| `mcp-server/src/` ≤40 lines | 97 | 42.3% | 17.5% | 24.7% | 3.1% | 15.5% |
+| **`oficina/` ≤40 lines** | 69 | **47.8%** | 17.4% | 30.4% | 4.3% | 17.4% |
+
+**The answer to 5b: between roughly a quarter and a half**, depending on the cut. Even the most
+favourable one — the bridge's own source, edits of ten lines or fewer — is **23.1%**, about one
+edit in four. **This is not a rare fallback**, which is what item 5's *"the refusal costs
+nothing to build"* quietly assumed.
+
+**AND THE DOMINANT CLASS IS NOT THE IMPORT.** P3-D1 item 6 names the case as *"most commonly a
+new import"*. At every single cut the **module constant** outnumbers it — 30.4% against 17.4%
+in oficina's own source. The prediction picked the second-largest class.
+
+**That matters because the two need different remedies, and one of them is nearly free.**
+*(First draft of this paragraph blamed `ref:unit-addressing-census` for the mislabel and was
+**wrong** — corrected here rather than quietly reworded. The census classifies `assign` as
+**`named`** in its own table and says *"the entire remainder is imports and module
+docstrings"*. **The census was right.** P3-D1 item 6 corrupted it by adding "module constants"
+to the complement, and `test_writemodel_apply.py` propagated that while citing the census as
+authority. Both corrected; the census needed no change.)* **A module constant has a name.**
+`DEFAULT_CODER_MODEL = …` binds one. What is true is narrower and fixable: `KINDS = ("Function", "Method", "Class")` and `_UNIT_NODES` covers
+only `FunctionDef`/`AsyncFunctionDef`/`ClassDef`, so the resolver **does not index assignments**.
+So the bound conflates two classes:
+
+| class | share (oficina ≤40) | why unaddressable | remedy |
+|---|---|---|---|
+| **module constant / assignment** | **30.4%** | **named, but the resolver does not index it** | extend `_UNIT_NODES` + a `Constant` kind. **No new operation** — same multi-match discipline as any other unit |
+| import | 17.4% | genuinely nameless | needs an `insert_top_level` op |
+| module docstring | 4.3% | nameless, but singular per module | a reserved address, or fold into the import op |
+| **new top-level unit** | **17.4%** | has a name, does not exist yet — `replace_unit` replaces, it cannot create | needs `insert_unit`; **a separate gap this plan had not named at all** |
+
+**Consequence for P3-D1, and it is more favourable than criterion 5a alone implied.** The
+largest slice is a **resolver gap, not a construction bound** — closing it is an extension to
+`find_units`, which criterion 1 already measured at 12/12 unique. What genuinely needs new
+operations is the import (~17%) and the new-unit case (~17%). **The earlier lean toward
+"harness-side detection + whole-file fallback because it is smaller" is retracted on this
+measurement:** falling back on a quarter to a half of edits means falling back precisely on the
+files whole-file cannot reach, which is the entire feasibility argument for (B).
+
+**Caveats, stated because the cut moves the answer by 2×.** (a) One repo's history, mostly
+AI-assisted commits by one author — the mix may not generalise. (b) A commit is generally
+*larger* than one delegate run, so the unsegmented figures overstate; the ≤10-line row is the
+closest proxy and is the one to quote. (c) `unaddressable` counts statements **added or
+changed**, which is correct for the decision (`replace_unit` addresses neither) but is not
+"added a new statement". (d) It counts what a human chose to do in one commit, not what
+oficina would be asked to do.
+
+**One instrument defect found and fixed mid-measurement:** the first run reported
+`docstring 0.0%` at every cut while the sample visibly contained module-docstring edits.
+`ast.unparse` renders a docstring as an ordinary single-quoted literal, never a triple-quoted
+one, so the prefix test matched nothing and the whole category drained into `constant`. The
+headline rate was unaffected — a docstring is unaddressable either way — **which is exactly why
+a measured zero could sit there looking like a result.**
+
 <!-- /ref:delegate-p3-probe -->
 
 ---

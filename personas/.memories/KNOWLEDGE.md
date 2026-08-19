@@ -71,6 +71,30 @@ Presets (0.1 / 0.3 / 0.7) remain recommended for standard use cases; raw values 
 experimentation.  Test coverage: `personas/tests/test_temperature.py` (unit) +
 `personas/tests/test_collect_flags.py` (integration).
 
+## `lib/ollama_client.py` is the repo's SECOND Ollama client (2026-08-19, T-137)
+
+This folder owns a stdlib-urllib synchronous Ollama client. `build-persona.py` uses it — and so
+does **every `benchmarks/lib/` harness**, via `from ollama_client import ollama_chat` and a
+`sys.path.insert` pointing here. It is **not** the MCP bridge
+(`mcp-server/src/ollama_mcp/client.py`) and it **writes nothing to `calls.jsonl`**, so benchmark
+generations are invisible to the DPO corpus. That is a deliberate boundary — 24 benchmark
+generations per sweep would distort the verdict-coverage denominator T-105 exists to keep honest.
+
+**The contract: its returned timing keys must stay spelled exactly as the bridge logs them** —
+`eval_duration_ms`, `prompt_eval_duration_ms`, `total_duration_ms` (plus `load_duration_ms`, which
+this client records and the bridge still does not). `personas/tests/test_ollama_client_timings.py`
+asserts the overlap and is the only thing preventing a silent rename.
+
+**Why it matters, measured:** T-137 was filed against the *bridge* for a field the bridge had
+logged since session 32, because nobody had enumerated the clients. This one had dropped every
+duration but `total_duration` since it was written, so the benchmarks could never report a
+generation rate — five months of a task pointing at the wrong seam.
+**Before adding a third caller of Ollama, enumerate by the defining property:**
+`grep -rln 'api/chat\|api/generate' --include='*.py' .` returns **seven** sites. Two ad-hoc
+benchmark scripts (`decomposed-run.py`, `ollama-probe.py`) parse `eval_duration` correctly from
+raw responses — **the shared library was narrower than the scripts that bypass it**, which is the
+direction that yields false health (`ref:corpus-divergence-pattern`).
+
 ## Registry as Source of Truth (2026-02)
 
 registry.yaml is the single inventory of all personas. Every tool reads from it.

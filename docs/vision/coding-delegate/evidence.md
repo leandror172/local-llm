@@ -72,6 +72,27 @@ Snapshot 2026-07-11: 506 records, 457 calls, 49 verdicts (2026-02-27 → 2026-07
 <!-- /ref:delegate-evidence-prior-art -->
 
 <!-- ref:delegate-evidence-mcp -->
+## Symbol-addressed editing: what is measured (P3-T0, s137 + s139)
+
+Pointer, not a copy — the numbers and their caveats live in
+`docs/plans/oficina-p3-context-assembly.md` § RESULTS ([ref:delegate-p3-probe]).
+
+- **Cost (s137):** symbol-addressed output is **43 tokens flat** against whole-file's
+  120 / 216 / 479 by size bucket, both arms 100% correct. Addressing is accurate — 12/12 unique,
+  0/12 degenerate.
+- **The bound (5a, s139):** on edits requiring a new top-level statement the coder **never once**
+  produced a correct one — 24 attempts, 2 runs. Symbol-addressed scored 4/12 and 6/12 combined
+  against whole-file's 12/12 twice. **The plan's assumed refusal does not exist:** every attempt
+  was confident and well-formed, so a fallback must be *detected by the harness*, never awaited
+  from the model. Half the failures are silent — a function-local import is legal and passes.
+- **Its size (5b, s139):** **23–48% of real edits** touch something `replace_unit` cannot
+  address, over 486 edits of this repo's history. Not a rare fallback.
+- **The remedy is cheaper than it looks, and differently shaped than predicted.** The largest
+  class is the module **constant** (30.4% in oficina's own source, vs 17.4% for imports), and a
+  constant **has a name** — it is a resolver gap (`_UNIT_NODES` skips assignments), not a
+  language bound. Genuinely nameless: imports and the module docstring. A fourth gap nothing had
+  named: **creating a new top-level unit** (~17%), which `replace_unit` cannot do at all.
+
 ## MCP constraints (measured, not assumed)
 
 - **Claude Code's MCP client treats every tool call as blocking and ignores progress
