@@ -21,7 +21,10 @@ Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE
   Four findings the plan lacked — the **~10.9% unaddressable-by-construction bound** (the
   census's unread complement), **harness-owned indentation**, the corpus having **no classes**
   at all, and one vehicle named for two questions. Also corrected: **"16K is VRAM-fit" is FALSE
-  on this host** (9.31 GiB resident / 1.76 on CPU with a quiet card). Criterion 3 (real file)
+  on this host** (9.31 GiB resident / 1.76 on CPU with a quiet card) — **but s139 walks back the
+  INFERENCE drawn from it**: 49 logged calls on that model run 5.4 / 14.6 / 24.6 tok/s
+  (min/med/max), so "13–21 never reached" is false and partial-offload-by-default is an open
+  question, not a standing condition. Criterion 3 (real file)
   and criterion 5 remain unrun. § "The judge's payload" is unaffected.
 - **s134–s136** (07-30 → 08-11) — P3 planned, then **re-grounded twice**; P3-D1 still OPEN.
   T-133 shipped (`context.callers` wired, `acceptance.validators` deleted). Headline:

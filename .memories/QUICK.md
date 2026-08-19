@@ -104,8 +104,10 @@ beside a frozen `locate_function`, a class-bearing corpus, a 4th benchmark arm, 
 no dotted address at all, bounding what P3-D1(B) can cover); **the harness must own indentation**;
 the synthetic corpus had **no classes**, making criterion 2 structurally unmeasurable; and the plan
 named **one vehicle for two questions**. **Corrected a load-bearing invariant: "16K is VRAM-fit" is
-FALSE on this host** — 9.31 GiB resident / **1.76 GiB on CPU** with the card deliberately quiet, so
-~13–21 tok/s was never reachable and every run has paid partial offload. **Two of my own claims
+FALSE on this host** — 9.31 GiB resident / **1.76 GiB on CPU** with the card deliberately quiet.
+*(s139: the load event stands, the INFERENCE from it does not — 49 logged calls on that model
+run min 5.4 / median 14.6 / max 24.6 tok/s, so "13–21 never reachable" is false; the split is
+load-time-stale and whether those calls were offloaded is UNMEASURED.)* **Two of my own claims
 were wrong and are retracted in place:** ~2–3 tok/s was really ≥5.1, and "8 ref keys break on clone"
 was false — they resolve via a tracked duplicate, and `ref-lookup.sh --paths` emits one line per KEY
 so it structurally cannot show two definitions. `check-ref-integrity.py` had it right inside a

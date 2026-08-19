@@ -275,18 +275,30 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   loads **9.31 GiB resident / 1.76 GiB ON CPU**. It never fully fits. The arithmetic is
   fixed and leaves no configuration in which it does: the card is 12,288 MiB, the model
   wants 11.07 GiB ≈ 11,336 MiB, and Windows holds ~1,800 MiB **at minimum** while a desktop
-  session exists → ~10.2 GiB available, ~0.9 GiB short. **So the recorded 13–21 tok/s is an
-  upper bound never reached here, and every oficina run has been paying partial-offload
-  throughput.** Under desktop load it is worse: at 2,467 MiB held the same model measured
+  session exists → ~10.2 GiB available, ~0.9 GiB short. **s139 CORRECTS THE INFERENCE, not
+  the measurement:** the load event above stands, but *"13–21 tok/s is never reached and every
+  run pays partial offload"* does not — `calls.jsonl` holds **49** calls on this exact model at
+  **min 5.4 / median 14.6 / max 24.6 tok/s**, so the band declared unreachable is its
+  median-to-high range. Ollama's split is **load-time-stale** (s127), so the same model reloaded
+  under a quieter card gets a different split, and the **4.5× spread is that signature**. **What
+  is UNMEASURED is whether those 49 calls were offloaded** — `load_duration_ms` narrows it,
+  `ollama ps` at call time would settle it; neither was captured, so partial-offload-by-default
+  is now an open question rather than a standing condition. **The pattern: reachability was
+  derived from a single magnitude reading**, which is the error the reading guide already names
+  (`feedback_measure_magnitude_not_estimate` — magnitude *and reachability* are not derivable). Under desktop load it is worse: at 2,467 MiB held the same model measured
   **8.22 / 2.85 GiB** at **22%** GPU utilisation; quiet, it runs at **72%**. Freeing host
   VRAM is therefore a real and large lever (it roughly halved the spill), but it cannot
   close the gap. **Consequences:** treat 16K as *partial-offload-by-default*, not as the
   safe tier; and note the s127 entry was right that 32K cannot fit while being wrong that
-  16K can — the re-probe it asks for (T-113) now has a second reason to run. **Measurement
-  gap found alongside:** generation tok/s is **not computable from `calls.jsonl`** —
-  `prompt_eval_duration_ms` is logged per the T-129 duration-not-count rule, but
-  `eval_duration` is not, so the rate can only be bounded by wall clock (≥5.1 tok/s on the
-  s137 run). That is the exact number a contention diagnosis needs.
+  16K can — the re-probe it asks for (T-113) now has a second reason to run. **The measurement gap
+  recorded here was MISDIAGNOSED, corrected s139 (T-137):** generation tok/s *is* computable
+  from `calls.jsonl` and always was — `eval_duration_ms` is present in **738 of 738** call
+  records, added session 32 (`8666c0ea`). What could not be computed was the **benchmark's**
+  rate, because `benchmarks/lib/` does not use this client: it imports `ollama_chat` from
+  `personas/lib/ollama_client.py`, which dropped every timing but `total_duration` and **logs
+  nothing at all** — s137's 24 generations are in `calls.jsonl` **zero** times. Fixed s139;
+  `load_duration_ms` added there too as **T-131's** cold-vs-contended discriminator. `client.py`
+  still does not log `load_duration` — additive at the same seam, and it belongs to T-131.
 - **Input-fit guard (T-112, s129) — the loop refuses what cannot fit.** `_context_overflow`
   weighs `ceil(len(prompt)/4) + the resolved num_predict` against the model's window, read
   live from `/api/show` via an injected `context_limit_for` seam (the loop resolves its own
