@@ -204,3 +204,50 @@ class TestCriterion5aOutcomes:
         body = "def gcd_ratio(a, b):\n    return aftermath_of(a), mathematics(b)\n"
         m = wb._symbol_metrics(import_task, _unit(body))
         assert m["body_references_module"] is False
+
+
+# --- warm-up before the sweep (s139) ------------------------------------------
+#
+# Cells now record load_duration_ms, so a cold load is visible rather than silently averaged
+# into a rate. A warm-up makes the FIRST cell comparable to the rest instead of being the one
+# that pays the model load -- without it, cell 1 of every sweep is a different measurement
+# regime from cells 2..N and nothing in the output says so.
+#
+# Recording is kept as well as warming: a model evicted mid-sweep (12GB card, other work) will
+# reload, and that must stay visible. Warming is not a substitute for measuring.
+
+
+class TestWarmup:
+    def test_warmup_call_precedes_the_first_cell(self, monkeypatch, task, tmp_path):
+        seen = []
+
+        def record(*a, **kw):
+            seen.append(kw.get("model"))
+            return {"content": "x", "eval_count": 1, "eval_duration_ms": 1,
+                    "prompt_eval_duration_ms": 1, "load_duration_ms": 0}
+
+        monkeypatch.setattr(wb, "ollama_chat", record)
+        monkeypatch.setattr(wb, "run_tests", lambda src, t: (True, True))
+        wb.run_all([task], ["whole_file"], "my-model", 1, 10, str(tmp_path / "o.jsonl"))
+        assert len(seen) >= 2, "expected a warm-up call before the sweep's own call"
+        assert seen[0] == "my-model", "warm-up must load the model the sweep will use"
+
+    def test_a_failing_warmup_does_not_abort_the_sweep(self, monkeypatch, task, tmp_path):
+        """The warm-up is an optimisation, not a precondition. If Ollama is briefly unhappy the
+        run should still produce data -- and the cold load will show up in load_duration_ms,
+        which is the whole reason that field is recorded rather than assumed away."""
+        calls = []
+
+        def flaky(*a, **kw):
+            calls.append(1)
+            if len(calls) == 1:
+                raise RuntimeError("warm-up failed")
+            return {"content": "x", "eval_count": 1, "eval_duration_ms": 1,
+                    "prompt_eval_duration_ms": 1, "load_duration_ms": 999}
+
+        monkeypatch.setattr(wb, "ollama_chat", flaky)
+        monkeypatch.setattr(wb, "run_tests", lambda src, t: (True, True))
+        out = tmp_path / "o.jsonl"
+        recs = wb.run_all([task], ["whole_file"], "my-model", 1, 10, str(out))
+        assert len(recs) == 1, "sweep must still run after a failed warm-up"
+        assert recs[0]["load_duration_ms"] == 999, "the cold load must remain visible"

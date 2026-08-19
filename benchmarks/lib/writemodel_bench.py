@@ -309,8 +309,27 @@ def run_cell(task: Task, arm: str, model: str, run_idx: int, timeout: int) -> di
     }
 
 
+def _warm(model: str, timeout: int) -> None:
+    """One throwaway call so the model is resident before the sweep's first cell.
+
+    Without it, cell 1 pays the model load and cells 2..N do not, so the first row of every
+    sweep sits in a different measurement regime and nothing in the output says so. This does
+    NOT replace recording `load_duration_ms`: on a 12 GB card shared with a desktop the model
+    can be evicted mid-sweep, and that reload has to stay visible.
+
+    Failure is deliberately swallowed. A warm-up is an optimisation, not a precondition — and
+    if it does fail, the cold load simply shows up in cell 1's `load_duration_ms`, which is the
+    reason that field is measured rather than assumed away.
+    """
+    try:
+        ollama_chat(".", model=model, system=_SYSTEM, timeout=timeout, keep_alive="10m")
+    except Exception:  # noqa: BLE001 — see docstring
+        pass
+
+
 def run_all(tasks, arms, model, runs, timeout, out_path):
     """Serial sweep (VRAM ceiling). Append each record to JSONL as it lands (crash-survivable)."""
+    _warm(model, timeout)
     records = []
     total = len(tasks) * len(arms) * runs
     n = 0
