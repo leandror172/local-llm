@@ -181,6 +181,31 @@ def _parse_unit(content: str) -> dict | None:
     return {"path": path, "kind": kind, "body": body}
 
 
+def _references_module(tree: ast.AST, module: str) -> bool:
+    """Does this tree use `module` — by attribute access, or by importing from it?
+
+    Three forms, and the second is the one a naive check misses. `from itertools import
+    accumulate` names the module ONLY in the import statement; the call site is a bare
+    `accumulate`, so scanning for `ast.Name(id="itertools")` reports "never referenced" about a
+    body that plainly uses it. That was observed in this probe's first five live records, and
+    left alone it would have folded every from-import into the hand-rolled count.
+
+    Matched structurally, never on text: `aftermath_of(x)` contains "math" and is not a use of
+    it, and a substring hit would inflate the most interesting outcome invisibly.
+    """
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Name) and n.id == module:
+            return True
+        if isinstance(n, ast.Import):
+            if any(a.name == module or a.name.startswith(module + ".") for a in n.names):
+                return True
+        if isinstance(n, ast.ImportFrom):
+            mod = n.module or ""
+            if mod == module or mod.startswith(module + "."):
+                return True
+    return False
+
+
 def _symbol_metrics(task: Task, content: str) -> dict:
     """Criteria 1, 2, 4 and 5 of P3-T0, measured per attempt.
 
@@ -235,10 +260,7 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         # text: `aftermath_of(x)` contains "math" and is not a use of it, and inflating the
         # most interesting outcome with substring hits would be undetectable in the results.
         if task.required_module is not None:
-            m["body_references_module"] = any(
-                isinstance(n, ast.Name) and n.id == task.required_module
-                for n in ast.walk(tree)
-            )
+            m["body_references_module"] = _references_module(tree, task.required_module)
 
     span, reason = resolve_unit(task.source, emitted["path"], emitted["kind"])
     m["resolve_reason"] = reason or "ok"

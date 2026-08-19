@@ -205,6 +205,33 @@ class TestCriterion5aOutcomes:
         m = wb._symbol_metrics(import_task, _unit(body))
         assert m["body_references_module"] is False
 
+    def test_from_import_form_counts_as_referencing_the_module(self, import_task):
+        """FOUND IN THE FIRST LIVE RECORDS, not by reasoning. `from itertools import accumulate`
+        names the module ONLY in the import statement -- the call site is a bare `accumulate`
+        with no module name on it -- so an ast.Name scan reports "did not reference itertools"
+        about a body that plainly uses it. Left uncorrected, the hand-rolled outcome absorbs
+        every from-import and the most interesting count is quietly wrong."""
+        body = ("def running_total(xs):\n"
+                "    from itertools import accumulate\n"
+                "    return list(accumulate(xs))\n")
+        t = generate_import_task("small", 1)   # running_total / itertools
+        m = wb._symbol_metrics(t, _unit(body, ("running_total",)))
+        assert m["body_has_import"] is True
+        assert m["body_references_module"] is True
+
+    def test_plain_import_form_counts_as_referencing_the_module(self, import_task):
+        body = "def gcd_ratio(a, b):\n    import math\n    return (a, b)\n"
+        m = wb._symbol_metrics(import_task, _unit(body))
+        assert m["body_references_module"] is True
+
+    def test_importing_an_unrelated_module_is_not_a_reference(self, import_task):
+        """The negative control for the two above: an import of something else must not count,
+        or every function-local import of any kind would read as using the required module."""
+        body = "def gcd_ratio(a, b):\n    import os\n    return (a, b)\n"
+        m = wb._symbol_metrics(import_task, _unit(body))
+        assert m["body_has_import"] is True
+        assert m["body_references_module"] is False
+
 
 # --- warm-up before the sweep (s139) ------------------------------------------
 #
