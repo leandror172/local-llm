@@ -109,20 +109,37 @@ def build_prompt(task: Task, arm: str) -> str:
     raise ValueError(f"unknown arm: {arm}")
 
 
+# Recorded per cell. `load_duration_ms` separates "slow because cold" from "slow
+# because contended" — the discriminator T-131 needs and the one a wall-clock
+# figure cannot supply.
+_STATS_KEYS = (
+    "eval_count",
+    "eval_duration_ms",
+    "prompt_eval_duration_ms",
+    "load_duration_ms",
+)
+
+
 def call_model(
     prompt: str, model: str, timeout: int, schema: dict | None = None
-) -> tuple[str, int]:
-    """One model call; single retry on a cold-start timeout. Returns (content, eval_count)."""
+) -> tuple[str, dict]:
+    """One model call; single retry on a cold-start timeout.
+
+    Returns (content, stats). `stats` carries Ollama's own timings, so a cell's
+    generation rate is READ rather than bounded by wall clock — the `ms` field
+    below also contains apply + test time, which is why s137 could only report
+    "at least" a figure (T-137).
+    """
     for attempt in (1, 2):
         try:
             resp = ollama_chat(prompt, model=model, system=_SYSTEM, timeout=timeout,
                                keep_alive="10m", format_schema=schema)
-            return resp["content"], int(resp.get("eval_count") or 0)
+            return resp["content"], {k: resp.get(k) or 0 for k in _STATS_KEYS}
         except TimeoutError:
             if attempt == 2:
                 raise
             time.sleep(3)
-    return "", 0
+    return "", {k: 0 for k in _STATS_KEYS}
 
 
 def apply_output(task: Task, arm: str, content: str) -> str | None:
@@ -239,10 +256,10 @@ def run_cell(task: Task, arm: str, model: str, run_idx: int, timeout: int) -> di
     error = None
     applied = False
     target_pass = no_regression = False
-    eval_count = 0
+    stats: dict = {k: 0 for k in _STATS_KEYS}
     metrics: dict = {}
     try:
-        content, eval_count = call_model(
+        content, stats = call_model(
             build_prompt(task, arm), model, timeout,
             schema=_UNIT_SCHEMA if arm == "symbol_addressed" else None,
         )
@@ -264,7 +281,9 @@ def run_cell(task: Task, arm: str, model: str, run_idx: int, timeout: int) -> di
         "target_pass": target_pass,
         "no_regression": no_regression,
         "combined": applied and target_pass and no_regression,
-        "eval_count": eval_count,
+        **stats,
+        # Wall clock for the WHOLE cell (generate + apply + run tests), which is
+        # why it is not a generation-rate denominator. Use eval_duration_ms.
         "ms": round((time.perf_counter() - t0) * 1000),
         "error": error,
         **metrics,

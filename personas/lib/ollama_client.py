@@ -46,7 +46,8 @@ def ollama_chat(
 
     Returns:
         Dict with keys: content (str), model (str), prompt_eval_count (int),
-        eval_count (int), total_duration_ms (float).
+        eval_count (int), total_duration_ms (float), eval_duration_ms (float),
+        prompt_eval_duration_ms (float), load_duration_ms (float).
 
     Raises:
         ConnectionError: Cannot reach Ollama (not running, wrong port).
@@ -108,4 +109,7 @@ def ollama_chat(
         "prompt_eval_count": body.get("prompt_eval_count", 0),
         "eval_count": body.get("eval_count", 0),
         "total_duration_ms": body.get("total_duration", 0) / 1_000_000,
+        "eval_duration_ms": body.get("eval_duration", 0) / 1_000_000,
+        "prompt_eval_duration_ms": body.get("prompt_eval_duration", 0) / 1_000_000,
+        "load_duration_ms": body.get("load_duration", 0) / 1_000_000,
     }
