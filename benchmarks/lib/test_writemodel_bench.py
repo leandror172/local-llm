@@ -322,3 +322,41 @@ class TestClassify5a:
             "required_module": "math", "body_parses": False,
             "body_has_import": None, "body_references_module": None,
         }) is None
+
+
+class TestBodyIsActuallyAUnit:
+    """FOUND BY REPRODUCING AN ANOMALOUS CELL, not by reading the code.
+
+    Two live cells emitted `from itertools import accumulate` + a bare `return list(...)` --
+    the body WITHOUT its `def` line. Spliced in, that puts a `return` at module level, so the
+    module raises on import and EVERY filler test dies with it. The run recorded
+    `body_parses: True` and `body does not parse 0/12`.
+
+    Both facts are true and neither helps: `ast.parse` builds an AST for a module-level
+    `return` quite happily -- the SyntaxError is raised by `compile()`, not by the parser. The
+    signal that was actually present is `body_units == 0`: a body declared `kind: Function`
+    containing no function at all. It was recorded every time and reported never, because the
+    report only ever flagged `> 1` unit ("emitted neighbouring code").
+    """
+
+    BODY_WITHOUT_DEF = "from itertools import accumulate\nreturn list(accumulate(xs))"
+
+    def test_ast_parse_alone_does_not_catch_it(self):
+        """Pins the reason a second check is needed, so nobody 'simplifies' it back later."""
+        import ast
+        ast.parse(self.BODY_WITHOUT_DEF)   # must NOT raise — that is the whole problem
+
+    def test_body_without_its_def_is_flagged_as_not_compiling(self, import_task):
+        m = wb._symbol_metrics(import_task, _unit(self.BODY_WITHOUT_DEF, ("running_total",)))
+        assert m["body_parses"] is True, "unchanged: it does parse"
+        assert m["body_compiles"] is False, "but it cannot be imported, which is what matters"
+
+    def test_body_without_its_def_records_zero_units(self, import_task):
+        m = wb._symbol_metrics(import_task, _unit(self.BODY_WITHOUT_DEF, ("running_total",)))
+        assert m["body_units"] == 0
+
+    def test_a_well_formed_unit_compiles_and_counts_one(self, import_task):
+        body = "def gcd_ratio(a, b):\n    import math\n    return (a, b)\n"
+        m = wb._symbol_metrics(import_task, _unit(body))
+        assert m["body_compiles"] is True
+        assert m["body_units"] == 1

@@ -1073,6 +1073,82 @@ uniquely, units stay fine-grained*. That **clears the gate the probe was built t
 removes the "magnitude unmeasured" objection for the naming half specifically. It does **not**
 by itself justify freezing (B): the unaddressable-statement bound (item 6) is still unmeasured,
 and the real-file half has not run.
+
+### RESULTS — criterion 5a, run 2026-08-19 (s139)
+
+`my-python-q25c14-16k`, **import-requiring** corpus (`--corpus import`), 6 tasks × 2 arms × 2
+runs = 24 generations. Raw: `benchmarks/results/criterion5a-import-20260819.jsonl`.
+**Reported over TWO independent runs**, because the split between outcomes moves at n=12 and
+one run would have read as more precise than it is.
+
+| | run 2 | run 3 |
+|---|---|---|
+| symbol-addressed **combined** | **4/12 (33%)** | **6/12 (50%)** |
+| whole-file **combined** (control) | **12/12 (100%)** | **12/12 (100%)** |
+| `function_local_import` | 6 — 4 pass | 8 — 6 pass |
+| `used_without_importing` | 6 — **0 pass** | 4 — **0 pass** |
+| `avoided_the_module` | **0** | **0** |
+| mean output tokens | 47 vs 171 | 47 vs 171 |
+
+**Criteria 1, 2 and 4 are clean, so this is NOT an addressing failure.** Address fidelity
+12/12 `ok`; degeneration 0/12; no fences, no prose, no neighbouring code. The token advantage
+also holds — ~47 flat against whole-file's 171 mean. **What collapses is correctness, and only
+on this task class.**
+
+**What is robust across all 24 attempts, rather than across one run:**
+
+1. **The coder never once added a correct top-level import** — it cannot; the schema has no
+   operation that expresses one. Every attempt either put the import *inside* the unit or
+   reached for the module without importing it anywhere.
+2. **`used_without_importing` never passes: 0 of 10.** The body references `math`/`itertools`
+   and nothing imports them, so the edit is dead on arrival.
+3. **`avoided_the_module` never happened: 0 of 24.** The pre-registered worry that a designed
+   task would simply be hand-rolled around did not materialise, so the corpus does exercise
+   the criterion it was built for.
+4. **The control passes every time: 24/24.** Whole-file adds the import correctly on every
+   attempt at every size. The task is entirely solvable; the failure is specific to (B).
+
+**The prediction (P3-D1 item 6) was HALF right, and the missing half is worse.** The
+function-local import happened — 14 of 24 — and is the *benign* branch: **10 of those 14 pass
+all tests**, which is precisely the silent degradation criterion 5 exists to catch, invisible
+to criteria 1–4 *and* to the test suite. The unpredicted branch is the model **using the module
+without importing it at all**, which never runs. That outcome was only visible because
+`body_references_module` was added this session; under `body_has_import` alone it was
+indistinguishable from hand-rolling — the opposite reading.
+
+**The plan's assumed fallback does not exist.** Item 5 records *"Fallback = whole-file for that
+iteration … so the refusal costs nothing to build."* **The model never refuses.** It emits a
+confident, well-formed, correctly-addressed operation in every one of the 24 attempts. So the
+fallback cannot be triggered by a model signal and must be **detected mechanically by the
+harness** — which is cheap, and is first principle 1 (*"harness code does all mechanics"*)
+rather than a new burden: an emitted `body` either contains an import, or references a name the
+target file never binds. Both are AST checks on output the harness already parses.
+
+**A second defect surfaced, and only by reproducing a raw output.** Two cells emitted the
+import plus a bare `return list(...)` — **the body without its `def` line**. Spliced in, that
+puts a `return` at module level, the module fails to import, and *every filler test dies with
+it*, which reads as a catastrophic edit rather than a shape defect. The run had recorded
+`body_parses: True` and *"body does not parse 0/12"*: both true and neither useful, because
+`ast.parse` builds an AST for a module-level `return` quite happily — the `SyntaxError` comes
+from `compile()`. The signal that *was* present is **`body_units == 0`**, a body declared
+`kind: Function` containing no function; it had been recorded on every run and reported on
+none, since the report only ever flagged `> 1` unit. Both are now reported, and a
+`body_compiles` check added. **Diagnosing it cost two fresh generations, because the JSONL
+records no model output** — a surprising cell cannot be explained after the fact. → **T-139.**
+
+**The outcome table above has NO ROW for criterion 5**, so nothing here can be read as a
+pre-registered consequence. Proposed row, authored AFTER seeing the result and flagged as such:
+
+| Probe result | Consequence |
+|---|---|
+| **Coder needs a top-level statement it cannot address (criterion 5a)** | **(B) needs a second operation or a mechanical fallback — it cannot be shipped on `replace_unit` alone.** The coverage bound is real, the model does not degrade gracefully into it, and half its failures are silent. Decide between an `insert_top_level` op and harness-side detection + whole-file fallback; the latter is smaller and is already first principle 1. **Does NOT reverse the s137 result** — token cost and addressing quality are unaffected, and 5b (how *often* a real edit needs this) remains unmeasured, so the size of the bound is still unknown. |
+
+**Two earlier runs were discarded, stated so the count of runs is not silently three:** run 1
+used a `body_references_module` that missed the `from X import Y` form (fixed; every from-import
+would have been miscounted as hand-rolling); run 2 predates `body_compiles` and the zero-unit
+report, and its numbers are shown above rather than dropped, so it is checkable that the
+instrument changed and the conclusion did not.
+
 <!-- /ref:delegate-p3-probe -->
 
 ---

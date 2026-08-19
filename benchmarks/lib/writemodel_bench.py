@@ -218,6 +218,11 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         "resolve_reason": "unparseable_reply",      # criterion 1
         "span_ratio": None, "body_ratio": None,     # criterion 2
         "body_fenced": None, "body_units": None, "body_parses": None,   # criterion 4
+        # `body_parses` is ast.parse, which builds an AST for a module-level `return` without
+        # complaining — the SyntaxError comes from compile(), not the parser. A body emitted
+        # WITHOUT its own `def` line therefore parses, splices in, and makes the module
+        # unimportable. Measured twice live (s139).
+        "body_compiles": None,
         # Criterion 5a. Three outcomes, derivable from these two plus the task's own module:
         #   has_import                      -> function-local import (the PREDICTED tell)
         #   references and not has_import   -> used the module, never imported it anywhere
@@ -246,6 +251,12 @@ def _symbol_metrics(task: Task, content: str) -> dict:
         m["body_parses"] = False
     else:
         m["body_parses"] = True
+        try:
+            compile(textwrap.dedent(strip_code_fences(body)), "<body>", "exec")
+        except (SyntaxError, ValueError):
+            m["body_compiles"] = False
+        else:
+            m["body_compiles"] = True
         # >1 top-level unit means it emitted NEIGHBOURING code, not just the one asked for.
         m["body_units"] = sum(
             isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for n in tree.body
@@ -457,6 +468,14 @@ def _symbol_report(records):
         print(f"    body does not parse   {sum(r.get('body_parses') is False for r in parsed):>4}/{len(parsed)}")
         multi = sum((r.get("body_units") or 0) > 1 for r in parsed)
         print(f"    >1 unit in body       {multi:>4}/{len(parsed)}  <- emitted neighbouring code")
+        # ZERO units is the mirror defect and was invisible until s139: a body declared
+        # `kind: Function` that contains no function is a FRAGMENT, not a unit. It splices in,
+        # and a bare `return` at module level makes the file unimportable — taking every filler
+        # test down with it, which reads as a catastrophic edit rather than a shape defect.
+        none_ = sum(r.get("body_units") == 0 for r in parsed)
+        print(f"    0 units in body       {none_:>4}/{len(parsed)}  <- a fragment, not a unit")
+        broken = sum(r.get("body_compiles") is False for r in parsed)
+        print(f"    body does not COMPILE {broken:>4}/{len(parsed)}  <- parses but cannot import")
 
     print("\n  criterion 5a — needed a statement it could not address")
     labelled = [c for c in (_classify_5a(r) for r in rows) if c is not None]
