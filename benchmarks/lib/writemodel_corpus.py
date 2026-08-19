@@ -24,7 +24,7 @@ from dataclasses import dataclass
 BUCKET_FILLER = {"small": 1, "medium": 8, "large": 20}
 
 # Four target defects (modify-body edits) — vary the task within a bucket without changing size.
-# Each: (fn_name, bad_body, behavior, test_expr, expected). The bad body fails test_expr.
+# Each: (fn_name, bad_body, behavior_tail, test_expr, expected). The bad body fails test_expr.
 DEFECTS = [
     ("scale", "return x + factor", "return x MULTIPLIED by factor (it currently adds them)",
      "scale(3, 4)", 12),
@@ -54,6 +54,10 @@ class Task:
     source: str               # the .py file to edit
     tests: str                # the pytest file (target + filler tests)
     target_path: list[str] | None = None   # dotted address; defaults to the bare name
+    # Set only by generate_import_task: the module whose import the fix requires, and which
+    # has NO dotted address (P3-D1 item 6). None for every other generator, so existing
+    # constructions are untouched.
+    required_module: str | None = None
 
     def __post_init__(self) -> None:
         # A flat task addresses itself as ["scale"]; a class task as ["Ops", "scale"]. Deriving
@@ -196,3 +200,97 @@ def generate_class_task(bucket: str, idx: int) -> Task:
         tests=tests,
         target_path=[CLASS_NAME, fn_name],
     )
+
+
+IMPORT_DEFECTS = [
+    (
+        "gcd_ratio",
+        "def gcd_ratio(a, b):",
+        "return (a, b)",
+        "math",
+        "g = math.gcd(a, b)\n    return (a // g, b // g)",
+        "reduce the fraction a/b to lowest terms using `math.gcd`, returning the tuple (a//g, b//g); it currently returns the inputs unchanged",
+        "gcd_ratio(6, 8)",
+        (3, 4),
+    ),
+    (
+        "running_total",
+        "def running_total(xs):",
+        "return list(xs)",
+        "itertools",
+        "return list(itertools.accumulate(xs))",
+        "return the running cumulative sums of `xs` using `itertools.accumulate`; it currently returns the list unchanged",
+        "running_total([1, 2, 3])",
+        [1, 3, 6],
+    ),
+]
+
+
+def generate_import_task(bucket: str, idx: int) -> Task:
+    """Build one import-requiring Task for a size bucket."""
+    n_filler = BUCKET_FILLER[bucket]
+    fn_name, sig, bad_body, module, fixed_body, behavior_tail, test_expr, expected = IMPORT_DEFECTS[idx % len(IMPORT_DEFECTS)]
+
+    fillers = [_filler(k) for k in range(n_filler)]
+    half = n_filler // 2
+    before = "\n".join(f for f, _ in fillers[:half])
+    after = "\n".join(f for f, _ in fillers[half:])
+    target_src = f"{sig}\n    {bad_body}\n"
+
+    parts = ['"""Generated benchmark module (import-requiring)."""', ""]
+    if before:
+        parts += [before]
+    parts += [target_src.rstrip()]
+    if after:
+        parts += ["", after]
+    source = "\n".join(parts).rstrip() + "\n"
+
+    # Tests: the target test (fails on the defective original) + one test per filler (all pass).
+    target_test_src = f"def test_target():\n    assert {test_expr} == {expected}\n"
+    filler_tests = "\n".join(t for _, t in fillers)
+    tests = (
+        f"from module_under_test import *\n\n\n{target_test_src}\n{filler_tests}"
+    ).rstrip() + "\n"
+
+    return Task(
+        name=f"{bucket}-{idx:02d}-{fn_name}-import",
+        bucket=bucket,
+        target_fn=fn_name,
+        target_test="test_target",
+        behavior=f"Modify the function `{fn_name}` so that it will {behavior_tail}.",
+        source=source,
+        tests=tests,
+        required_module=module,
+    )
+
+
+def reference_solution(task: Task) -> str:
+    """The task's source, correctly repaired: the required module imported at TOP LEVEL and the
+    target body replaced.
+
+    This is the probe's negative control, not a convenience. If it does not go green, a zero
+    from the live run would be measuring an impossible task while looking exactly like the
+    finding (s133: "a check that can only pass teaches nothing", inverted).
+
+    The import is placed after the module docstring deliberately — that position is the one a
+    `replace_unit` operation cannot express, which is the whole point of criterion 5.
+    """
+    for fn_name, sig, _bad, module, fixed_body, _tail, _expr, _exp in IMPORT_DEFECTS:
+        if task.target_fn != fn_name:
+            continue
+        lines = task.source.splitlines()
+        try:
+            at = next(i for i, l in enumerate(lines) if l.strip() == sig.strip())
+        except StopIteration:  # pragma: no cover — generator and table would have to disagree
+            raise ValueError(f"{task.name}: signature {sig!r} not found in source") from None
+
+        # Body replacement first, so the index `at` is still valid.
+        body = ["    " + b for b in fixed_body.split("\n    ")]
+        lines[at + 1:at + 2] = body
+
+        # Then the top-level import, immediately after the module docstring.
+        insert_at = 1 if lines and lines[0].lstrip().startswith('"""') else 0
+        lines[insert_at:insert_at] = ["", f"import {module}"]
+        return "\n".join(lines).rstrip() + "\n"
+
+    raise ValueError(f"{task.name}: target_fn {task.target_fn!r} not in IMPORT_DEFECTS")

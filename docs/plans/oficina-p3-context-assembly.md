@@ -928,9 +928,29 @@ arm C, a mechanism this entry does not propose.
    silent failure with no criterion pointing at it is exactly what this probe exists to
    prevent, so it gets its own count.
 
-   Record the rate, not just the occurrence: **what share of attempts needed a top-level
-   statement at all** is the unmeasured fraction P3-D1 item 6 names, and this probe is the
-   cheapest place to get a first read on it.
+   **SPLIT s139 — this criterion asked ONE vehicle for TWO questions, the same defect s137
+   found one level up** (criteria 1/2/4/5 → the benchmark, criterion 3 → oficina). The two
+   halves need opposite corpora and only one of them is answerable here:
+
+   - **5a — BEHAVIOUR (answered here).** *Given that the coder needs a top-level statement it
+     cannot address, what does it emit?* Vehicle: a corpus task **designed** so the only
+     correct repair requires a new `import` or module constant. n≈12, `my-python-q25c14-16k`.
+     Outcomes to count: function-local import (the prediction) · refusal or partial edit ·
+     silent wrong fix that avoids the import · anything unanticipated.
+   - **5b — RATE (NOT answered here, and must not be reported as if it were).** *What share of
+     real edits need a top-level statement at all?* **A designed task makes this 100% by
+     construction**, so running 5a and quoting its share would be measuring the corpus I chose
+     and reading it as a property of the world. This is the fraction P3-D1 item 6 names as
+     bounding (B)'s coverage, and it needs a **natural** sample — real edits, not generated
+     ones. Nearest honest instrument: mine repo history for commits that add an import to an
+     existing file (`git log -p` over `mcp-server/src/`), or read it off criterion 3's real-file
+     runs. **Until then (B)'s coverage bound stays UNMEASURED and should be stated that way.**
+
+   **Design constraint on 5a's task, and it is the probe's negative control:** the task must
+   admit **no addressable repair**. If the defect can be fixed without the new top-level
+   statement, the coder will simply do that, and the criterion returns another unexercised
+   zero wearing a different mask — the exact failure s137's `0/12` already is. Assert this in
+   the corpus ground-truth tests (`test_writemodel_corpus.py`'s discipline), not in prose.
 
 **The method below names ONE vehicle for TWO questions, and the vehicle cannot run the
 target — corrected s137.** `run_tests` writes the edited module to `module_under_test.py` in a
