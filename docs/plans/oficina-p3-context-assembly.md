@@ -1149,6 +1149,74 @@ would have been miscounted as hand-rolling); run 2 predates `body_compiles` and 
 report, and its numbers are shown above rather than dropped, so it is checkable that the
 instrument changed and the conclusion did not.
 
+
+### RESULTS — criterion 5b, the real-edit rate, 2026-08-19 (s139)
+
+**486 real edits** from this repo's non-merge history — one (commit, file) pair per edit, since
+that is oficina's unit of work. Structural, not textual: both revisions are parsed and their
+top-level sets compared, because a `+import math` diff line may be a *function-local* import
+and a parenthesized multi-line import has its added lines indented. Cross-checked against a
+grep: **8.4% textual vs 10.7% structural**, and the gap is the parenthesized form, so the
+structural figure is the correct one. Instrument: `benchmarks/lib/run-unaddressable-census.sh`
+(+ 13 tests; a `tree.body` → `ast.walk` mutation fails 5 of them). Raw:
+`benchmarks/results/criterion5b-unaddressable-census-20260819.json`.
+
+| population | n | **unaddressable** | import | constant | docstring | new unit |
+|---|---|---|---|---|---|---|
+| all edits | 486 | 51.2% | 27.2% | 26.1% | 9.3% | 47.5% |
+| ≤10 lines | 131 | **34.4%** | 10.7% | 20.6% | 4.6% | 3.1% |
+| ≤40 lines | 313 | 40.3% | 17.6% | 20.1% | 6.4% | 30.4% |
+| `mcp-server/src/` ≤10 lines | 39 | **23.1%** | 5.1% | 15.4% | 2.6% | 2.6% |
+| `mcp-server/src/` ≤40 lines | 97 | 42.3% | 17.5% | 24.7% | 3.1% | 15.5% |
+| **`oficina/` ≤40 lines** | 69 | **47.8%** | 17.4% | 30.4% | 4.3% | 17.4% |
+
+**The answer to 5b: between roughly a quarter and a half**, depending on the cut. Even the most
+favourable one — the bridge's own source, edits of ten lines or fewer — is **23.1%**, about one
+edit in four. **This is not a rare fallback**, which is what item 5's *"the refusal costs
+nothing to build"* quietly assumed.
+
+**AND THE DOMINANT CLASS IS NOT THE IMPORT.** P3-D1 item 6 names the case as *"most commonly a
+new import"*. At every single cut the **module constant** outnumbers it — 30.4% against 17.4%
+in oficina's own source. The prediction picked the second-largest class.
+
+**That matters because the two need different remedies, and one of them is nearly free.**
+`ref:unit-addressing-census`'s ~10.9% is recorded as *"unaddressable **by construction**"*, and
+`test_find_module_constant_is_not_addressable` calls a constant *"a module-level statement with
+**no name**"*. **A module constant has a name.** `DEFAULT_CODER_MODEL = …` binds one. What is
+true is narrower and fixable: `KINDS = ("Function", "Method", "Class")` and `_UNIT_NODES` covers
+only `FunctionDef`/`AsyncFunctionDef`/`ClassDef`, so the resolver **does not index assignments**.
+So the bound conflates two classes:
+
+| class | share (oficina ≤40) | why unaddressable | remedy |
+|---|---|---|---|
+| **module constant / assignment** | **30.4%** | **named, but the resolver does not index it** | extend `_UNIT_NODES` + a `Constant` kind. **No new operation** — same multi-match discipline as any other unit |
+| import | 17.4% | genuinely nameless | needs an `insert_top_level` op |
+| module docstring | 4.3% | nameless, but singular per module | a reserved address, or fold into the import op |
+| **new top-level unit** | **17.4%** | has a name, does not exist yet — `replace_unit` replaces, it cannot create | needs `insert_unit`; **a separate gap this plan had not named at all** |
+
+**Consequence for P3-D1, and it is more favourable than criterion 5a alone implied.** The
+largest slice is a **resolver gap, not a construction bound** — closing it is an extension to
+`find_units`, which criterion 1 already measured at 12/12 unique. What genuinely needs new
+operations is the import (~17%) and the new-unit case (~17%). **The earlier lean toward
+"harness-side detection + whole-file fallback because it is smaller" is retracted on this
+measurement:** falling back on a quarter to a half of edits means falling back precisely on the
+files whole-file cannot reach, which is the entire feasibility argument for (B).
+
+**Caveats, stated because the cut moves the answer by 2×.** (a) One repo's history, mostly
+AI-assisted commits by one author — the mix may not generalise. (b) A commit is generally
+*larger* than one delegate run, so the unsegmented figures overstate; the ≤10-line row is the
+closest proxy and is the one to quote. (c) `unaddressable` counts statements **added or
+changed**, which is correct for the decision (`replace_unit` addresses neither) but is not
+"added a new statement". (d) It counts what a human chose to do in one commit, not what
+oficina would be asked to do.
+
+**One instrument defect found and fixed mid-measurement:** the first run reported
+`docstring 0.0%` at every cut while the sample visibly contained module-docstring edits.
+`ast.unparse` renders a docstring as an ordinary single-quoted literal, never a triple-quoted
+one, so the prefix test matched nothing and the whole category drained into `constant`. The
+headline rate was unaffected — a docstring is unaddressable either way — **which is exactly why
+a measured zero could sit there looking like a result.**
+
 <!-- /ref:delegate-p3-probe -->
 
 ---
