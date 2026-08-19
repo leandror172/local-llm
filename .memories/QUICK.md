@@ -100,8 +100,10 @@ correct** (24 generations, `my-python-q25c14-16k`). Address fidelity **12/12** u
 design-killing degeneration case **0/12**. Shipped: dotted `find_units`/`resolve_unit`/`apply_unit`
 beside a frozen `locate_function`, a class-bearing corpus, a 4th benchmark arm, **67 tests**.
 **Four findings the plan lacked** — the **~10.9% unaddressable-by-construction bound** (the
-`ref:unit-addressing-census` complement nobody had read: imports/constants/module docstring have
-no dotted address at all, bounding what P3-D1(B) can cover); **the harness must own indentation**;
+`ref:unit-addressing-census` complement nobody had read: imports and the module docstring have
+no dotted address at all, bounding what P3-D1(B) can cover) *(s139: this line said
+"imports/constants" and the **constants were wrong** — the census counts `assign` as NAMED. See
+the s139 entry: it is the largest class and it is a resolver gap, not a construction bound.)*; **the harness must own indentation**;
 the synthetic corpus had **no classes**, making criterion 2 structurally unmeasurable; and the plan
 named **one vehicle for two questions**. **Corrected a load-bearing invariant: "16K is VRAM-fit" is
 FALSE on this host** — 9.31 GiB resident / **1.76 GiB on CPU** with the card deliberately quiet.

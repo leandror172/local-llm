@@ -564,10 +564,27 @@ Own-corpus measurement: **`ref:unit-addressing-census`**. The load-bearing resul
 6. **The refusal region is LARGER than item 5 states, and the census already measured it
    (s137).** `ref:unit-addressing-census` reports *"89.1% of Python top-level lines already sit
    under a name"* — and **the complement is the answer to a question nobody asked it.** The
-   remaining ~10.9% is imports, module constants and the module docstring: statements with no
-   name, therefore **unaddressable by a dotted path by construction**, not by omission. Item 5's
-   list is about constructs whose *address is unstable*; this is a class with **no address at
-   all**. The two were never connected, and it is the same number the census published.
+   remaining ~10.9% is imports and the module docstring: statements with no name, therefore
+   **unaddressable by a dotted path by construction**, not by omission. Item 5's list is about
+   constructs whose *address is unstable*; this is a class with **no address at all**. The two
+   were never connected, and it is the same number the census published.
+
+   > **CORRECTED s139 — this entry had CORRUPTED the census it cites, and the corruption was
+   > the load-bearing part.** It read *"imports, **module constants** and the module
+   > docstring"*. The census says the opposite in two places: its table classifies
+   > `assign 64 (124 lines)` as **`named`**, and its text reads *"89.1% … already sit under a
+   > name, and **the entire remainder is imports and module docstrings**."* A module constant
+   > binds a name; it was never in the complement. **The census was right and is unchanged.**
+   > What is true about constants is narrower and fixable: `KINDS = ("Function", "Method",
+   > "Class")` and `_UNIT_NODES` covers only `FunctionDef`/`AsyncFunctionDef`/`ClassDef`, so
+   > **the resolver does not index assignments** — a gap in our code, not a property of Python.
+   > This matters because criterion 5b measured the constant as the **largest** unaddressable
+   > class (30.4% of oficina's own edits vs 17.4% for imports), so the mislabel had moved the
+   > biggest slice of the problem into the category marked *unfixable by construction*.
+   > Same shape as s136's finding, running the other way: there a falsified claim survived in
+   > the body that consumed it; here a **correct** claim was corrupted by its consumer, which
+   > then cited the original as its authority. Propagated to
+   > `test_writemodel_apply.py`, also corrected.
 
    **Consequence for (B), stated as a bound rather than discovered later:** an edit that must
    add a top-level statement — most commonly **a new import** — cannot be expressed as
@@ -1180,10 +1197,13 @@ new import"*. At every single cut the **module constant** outnumbers it — 30.4
 in oficina's own source. The prediction picked the second-largest class.
 
 **That matters because the two need different remedies, and one of them is nearly free.**
-`ref:unit-addressing-census`'s ~10.9% is recorded as *"unaddressable **by construction**"*, and
-`test_find_module_constant_is_not_addressable` calls a constant *"a module-level statement with
-**no name**"*. **A module constant has a name.** `DEFAULT_CODER_MODEL = …` binds one. What is
-true is narrower and fixable: `KINDS = ("Function", "Method", "Class")` and `_UNIT_NODES` covers
+*(First draft of this paragraph blamed `ref:unit-addressing-census` for the mislabel and was
+**wrong** — corrected here rather than quietly reworded. The census classifies `assign` as
+**`named`** in its own table and says *"the entire remainder is imports and module
+docstrings"*. **The census was right.** P3-D1 item 6 corrupted it by adding "module constants"
+to the complement, and `test_writemodel_apply.py` propagated that while citing the census as
+authority. Both corrected; the census needed no change.)* **A module constant has a name.**
+`DEFAULT_CODER_MODEL = …` binds one. What is true is narrower and fixable: `KINDS = ("Function", "Method", "Class")` and `_UNIT_NODES` covers
 only `FunctionDef`/`AsyncFunctionDef`/`ClassDef`, so the resolver **does not index assignments**.
 So the bound conflates two classes:
 

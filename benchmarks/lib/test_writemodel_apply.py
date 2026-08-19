@@ -177,9 +177,15 @@ def test_apply_search_replace_strips_interior_fences():
 #     hand-authored per-language list. This is the one span test that CAN fail.
 #   - duplicate definitions at module AND class level — multi-match, never first-match-wins
 #   - a closure and a conditionally-defined function — the refusal region (survey § 5)
-#   - module-level statements with no name (import, constant) — unaddressable BY
+#   - module-level statements with no name (import, module docstring) — unaddressable BY
 #     CONSTRUCTION. This is the complement of the census's 89.1%, and it is the bound on
 #     what option (B) can express at all.
+#   - a module CONSTANT is a different case and this comment used to get it wrong (fixed
+#     s139): it BINDS A NAME, and the census counts `assign` as `named`. It is unresolvable
+#     here only because `_UNIT_NODES` does not index assignments — our resolver's gap, not
+#     Python's. Criterion 5b measured it as the LARGEST unaddressable class (30.4% of
+#     oficina's own edits), so filing it under "by construction" had hidden the biggest and
+#     most fixable slice of the problem.
 
 UNITS_SRC = '''\
 """Module docstring — not an addressable unit."""
@@ -330,8 +336,11 @@ def test_find_does_not_descend_into_conditional_blocks():
 
 
 def test_find_module_constant_is_not_addressable():
-    # The complement of the census's 89.1%: a module-level statement with no name cannot be
-    # addressed by a dotted path AT ALL.
+    # NOT "a statement with no name" — that was this comment's error until s139, and it was
+    # copied from P3-D1 item 6, which had itself corrupted the census. `CONSTANT = 42` binds a
+    # name; the census counts `assign` as `named`. This returns [] because `_UNIT_NODES` covers
+    # only FunctionDef/AsyncFunctionDef/ClassDef, so the resolver never indexes assignments.
+    # A RESOLVER GAP, closable by extending _UNIT_NODES + adding a kind — not a language bound.
     assert find_units(UNITS_SRC, ["CONSTANT"]) == []
 
 
