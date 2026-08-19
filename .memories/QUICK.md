@@ -141,7 +141,14 @@ back — the INFERENCE, not the measurement:** s137's 9.31 GiB / 1.76 GiB load e
 "13–21 tok/s never reachable, every run pays partial offload" does not — 49 logged calls on that
 model run **5.4 / 14.6 / 24.6** (min/med/max); the split is load-time-stale and whether those calls
 were offloaded is **UNMEASURED**. Corrected in 5 live consumers found by grep, not by counting.
-**The negative control caught a defect in my own new test** (it asserted an unreachable line and
+Then **P3-T0 criterion 5a MEASURED (24 gens, 2 runs): (B) cannot ship on
+`replace_unit` alone** — the coder never added a correct top-level import, symbol-addressed
+**4/12 and 6/12** vs whole-file **12/12 twice**, `avoided_the_module` **0/24**. Criteria 1/2/4
+clean and tokens flat (47 vs 171), so it is a **coverage bound, not an addressing failure**.
+The predicted function-local import is the BENIGN half (10/14 pass — the silent case); the
+unpredicted half never runs. **The plan's refusal fallback does not exist — the model never
+refuses**, so detection is the harness's job (first principle 1). **The negative control caught
+a defect in my own new test** (it asserted an unreachable line and
 passed both ways). No P3 work. *(T-132 compaction now FOUR sessions behind — this file is ~175
 lines against its stated 30.)*
 

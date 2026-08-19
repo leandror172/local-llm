@@ -15,8 +15,14 @@ Results in `benchmarks/results/` (timestamped directories).
 - `lib/writemodel_bench.py` (+ `run-write-model-bench.sh`) — oficina write-model benchmark (T-104):
   **4 apply arms** (code-anchored/whole-file/model-anchored/**symbol-addressed**) × size-bucketed
   corpus. Reusable pattern: programmatic corpus where every filler fn carries a test (regression
-  surface scales with size); `writemodel_apply.py` (ast locators + appliers, **74 unit tests**
+  surface scales with size); `writemodel_apply.py` (ast locators + appliers, **103 unit tests**
   across `test_writemodel_apply.py`, `test_writemodel_corpus.py` and `test_writemodel_bench.py`).
+  **`--corpus import` (s139)** = tasks whose fix REQUIRES a new top-level statement, for
+  criterion 5a — the case s137's `0/12` never exercised. **Two response-shape traps learned
+  there:** `body_parses` uses `ast.parse`, which **accepts a module-level `return`** (the
+  `SyntaxError` is `compile()`'s), so a body emitted without its `def` line parses, splices in
+  and makes the module unimportable — use `body_compiles`; and **`body_units == 0`** is the
+  mirror of `> 1` and was recorded for months while only `> 1` was reported.
   **Per-cell timings (s139, T-137):** a record carries `eval_count`/`eval_duration_ms`/
   `prompt_eval_duration_ms`/`load_duration_ms` straight from Ollama, zeroed on failed cells so
   `summarize()`'s row-sum cannot `KeyError`. **Use `eval_duration_ms` for generation rate — `ms`

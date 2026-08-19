@@ -24,8 +24,17 @@ Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE
   on this host** (9.31 GiB resident / 1.76 on CPU with a quiet card) — **but s139 walks back the
   INFERENCE drawn from it**: 49 logged calls on that model run 5.4 / 14.6 / 24.6 tok/s
   (min/med/max), so "13–21 never reached" is false and partial-offload-by-default is an open
-  question, not a standing condition. Criterion 3 (real file)
-  and criterion 5 remain unrun. § "The judge's payload" is unaffected.
+  question, not a standing condition. **Criterion 5a MEASURED s139 and it BITES:** on an
+  import-requiring corpus the coder never once added a correct top-level import (it cannot —
+  no operation expresses one), symbol-addressed scored **4/12 and 6/12 combined against
+  whole-file's 12/12 and 12/12**, and `avoided_the_module` was **0/24**. Criteria 1/2/4 stayed
+  clean and tokens stayed flat (47 vs 171), so this is **not** an addressing failure — it is a
+  **coverage bound**. The predicted function-local import is the BENIGN half (10 of 14 PASS,
+  the silent case); the unpredicted half uses the module without importing it and never runs.
+  **The plan's assumed refusal fallback does not exist — the model never refuses**, so the
+  fallback must be detected by the harness (first principle 1). (B) needs a second operation or
+  harness-side detection; the s137 token result is untouched, and **5b — how OFTEN a real edit
+  needs this — is still unmeasured**, so the bound's SIZE is unknown. Criterion 3 remains unrun. § "The judge's payload" is unaffected.
 - **s134–s136** (07-30 → 08-11) — P3 planned, then **re-grounded twice**; P3-D1 still OPEN.
   T-133 shipped (`context.callers` wired, `acceptance.validators` deleted). Headline:
   **a 4-arm external prior-art survey never enumerated our own repo**, where the operation
