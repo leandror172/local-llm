@@ -126,6 +126,25 @@ my instrument surfaced only via the negative control**, never the green run. **T
 tracked `.sh` files are `100644` — `Permission denied` on any clone on a real filesystem, including
 `resume.sh` and all 8 benchmark wrappers. PR #90 open. No P3 work.
 
+Session 139 (2026-08-19): **T-137 CLOSED — and its PREMISE WAS FALSE, which is the finding.**
+It claimed `calls.jsonl` lacked `eval_duration` and named `client.py`; measured **738/738 records
+carry `eval_duration_ms`**, added session 32 (`8666c0ea`) — and `mcp-server/.memories/KNOWLEDGE.md`
+**had listed it in the schema the whole time**. Implementing it as filed would have shipped, gone
+green, and changed nothing. **The real silence was a SECOND Ollama client:** `benchmarks/lib/`
+imports `ollama_chat` from `personas/lib/ollama_client.py`, which dropped every timing but
+`total_duration` and **logs nothing at all** — s137's 24 generations are in `calls.jsonl` **zero**
+times. Enumerating by the defining property (`grep -rln 'api/chat\|api/generate'`) found **seven**
+call sites, not two, and the two ad-hoc scripts (`decomposed-run.py`, `ollama-probe.py`) had it
+right — **the shared library was narrower than the scripts bypassing it.** Fixed both seams
+(+`load_duration_ms`, T-131's discriminator); suite **894→913**. **A load-bearing invariant walked
+back — the INFERENCE, not the measurement:** s137's 9.31 GiB / 1.76 GiB load event stands, but
+"13–21 tok/s never reachable, every run pays partial offload" does not — 49 logged calls on that
+model run **5.4 / 14.6 / 24.6** (min/med/max); the split is load-time-stale and whether those calls
+were offloaded is **UNMEASURED**. Corrected in 5 live consumers found by grep, not by counting.
+**The negative control caught a defect in my own new test** (it asserted an unreachable line and
+passed both ways). No P3 work. *(T-132 compaction now FOUR sessions behind — this file is ~175
+lines against its stated 30.)*
+
 ## Repo Structure
 
 ```

@@ -32,6 +32,17 @@ Schema: timestamp, model, prompt (hashed + full), response, eval_count,
 eval_duration_ms, total_duration_ms, temperature, think flag, format flag.
 Estimated Claude token cost included: `(prompt_chars + response_chars) / 4`.
 
+**This schema list is CORRECT and was worth trusting (T-137, s139).** T-137 was filed claiming
+`eval_duration` was not logged; it is, in **738 of 738** call records, since session 32
+(`8666c0ea`) — the line above already said so. **Generation tok/s is computable:
+`eval_count / (eval_duration_ms / 1000)`.** Two consequences worth keeping: (a) **only the MCP
+bridge writes this file** — `personas/lib/ollama_client.py`, which every `benchmarks/lib/`
+harness uses, logs nothing, so benchmark generations never appear here and their absence is not
+evidence of anything; (b) **`load_duration` is the one timing Ollama returns that is still NOT
+recorded** — it is the cold-vs-contended discriminator, and **T-131 owns it**, since that is the
+task whose `_cold_start_grace` retry needs it. `total_duration` and `prompt_eval_duration` are
+both present.
+
 **Rationale:** DPO fine-tuning needs (prompt, response, quality_signal) triples.
 The call log provides prompt + response; verdicts and evaluator scores provide
 the quality signal. Passive collection during normal work.

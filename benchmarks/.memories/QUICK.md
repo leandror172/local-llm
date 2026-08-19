@@ -15,8 +15,14 @@ Results in `benchmarks/results/` (timestamped directories).
 - `lib/writemodel_bench.py` (+ `run-write-model-bench.sh`) — oficina write-model benchmark (T-104):
   **4 apply arms** (code-anchored/whole-file/model-anchored/**symbol-addressed**) × size-bucketed
   corpus. Reusable pattern: programmatic corpus where every filler fn carries a test (regression
-  surface scales with size); `writemodel_apply.py` (ast locators + appliers, **67 unit tests**
-  across `test_writemodel_apply.py` + `test_writemodel_corpus.py`). **Run-1 finding:** at 14B on
+  surface scales with size); `writemodel_apply.py` (ast locators + appliers, **74 unit tests**
+  across `test_writemodel_apply.py`, `test_writemodel_corpus.py` and `test_writemodel_bench.py`).
+  **Per-cell timings (s139, T-137):** a record carries `eval_count`/`eval_duration_ms`/
+  `prompt_eval_duration_ms`/`load_duration_ms` straight from Ollama, zeroed on failed cells so
+  `summarize()`'s row-sum cannot `KeyError`. **Use `eval_duration_ms` for generation rate — `ms`
+  is wall clock for generate+apply+tests and is NOT a rate denominator**, which is why s137 could
+  only report a floor. The harness calls `personas/lib/ollama_client.py`, **not** the MCP bridge,
+  so benchmark runs never reach `calls.jsonl`. **Run-1 finding:** at 14B on
   easy edits all arms tie on correctness (uniform filler = whole-file's best case → null);
   code-anchored wins on cost (size-invariant vs whole-file's linear token growth).
   `ref:oficina-write-model-report`
