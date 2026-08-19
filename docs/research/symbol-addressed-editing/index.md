@@ -58,6 +58,28 @@ in-process AST route wins on three grounds, one of which no external survey coul
 a precomputed index is **stale inside a batch** (operation 1 invalidates it for operations 2..N),
 which is the same objection this survey's own consumers already make against line numbers.
 
+### 0b. Three corrections from MEASUREMENT — added session 139 (P3-T0 criteria 5a/5b)
+
+The first two sections were corrected by *reading* better. These came from running the thing.
+
+| Believed | True | Caught by |
+|---|---|---|
+| § 7's "what a symbol address cannot express" is a **bound the model degrades into gracefully**, with whole-file as a cheap fallback (P3-D1 item 5: *"the refusal costs nothing to build"*) | **The model never refuses.** Across 24 attempts needing a top-level statement, every reply was confident, well-formed and correctly addressed — and **not one** added a correct import. Half emitted a function-local import (legal, **passes the tests**, silently degrades the file); half used the module without importing it (never runs). **A fallback must be DETECTED by the harness, never awaited from the model** | Running criterion 5a on an import-requiring corpus |
+| The unaddressable case is rare enough to price as an exception | **23–48% of real edits**, measured over 486 edits of one repo's history; 23.1% at the most favourable cut. **Not a rare fallback** | Criterion 5b census (`benchmarks/lib/run-unaddressable-census.sh`) |
+| The unaddressable class is **"most commonly a new import"** (P3-D1 item 6) | **The module CONSTANT is larger at every cut** — 30.4% vs 17.4% in oficina's own source. And a constant **has a name**: it is unresolvable only because `_UNIT_NODES` indexes just `FunctionDef`/`AsyncFunctionDef`/`ClassDef`. **A resolver gap, not a language bound** — the biggest slice of the problem is also the cheapest to close. A fourth gap nobody had named: **creating a new top-level unit** (~17%), which `replace_unit` cannot do at all | The same census, split by statement kind |
+
+**The pattern here is different from § 0a's and worth keeping separate.** § 0a was *the set it
+searched was not the set that mattered*. This is **a correct source corrupted by its consumers**:
+`ref:unit-addressing-census` classifies `assign` as **`named`** and says the remainder is *"imports
+and module docstrings"* — P3-D1 item 6 added "module constants" to that complement, a test comment
+copied the phrasing, and both cited the census as authority, so the error read as sourced. **When a
+document is cited a lot, check what the citations say it says.**
+
+**Consequence for anyone designing the edit schema from this survey:** § 7 is right about what a
+symbol address cannot express and wrong about what that costs. Budget for **three** operations, not
+one — address an existing unit, insert a top-level statement, create a new unit — and treat
+constants as an addressing extension rather than a refusal.
+
 ## 1. The headline: adopt nothing whole — JOIN two things
 
 > *"No surveyed grammar is adoptable whole, because the emittable address and the correct span
