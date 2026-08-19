@@ -278,3 +278,47 @@ class TestWarmup:
         recs = wb.run_all([task], ["whole_file"], "my-model", 1, 10, str(out))
         assert len(recs) == 1, "sweep must still run after a failed warm-up"
         assert recs[0]["load_duration_ms"] == 999, "the cold load must remain visible"
+
+
+# --- 5a outcome classification as a reportable value (s139) --------------------
+
+
+class TestClassify5a:
+    """The report must name all three outcomes. Counting only the predicted tell is how s137's
+    0/12 came to read as a pass: an outcome nothing counts is an outcome nobody sees."""
+
+    def test_function_local_import_wins_over_reference(self):
+        # Both flags true is the NORMAL shape of the predicted case -- `import math` then
+        # `math.gcd`. Precedence has to be pinned or the two overlap silently.
+        assert wb._classify_5a({
+            "required_module": "math", "body_parses": True,
+            "body_has_import": True, "body_references_module": True,
+        }) == "function_local_import"
+
+    def test_used_without_importing(self):
+        assert wb._classify_5a({
+            "required_module": "math", "body_parses": True,
+            "body_has_import": False, "body_references_module": True,
+        }) == "used_without_importing"
+
+    def test_avoided_the_module(self):
+        assert wb._classify_5a({
+            "required_module": "math", "body_parses": True,
+            "body_has_import": False, "body_references_module": False,
+        }) == "avoided_the_module"
+
+    def test_non_import_task_is_not_classified(self):
+        """An ordinary task has no required module, so every 5a outcome is meaningless for it.
+        Returning a label anyway would put unrelated rows into the denominator."""
+        assert wb._classify_5a({
+            "required_module": None, "body_parses": True,
+            "body_has_import": False, "body_references_module": None,
+        }) is None
+
+    def test_unparseable_body_is_not_classified(self):
+        """Silence, not a guess: an unparseable body supports no claim about what it needed,
+        and folding it into `avoided` would invent the most convenient answer."""
+        assert wb._classify_5a({
+            "required_module": "math", "body_parses": False,
+            "body_has_import": None, "body_references_module": None,
+        }) is None

@@ -402,6 +402,25 @@ def report(records):
         print(f"\n{len(errs)} cell error(s); first: {errs[0]['error']}")
 
 
+def _classify_5a(row: dict) -> str | None:
+    """Which criterion-5a outcome this attempt is, or None if the row cannot say.
+
+    None for a non-import task (no required module, so every 5a outcome is meaningless) and
+    for an unparseable body (it supports no claim about what the model needed). Silence rather
+    than a guess: folding either into `avoided_the_module` would invent the most convenient
+    answer and inflate the count that matters most.
+    """
+    if row.get("required_module") is None or row.get("body_parses") is not True:
+        return None
+    if row.get("body_has_import"):
+        # Checked FIRST: `import math` + `math.gcd(...)` sets both flags, and that overlap is
+        # the normal shape of the predicted case, not an edge case.
+        return "function_local_import"
+    if row.get("body_references_module"):
+        return "used_without_importing"
+    return "avoided_the_module"
+
+
 def _symbol_report(records):
     """P3-T0's criteria for the symbol-addressed arm. Failure MODES, not just a pass rate —
     the outcome table branches differently on each, so collapsing them decides nothing."""
@@ -439,10 +458,23 @@ def _symbol_report(records):
         multi = sum((r.get("body_units") or 0) > 1 for r in parsed)
         print(f"    >1 unit in body       {multi:>4}/{len(parsed)}  <- emitted neighbouring code")
 
-    print("\n  criterion 5 — needed a unit it could not address")
-    imports = [r for r in parsed if r.get("body_has_import")]
-    print(f"    import INSIDE the body {len(imports):>3}/{len(parsed) if parsed else 0}"
-          "  <- the predicted function-local-import tell")
+    print("\n  criterion 5a — needed a statement it could not address")
+    labelled = [c for c in (_classify_5a(r) for r in rows) if c is not None]
+    if not labelled:
+        print("    no import-requiring tasks in this run — criterion 5a NOT EXERCISED.")
+        print("    (s137 reported 0/12 here from exactly this state: run --corpus import.)")
+        return
+    for label, gloss in (
+        ("function_local_import", "the PREDICTED tell — legal, passes, invisible to 1/2/3/4"),
+        ("used_without_importing", "reached for the module, never imported it — NameError"),
+        ("avoided_the_module", "hand-rolled instead; may well pass, nothing else flags it"),
+    ):
+        n = labelled.count(label)
+        print(f"    {label:<24} {n:>3}/{len(labelled)}  ({round(100 * n / len(labelled))}%)"
+              f"  <- {gloss}")
+    print("\n    NOT a rate: this corpus is DESIGNED to require a top-level statement, so the")
+    print("    share of edits needing one is 100% by construction. Criterion 5b — the real-edit")
+    print("    fraction bounding (B)'s coverage — is UNMEASURED and needs a natural sample.")
 
 
 def main():
