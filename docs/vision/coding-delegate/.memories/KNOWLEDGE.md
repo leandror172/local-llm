@@ -250,6 +250,54 @@ iteration 1 (tests-as-context). Fallback trigger unchanged: a real edit run drop
   repo's own suite, and any oficina file that FITS is delegable. And the red tests must be
   **committed**: the worktree checks out HEAD, so an uncommitted spec is a spec the run cannot see.
 
+## Unit addressing — what the resolver guarantees (P3-D1 remedy 2) — 2026-08-20, s140
+
+**Where it lives, and where it does NOT.** `benchmarks/lib/writemodel_apply.py`. It has **not**
+graduated to production: `mcp-server/src/ollama_mcp/oficina/` still contains no `import ast`.
+P3-D1 rider (a) settles the split — **the locator graduates, the benchmark's applier does not**
+(production applies through `patch_file`, which is where the operation acquires its atomic
+tmp+rename and uniqueness check), and `locate_unit` becomes `LanguagePack`'s fifth member. The
+benchmark keeps its own copy deliberately, the same reason `locate_function` is frozen beside it.
+
+**The vocabulary.** `Function` · `Method` · `Class` · `Constant` · `ClassConstant`. **Position is
+the only discriminator** — the identical node class is a `Function` at module level and a
+`Method` in a class, and an assignment follows the same rule rather than becoming the one
+exception to it. `kind` is a CHECK, never a selector: it never narrows a multi-match.
+
+**Six refusal reasons, each a different remedy:** `unknown_kind` (fix the prompt) · `parse_error`
+· `no_match` (fix the address) · `multi_match` (two units, one path — not fixable) ·
+`kind_mismatch` · **`shared_binding`** (one statement, one span, several names). The last is
+deliberately neither of its neighbours: `no_match` would send a caller hunting a typo that is not
+there, and `multi_match` means nearly the inverse. `find_units` RAISES rather than returning `[]`,
+because `[]` already means ABSENT and nothing else.
+
+**ONE ENFORCEMENT POINT — the lesson, not the detail.** `_addressable_names` alone decides what is
+addressable. The plan predicted a `_UNIT_NODES` membership tuple; it was written and **deleted**.
+A pre-filter blocked nothing the dispatch did not, and it made the rule **untestable**: adding
+`ast.AugAssign` to the dispatch and `ast.Import` to the tuple **both left the whole suite green**,
+each mutation neutralised by the other mechanism. **One rule needs one enforcement point or no
+single-point mutation can reach it.**
+
+**The trap in widening by "binds a name":** `import ast` binds `ast` and `from typing import
+Optional` binds `Optional`. Imports are not replaceable units — they are routed to
+`insert_top_level` — so only assignment nodes are indexed. `ast.AugAssign` answers to nothing:
+`X += 1` rebinds a name that must already exist.
+
+**A definition owned by code must be RENDERED from it, never restated.** Two consumers had
+copied this one and silently drifted the moment `KINDS` grew: the benchmark prompt hardcoded
+`"kind": Function|Method|Class`, so the model could not NAME a constant the resolver could
+address — the arm would have reported a clean zero for a case it never offered; and `body_units`
+tested for def/class node types, so a `NAME = value` body scored zero units and twelve correct
+answers were reported as fragments. Both now derive from the resolver.
+
+**Measured live** (24 generations, `my-python-q25c14-16k`, `--corpus constant`): address fidelity
+**12/12**, degeneration **0/12**, response shape **0/12** defects, **30 output tokens FLAT**
+against whole-file's 84 / 176 / 352 by bucket — 11.7× at large, both arms 100% correct.
+
+**Still unbuilt on the frozen four:** `insert_top_level` (imports 17.4% + added constants 13.0% +
+docstrings 4.3% — **the largest population**) and `insert_unit` (17.4%). And criterion 3, D1's
+acceptance condition, has not run — **the freeze is provisional by its own terms.**
+
 ## LanguagePack — the language axis contract (T-92 Phase 4) — 2026-07-23
 
 - **One algorithm, N packs.** `evaluate()`'s flow (target-presence rule, first-failing-stage
