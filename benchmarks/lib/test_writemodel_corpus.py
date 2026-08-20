@@ -22,6 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from writemodel_apply import find_units, resolve_unit
 from writemodel_corpus import (
+    CONSTANT_DEFECTS,
+    constant_reference_solution,
+    generate_constant_task,
     DEFECTS,
     IMPORT_DEFECTS,
     TARGET_SIG,
@@ -274,3 +277,75 @@ def test_target_signature_in_source_matches_the_table():
             assert TARGET_SIG[task.target_fn] in task.source, (
                 f"{task.name}: source does not contain {TARGET_SIG[task.target_fn]!r}"
             )
+
+
+# --- constant-requiring corpus (P3-D1 remedy 2, s140) -------------------------
+
+def _passes(source: str, tests: str) -> bool:
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        (tmp / "module_under_test.py").write_text(source, encoding="utf-8")
+        (tmp / "test_gen.py").write_text(tests, encoding="utf-8")
+        return subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "--no-header", "test_gen.py"],
+            cwd=str(tmp), capture_output=True, text=True,
+        ).returncode == 0
+
+
+def test_constant_task_ground_truth_holds():
+    for bucket in BUCKETS:
+        task = generate_constant_task(bucket, 0)
+        assert _ground_truth(task) == (True, True), task.name
+
+
+def test_constant_task_is_actually_solvable():
+    """The negative control for this corpus. A zero from the live run must mean the model could
+    not do it, never that the task was impossible."""
+    for bucket in BUCKETS:
+        task = generate_constant_task(bucket, 0)
+        assert _passes(constant_reference_solution(task), task.tests), task.name
+
+
+def test_repairing_ONE_consumer_is_not_enough():
+    """THE FORCING PROPERTY, and the reason three consumers exist rather than one.
+
+    If a single function body could satisfy the target test, a model that never addressed the
+    constant would still score correct, and the corpus would report a clean pass while
+    measuring nothing -- the "check that can only pass" failure in its costliest form, because
+    it would look like evidence the capability works.
+
+    Simulates the most plausible wrong repair: hard-code the right answer into the FIRST
+    consumer and leave the constant alone.
+    """
+    task = generate_constant_task("small", 0)
+    _name, _bad, _good, consumers, _tail = CONSTANT_DEFECTS[0]
+    first_src = consumers[0][0]
+    assert first_src in task.source, "the consumer must be present verbatim to be replaced"
+    patched = task.source.replace(first_src, "def scale_value(x):\n    return x * 10")
+    assert patched != task.source
+    assert not _passes(patched, task.tests), (
+        "one consumer sufficed -- the corpus cannot distinguish addressing the constant "
+        "from patching a function"
+    )
+
+
+def test_constant_task_behavior_does_NOT_name_the_address():
+    """The prompt must not hand over the answer. Naming the constant would make address
+    fidelity a copying exercise instead of a measurement."""
+    for name, _bad, _good, _consumers, _tail in CONSTANT_DEFECTS:
+        for bucket in BUCKETS:
+            task = generate_constant_task(bucket, 0)
+            if task.target_fn != name:
+                continue
+            assert name not in task.behavior, f"{task.name} leaks the address"
+            assert name.lower() not in task.behavior.lower(), f"{task.name} leaks the address"
+
+
+def test_the_constant_IS_addressable_by_the_s140_resolver():
+    """Ties the corpus to the capability under test: before s140 this resolved to nothing, so
+    the task would have been unanswerable by the symbol-addressed arm by construction."""
+    for bucket in BUCKETS:
+        task = generate_constant_task(bucket, 0)
+        assert len(find_units(task.source, task.target_path)) == 1, task.name
+        span, reason = resolve_unit(task.source, task.target_path, kind="Constant")
+        assert reason is None and span is not None, (task.name, reason)

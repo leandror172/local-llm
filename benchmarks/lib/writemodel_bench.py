@@ -33,6 +33,7 @@ from ollama_client import ollama_chat  # noqa: E402
 
 from writemodel_apply import (  # noqa: E402
     KINDS,
+    _addressable_names,
     apply_code_anchored,
     apply_search_replace,
     apply_unit,
@@ -42,6 +43,7 @@ from writemodel_apply import (  # noqa: E402
     strip_code_fences,
 )
 from writemodel_corpus import (  # noqa: E402
+    generate_constant_task,
     Task,
     generate_class_task,
     generate_corpus,
@@ -64,6 +66,13 @@ _UNIT_SCHEMA = {
     },
     "required": ["path", "kind", "body"],
 }
+
+# DERIVED from the resolver's own vocabulary, never restated. It was hardcoded as
+# "Function", "Method" or "Class" until s140, when `KINDS` grew `Constant`/`ClassConstant` and
+# the prompt did not: the resolver could address a module constant and the model had no way to
+# NAME one, so the new capability was unreachable and the arm would have reported a clean zero
+# for a case it never offered. A vocabulary owned by code must be rendered from that code.
+_KIND_LIST = ", ".join(f'"{k}"' for k in KINDS[:-1]) + f' or "{KINDS[-1]}"'
 
 _SYSTEM = "You are a precise Python engineer. Output only what is asked — no explanation."
 
@@ -107,7 +116,7 @@ def build_prompt(task: Task, arm: str) -> str:
             "Name the ONE unit to replace and give its new source. Reply as JSON:\n"
             '  "path": the dotted address as a list, e.g. ["ClassName", "method_name"] '
             'for a method or ["function_name"] for a top-level function\n'
-            '  "kind": "Function", "Method" or "Class"\n'
+            f'  "kind": one of {_KIND_LIST}\n'
             '  "body": the complete new source of THAT UNIT ONLY — no other functions, '
             "no surrounding code, no fences"
         )
@@ -257,10 +266,20 @@ def _symbol_metrics(task: Task, content: str) -> dict:
             m["body_compiles"] = False
         else:
             m["body_compiles"] = True
-        # >1 top-level unit means it emitted NEIGHBOURING code, not just the one asked for.
-        m["body_units"] = sum(
-            isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for n in tree.body
-        )
+        # >1 top-level unit means it emitted NEIGHBOURING code, not just the one asked for;
+        # 0 means a FRAGMENT rather than a unit (s139: a body without its `def` line, which
+        # `ast.parse` accepts and `compile` rejects).
+        #
+        # "Unit" is `_addressable_names`, the resolver's own definition, NOT a def/class type
+        # test. The type test was the definition until s140 and it inherited exactly the
+        # assumption the resolver had just shed: a `Constant` body is `NAME = value`, which is
+        # no def and no class, so a perfectly-formed constant scored ZERO units and every one
+        # of 12 correct answers was reported as a fragment. A metric that hardcodes what a unit
+        # is drifts from the resolver the moment the resolver learns a new one.
+        #
+        # The s139 detection is preserved, not traded away: a bare `return list(...)` answers
+        # to no name either, so it still counts 0.
+        m["body_units"] = sum(1 for n in tree.body if _addressable_names(n))
         # Criterion 5: a function-local import is the predicted tell that the model needed a
         # top-level statement it had no way to address. Legal Python, passes tests, invisible
         # to every other criterion.
@@ -502,12 +521,14 @@ def main():
     p.add_argument("--arms", default=",".join(ARMS), help="comma-separated subset of arms")
     p.add_argument("--per-bucket", type=int, default=4, help="tasks per size bucket")
     p.add_argument("--corpus", default="flat",
-                   choices=("flat", "class", "both", "import"),
+                   choices=("flat", "class", "both", "import", "constant"),
                    help="flat = top-level-function tasks (the published arm A/B/C corpus); "
                         "class = class-bearing tasks, REQUIRED for criterion 2 since a flat "
                         "corpus has no class to name coarsely; both = the union; "
                         "import = tasks whose fix REQUIRES a new top-level import, for "
-                        "criterion 5a — the case s137's 0/12 never exercised")
+                        "criterion 5a — the case s137's 0/12 never exercised; "
+                        "constant = tasks whose fix is a MODULE CONSTANT, for the s140 "
+                        "resolver extension — measures whether the coder can NAME one")
     p.add_argument("--buckets", default="small,medium,large")
     p.add_argument("--runs", type=int, default=3, help="runs per (task, arm) cell")
     p.add_argument("--timeout", type=int, default=180)
@@ -529,6 +550,12 @@ def main():
     if args.corpus == "import":
         tasks += [
             generate_import_task(b, i)
+            for b in ("small", "medium", "large")
+            for i in range(args.per_bucket)
+        ]
+    if args.corpus == "constant":
+        tasks += [
+            generate_constant_task(b, i)
             for b in ("small", "medium", "large")
             for i in range(args.per_bucket)
         ]
