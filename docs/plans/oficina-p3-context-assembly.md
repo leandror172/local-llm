@@ -148,12 +148,100 @@ spine*") is the honest cost; the vision framing is that Claude was always the ga
 ---
 
 <!-- ref:delegate-p3-decisions -->
-## Decision register (P3-D) — OPEN
+## Decision register (P3-D) — **D1 FROZEN (s140)** · D6 FROZEN AND BUILT · D2–D5, D7–D10 OPEN
 
 House rule: each entry states the fork, the constraints that bound it, and a recommendation.
 Freeze on review with the user; reverse only with new evidence once frozen.
 
-### P3-D1 — What the model EMITS when editing, and who chooses — **BLOCKS**
+### P3-D1 — What the model EMITS when editing — **DECIDED 2026-08-20 (s140) — (B), on FOUR operations**
+
+**DECISION — (B), model-emitted structured edit operations.** The model returns typed JSON
+naming a unit and supplying its new body; the harness resolves the name to a span and splices.
+
+**The "who chooses" half is NOT decided here.** It is lifted to **P3-D10** (s140). Criterion 5
+settled what the model *emits* and says nothing about who *selects* the shape, and § "Vision-level
+reconciliation" item 5 requires that half to be **re-argued** rather than carried — a fork left
+inside a frozen entry reads as settled, which is the s135 failure this register already made once.
+
+**What decided it** — all pre-registered before running, all on `my-python-q25c14-16k`:
+
+| criterion | result |
+|---|---|
+| 1 — address fidelity | **12/12 resolve to exactly one unit.** No no-match, multi-match, kind-mismatch |
+| 2 — degeneration to a coarse unit | **0/12** address >50% of the file; span median **0.047**. The criterion that could kill the design, and it did not occur |
+| 4 — response shape | **0/12** defects — no fences, no prose, no neighbouring code |
+| output cost | **43 tokens FLAT** at every size, against whole-file's 120 / 216 / 479 |
+| 5a — behaviour at the bound | a **coverage** bound, not an addressing failure: 1/2/4 stayed clean, tokens stayed flat |
+| 5b — how often the bound is hit | **23–48% of real edits** (487 measured). **Not a rare fallback** |
+
+**Caveats carried INTO the freeze, because a frozen entry is quoted without them otherwise
+(s137's own list):** n is **12 per arm** over **two** defect kinds (`scale`, `clamp`) on generated
+classes; **whole-file also scored 100%** on that corpus, so it still does not stress omission —
+E-D1's *"best possible case for whole-file fidelity"* is only partly retired by adding classes;
+and the token ratio is a **floor**, since the large bucket is ~100 lines and `loop.py` is 638.
+
+#### The operation vocabulary, RECONCILED at freeze (s140)
+
+This entry named `ensure_import` / `remove_import` / `replace_module_docstring` and said the
+census shows they *"close the entire non-def/class residue in both languages."* **True of
+STRUCTURE, false of EDITS** — and nothing caught it because the two measurements sit 400 lines
+and three sessions apart. The census enumerated what **exists** in a file (the complement of
+def/class is imports and the module docstring, ~10.9%). 5b measured what **edits do**, and an
+edit can *add* a top-level unit the static census never saw. `replace_unit` replaces; it cannot
+create. **Static coverage ≠ edit coverage.** Neither document is wrong; they answer different
+questions, and only one of them is the coverage question.
+
+| # | operation | population (oficina src ≤40) | status |
+|---|---|---|---|
+| 1 | **`replace_unit`** — dotted `path` + `kind` + `body` | the addressable majority | **built and measured** (criteria 1/2/4) |
+| 2 | *no new operation* — index assignments, add a `Constant` kind | **17.4%** | a **resolver gap**, not a construction bound |
+| 3 | **`insert_top_level`** — imports · module docstring · **added** constants | 17.4% + 4.3% + 13.0% | **the largest population** |
+| 4 | **`insert_unit`** — a top-level unit that does not exist yet | 17.4% | a gap this plan had **never named** |
+
+**The magnitude was corrected AT the freeze, and the correction is roughly half (s140).** The 5b
+remedy table asserts *"No new operation"* against the whole **30.4%** constant slice, while 5b's
+own caveat (c) records that the count includes statements *"added **or changed**"*. Only the
+**changed** half is convertible by a `Constant` kind — an **added** constant has a name but
+nothing to replace, so it needs `insert_top_level` exactly as an import does. Measured over 487
+real edits (`run-census-report.sh`): on oficina's own source the 30.4% splits **CONVERT 17.4% /
+ADDED 13.0%**, and across cuts CONVERT ranges **6.4%–17.4%**. The unbounded cut overstates the
+convertible share about **fourfold**.
+
+**Consequence, and it reverses this plan's stated ordering.** The claim *"cheapest first and
+largest first are the same thing"* is **false**: the resolver extension (17.4%) **ties imports
+alone** (17.4%), while `insert_top_level`'s real population — imports **+** added constants **+**
+docstrings — is strictly larger. **Cheapest-first survives on its own merits** (no new operation,
+no schema change, no prompt text, and criterion 1 already measured `find_units` at 12/12 unique)
+— but it is no longer *also* largest-first, and **30.4% must never be quoted as the resolver's
+share.**
+
+*Reproduction check, stated so the correction is auditable:* all six of s139's published 5b rows
+reproduce on the new instrument — four **exact**, two off only by the single commit added since.
+The split is **additive**; the published 23–48% headline does not move.
+
+#### Attached at freeze — conditions, not commentary
+
+- **Harness-side detection is MANDATORY, not an alternative to the operations.** 5a: the model
+  **never refuses** — 24 of 24 attempts emitted a confident, well-formed, correctly-addressed
+  operation — so the fallback cannot be triggered by a model signal. **14 of 24 emitted a
+  function-local import and 10 of those 14 PASS ALL TESTS**, i.e. the failure is silent to
+  criteria 1–4 *and* to the suite. Detection is two AST checks on output the harness already
+  parses (does `body` contain an import; does it reference a name the target never binds), and
+  it is first principle 1 — *"harness code does all mechanics"* — not a new burden.
+- **Separate the budgets.** *"Edit didn't apply"* must not consume the *"output didn't parse"*
+  budget (SWE-agent, **+3.0 points** measured). Cheap now, expensive to retrofit.
+- **Rename breaks symbol identity.** If `body` renames the unit, the address names the old and
+  the body defines the new. Serena has a live bug in exactly this operation (oraios/serena#576).
+- **Multi-target assignment must REFUSE, not guess.** `A, B = 1, 2` is one node binding two
+  names, so `["A"]` and `["B"]` resolve to the **same span** and replacing one rewrites both.
+  `apply_unit` already contracts *"Refuses rather than guesses"*; this is the case that tests it.
+- **ACCEPTANCE CONDITION — criterion 3.** This freeze rests on the benchmark half plus 5a/5b.
+  If criterion 3's build shows the operation list does not apply cleanly to a real file and pass
+  that file's real suite, **D1 reopens with evidence — not before.** Same shape as P4-D2's
+  attached condition, which is the register's precedent for freezing a measured *fit* whose
+  *end-to-end* half has not run.
+
+---
 
 **This entry has been revised three times. All three are recorded, because the second one
 reinstates something the first removed, and the third finds that the mechanism had already been
@@ -885,6 +973,41 @@ P5's `blocked` union by the line P4 drew for S14 — one deterministic pause at 
 Mechanizes `benchmarks/lib/decomposed-run.py` and the Layer-0 3-stage finding.
 **Carries P4's rejection forward explicitly:** `steps:` is **not** a T-122 remedy and must not be
 planned as one — each step still emits a whole file unless P3-D1 says otherwise.
+### P3-D10 — WHO CHOOSES the response shape — **OPEN (lifted out of P3-D1, s140)**
+
+**Why this is its own entry.** P3-D1 froze on measurement: criteria 1/2/4 and 5a/5b settled what
+the model **emits**. None of them touch who **selects** whole-file versus symbol-addressed for a
+given run — that is argument-bound, not measurement-bound, and § "Vision-level reconciliation"
+item 5 (s136) left a standing instruction on it: *"the stated decider is weaker than it reads.
+**Re-argue it before freezing.**"* Freezing an argued half alongside a measured one, inside one
+entry, is how s135's register got stuck at D1 while reading as though it had moved.
+
+**The fork.**
+
+- **(i) Caller declares.** The run spec names the shape. E-D2's recorded precedent, on the ground
+  that shape depends on *"a **budget**, not an unambiguous repository fact"*.
+- **(ii) Auto-select, size-gated.** The harness picks from the target's size against the live
+  `/api/show` ceiling — the E-D1 split this plan's own § adopts.
+- **(iii) Auto-select with a caller override.** (ii) as the default, (i) as an escape hatch.
+
+**The constraint that was doing the work, and why it may not.** E-D2's deciding argument is that
+auto-select *must emit something* when `_context_limit is None`. **Under the size-gated-fallback
+framing this plan already adopts, that constraint dissolves:** an unknown ceiling means *do not
+fall back* — i.e. keep today's whole-file default — which is the same fail-safe direction
+`transport.model_context_limit` already documents. So the precedent may not bind (ii) at all.
+
+**What it must not be decided from.** Not the token count. First principle 3 — *"async exists to
+buy quality, not speed"* — cuts against cost framing, and P3-D1's own § records that arm A's
+25-vs-310 was never the argument. The live question is **feasibility**: a file that cannot be
+edited at all is not a cost complaint (T-122).
+
+**Bounded below by P3-D1's freeze:** whatever chooses, harness-side detection of an
+unaddressable-statement need runs regardless — the model never signals it (5a).
+
+***Recommendation:* none yet — this entry exists so the fork is visible, not to pre-empt it.**
+Decide it with P3-D4 (constraints selection), which is the other entry that has to know whether
+the shape is a caller input or a derived fact.
+
 <!-- /ref:delegate-p3-decisions -->
 
 ---
@@ -929,6 +1052,21 @@ arm C, a mechanism this entry does not propose.
    the design, and still the silent one.**
 3. **Applicability, never exact match.** Unchanged. Success = the operation list applies cleanly
    *and* the result passes the run's own acceptance — never equality with a reference diff.
+
+   **RECLASSIFIED s140 — this is a BUILD, not a probe, and P3-D1 is frozen without it.** The
+   reclassification was made in s139 and recorded only in `.claude/session-log.md`; written here
+   because that is where a future session looks. Two facts force it. **(a) It cannot gate what it
+   depends on:** criterion 3 prototypes (B)'s emit+apply inside `loop.py`, which cannot be built
+   without having decided (B) — reading it as a gate makes P3-D1 unfreezable by construction.
+   **(b) A probe that costs what the build costs is not a probe:** criteria 1/2/4/5a/5b answered
+   every question a cheap instrument could answer, and what remains — does an operation list
+   apply to a real file and pass that file's real suite — is the build itself.
+
+   It therefore survives as P3-D1's **acceptance condition** (the P4-D2 pattern), not as its
+   gate: if the operation list does not apply cleanly on `parser.py`/`intake.py`, **D1 reopens
+   with evidence.** Note s137's reading below predates this and states a two-condition bar
+   (*"the unaddressable-statement bound … and the real-file half"*); the first was satisfied by
+   5a/5b, and the second is this reclassification.
 4. **Response-shape discipline** (added s136). Does `body` contain **only** the unit — no fences,
    no prose, no neighbouring code? The same 14B *"fenced its own block contents at runtime"* in
    the s124 benchmark, and E-D5 already strips fences at the write step for exactly this reason.
@@ -1089,7 +1227,10 @@ the model** rather than supplied by the harness, and it stayed size-invariant an
 uniquely, units stay fine-grained*. That **clears the gate the probe was built to test** and
 removes the "magnitude unmeasured" objection for the naming half specifically. It does **not**
 by itself justify freezing (B): the unaddressable-statement bound (item 6) is still unmeasured,
-and the real-file half has not run.
+and the real-file half has not run. *(s140: both conditions are now discharged — the
+bound was measured by 5a/5b, and the real-file half is **reclassified as a build** and attached
+to the freeze as an acceptance condition. See criterion 3 above. This paragraph is left standing
+as written, because the bar it set is the reason the discharge has to be explicit.)*
 
 ### RESULTS — criterion 5a, run 2026-08-19 (s139)
 

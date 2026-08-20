@@ -9,10 +9,23 @@ label). Keep under 30 lines.*
 **PR #87, #88 and #89 ALL MERGED** (#89 on 2026-08-18) — master carries P1–P4, the P3 plan,
 T-133, and **P3-T0's benchmark half** (dotted addressing + the `symbol_addressed` arm:
 43 output tokens FLAT vs whole-file's 120/216/479, both arms 100% correct). Nothing in flight.
-**P3-D1 still OPEN** — criterion 3 (real file, end-to-end) and criterion 5 (the
-unaddressable-statement rate) are the remaining gate evidence.
+**P3-D1 FROZEN (s140) on (B), four operations** — `replace_unit` (built) · a `Constant` kind
+(resolver gap, no new op) · `insert_top_level` · `insert_unit`. **Criterion 3 is no longer gate
+evidence:** reclassified probe→BUILD and attached as D1's acceptance condition (P4-D2 pattern).
+**"Who chooses" lifted to P3-D10, still OPEN.**
 
 Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE.md:
+
+- **s140** (08-20) — **P3-D1 FROZEN, and the magnitude was corrected AT the freeze.** 5b's
+  30.4% constant slice counts statements *added OR changed*; only the **changed** half is
+  convertible by a `Constant` kind. Measured over 487 edits: oficina src ≤40 splits **CONVERT
+  17.4% / ADDED 13.0%**; across cuts CONVERT is **6.4%–17.4%**. **So "cheapest first and largest
+  first are the same thing" is FALSE** — the resolver extension TIES imports alone (17.4%), while
+  `insert_top_level` (imports + added constants + docstrings) is strictly larger. Cheapest-first
+  survives on its own merits; the 30.4% justification does not. All six of s139's published rows
+  REPRODUCE (four exact), so the split is additive. Cuts made durable (`run-census-report.sh`) —
+  and the first draft of them filtered on the substring `"oficina/"`, which also matches
+  `tests/oficina/` and would have "corrected" a correct number. Benchmarks 116→141.
 
 - **s137** (08-18) — **P3-T0's BENCHMARK HALF BUILT AND MEASURED; the naming half clears its
   gate.** Dotted addressing (`find_units`/`resolve_unit`/`apply_unit`) + class-bearing corpus +
