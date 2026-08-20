@@ -182,7 +182,7 @@ mutation or a reproduction check, none from a green run** — including two inst
 pass silently: a prompt that hardcoded a vocabulary the code owns (so the new capability was
 unreachable by the model) and `body_units` counting def/class types (12 correct answers reported
 as fragments). **The plan's predicted `_UNIT_NODES` was written, measured redundant, DELETED** —
-it blocked nothing the dispatch did not and made the rule untestable. Suite 955→**1009**. PR #93.
+it blocked nothing the dispatch did not and made the rule untestable. Suite 955→**1009**. PR #94.
 *(T-132 now FIVE sessions behind; `benchmarks/.memories/QUICK.md` is 69 lines against its own 30.)*
 
 ## Repo Structure
