@@ -1,9 +1,12 @@
 """Unit tests for the write-model benchmark apply layer (T-104). Model-free, deterministic."""
 
+import ast
+
 import pytest
 
 from writemodel_apply import (
     KINDS,
+    SharedBinding,
     apply_code_anchored,
     apply_search_replace,
     apply_unit,
@@ -335,13 +338,13 @@ def test_find_does_not_descend_into_conditional_blocks():
     assert find_units(UNITS_SRC, ["conditional"]) == []
 
 
-def test_find_module_constant_is_not_addressable():
-    # NOT "a statement with no name" — that was this comment's error until s139, and it was
-    # copied from P3-D1 item 6, which had itself corrupted the census. `CONSTANT = 42` binds a
-    # name; the census counts `assign` as `named`. This returns [] because `_UNIT_NODES` covers
-    # only FunctionDef/AsyncFunctionDef/ClassDef, so the resolver never indexes assignments.
-    # A RESOLVER GAP, closable by extending _UNIT_NODES + adding a kind — not a language bound.
-    assert find_units(UNITS_SRC, ["CONSTANT"]) == []
+def test_find_module_constant_IS_addressable():
+    # CLOSED s140. This test previously asserted `== []` and said so of itself: "A RESOLVER GAP,
+    # closable by extending _UNIT_NODES + adding a kind — not a language bound." P3-D1 froze on
+    # (B) and this is remedy 2 of its four operations — the only one needing no new operation.
+    # Measured share of real edits it converts: 17.4% on oficina's own source (NOT the 30.4%
+    # constant slice, which also counts constants that were ADDED and have no span to replace).
+    assert len(find_units(UNITS_SRC, ["CONSTANT"])) == 1
 
 
 def test_find_import_is_not_addressable():
@@ -420,7 +423,7 @@ def test_resolve_class_named_where_method_meant_is_loud():
 
 
 def test_resolve_kind_vocabulary_is_closed():
-    assert KINDS == ("Function", "Method", "Class")
+    assert KINDS == ("Function", "Method", "Class", "Constant", "ClassConstant")
 
 
 def test_resolve_unknown_kind_is_its_own_reason():
@@ -512,3 +515,131 @@ def test_apply_unit_honours_a_kind_check():
     assert apply_unit(UNITS_SRC, ["Shape"], "def Shape():\n    pass", kind="Method") is None
     out = apply_unit(UNITS_SRC, ["Shape", "area"], "def area(self):\n    return 1", kind="Method")
     assert out is not None
+
+
+# --- Constant addressing (P3-D1 remedy 2, s140) --------------------------------
+#
+# `replace_unit` could not address a module constant because `_UNIT_NODES` covered only
+# def/class. Nothing about the LANGUAGE prevented it: `CONSTANT = 42` binds a name. Closing it
+# needs no new operation, which is why the freeze ordered it first — though it is NOT the
+# largest remedy, which the freeze also records.
+
+
+def test_find_annotated_module_constant_is_addressable():
+    # `ast.AnnAssign` carries `.target` (singular), not `.targets` (a list). A matcher written
+    # against `.name` -- which NO assignment node has -- raises AttributeError here.
+    assert len(find_units("X: int = 5\n", ["X"])) == 1
+
+
+def test_find_class_level_constant_is_addressable():
+    assert len(find_units(UNITS_SRC, ["Shape", "KIND"])) == 1
+
+
+def test_resolve_module_constant_kind_is_Constant():
+    span, reason = resolve_unit(UNITS_SRC, ["CONSTANT"], kind="Constant")
+    assert reason is None and span is not None
+
+
+def test_resolve_class_constant_kind_is_ClassConstant():
+    # POSITION IS STILL THE ONLY DISCRIMINATOR. `ast.Assign` is a `Constant` at module level and
+    # a `ClassConstant` inside a class -- the node class is identical, exactly as FunctionDef is
+    # Function/Method by position. Collapsing both into one kind would make assignments the sole
+    # exception to the rule the module states.
+    span, reason = resolve_unit(UNITS_SRC, ["Shape", "KIND"], kind="ClassConstant")
+    assert reason is None and span is not None
+    assert resolve_unit(UNITS_SRC, ["Shape", "KIND"], kind="Constant")[1] == "kind_mismatch"
+
+
+def test_resolve_constant_named_where_function_meant_is_loud():
+    assert resolve_unit(UNITS_SRC, ["CONSTANT"], kind="Function")[1] == "kind_mismatch"
+
+
+def test_find_import_is_STILL_not_addressable():
+    # THE TRAP IN THIS EXTENSION, and the reason it is not "index whatever binds a name":
+    # `import ast` binds `ast` and `from typing import Optional` binds `Optional`. A resolver
+    # widened by binding-semantics would swallow both -- and the freeze routes imports to
+    # `insert_top_level` precisely because they are NOT replaceable units. Only Assign/AnnAssign
+    # are indexed.
+    assert find_units(UNITS_SRC, ["ast"]) == []
+    assert find_units(UNITS_SRC, ["Optional"]) == []
+
+
+def test_find_augmented_assignment_is_not_addressable():
+    # `X += 1` at module level REBINDS a name that must already exist; it is not the statement
+    # that defines the unit, so replacing it would replace the wrong span.
+    assert find_units("X = 1\nX += 1\n", ["X"]) == [(1, 1)]
+
+
+def test_starred_unpacking_also_refuses():
+    # FOUND BY A SURVIVING MUTATION (s140): deleting the `ast.Starred` branch left the whole
+    # suite green, because every other test used a bare `A, B` tuple. `HEAD, *REST = xs` binds
+    # two names through a node the naive matcher does not look inside -- so the statement would
+    # report as binding only HEAD, and `["HEAD"]` would replace the span REST lives on too.
+    assert resolve_unit("HEAD, *REST = [1, 2, 3]\n", ["HEAD"]) == (None, "shared_binding")
+    assert resolve_unit("HEAD, *REST = [1, 2, 3]\n", ["REST"]) == (None, "shared_binding")
+
+
+def test_augmented_assignment_answers_to_no_name_even_if_indexed():
+    # ALSO FOUND BY A SURVIVING MUTATION. Adding `ast.AugAssign` to `_UNIT_NODES` left the suite
+    # green, so the earlier test proved nothing about the mechanism it named: the guard is
+    # `_addressable_names` returning empty, not the node-set membership. This pins the guard
+    # that actually holds -- a lone `X += 1` binds nothing addressable at all.
+    assert find_units("COUNTER += 1\n", ["COUNTER"]) == []
+
+
+def test_attribute_and_subscript_targets_bind_no_addressable_name():
+    # THIRD SURVIVING MUTATION (s140): returning the attribute's own identifier left the suite
+    # green. `obj.attr = 1` MUTATES something that already exists -- it binds no module-level
+    # name, so there is no unit for `["attr"]` to address. Answering to it would resolve a
+    # bare name to a statement that never defines it.
+    assert find_units("obj.attr = 1\n", ["attr"]) == []
+    assert find_units("d['k'] = 1\n", ["k"]) == []
+
+
+def test_resolve_tuple_unpacking_refuses_with_its_OWN_reason():
+    # ONE node, TWO names, ONE span: `["A"]` and `["B"]` would both resolve to line 1, so
+    # replacing either rewrites both. `no_match` would be the wrong remedy signal -- the name is
+    # there -- and `multi_match` means the opposite thing (two units, one path).
+    assert resolve_unit("A, B = 1, 2\n", ["A"]) == (None, "shared_binding")
+    assert resolve_unit("A, B = 1, 2\n", ["B"]) == (None, "shared_binding")
+
+
+def test_resolve_chained_assignment_refuses_with_its_own_reason():
+    assert resolve_unit("A = B = 5\n", ["A"]) == (None, "shared_binding")
+
+
+def test_find_raises_on_a_shared_binding_rather_than_returning_empty():
+    # `find_units`'s contract is that `[]` means ABSENT and nothing else -- an unparseable
+    # source raises rather than being folded into the same value. A shared binding is a third
+    # thing again, so folding it into `[]` would re-create the conflation the contract forbids.
+    with pytest.raises(SharedBinding):
+        find_units("A, B = 1, 2\n", ["A"])
+
+
+def test_apply_unit_replaces_a_module_constant():
+    out = apply_unit(UNITS_SRC, ["CONSTANT"], "CONSTANT = 99")
+    assert "CONSTANT = 99" in out
+    assert "CONSTANT = 42" not in out
+    assert ast.parse(out)  # still a valid module
+
+
+def test_apply_unit_reindents_a_class_constant_to_its_span():
+    # THE HARNESS OWNS INDENTATION -- the same contract `apply_unit` already holds for methods.
+    # The model emits the constant at column 0; the class body needs it at column 4.
+    out = apply_unit(UNITS_SRC, ["Shape", "KIND"], 'KIND = "polygon"')
+    assert '    KIND = "polygon"' in out
+    assert ast.parse(out)
+
+
+def test_apply_unit_refuses_a_shared_binding_rather_than_rewriting_both():
+    assert apply_unit("A, B = 1, 2\n", ["A"], "A = 9") is None
+
+
+def test_widening_did_not_create_new_multi_matches():
+    # THE REGRESSION THIS EXTENSION COULD CAUSE. Indexing assignments means a module binding a
+    # name BOTH by `def foo` and by `foo = ...` now resolves to TWO units where it resolved to
+    # one -- criterion 1's 12/12 would drop without anything else changing. Scanned across
+    # mcp-server/src and benchmarks/lib (48 files, s140): zero such collisions. This pins the
+    # fixture so the property is checked rather than remembered.
+    for path in (["plain"], ["CONSTANT"], ["Shape"], ["Shape", "area"], ["Shape", "KIND"]):
+        assert len(find_units(UNITS_SRC, path)) == 1, path

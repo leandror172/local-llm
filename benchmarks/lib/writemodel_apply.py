@@ -59,19 +59,100 @@ def locate_function(source: str, name: str) -> Optional[tuple[int, int]]:
 # is a measurement instrument. This is the second implementation beside it, not a widening
 # of the first (`ref:patterns-refactoring-duplicate-first`).
 
-KINDS = ("Function", "Method", "Class")
+class SharedBinding(Exception):
+    """One statement answers to several names, so no single name addresses its span.
 
-_UNIT_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+    ``A, B = 1, 2`` and ``A = B = 5`` are ONE statement occupying ONE span while binding two
+    names. Replacing the unit at ``["A"]`` would rewrite ``B`` along with it, silently and
+    correctly-looking. Refusing is the only safe answer.
+
+    It is deliberately neither of the two reasons that already exist. ``no_match`` says *fix
+    the address* — but the name IS present, so that would send a caller looking for a typo
+    that is not there. ``multi_match`` means two SEPARATE units answer to one path, which is
+    nearly the inverse situation and has a different remedy again.
+    """
+
+
+KINDS = ("Function", "Method", "Class", "Constant", "ClassConstant")
+
+_ASSIGNMENT_NODES = (ast.Assign, ast.AnnAssign)
+
+# There is deliberately NO `_UNIT_NODES` membership tuple. The plan predicted one ("extend
+# `_UNIT_NODES` + a `Constant` kind") and s140 wrote it, then MEASURED it as redundant: with
+# `_addressable_names` returning an empty set for anything it does not handle, a pre-filter
+# blocks nothing the dispatch does not already block. Worse than harmless — it made the rule
+# UNTESTABLE. Two mutations, `ast.AugAssign` added to the dispatch and `ast.Import` added to
+# the tuple, BOTH left the whole suite green, each neutralised by the other mechanism. One
+# rule needs one enforcement point or no single-point mutation can reach it.
+
+
+def _target_names(target: ast.AST) -> set[str]:
+    """Plain names bound by ONE assignment target, descending through unpacking.
+
+    ``A, B = 1, 2`` is a single ``ast.Tuple`` target holding two names, and ``A, *rest = xs``
+    wraps one of them in ``ast.Starred``. A matcher that only understood ``ast.Name`` would
+    report such a statement as binding NOTHING, and it would then be skipped as unaddressable
+    rather than refused as ambiguous — the failure hidden instead of raised.
+
+    An attribute or subscript target (``obj.a = 1``, ``d["k"] = 1``) mutates something that
+    already exists and binds no module-level name, so it contributes nothing.
+    """
+    if isinstance(target, ast.Name):
+        return {target.id}
+    if isinstance(target, ast.Starred):
+        return _target_names(target.value)
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return {name for elt in target.elts for name in _target_names(elt)}
+    return set()
+
+
+def _addressable_names(node: ast.AST) -> set[str]:
+    """Every name this unit node answers to; empty when nothing addresses it.
+
+    ONE function for ALL indexed node types, because ``_walk`` dispatches on the answer. A
+    def or a class answers to its own declared name; an assignment answers to what it binds.
+
+    **Empty means "not addressable by any name", never an error.** Writing this to handle only
+    assignments returns empty for every function and class, and a caller that reads empty as a
+    failure then refuses every ordinary lookup — which is exactly what a first attempt at this
+    did.
+
+    Imports are absent by construction and that is the trap this function must not fall into:
+    ``import ast`` binds ``ast`` and ``from typing import Optional`` binds ``Optional``, so a
+    resolver widened by "does it bind a name" would swallow both. An import is not a
+    replaceable unit — it is routed to a separate insert operation — so it is simply not an
+    indexed node type and never reaches here.
+    """
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return {node.name}
+    if isinstance(node, ast.Assign):
+        return {name for target in node.targets for name in _target_names(target)}
+    if isinstance(node, ast.AnnAssign):
+        return _target_names(node.target)
+    # Everything else answers to nothing, and two cases are worth naming because a reader will
+    # wonder about both. ``ast.AugAssign``: ``X += 1`` at module level REBINDS a name that must
+    # already exist, so it is not the statement that DEFINES the unit — were it to answer to
+    # ``X``, an ordinary lookup would become a multi_match against the increment. Imports: they
+    # bind names but are not replaceable units, and they are routed to a separate insert
+    # operation.
+    #
+    # This function is the SINGLE enforcement point for both, which is a deliberate property
+    # and not an accident — see the note above the assignment-node tuple.
+    return set()
 
 
 def _kind_of(node: ast.AST, parent: ast.AST) -> str:
     """Kind of a unit node given its parent. Position is the ONLY discriminator.
 
     ``ast.FunctionDef`` is a ``Function`` at module level and a ``Method`` inside a class —
-    the node class is identical in both cases, so the parent is what decides.
+    the node class is identical in both cases, so the parent is what decides. An assignment
+    follows the same rule rather than becoming the one exception to it: ``Constant`` at module
+    level, ``ClassConstant`` inside a class.
     """
     if isinstance(node, ast.ClassDef):
         return "Class"
+    if isinstance(node, _ASSIGNMENT_NODES):
+        return "ClassConstant" if isinstance(parent, ast.ClassDef) else "Constant"
     return "Method" if isinstance(parent, ast.ClassDef) else "Function"
 
 
@@ -102,8 +183,13 @@ def _walk(source: str, path: list[str]) -> list[tuple[tuple[int, int], str]]:
     def descend(parent: ast.AST, remaining: list[str]) -> None:
         name, rest = remaining[0], remaining[1:]
         for child in parent.body:
-            if not isinstance(child, _UNIT_NODES) or child.name != name:
+            names = _addressable_names(child)
+            if name not in names:
                 continue
+            # Only ambiguous once someone ASKS for one of the shared names. A tuple assignment
+            # elsewhere in the file is irrelevant and must not make the whole source unwalkable.
+            if len(names) > 1:
+                raise SharedBinding(f"{name!r} shares one span with {sorted(names - {name})}")
             if not rest:
                 found.append((_span_of(child), _kind_of(child, parent)))
             elif isinstance(child, ast.ClassDef):
@@ -129,7 +215,8 @@ def resolve_unit(
     """Resolve a dotted path to EXACTLY ONE span, or say why not.
 
     Returns ``(span, None)`` on success and ``(None, reason)`` otherwise, where reason is one
-    of ``unknown_kind``, ``parse_error``, ``no_match``, ``multi_match``, ``kind_mismatch``.
+    of ``unknown_kind``, ``parse_error``, ``no_match``, ``multi_match``, ``kind_mismatch``,
+    ``shared_binding``.
     Each is a distinct remedy, which is why they are distinct values: an unknown kind is
     fixed in the prompt, a no-match is fixed in the address, a multi-match is not fixable at
     all and must refuse.
@@ -145,6 +232,8 @@ def resolve_unit(
         matches = _walk(source, path)
     except SyntaxError:
         return (None, "parse_error")
+    except SharedBinding:
+        return (None, "shared_binding")
     if not matches:
         return (None, "no_match")
     if len(matches) > 1:
