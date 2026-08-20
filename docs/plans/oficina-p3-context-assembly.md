@@ -329,6 +329,12 @@ Four corrections, each from a primary source in this repo:
 
   Plus `ensure_import` / `remove_import` and `replace_module_docstring`, which the census shows
   close the entire non-def/class residue in both languages (`ref:unit-addressing-census`).
+  **~~close the entire residue~~ — CORRECTED AT FREEZE (s140). True of STRUCTURE, false of
+  EDITS.** The census enumerated what a file CONTAINS; 5b measured what edits DO, and an edit can
+  **add** a top-level unit the static census never saw — `replace_unit` replaces, it cannot
+  create. The frozen vocabulary is **four** operations (see the DECISION block at the top of this
+  entry), and the missing one is `insert_unit`. Left in place rather than reworded, because this
+  sentence is the one a reader would otherwise carry forward.
 - **(C) revive `kind: patch`.** Routes to Axis B by E-D8's trigger; P3 becomes a consumer. Note
   this is now the *weakest* fit: per the S15 argument above, response shape is not a kind.
 - **(D) The CASCADE — added s135, previously unconsidered.** Claude emits an edit *sketch*
@@ -529,95 +535,9 @@ budgets re-prompts for *"lint/test failures **or malformed edits**"*
 (`coding-subagent-prior-art.md:15`). Both built recovery machinery around this exact failure
 class. That machinery is part of (B)'s unpriced cost.
 
-**Who chooses.** Three sub-options were recorded, and one constraint was said to decide it. **The
-constraint did not survive s136 and a fourth option — the one the code already implements twice —
-was hidden by the two-way framing.** The sub-options as recorded:
-
-- **auto-select at assembly** — a `_resolve_output_shape(assembly)` beside `_resolve_num_predict`
-  (E-D9) and `_resolve_max_iterations` (T-114). Attractive because **T-112's guard is a refusal
-  assembled from exactly the numbers a selector needs**: `_context_overflow` compares
-  `ceil(len(prompt)/4) + _num_predict` against the live ceiling, and `_resolve_num_predict`'s
-  edit branch computes `max(NUM_PREDICT, ceil(chars/4) * 2)` — *which is* the "pays for its
-  target twice" arithmetic of the band.
-- **caller declares** — validated at intake, with today's guard refusing loudly on a mismatch.
-- **refuse-and-suggest** — no new runtime behaviour; `ContextBudgetError` names the remedy.
-
-**~~The deciding constraint.~~ RE-ARGUED s136 — the decider does not hold, and it hid the option
-the code already implements twice. Still NOT frozen: the probe gates the whole entry.**
-
-The constraint as written: *under auto-select, when `_context_limit is None` the selector must
-still emit something*, and `transport.model_context_limit` is a written record of this project
-refusing that guess — *"an absent or unreadable value yields None rather than a guess: guessing
-high silently disables the caller's fit check, guessing low aborts valid work."* Auto-select would
-place a guessing selector beside a resolver documented as refusing to guess; caller-declares
-removes the question rather than answering it.
-
-**It fails on two counts, one logical and one measured.**
-
-1. **It conflates guessing a ceiling VALUE with choosing a DEFAULT under absence** — and the
-   consumer of that same `None` already demonstrates the correct move, one function away
-   (`loop.py:536`): `if self._context_limit is None: return None` — *"an unresolvable ceiling
-   disables the guard; the caller was already told once, at resolve time."* `_context_overflow`
-   does not guess; it **declines to act**. A `_resolve_output_shape` returning `"whole_file"` on
-   `None` is the identical move: keep today's behaviour, change nothing. **The precedent cited as
-   forbidding auto-select is in fact the template for handling absence.**
-2. **The case is close to hypothetical for oficina's own models — measured, not assumed.** All
-   three personas the system uses declare the window explicitly:
-   `modelfiles/python-q25c14-16k-qwen25c14.Modelfile:4`, `go-…:4`, `judge-…:5` — all
-   `PARAMETER num_ctx 16384`. `None` therefore arises only when `/api/show` itself fails, i.e.
-   Ollama is unreachable or wedged, in which case the run dies at the first generate regardless.
-   *(Boundary: the Modelfiles were read; live `/api/show` output was not re-confirmed.)* **A
-   design fork was closed on a code path that does not execute** — s132's calibration lesson at
-   design altitude.
-
-**The option the two-way framing hid: DERIVE WITH OVERRIDE.** E-D9 and T-114 are both
-*derive-from-mode, explicit-wins* (`if self._explicit_num_predict is not None: return …`;
-`if self._explicit_iterations is not None: return …`). That is neither "auto-select" nor "caller
-declares" — it is the **house pattern for exactly this class of question**, established twice, and
-recording the fork as two-way made the synthesis invisible.
-
-**E-D2 now points the other way, and the entry had it backwards.** The stance is *"no new spec
-fields"* for derivable facts. The previous text argued caller-declares survives it because shape
-depends on *"a budget, not an unambiguous repository fact"* — but the budget is `num_ctx` +
-`num_predict`, and **`_context_overflow` computes that comparison today**. Shape is as derivable
-as mode is. The s134 `output_shape` field was rejected for the wrong reason (duplicate axis);
-**the E-D2 objection is a separate, still-live one, and it tells against caller-declares.**
-
-**First principle 1 seconds it.** *"Harness code does all mechanics … models only decide
-content."* Choosing an output encoding from a budget is mechanics. Pushing it to the caller
-reproduces the objection this entry already makes against option (D): *"it moves intellectual work
-back to Claude, which is the cost oficina exists to avoid."* Today Claude must know which 6 of 27
-files are blocked; a derived shape is what makes T-122 disappear for the caller.
-
-***Recommendation (re-argued, NOT frozen):* `_resolve_output_shape(assembly)`, third in the
-sequence at `loop.py:550-552`, following E-D9's shape exactly** — an explicit
-`deliverable.output_shape` wins if present; otherwise derive from the numbers `_context_overflow`
-already compares; return `"whole_file"` when the ceiling is unknown. Emit the choice as an event
-(first principle 5) so a run's shape is never inferred after the fact.
-
-**Two costs, both real:**
-
-- **P3-D5's widening becomes live** — if both shapes occur in edit mode, `applies_to` may need to
-  key on `(mode, shape)` rather than `mode`, touching P4's frozen T-130 design. **This does not
-  discriminate between the sub-options**: the shape varies under caller-declares too.
-- **A third resolver is a third thing that can be wrong.** Mitigated by the pattern being
-  twice-established, and by the negative control being cheap.
-
-**Both open questions answered by the user, s136:**
-
-1. **An *optional* `output_shape` override does NOT violate E-D2's spirit.** E-D2 refuses a
-   *required* field for a derivable fact; an override is the E-D9/T-114 shape, where the derived
-   value is the contract and the field only pre-empts it. **Derive-with-override is clear to
-   build.**
-2. **Recording the shape for reproducibility: leaning yes, not decided.** Noted as *"might be a
-   good idea"*, so it stays open. **Synthesis offered, not user-stated:** first principle 5
-   (*everything is an event*) already supplies most of what reproducibility wants — emitting the
-   **chosen** shape on the run ledger makes a completed run's encoding recoverable without making
-   the field required, and it is the same move `AssemblyDone`'s additive `mode` key made for E-D2.
-   The residual question the ledger does *not* answer is **forward** reproducibility: a re-run on a
-   different persona derives a different ceiling and could silently pick a different encoding. If
-   that matters, the answer is a spec field; if only forensics matter, the event suffices.
-   **Decide with the probe's results, not before.**
+**Who chooses — MOVED to P3-D10 (s140).** This entry froze on what the model EMITS. The
+selection question, its four sub-options and the s136 re-argument now live in **P3-D10**, in one
+place, so a fork does not sit inside a frozen entry reading as settled.
 
 ### Prior art and measurement — commissioned s135, four arms
 
@@ -973,40 +893,114 @@ P5's `blocked` union by the line P4 drew for S14 — one deterministic pause at 
 Mechanizes `benchmarks/lib/decomposed-run.py` and the Layer-0 3-stage finding.
 **Carries P4's rejection forward explicitly:** `steps:` is **not** a T-122 remedy and must not be
 planned as one — each step still emits a whole file unless P3-D1 says otherwise.
-### P3-D10 — WHO CHOOSES the response shape — **OPEN (lifted out of P3-D1, s140)**
+### P3-D10 — WHO CHOOSES the response shape — **OPEN, re-argued, recommendation standing**
 
-**Why this is its own entry.** P3-D1 froze on measurement: criteria 1/2/4 and 5a/5b settled what
-the model **emits**. None of them touch who **selects** whole-file versus symbol-addressed for a
-given run — that is argument-bound, not measurement-bound, and § "Vision-level reconciliation"
-item 5 (s136) left a standing instruction on it: *"the stated decider is weaker than it reads.
-**Re-argue it before freezing.**"* Freezing an argued half alongside a measured one, inside one
-entry, is how s135's register got stuck at D1 while reading as though it had moved.
+**Why this is its own entry (s140).** P3-D1 froze on measurement: criteria 1/2/4 and 5a/5b
+settled what the model **emits**. None of them touch who **selects** whole-file versus
+symbol-addressed for a given run — that is argument-bound, not measurement-bound. Freezing an
+argued half alongside a measured one, inside one entry, is how s135's register got stuck at D1
+while reading as though it had moved.
 
-**The fork.**
+**Status correction, made while lifting this out.** s136's reconciliation item 5 ends *"Re-argue
+it before freezing"*, and s140's first draft of this entry read that as outstanding work. **It is
+not: the re-argument was done in s136**, in the material below, and it ends in a recommendation.
+What is outstanding is the **freeze**, not the argument. Recorded because the same misreading
+would otherwise recur every time someone follows the s136 pointer.
 
-- **(i) Caller declares.** The run spec names the shape. E-D2's recorded precedent, on the ground
-  that shape depends on *"a **budget**, not an unambiguous repository fact"*.
-- **(ii) Auto-select, size-gated.** The harness picks from the target's size against the live
-  `/api/show` ceiling — the E-D1 split this plan's own § adopts.
-- **(iii) Auto-select with a caller override.** (ii) as the default, (i) as an escape hatch.
+**Everything below is moved verbatim from P3-D1 (s140), not restated.** The criteria drifted once
+in this plan by existing in two places (s136); this entry is the one place.
 
-**The constraint that was doing the work, and why it may not.** E-D2's deciding argument is that
-auto-select *must emit something* when `_context_limit is None`. **Under the size-gated-fallback
-framing this plan already adopts, that constraint dissolves:** an unknown ceiling means *do not
-fall back* — i.e. keep today's whole-file default — which is the same fail-safe direction
-`transport.model_context_limit` already documents. So the precedent may not bind (ii) at all.
+**Who chooses.** Three sub-options were recorded, and one constraint was said to decide it. **The
+constraint did not survive s136 and a fourth option — the one the code already implements twice —
+was hidden by the two-way framing.** The sub-options as recorded:
 
-**What it must not be decided from.** Not the token count. First principle 3 — *"async exists to
-buy quality, not speed"* — cuts against cost framing, and P3-D1's own § records that arm A's
-25-vs-310 was never the argument. The live question is **feasibility**: a file that cannot be
-edited at all is not a cost complaint (T-122).
+- **auto-select at assembly** — a `_resolve_output_shape(assembly)` beside `_resolve_num_predict`
+  (E-D9) and `_resolve_max_iterations` (T-114). Attractive because **T-112's guard is a refusal
+  assembled from exactly the numbers a selector needs**: `_context_overflow` compares
+  `ceil(len(prompt)/4) + _num_predict` against the live ceiling, and `_resolve_num_predict`'s
+  edit branch computes `max(NUM_PREDICT, ceil(chars/4) * 2)` — *which is* the "pays for its
+  target twice" arithmetic of the band.
+- **caller declares** — validated at intake, with today's guard refusing loudly on a mismatch.
+- **refuse-and-suggest** — no new runtime behaviour; `ContextBudgetError` names the remedy.
 
-**Bounded below by P3-D1's freeze:** whatever chooses, harness-side detection of an
-unaddressable-statement need runs regardless — the model never signals it (5a).
+**~~The deciding constraint.~~ RE-ARGUED s136 — the decider does not hold, and it hid the option
+the code already implements twice. Still NOT frozen: the probe gates the whole entry.**
 
-***Recommendation:* none yet — this entry exists so the fork is visible, not to pre-empt it.**
-Decide it with P3-D4 (constraints selection), which is the other entry that has to know whether
-the shape is a caller input or a derived fact.
+The constraint as written: *under auto-select, when `_context_limit is None` the selector must
+still emit something*, and `transport.model_context_limit` is a written record of this project
+refusing that guess — *"an absent or unreadable value yields None rather than a guess: guessing
+high silently disables the caller's fit check, guessing low aborts valid work."* Auto-select would
+place a guessing selector beside a resolver documented as refusing to guess; caller-declares
+removes the question rather than answering it.
+
+**It fails on two counts, one logical and one measured.**
+
+1. **It conflates guessing a ceiling VALUE with choosing a DEFAULT under absence** — and the
+   consumer of that same `None` already demonstrates the correct move, one function away
+   (`loop.py:536`): `if self._context_limit is None: return None` — *"an unresolvable ceiling
+   disables the guard; the caller was already told once, at resolve time."* `_context_overflow`
+   does not guess; it **declines to act**. A `_resolve_output_shape` returning `"whole_file"` on
+   `None` is the identical move: keep today's behaviour, change nothing. **The precedent cited as
+   forbidding auto-select is in fact the template for handling absence.**
+2. **The case is close to hypothetical for oficina's own models — measured, not assumed.** All
+   three personas the system uses declare the window explicitly:
+   `modelfiles/python-q25c14-16k-qwen25c14.Modelfile:4`, `go-…:4`, `judge-…:5` — all
+   `PARAMETER num_ctx 16384`. `None` therefore arises only when `/api/show` itself fails, i.e.
+   Ollama is unreachable or wedged, in which case the run dies at the first generate regardless.
+   *(Boundary: the Modelfiles were read; live `/api/show` output was not re-confirmed.)* **A
+   design fork was closed on a code path that does not execute** — s132's calibration lesson at
+   design altitude.
+
+**The option the two-way framing hid: DERIVE WITH OVERRIDE.** E-D9 and T-114 are both
+*derive-from-mode, explicit-wins* (`if self._explicit_num_predict is not None: return …`;
+`if self._explicit_iterations is not None: return …`). That is neither "auto-select" nor "caller
+declares" — it is the **house pattern for exactly this class of question**, established twice, and
+recording the fork as two-way made the synthesis invisible.
+
+**E-D2 now points the other way, and the entry had it backwards.** The stance is *"no new spec
+fields"* for derivable facts. The previous text argued caller-declares survives it because shape
+depends on *"a budget, not an unambiguous repository fact"* — but the budget is `num_ctx` +
+`num_predict`, and **`_context_overflow` computes that comparison today**. Shape is as derivable
+as mode is. The s134 `output_shape` field was rejected for the wrong reason (duplicate axis);
+**the E-D2 objection is a separate, still-live one, and it tells against caller-declares.**
+
+**First principle 1 seconds it.** *"Harness code does all mechanics … models only decide
+content."* Choosing an output encoding from a budget is mechanics. Pushing it to the caller
+reproduces the objection this entry already makes against option (D): *"it moves intellectual work
+back to Claude, which is the cost oficina exists to avoid."* Today Claude must know which 6 of 27
+files are blocked; a derived shape is what makes T-122 disappear for the caller.
+
+***Recommendation (re-argued, NOT frozen):* `_resolve_output_shape(assembly)`, third in the
+sequence at `loop.py:550-552`, following E-D9's shape exactly** — an explicit
+`deliverable.output_shape` wins if present; otherwise derive from the numbers `_context_overflow`
+already compares; return `"whole_file"` when the ceiling is unknown. Emit the choice as an event
+(first principle 5) so a run's shape is never inferred after the fact.
+
+**Two costs, both real:**
+
+- **P3-D5's widening becomes live** — if both shapes occur in edit mode, `applies_to` may need to
+  key on `(mode, shape)` rather than `mode`, touching P4's frozen T-130 design. **This does not
+  discriminate between the sub-options**: the shape varies under caller-declares too.
+- **A third resolver is a third thing that can be wrong.** Mitigated by the pattern being
+  twice-established, and by the negative control being cheap.
+
+**Both open questions answered by the user, s136:**
+
+1. **An *optional* `output_shape` override does NOT violate E-D2's spirit.** E-D2 refuses a
+   *required* field for a derivable fact; an override is the E-D9/T-114 shape, where the derived
+   value is the contract and the field only pre-empts it. **Derive-with-override is clear to
+   build.**
+2. **Recording the shape for reproducibility: leaning yes, not decided.** Noted as *"might be a
+   good idea"*, so it stays open. **Synthesis offered, not user-stated:** first principle 5
+   (*everything is an event*) already supplies most of what reproducibility wants — emitting the
+   **chosen** shape on the run ledger makes a completed run's encoding recoverable without making
+   the field required, and it is the same move `AssemblyDone`'s additive `mode` key made for E-D2.
+   The residual question the ledger does *not* answer is **forward** reproducibility: a re-run on a
+   different persona derives a different ceiling and could silently pick a different encoding. If
+   that matters, the answer is a spec field; if only forensics matter, the event suffices.
+   **Decide with the probe's results, not before.**
+
+---
 
 <!-- /ref:delegate-p3-decisions -->
 
