@@ -42,9 +42,19 @@ Results in `benchmarks/results/` (timestamped directories).
 - **The corpus's ground truth is now tested** (`test_writemodel_corpus.py`): the generated original
   must FAIL its target test and PASS every filler. Nothing checked that before, and if it inverts
   every arm scores against a task with no defect while the numbers still print.
-- ⚠️ **None of these tests run in any suite** — `make test` is `pytest tests/` under `mcp-server`
-  with `testpaths=["tests"]`, and there is no root Makefile. Run them with
-  `cd benchmarks/lib && python3 -m pytest`. **T-136.**
+- ✅ **T-136 CLOSED (s138):** `make test` at the REPO ROOT runs six suites including this one
+  (`benchmarks/lib/run-tests.sh`). **170 tests here**; repo total **1009** (s140).
+- **Constant addressing (s140, P3-D1 remedy 2).** `--corpus constant` = tasks whose only sane
+  repair is a MODULE CONSTANT; three functions read it and the target test asserts all three,
+  so patching one function body cannot pass. **Measured: address fidelity 12/12, degeneration
+  0/12, 30 output tokens FLAT vs whole-file 84/176/352 (11.7× at large), both arms 100%.**
+  **Two instrument traps found here, both of which pass silently:** the arm's prompt HARDCODED
+  `"kind": Function|Method|Class`, so when `KINDS` grew the model could not name the new kind
+  and the arm would report a clean zero for a case it never offered — the kind list is now
+  RENDERED from `KINDS`; and **`body_units` counted def/class node types**, so a `NAME = value`
+  body scored 0 and twelve correct answers were reported as fragments — it now uses the
+  resolver's `_addressable_names`. Diagnosing the second cost a full re-run: **the JSONL still
+  records no model output (T-139).**
 - `lib/compare-models.py` — side-by-side comparison, verdict capture
 - `lib/record-verdicts.py` — verdict scale: 2=accepted 1=improved 0=rejected; use `--verdicts 2,1 --notes "|n2"`
   for non-interactive mode (Claude Code has no TTY — interactive `input()` hits EOFError)

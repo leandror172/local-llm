@@ -26,6 +26,15 @@ Recent sessions — pointers only; measurements and invariants live in KNOWLEDGE
   REPRODUCE (four exact), so the split is additive. Cuts made durable (`run-census-report.sh`) —
   and the first draft of them filtered on the substring `"oficina/"`, which also matches
   `tests/oficina/` and would have "corrected" a correct number. Benchmarks 116→141.
+  **Then remedy 2 BUILT and its model-facing half MEASURED** — module constants are addressable
+  (`Constant`/`ClassConstant`, position still the only discriminator; a multi-name statement
+  REFUSES with its own `shared_binding` reason). Live: **address fidelity 12/12, degeneration
+  0/12, 30 output tokens FLAT vs whole-file 84/176/352**. **The plan's predicted `_UNIT_NODES`
+  was written and DELETED** — a membership pre-filter blocked nothing the name dispatch did not,
+  and it made the rule untestable: two mutations both left the suite green, each neutralised by
+  the other. **Every defect this session came from a mutation or a reproduction check, none from
+  a green run** — including a prompt that hardcoded the kind vocabulary, so the new capability
+  was unreachable by the model. Repo 1009.
 
 - **s137** (08-18) — **P3-T0's BENCHMARK HALF BUILT AND MEASURED; the naming half clears its
   gate.** Dotted addressing (`find_units`/`resolve_unit`/`apply_unit`) + class-bearing corpus +

@@ -1372,6 +1372,59 @@ one, so the prefix test matched nothing and the whole category drained into `con
 headline rate was unaffected — a docstring is unaddressable either way — **which is exactly why
 a measured zero could sit there looking like a result.**
 
+### RESULTS — remedy 2 BUILT and its model-facing half MEASURED, 2026-08-20 (s140)
+
+**The resolver extension shipped, and the coder can reach it.** 24 generations,
+`my-python-q25c14-16k`, `--corpus constant`. Raw:
+`benchmarks/results/p3t0-constant-addressing.jsonl`.
+
+| criterion | result |
+|---|---|
+| 1 — address fidelity | **12/12 `ok`** — every emitted `["CONSTANT"]` / `kind: "Constant"` resolved to exactly one unit |
+| 2 — degeneration | **0/12** addressed >50% of the file; span median **0.027** |
+| 4 — response shape | **0/12** on every sub-check, including the fragment check |
+
+| bucket | whole-file | symbol-addressed | ratio |
+|---|---|---|---|
+| small | 84 tok | **30** | 2.8× |
+| medium | 176 tok | **30** | 5.9× |
+| large | 352 tok | **30** | **11.7×** |
+
+Both arms 100% combined at every bucket on the re-run, so this is cost at equal correctness —
+and **30 tokens is below s137's 43**, because a constant's body is one line rather than a
+function.
+
+**Why a corpus was needed at all, and not just the resolver tests.** A capability the model
+cannot NAME is the *"check that can only pass"* failure in its costliest form: the deterministic
+tests would all be green while never exercising the thing they exist to test. The corpus
+**forces** the constant — three functions read it and the target test asserts all three, so
+repairing any one function body leaves two assertions failing — and that forcing property is
+itself pinned by a test that fails when the corpus is reduced to one consumer.
+
+**Two instrument defects, either of which would have published a confident wrong number.**
+
+1. **The prompt hardcoded a vocabulary the code owns** — `"kind": "Function", "Method" or
+   "Class"`. `KINDS` grew `Constant`/`ClassConstant` and the prompt did not, so the resolver
+   could address a constant while the model had no way to name one. The arm would have reported
+   a clean zero **for a case it never offered**. The list is now rendered from `KINDS`, pinned
+   in both directions.
+2. **`body_units` counted def/class node types**, inheriting the exact assumption the resolver
+   had just shed. A `Constant` body is `NAME = value`, so run 1 reported *"0 units in body
+   12/12 — a fragment, not a unit"* against twelve correct answers. It now uses
+   `_addressable_names`. Diagnosing it cost a **full re-run**, because the JSONL records no
+   model output — **T-139, biting exactly as filed.**
+
+**The plan's predicted implementation was measured and dropped.** This section said *"extend
+`_UNIT_NODES` + a `Constant` kind"*. `_UNIT_NODES` was written and then **deleted**: with the
+name dispatch returning empty for anything it does not handle, a membership pre-filter blocks
+nothing — and it made the rule **untestable**, because adding `ast.AugAssign` to the dispatch
+and `ast.Import` to the tuple **both left the whole suite green**, each neutralised by the
+other. One rule needs one enforcement point or no single-point mutation can reach it.
+
+**Still open on remedy 2:** `insert_top_level` (imports 17.4% + docstring 4.3% + **added**
+constants 13.0%) and `insert_unit` (17.4%) are unbuilt, and criterion 3 — D1's acceptance
+condition — has not run.
+
 <!-- /ref:delegate-p3-probe -->
 
 ---
