@@ -148,12 +148,100 @@ spine*") is the honest cost; the vision framing is that Claude was always the ga
 ---
 
 <!-- ref:delegate-p3-decisions -->
-## Decision register (P3-D) — OPEN
+## Decision register (P3-D) — **D1 FROZEN (s140)** · D6 FROZEN AND BUILT · D2–D5, D7–D10 OPEN
 
 House rule: each entry states the fork, the constraints that bound it, and a recommendation.
 Freeze on review with the user; reverse only with new evidence once frozen.
 
-### P3-D1 — What the model EMITS when editing, and who chooses — **BLOCKS**
+### P3-D1 — What the model EMITS when editing — **DECIDED 2026-08-20 (s140) — (B), on FOUR operations**
+
+**DECISION — (B), model-emitted structured edit operations.** The model returns typed JSON
+naming a unit and supplying its new body; the harness resolves the name to a span and splices.
+
+**The "who chooses" half is NOT decided here.** It is lifted to **P3-D10** (s140). Criterion 5
+settled what the model *emits* and says nothing about who *selects* the shape, and § "Vision-level
+reconciliation" item 5 requires that half to be **re-argued** rather than carried — a fork left
+inside a frozen entry reads as settled, which is the s135 failure this register already made once.
+
+**What decided it** — all pre-registered before running, all on `my-python-q25c14-16k`:
+
+| criterion | result |
+|---|---|
+| 1 — address fidelity | **12/12 resolve to exactly one unit.** No no-match, multi-match, kind-mismatch |
+| 2 — degeneration to a coarse unit | **0/12** address >50% of the file; span median **0.047**. The criterion that could kill the design, and it did not occur |
+| 4 — response shape | **0/12** defects — no fences, no prose, no neighbouring code |
+| output cost | **43 tokens FLAT** at every size, against whole-file's 120 / 216 / 479 |
+| 5a — behaviour at the bound | a **coverage** bound, not an addressing failure: 1/2/4 stayed clean, tokens stayed flat |
+| 5b — how often the bound is hit | **23–48% of real edits** (487 measured). **Not a rare fallback** |
+
+**Caveats carried INTO the freeze, because a frozen entry is quoted without them otherwise
+(s137's own list):** n is **12 per arm** over **two** defect kinds (`scale`, `clamp`) on generated
+classes; **whole-file also scored 100%** on that corpus, so it still does not stress omission —
+E-D1's *"best possible case for whole-file fidelity"* is only partly retired by adding classes;
+and the token ratio is a **floor**, since the large bucket is ~100 lines and `loop.py` is 638.
+
+#### The operation vocabulary, RECONCILED at freeze (s140)
+
+This entry named `ensure_import` / `remove_import` / `replace_module_docstring` and said the
+census shows they *"close the entire non-def/class residue in both languages."* **True of
+STRUCTURE, false of EDITS** — and nothing caught it because the two measurements sit 400 lines
+and three sessions apart. The census enumerated what **exists** in a file (the complement of
+def/class is imports and the module docstring, ~10.9%). 5b measured what **edits do**, and an
+edit can *add* a top-level unit the static census never saw. `replace_unit` replaces; it cannot
+create. **Static coverage ≠ edit coverage.** Neither document is wrong; they answer different
+questions, and only one of them is the coverage question.
+
+| # | operation | population (oficina src ≤40) | status |
+|---|---|---|---|
+| 1 | **`replace_unit`** — dotted `path` + `kind` + `body` | the addressable majority | **built and measured** (criteria 1/2/4) |
+| 2 | *no new operation* — index assignments, add a `Constant` kind | **17.4%** | a **resolver gap**, not a construction bound |
+| 3 | **`insert_top_level`** — imports · module docstring · **added** constants | 17.4% + 4.3% + 13.0% | **the largest population** |
+| 4 | **`insert_unit`** — a top-level unit that does not exist yet | 17.4% | a gap this plan had **never named** |
+
+**The magnitude was corrected AT the freeze, and the correction is roughly half (s140).** The 5b
+remedy table asserts *"No new operation"* against the whole **30.4%** constant slice, while 5b's
+own caveat (c) records that the count includes statements *"added **or changed**"*. Only the
+**changed** half is convertible by a `Constant` kind — an **added** constant has a name but
+nothing to replace, so it needs `insert_top_level` exactly as an import does. Measured over 487
+real edits (`run-census-report.sh`): on oficina's own source the 30.4% splits **CONVERT 17.4% /
+ADDED 13.0%**, and across cuts CONVERT ranges **6.4%–17.4%**. The unbounded cut overstates the
+convertible share about **fourfold**.
+
+**Consequence, and it reverses this plan's stated ordering.** The claim *"cheapest first and
+largest first are the same thing"* is **false**: the resolver extension (17.4%) **ties imports
+alone** (17.4%), while `insert_top_level`'s real population — imports **+** added constants **+**
+docstrings — is strictly larger. **Cheapest-first survives on its own merits** (no new operation,
+no schema change, no prompt text, and criterion 1 already measured `find_units` at 12/12 unique)
+— but it is no longer *also* largest-first, and **30.4% must never be quoted as the resolver's
+share.**
+
+*Reproduction check, stated so the correction is auditable:* all six of s139's published 5b rows
+reproduce on the new instrument — four **exact**, two off only by the single commit added since.
+The split is **additive**; the published 23–48% headline does not move.
+
+#### Attached at freeze — conditions, not commentary
+
+- **Harness-side detection is MANDATORY, not an alternative to the operations.** 5a: the model
+  **never refuses** — 24 of 24 attempts emitted a confident, well-formed, correctly-addressed
+  operation — so the fallback cannot be triggered by a model signal. **14 of 24 emitted a
+  function-local import and 10 of those 14 PASS ALL TESTS**, i.e. the failure is silent to
+  criteria 1–4 *and* to the suite. Detection is two AST checks on output the harness already
+  parses (does `body` contain an import; does it reference a name the target never binds), and
+  it is first principle 1 — *"harness code does all mechanics"* — not a new burden.
+- **Separate the budgets.** *"Edit didn't apply"* must not consume the *"output didn't parse"*
+  budget (SWE-agent, **+3.0 points** measured). Cheap now, expensive to retrofit.
+- **Rename breaks symbol identity.** If `body` renames the unit, the address names the old and
+  the body defines the new. Serena has a live bug in exactly this operation (oraios/serena#576).
+- **Multi-target assignment must REFUSE, not guess.** `A, B = 1, 2` is one node binding two
+  names, so `["A"]` and `["B"]` resolve to the **same span** and replacing one rewrites both.
+  `apply_unit` already contracts *"Refuses rather than guesses"*; this is the case that tests it.
+- **ACCEPTANCE CONDITION — criterion 3.** This freeze rests on the benchmark half plus 5a/5b.
+  If criterion 3's build shows the operation list does not apply cleanly to a real file and pass
+  that file's real suite, **D1 reopens with evidence — not before.** Same shape as P4-D2's
+  attached condition, which is the register's precedent for freezing a measured *fit* whose
+  *end-to-end* half has not run.
+
+---
 
 **This entry has been revised three times. All three are recorded, because the second one
 reinstates something the first removed, and the third finds that the mechanism had already been
@@ -241,6 +329,12 @@ Four corrections, each from a primary source in this repo:
 
   Plus `ensure_import` / `remove_import` and `replace_module_docstring`, which the census shows
   close the entire non-def/class residue in both languages (`ref:unit-addressing-census`).
+  **~~close the entire residue~~ — CORRECTED AT FREEZE (s140). True of STRUCTURE, false of
+  EDITS.** The census enumerated what a file CONTAINS; 5b measured what edits DO, and an edit can
+  **add** a top-level unit the static census never saw — `replace_unit` replaces, it cannot
+  create. The frozen vocabulary is **four** operations (see the DECISION block at the top of this
+  entry), and the missing one is `insert_unit`. Left in place rather than reworded, because this
+  sentence is the one a reader would otherwise carry forward.
 - **(C) revive `kind: patch`.** Routes to Axis B by E-D8's trigger; P3 becomes a consumer. Note
   this is now the *weakest* fit: per the S15 argument above, response shape is not a kind.
 - **(D) The CASCADE — added s135, previously unconsidered.** Claude emits an edit *sketch*
@@ -441,95 +535,9 @@ budgets re-prompts for *"lint/test failures **or malformed edits**"*
 (`coding-subagent-prior-art.md:15`). Both built recovery machinery around this exact failure
 class. That machinery is part of (B)'s unpriced cost.
 
-**Who chooses.** Three sub-options were recorded, and one constraint was said to decide it. **The
-constraint did not survive s136 and a fourth option — the one the code already implements twice —
-was hidden by the two-way framing.** The sub-options as recorded:
-
-- **auto-select at assembly** — a `_resolve_output_shape(assembly)` beside `_resolve_num_predict`
-  (E-D9) and `_resolve_max_iterations` (T-114). Attractive because **T-112's guard is a refusal
-  assembled from exactly the numbers a selector needs**: `_context_overflow` compares
-  `ceil(len(prompt)/4) + _num_predict` against the live ceiling, and `_resolve_num_predict`'s
-  edit branch computes `max(NUM_PREDICT, ceil(chars/4) * 2)` — *which is* the "pays for its
-  target twice" arithmetic of the band.
-- **caller declares** — validated at intake, with today's guard refusing loudly on a mismatch.
-- **refuse-and-suggest** — no new runtime behaviour; `ContextBudgetError` names the remedy.
-
-**~~The deciding constraint.~~ RE-ARGUED s136 — the decider does not hold, and it hid the option
-the code already implements twice. Still NOT frozen: the probe gates the whole entry.**
-
-The constraint as written: *under auto-select, when `_context_limit is None` the selector must
-still emit something*, and `transport.model_context_limit` is a written record of this project
-refusing that guess — *"an absent or unreadable value yields None rather than a guess: guessing
-high silently disables the caller's fit check, guessing low aborts valid work."* Auto-select would
-place a guessing selector beside a resolver documented as refusing to guess; caller-declares
-removes the question rather than answering it.
-
-**It fails on two counts, one logical and one measured.**
-
-1. **It conflates guessing a ceiling VALUE with choosing a DEFAULT under absence** — and the
-   consumer of that same `None` already demonstrates the correct move, one function away
-   (`loop.py:536`): `if self._context_limit is None: return None` — *"an unresolvable ceiling
-   disables the guard; the caller was already told once, at resolve time."* `_context_overflow`
-   does not guess; it **declines to act**. A `_resolve_output_shape` returning `"whole_file"` on
-   `None` is the identical move: keep today's behaviour, change nothing. **The precedent cited as
-   forbidding auto-select is in fact the template for handling absence.**
-2. **The case is close to hypothetical for oficina's own models — measured, not assumed.** All
-   three personas the system uses declare the window explicitly:
-   `modelfiles/python-q25c14-16k-qwen25c14.Modelfile:4`, `go-…:4`, `judge-…:5` — all
-   `PARAMETER num_ctx 16384`. `None` therefore arises only when `/api/show` itself fails, i.e.
-   Ollama is unreachable or wedged, in which case the run dies at the first generate regardless.
-   *(Boundary: the Modelfiles were read; live `/api/show` output was not re-confirmed.)* **A
-   design fork was closed on a code path that does not execute** — s132's calibration lesson at
-   design altitude.
-
-**The option the two-way framing hid: DERIVE WITH OVERRIDE.** E-D9 and T-114 are both
-*derive-from-mode, explicit-wins* (`if self._explicit_num_predict is not None: return …`;
-`if self._explicit_iterations is not None: return …`). That is neither "auto-select" nor "caller
-declares" — it is the **house pattern for exactly this class of question**, established twice, and
-recording the fork as two-way made the synthesis invisible.
-
-**E-D2 now points the other way, and the entry had it backwards.** The stance is *"no new spec
-fields"* for derivable facts. The previous text argued caller-declares survives it because shape
-depends on *"a budget, not an unambiguous repository fact"* — but the budget is `num_ctx` +
-`num_predict`, and **`_context_overflow` computes that comparison today**. Shape is as derivable
-as mode is. The s134 `output_shape` field was rejected for the wrong reason (duplicate axis);
-**the E-D2 objection is a separate, still-live one, and it tells against caller-declares.**
-
-**First principle 1 seconds it.** *"Harness code does all mechanics … models only decide
-content."* Choosing an output encoding from a budget is mechanics. Pushing it to the caller
-reproduces the objection this entry already makes against option (D): *"it moves intellectual work
-back to Claude, which is the cost oficina exists to avoid."* Today Claude must know which 6 of 27
-files are blocked; a derived shape is what makes T-122 disappear for the caller.
-
-***Recommendation (re-argued, NOT frozen):* `_resolve_output_shape(assembly)`, third in the
-sequence at `loop.py:550-552`, following E-D9's shape exactly** — an explicit
-`deliverable.output_shape` wins if present; otherwise derive from the numbers `_context_overflow`
-already compares; return `"whole_file"` when the ceiling is unknown. Emit the choice as an event
-(first principle 5) so a run's shape is never inferred after the fact.
-
-**Two costs, both real:**
-
-- **P3-D5's widening becomes live** — if both shapes occur in edit mode, `applies_to` may need to
-  key on `(mode, shape)` rather than `mode`, touching P4's frozen T-130 design. **This does not
-  discriminate between the sub-options**: the shape varies under caller-declares too.
-- **A third resolver is a third thing that can be wrong.** Mitigated by the pattern being
-  twice-established, and by the negative control being cheap.
-
-**Both open questions answered by the user, s136:**
-
-1. **An *optional* `output_shape` override does NOT violate E-D2's spirit.** E-D2 refuses a
-   *required* field for a derivable fact; an override is the E-D9/T-114 shape, where the derived
-   value is the contract and the field only pre-empts it. **Derive-with-override is clear to
-   build.**
-2. **Recording the shape for reproducibility: leaning yes, not decided.** Noted as *"might be a
-   good idea"*, so it stays open. **Synthesis offered, not user-stated:** first principle 5
-   (*everything is an event*) already supplies most of what reproducibility wants — emitting the
-   **chosen** shape on the run ledger makes a completed run's encoding recoverable without making
-   the field required, and it is the same move `AssemblyDone`'s additive `mode` key made for E-D2.
-   The residual question the ledger does *not* answer is **forward** reproducibility: a re-run on a
-   different persona derives a different ceiling and could silently pick a different encoding. If
-   that matters, the answer is a spec field; if only forensics matter, the event suffices.
-   **Decide with the probe's results, not before.**
+**Who chooses — MOVED to P3-D10 (s140).** This entry froze on what the model EMITS. The
+selection question, its four sub-options and the s136 re-argument now live in **P3-D10**, in one
+place, so a fork does not sit inside a frozen entry reading as settled.
 
 ### Prior art and measurement — commissioned s135, four arms
 
@@ -885,6 +893,115 @@ P5's `blocked` union by the line P4 drew for S14 — one deterministic pause at 
 Mechanizes `benchmarks/lib/decomposed-run.py` and the Layer-0 3-stage finding.
 **Carries P4's rejection forward explicitly:** `steps:` is **not** a T-122 remedy and must not be
 planned as one — each step still emits a whole file unless P3-D1 says otherwise.
+### P3-D10 — WHO CHOOSES the response shape — **OPEN, re-argued, recommendation standing**
+
+**Why this is its own entry (s140).** P3-D1 froze on measurement: criteria 1/2/4 and 5a/5b
+settled what the model **emits**. None of them touch who **selects** whole-file versus
+symbol-addressed for a given run — that is argument-bound, not measurement-bound. Freezing an
+argued half alongside a measured one, inside one entry, is how s135's register got stuck at D1
+while reading as though it had moved.
+
+**Status correction, made while lifting this out.** s136's reconciliation item 5 ends *"Re-argue
+it before freezing"*, and s140's first draft of this entry read that as outstanding work. **It is
+not: the re-argument was done in s136**, in the material below, and it ends in a recommendation.
+What is outstanding is the **freeze**, not the argument. Recorded because the same misreading
+would otherwise recur every time someone follows the s136 pointer.
+
+**Everything below is moved verbatim from P3-D1 (s140), not restated.** The criteria drifted once
+in this plan by existing in two places (s136); this entry is the one place.
+
+**Who chooses.** Three sub-options were recorded, and one constraint was said to decide it. **The
+constraint did not survive s136 and a fourth option — the one the code already implements twice —
+was hidden by the two-way framing.** The sub-options as recorded:
+
+- **auto-select at assembly** — a `_resolve_output_shape(assembly)` beside `_resolve_num_predict`
+  (E-D9) and `_resolve_max_iterations` (T-114). Attractive because **T-112's guard is a refusal
+  assembled from exactly the numbers a selector needs**: `_context_overflow` compares
+  `ceil(len(prompt)/4) + _num_predict` against the live ceiling, and `_resolve_num_predict`'s
+  edit branch computes `max(NUM_PREDICT, ceil(chars/4) * 2)` — *which is* the "pays for its
+  target twice" arithmetic of the band.
+- **caller declares** — validated at intake, with today's guard refusing loudly on a mismatch.
+- **refuse-and-suggest** — no new runtime behaviour; `ContextBudgetError` names the remedy.
+
+**~~The deciding constraint.~~ RE-ARGUED s136 — the decider does not hold, and it hid the option
+the code already implements twice. Still NOT frozen: the probe gates the whole entry.**
+
+The constraint as written: *under auto-select, when `_context_limit is None` the selector must
+still emit something*, and `transport.model_context_limit` is a written record of this project
+refusing that guess — *"an absent or unreadable value yields None rather than a guess: guessing
+high silently disables the caller's fit check, guessing low aborts valid work."* Auto-select would
+place a guessing selector beside a resolver documented as refusing to guess; caller-declares
+removes the question rather than answering it.
+
+**It fails on two counts, one logical and one measured.**
+
+1. **It conflates guessing a ceiling VALUE with choosing a DEFAULT under absence** — and the
+   consumer of that same `None` already demonstrates the correct move, one function away
+   (`loop.py:536`): `if self._context_limit is None: return None` — *"an unresolvable ceiling
+   disables the guard; the caller was already told once, at resolve time."* `_context_overflow`
+   does not guess; it **declines to act**. A `_resolve_output_shape` returning `"whole_file"` on
+   `None` is the identical move: keep today's behaviour, change nothing. **The precedent cited as
+   forbidding auto-select is in fact the template for handling absence.**
+2. **The case is close to hypothetical for oficina's own models — measured, not assumed.** All
+   three personas the system uses declare the window explicitly:
+   `modelfiles/python-q25c14-16k-qwen25c14.Modelfile:4`, `go-…:4`, `judge-…:5` — all
+   `PARAMETER num_ctx 16384`. `None` therefore arises only when `/api/show` itself fails, i.e.
+   Ollama is unreachable or wedged, in which case the run dies at the first generate regardless.
+   *(Boundary: the Modelfiles were read; live `/api/show` output was not re-confirmed.)* **A
+   design fork was closed on a code path that does not execute** — s132's calibration lesson at
+   design altitude.
+
+**The option the two-way framing hid: DERIVE WITH OVERRIDE.** E-D9 and T-114 are both
+*derive-from-mode, explicit-wins* (`if self._explicit_num_predict is not None: return …`;
+`if self._explicit_iterations is not None: return …`). That is neither "auto-select" nor "caller
+declares" — it is the **house pattern for exactly this class of question**, established twice, and
+recording the fork as two-way made the synthesis invisible.
+
+**E-D2 now points the other way, and the entry had it backwards.** The stance is *"no new spec
+fields"* for derivable facts. The previous text argued caller-declares survives it because shape
+depends on *"a budget, not an unambiguous repository fact"* — but the budget is `num_ctx` +
+`num_predict`, and **`_context_overflow` computes that comparison today**. Shape is as derivable
+as mode is. The s134 `output_shape` field was rejected for the wrong reason (duplicate axis);
+**the E-D2 objection is a separate, still-live one, and it tells against caller-declares.**
+
+**First principle 1 seconds it.** *"Harness code does all mechanics … models only decide
+content."* Choosing an output encoding from a budget is mechanics. Pushing it to the caller
+reproduces the objection this entry already makes against option (D): *"it moves intellectual work
+back to Claude, which is the cost oficina exists to avoid."* Today Claude must know which 6 of 27
+files are blocked; a derived shape is what makes T-122 disappear for the caller.
+
+***Recommendation (re-argued, NOT frozen):* `_resolve_output_shape(assembly)`, third in the
+sequence at `loop.py:550-552`, following E-D9's shape exactly** — an explicit
+`deliverable.output_shape` wins if present; otherwise derive from the numbers `_context_overflow`
+already compares; return `"whole_file"` when the ceiling is unknown. Emit the choice as an event
+(first principle 5) so a run's shape is never inferred after the fact.
+
+**Two costs, both real:**
+
+- **P3-D5's widening becomes live** — if both shapes occur in edit mode, `applies_to` may need to
+  key on `(mode, shape)` rather than `mode`, touching P4's frozen T-130 design. **This does not
+  discriminate between the sub-options**: the shape varies under caller-declares too.
+- **A third resolver is a third thing that can be wrong.** Mitigated by the pattern being
+  twice-established, and by the negative control being cheap.
+
+**Both open questions answered by the user, s136:**
+
+1. **An *optional* `output_shape` override does NOT violate E-D2's spirit.** E-D2 refuses a
+   *required* field for a derivable fact; an override is the E-D9/T-114 shape, where the derived
+   value is the contract and the field only pre-empts it. **Derive-with-override is clear to
+   build.**
+2. **Recording the shape for reproducibility: leaning yes, not decided.** Noted as *"might be a
+   good idea"*, so it stays open. **Synthesis offered, not user-stated:** first principle 5
+   (*everything is an event*) already supplies most of what reproducibility wants — emitting the
+   **chosen** shape on the run ledger makes a completed run's encoding recoverable without making
+   the field required, and it is the same move `AssemblyDone`'s additive `mode` key made for E-D2.
+   The residual question the ledger does *not* answer is **forward** reproducibility: a re-run on a
+   different persona derives a different ceiling and could silently pick a different encoding. If
+   that matters, the answer is a spec field; if only forensics matter, the event suffices.
+   **Decide with the probe's results, not before.**
+
+---
+
 <!-- /ref:delegate-p3-decisions -->
 
 ---
@@ -929,6 +1046,21 @@ arm C, a mechanism this entry does not propose.
    the design, and still the silent one.**
 3. **Applicability, never exact match.** Unchanged. Success = the operation list applies cleanly
    *and* the result passes the run's own acceptance — never equality with a reference diff.
+
+   **RECLASSIFIED s140 — this is a BUILD, not a probe, and P3-D1 is frozen without it.** The
+   reclassification was made in s139 and recorded only in `.claude/session-log.md`; written here
+   because that is where a future session looks. Two facts force it. **(a) It cannot gate what it
+   depends on:** criterion 3 prototypes (B)'s emit+apply inside `loop.py`, which cannot be built
+   without having decided (B) — reading it as a gate makes P3-D1 unfreezable by construction.
+   **(b) A probe that costs what the build costs is not a probe:** criteria 1/2/4/5a/5b answered
+   every question a cheap instrument could answer, and what remains — does an operation list
+   apply to a real file and pass that file's real suite — is the build itself.
+
+   It therefore survives as P3-D1's **acceptance condition** (the P4-D2 pattern), not as its
+   gate: if the operation list does not apply cleanly on `parser.py`/`intake.py`, **D1 reopens
+   with evidence.** Note s137's reading below predates this and states a two-condition bar
+   (*"the unaddressable-statement bound … and the real-file half"*); the first was satisfied by
+   5a/5b, and the second is this reclassification.
 4. **Response-shape discipline** (added s136). Does `body` contain **only** the unit — no fences,
    no prose, no neighbouring code? The same 14B *"fenced its own block contents at runtime"* in
    the s124 benchmark, and E-D5 already strips fences at the write step for exactly this reason.
@@ -1089,7 +1221,10 @@ the model** rather than supplied by the harness, and it stayed size-invariant an
 uniquely, units stay fine-grained*. That **clears the gate the probe was built to test** and
 removes the "magnitude unmeasured" objection for the naming half specifically. It does **not**
 by itself justify freezing (B): the unaddressable-statement bound (item 6) is still unmeasured,
-and the real-file half has not run.
+and the real-file half has not run. *(s140: both conditions are now discharged — the
+bound was measured by 5a/5b, and the real-file half is **reclassified as a build** and attached
+to the freeze as an acceptance condition. See criterion 3 above. This paragraph is left standing
+as written, because the bar it set is the reason the discharge has to be explicit.)*
 
 ### RESULTS — criterion 5a, run 2026-08-19 (s139)
 
@@ -1236,6 +1371,59 @@ oficina would be asked to do.
 one, so the prefix test matched nothing and the whole category drained into `constant`. The
 headline rate was unaffected — a docstring is unaddressable either way — **which is exactly why
 a measured zero could sit there looking like a result.**
+
+### RESULTS — remedy 2 BUILT and its model-facing half MEASURED, 2026-08-20 (s140)
+
+**The resolver extension shipped, and the coder can reach it.** 24 generations,
+`my-python-q25c14-16k`, `--corpus constant`. Raw:
+`benchmarks/results/p3t0-constant-addressing.jsonl`.
+
+| criterion | result |
+|---|---|
+| 1 — address fidelity | **12/12 `ok`** — every emitted `["CONSTANT"]` / `kind: "Constant"` resolved to exactly one unit |
+| 2 — degeneration | **0/12** addressed >50% of the file; span median **0.027** |
+| 4 — response shape | **0/12** on every sub-check, including the fragment check |
+
+| bucket | whole-file | symbol-addressed | ratio |
+|---|---|---|---|
+| small | 84 tok | **30** | 2.8× |
+| medium | 176 tok | **30** | 5.9× |
+| large | 352 tok | **30** | **11.7×** |
+
+Both arms 100% combined at every bucket on the re-run, so this is cost at equal correctness —
+and **30 tokens is below s137's 43**, because a constant's body is one line rather than a
+function.
+
+**Why a corpus was needed at all, and not just the resolver tests.** A capability the model
+cannot NAME is the *"check that can only pass"* failure in its costliest form: the deterministic
+tests would all be green while never exercising the thing they exist to test. The corpus
+**forces** the constant — three functions read it and the target test asserts all three, so
+repairing any one function body leaves two assertions failing — and that forcing property is
+itself pinned by a test that fails when the corpus is reduced to one consumer.
+
+**Two instrument defects, either of which would have published a confident wrong number.**
+
+1. **The prompt hardcoded a vocabulary the code owns** — `"kind": "Function", "Method" or
+   "Class"`. `KINDS` grew `Constant`/`ClassConstant` and the prompt did not, so the resolver
+   could address a constant while the model had no way to name one. The arm would have reported
+   a clean zero **for a case it never offered**. The list is now rendered from `KINDS`, pinned
+   in both directions.
+2. **`body_units` counted def/class node types**, inheriting the exact assumption the resolver
+   had just shed. A `Constant` body is `NAME = value`, so run 1 reported *"0 units in body
+   12/12 — a fragment, not a unit"* against twelve correct answers. It now uses
+   `_addressable_names`. Diagnosing it cost a **full re-run**, because the JSONL records no
+   model output — **T-139, biting exactly as filed.**
+
+**The plan's predicted implementation was measured and dropped.** This section said *"extend
+`_UNIT_NODES` + a `Constant` kind"*. `_UNIT_NODES` was written and then **deleted**: with the
+name dispatch returning empty for anything it does not handle, a membership pre-filter blocks
+nothing — and it made the rule **untestable**, because adding `ast.AugAssign` to the dispatch
+and `ast.Import` to the tuple **both left the whole suite green**, each neutralised by the
+other. One rule needs one enforcement point or no single-point mutation can reach it.
+
+**Still open on remedy 2:** `insert_top_level` (imports 17.4% + docstring 4.3% + **added**
+constants 13.0%) and `insert_unit` (17.4%) are unbuilt, and criterion 3 — D1's acceptance
+condition — has not run.
 
 <!-- /ref:delegate-p3-probe -->
 

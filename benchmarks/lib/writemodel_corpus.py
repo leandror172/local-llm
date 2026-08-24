@@ -294,3 +294,103 @@ def reference_solution(task: Task) -> str:
         return "\n".join(lines).rstrip() + "\n"
 
     raise ValueError(f"{task.name}: target_fn {task.target_fn!r} not in IMPORT_DEFECTS")
+
+
+# --- Constant-requiring tasks (P3-D1 remedy 2, s140) ---------------------------
+#
+# The constant is read by THREE functions and the target test asserts all three, so editing any
+# ONE function body leaves two assertions failing. That is the point: it turns "the model
+# repaired a consumer instead of the constant" into a visible test failure instead of a silent
+# pass. Every consumer is STRICTLY PROPORTIONAL to the constant, so the behaviour text is true
+# of all three -- a squared or cubed consumer (the local model's first draft) makes the prompt's
+# own description wrong for two thirds of the assertions it has to satisfy.
+#
+# `behavior_tail` never names the constant and never says which unit to edit. Naming the
+# address would hand the model the answer to the one question this corpus exists to ask.
+CONSTANT_DEFECTS = [
+    (
+        "SCALE_FACTOR",
+        "SCALE_FACTOR = 2",
+        "SCALE_FACTOR = 10",
+        [
+            ("def scale_value(x):\n    return x * SCALE_FACTOR", "scale_value(5)", 50),
+            ("def scaled_total(xs):\n    return sum(x * SCALE_FACTOR for x in xs)",
+             "scaled_total([1, 2])", 30),
+            ("def half_scaled(x):\n    return (x * SCALE_FACTOR) // 2", "half_scaled(4)", 20),
+        ],
+        "every scaled result is five times larger than it currently is",
+    ),
+    (
+        "MAX_RETRIES",
+        "MAX_RETRIES = 1",
+        "MAX_RETRIES = 4",
+        [
+            ("def should_retry(attempt):\n    return attempt < MAX_RETRIES", "should_retry(2)", True),
+            ("def retry_countdown(start):\n    return list(range(start, -1, -1))[:MAX_RETRIES]",
+             "retry_countdown(5)", [5, 4, 3, 2]),
+            ("def max_attempts_reached(attempts):\n    return attempts >= MAX_RETRIES",
+             "max_attempts_reached(3)", False),
+        ],
+        "four attempts are allowed rather than the one it currently permits",
+    ),
+]
+
+
+def generate_constant_task(bucket: str, idx: int) -> Task:
+    """Build one constant-requiring Task for a size bucket.
+
+    ``target_fn`` is the CONSTANT's name, so ``target_path`` defaults to it and the
+    symbol-addressed arm is asked for an address only the s140 resolver extension can resolve.
+    """
+    n_filler = BUCKET_FILLER[bucket]
+    const_name, bad_stmt, _good, consumers, tail = CONSTANT_DEFECTS[idx % len(CONSTANT_DEFECTS)]
+
+    fillers = [_filler(k) for k in range(n_filler)]
+    half = n_filler // 2
+    before = "\n".join(f for f, _ in fillers[:half])
+    after = "\n".join(f for f, _ in fillers[half:])
+
+    parts = ['"""Generated benchmark module (constant-requiring)."""', "", bad_stmt, ""]
+    if before:
+        parts += [before]
+    parts += [f"{fn_src}\n" for fn_src, _, _ in consumers]
+    if after:
+        parts += ["", after]
+    source = "\n".join(parts).rstrip() + "\n"
+
+    asserts = "".join(f"    assert {expr} == {expected!r}\n" for _, expr, expected in consumers)
+    filler_tests = "\n".join(t for _, t in fillers)
+    tests = (
+        f"from module_under_test import *\n\n\ndef test_target():\n{asserts}\n{filler_tests}"
+    ).rstrip() + "\n"
+
+    return Task(
+        name=f"{bucket}-{idx:02d}-{const_name.lower()}-constant",
+        bucket=bucket,
+        target_fn=const_name,
+        target_test="test_target",
+        behavior=f"Fix the module so that {tail}.",
+        source=source,
+        tests=tests,
+    )
+
+
+def constant_reference_solution(task: Task) -> str:
+    """The task's source with ONLY the defective constant statement corrected.
+
+    The probe's negative control, not a convenience. If it does not go green, a zero from the
+    live run would be measuring an impossible task while looking exactly like the finding
+    (s133: "a check that can only pass teaches nothing", inverted).
+    """
+    for const_name, bad_stmt, good_stmt, _consumers, _tail in CONSTANT_DEFECTS:
+        if task.target_fn != const_name:
+            continue
+        lines = task.source.splitlines()
+        try:
+            at = next(i for i, l in enumerate(lines) if l.strip() == bad_stmt)
+        except StopIteration:  # pragma: no cover — generator and table would have to disagree
+            raise ValueError(f"{task.name}: {bad_stmt!r} not found in source") from None
+        lines[at] = good_stmt
+        return "\n".join(lines).rstrip() + "\n"
+
+    raise ValueError(f"{task.name}: target_fn {task.target_fn!r} not in CONSTANT_DEFECTS")

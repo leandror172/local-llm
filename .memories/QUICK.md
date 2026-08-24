@@ -160,6 +160,31 @@ a defect in my own new test** (it asserted an unreachable line and
 passed both ways). No P3 work. *(T-132 compaction now FOUR sessions behind — this file is ~175
 lines against its stated 30.)*
 
+Session 140 (2026-08-20): **P3-D1 FROZEN on (B) — and the magnitude was corrected AT the freeze.**
+Open since s134, rewritten twice, re-grounded once; it blocked the whole P3 register. Decided on
+criteria 1 (12/12), 2 (0/12 — the design-killing case), 4 (0/12), 43 tokens flat, 5a and 5b.
+**Vocabulary reconciled to FOUR operations** — the entry said `ensure_import`/`remove_import`/
+`replace_module_docstring` *"close the entire non-def/class residue"*, which is **true of
+STRUCTURE and false of EDITS**: the census enumerated what a file CONTAINS, 5b measured what
+edits DO, and an edit can ADD a unit the census never saw. **Static coverage ≠ edit coverage.**
+**The 30.4% was an upper bound.** It counts constants *added OR changed*; only *changed* ones
+have a span to replace. Measured (487 edits, durable cuts in `run-census-report.sh`):
+**CONVERT 17.4%**, so *"cheapest first and largest first are the same thing"* is **FALSE** — the
+resolver extension TIES imports alone, while `insert_top_level` (imports + added constants +
+docstrings) is strictly larger. All six of s139's published rows REPRODUCE (four exact), so the
+split is additive. **Remedy 2 BUILT + MEASURED LIVE:** constants addressable
+(`Constant`/`ClassConstant`; `shared_binding` refuses `A, B = 1, 2`), **12/12 fidelity, 0/12
+degeneration, 30 output tokens FLAT vs whole-file 84/176/352**. **"Who chooses" lifted to a new
+P3-D10** (its s136 re-argument moved verbatim — a thinner second copy is how this plan's criteria
+drifted before). **Criterion 3 reclassified probe→BUILD** and attached as D1's *acceptance
+condition* (P4-D2 pattern) — it cannot gate what it depends on. **EVERY defect came from a
+mutation or a reproduction check, none from a green run** — including two instrument traps that
+pass silently: a prompt that hardcoded a vocabulary the code owns (so the new capability was
+unreachable by the model) and `body_units` counting def/class types (12 correct answers reported
+as fragments). **The plan's predicted `_UNIT_NODES` was written, measured redundant, DELETED** —
+it blocked nothing the dispatch did not and made the rule untestable. Suite 955→**1009**. PR #94.
+*(T-132 now FIVE sessions behind; `benchmarks/.memories/QUICK.md` is 69 lines against its own 30.)*
+
 ## Repo Structure
 
 ```

@@ -360,3 +360,60 @@ class TestBodyIsActuallyAUnit:
         m = wb._symbol_metrics(import_task, _unit(body))
         assert m["body_compiles"] is True
         assert m["body_units"] == 1
+
+
+class TestPromptKindVocabulary:
+    """The prompt tells the model which `kind` strings exist. That vocabulary is OWNED by the
+    resolver, and until s140 the prompt restated it as a literal — so when `KINDS` grew
+    `Constant`/`ClassConstant`, the resolver could address a module constant and the model had
+    no way to NAME one. The capability was unreachable and the arm would have reported a clean
+    zero for a case it never offered."""
+
+    def _symbol_prompt(self):
+        from writemodel_corpus import generate_class_task
+        return wb.build_prompt(generate_class_task("small", 0), "symbol_addressed")
+
+    def test_every_kind_the_resolver_accepts_is_offered_to_the_model(self):
+        prompt = self._symbol_prompt()
+        for kind in wb.KINDS:
+            assert f'"{kind}"' in prompt, f"{kind} is resolvable but never offered"
+
+    def test_the_prompt_offers_no_kind_the_resolver_would_reject(self):
+        # The other direction, and the one a "does it contain X" check cannot catch: an offered
+        # kind the resolver does not know resolves to `unknown_kind` on every use, so the arm
+        # would score zero for following its own instructions.
+        import re
+        offered = set(re.findall(r'"([A-Z][A-Za-z]*)"', self._symbol_prompt()))
+        # Names appearing in the worked path example are not kind offers.
+        offered -= {"ClassName"}
+        assert offered <= set(wb.KINDS), f"offered but unresolvable: {offered - set(wb.KINDS)}"
+
+
+class TestBodyUnitsFollowsTheResolver:
+    """`body_units` == 0 is the s139 fragment signal (a body emitted without its `def` line).
+    Until s140 it counted def/class NODE TYPES, so a `Constant` body -- `NAME = value`, no def,
+    no class -- scored zero and 12 of 12 correct answers were reported as fragments. The metric
+    must use the resolver's own notion of a unit or it drifts every time the resolver learns
+    a new one."""
+
+    def _units(self, body, task):
+        return wb._symbol_metrics(task, _unit(body))["body_units"]
+
+    def test_a_constant_body_counts_as_one_unit(self, import_task):
+        assert self._units("SCALE_FACTOR = 10\n", import_task) == 1
+
+    def test_a_function_body_still_counts_as_one_unit(self, import_task):
+        assert self._units("def f(a):\n    return a\n", import_task) == 1
+
+    def test_a_fragment_still_counts_as_zero(self, import_task):
+        # THE s139 DEFECT, which the widening must not trade away: `ast.parse` accepts a
+        # module-level `return`, so this "parses" while being unimportable.
+        assert self._units("    return list(xs)\n", import_task) == 0
+
+    def test_neighbouring_code_still_counts_as_more_than_one(self, import_task):
+        assert self._units("A = 1\nB = 2\n", import_task) == 2
+
+    def test_an_import_is_not_a_unit(self, import_task):
+        # It is measured by `body_has_import` instead; counting it here would make a
+        # function-local import look like emitted neighbouring code.
+        assert self._units("import math\n", import_task) == 0

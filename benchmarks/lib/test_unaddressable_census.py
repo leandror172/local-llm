@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from unaddressable_census import classify, top_sets
+from unaddressable_census import bound_names, classify, top_sets
 
 
 class TestTopSets:
@@ -99,3 +99,121 @@ class TestClassify:
         c = classify([rendered], [])
         assert c["module_docstring"] is True
         assert c["other_bare"] is False
+
+
+class TestBoundNames:
+    """`bound_names` exists because `bare_added` is a set difference over unparsed STRINGS,
+    which cannot distinguish `X = 1` -> `X = 2` (a change) from a brand-new `X = 2` (an add).
+    Only the first is convertible by giving the resolver a `Constant` kind."""
+
+    def test_plain_assignment_binds_its_name(self):
+        assert bound_names("TIMEOUT = 30") == {"TIMEOUT"}
+
+    def test_annotated_assignment_binds_its_name(self):
+        """`ast.AnnAssign` carries `.target` (singular), NOT `.targets`. Measured: no
+        assignment node has `.name` at all, so the resolver's `child.name != name` matcher
+        raises AttributeError on the first one it meets. This is that case."""
+        assert bound_names("TIMEOUT: int = 30") == {"TIMEOUT"}
+
+    def test_augmented_assignment_binds_nothing_because_it_mutates(self):
+        """`X += 1` at module level REBINDS an existing name; it never creates one. Counting it
+        as a binding would report a name as 'already present before' on the strength of a
+        statement that presupposes it."""
+        assert bound_names("COUNTER += 1") == set()
+
+    def test_tuple_unpacking_binds_every_name(self):
+        """ONE node, TWO names, ONE span. This is the correctness hazard for the resolver
+        extension: `["A"]` and `["B"]` would resolve to the SAME span, so replacing one
+        rewrites both. The census must at least SEE both names."""
+        assert bound_names("A, B = 1, 2") == {"A", "B"}
+
+    def test_chained_assignment_binds_every_name(self):
+        assert bound_names("A = B = 5") == {"A", "B"}
+
+    def test_attribute_and_subscript_targets_bind_no_top_level_name(self):
+        """`obj.attr = 1` binds nothing at module scope — there is no top-level name for a
+        resolver to address, so it must not be mistaken for a constant."""
+        assert bound_names("obj.attr = 1") == set()
+        assert bound_names("d['k'] = 1") == set()
+
+    def test_imports_and_docstrings_bind_no_name_here(self):
+        """They have their own buckets. If they leaked a name into `before_bound`, an
+        unrelated constant sharing that name would be misreported as 'changed'."""
+        assert bound_names("import math") == set()
+        assert bound_names("'A module.'") == set()
+
+    def test_unparseable_statement_returns_empty_rather_than_raising(self):
+        assert bound_names("A = (") == set()
+
+    def test_starred_unpacking_binds_every_name(self):
+        """`ast.Starred` wraps one element of the tuple target, so a matcher that only knows
+        `Name` and `Tuple` silently drops `rest`."""
+        assert bound_names("HEAD, *REST = xs") == {"HEAD", "REST"}
+
+    def test_empty_statement_returns_empty_rather_than_raising(self):
+        """`ast.parse("")` succeeds and yields a module with an EMPTY body, so indexing
+        `body[0]` raises IndexError -- which `except SyntaxError` does not catch. A blank
+        entry must be a no-op, never a crash mid-census."""
+        assert bound_names("") == set()
+        assert bound_names("   \n  ") == set()
+
+
+class TestClassifyAddedVsChanged:
+    """The split the s139 census could not make. Its `classify` docstring argued the
+    conflation was right -- "a module constant has no path whether you are adding it or
+    editing it" -- which is TRUE of today's resolver and FALSE the moment a `Constant` kind
+    lands. That is the whole point of measuring this."""
+
+    def test_changed_constant_is_marked_changed_not_added(self):
+        """THE headline case. `DEFAULT = 1` -> `DEFAULT = 2`: the name was already bound, so a
+        resolver that indexes assignments can address and replace it."""
+        c = classify(["DEFAULT = 2"], [], {"DEFAULT"})
+        assert c["other_bare_changed"] is True
+        assert c["other_bare_added"] is False
+
+    def test_added_constant_is_marked_added_not_changed(self):
+        """Nothing to replace. Needs `insert_top_level`, exactly like an import does."""
+        c = classify(["NEW_THING = 2"], [], {"DEFAULT"})
+        assert c["other_bare_added"] is True
+        assert c["other_bare_changed"] is False
+
+    def test_one_edit_can_be_both(self):
+        """Per-edit booleans, so an edit that changes one constant and adds another is not
+        forced into a single bucket. Such an edit still needs `insert_top_level`."""
+        c = classify(["DEFAULT = 2", "NEW_THING = 3"], [], {"DEFAULT"})
+        assert c["other_bare_changed"] is True
+        assert c["other_bare_added"] is True
+
+    def test_a_nameless_bare_statement_counts_as_added(self):
+        """An `if`/`try` block or a bare call binds no addressable top-level name, so there is
+        nothing a resolver could replace. It belongs on the `insert`/fallback side, never on
+        the converted side."""
+        c = classify(["if TYPE_CHECKING:\n    pass"], [], set())
+        assert c["other_bare_added"] is True
+        assert c["other_bare_changed"] is False
+
+    def test_the_split_ignores_imports_and_docstrings(self):
+        """An import binds a name (`import math` binds `math`), but imports go to
+        `insert_top_level` regardless of whether they changed. If the split counted them, the
+        resolver extension's share would be inflated by a class it cannot convert."""
+        c = classify(["import math", "'A module.'"], [], {"math"})
+        assert c["other_bare_changed"] is False
+        assert c["other_bare_added"] is False
+        assert c["import"] is True and c["module_docstring"] is True
+
+    def test_the_conflated_headline_is_UNCHANGED_by_the_split(self):
+        """NEGATIVE CONTROL, and the one that protects the published 5b figure. The split adds
+        information; it must not redefine `unaddressable` or `other_bare`. If either moved,
+        23-48% would silently become a different number and every consumer citing it would be
+        wrong without any of them changing."""
+        for before in (set(), {"DEFAULT"}):
+            c = classify(["DEFAULT = 2"], [], before)
+            assert c["unaddressable"] is True, "headline must not move with the split"
+            assert c["other_bare"] is True, "bucket must not move with the split"
+
+    def test_existing_two_argument_callers_still_work(self):
+        """`before_bound` defaults, so the 5b instrument's own prior tests keep passing and the
+        saved s139 output stays recomputable."""
+        c = classify(["TIMEOUT = 30"], [])
+        assert c["other_bare"] is True
+        assert c["other_bare_added"] is True
