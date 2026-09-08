@@ -29,7 +29,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .errors import TriadError
 from .intake import resolve_language
@@ -43,6 +43,7 @@ from .parser import (
     parse_validator_output,
     scope_of,
 )
+from .units import render_unit_replacement
 from .workspace import target_relpath
 
 
@@ -295,6 +296,11 @@ def _run_go_test_stage(worktree: Path, timeout_s: int) -> List[ParsedFailure]:
 # loop.py itself is one. Findings: ref:oficina-ctx-overflow.
 
 _StageFn = Callable[[Path, Path, Dict[str, Any], int], List[ParsedFailure]]
+# (source, dotted path, model body, kind) -> ((old_string, new_string), None) | (None, reason)
+_UnitRenderFn = Callable[
+    [str, List[str], str, Optional[str]],
+    Tuple[Optional[Tuple[str, str]], Optional[str]],
+]
 
 
 def _python_compile(worktree: Path, base_repo: Path, spec: Dict[str, Any], timeout_s: int) -> List[ParsedFailure]:
@@ -327,6 +333,24 @@ class LanguagePack:
     test_stage: _StageFn
     system_prompt: str
     coder_model: str
+    # Member #5 (P3-D1(B)/P3-D10, s141). `locate_unit` was in the Phase-3 seam map and is
+    # listed above as DROPPED — "edit mode is language-agnostic, T-110". That premise is what
+    # changed, not the prediction: P3-D1 froze on model-emitted symbol-addressed operations, so
+    # edit mode is language-agnostic no longer. Recorded here rather than silently re-added,
+    # because a member returning after being dropped is the interesting half of the delta
+    # `patterns-refactoring-duplicate-first` rule 3 asks to be kept.
+    #
+    # Optional with ONE implementation, and that is not the rule-2 violation it resembles. The
+    # variation is CAPABILITY PRESENCE, not two competing mechanisms: Python has a locator, Go
+    # has none, and holding that here is what keeps a `language == "python"` conditional out of
+    # `_resolve_output_shape`. Absence reads the way P3-D10 froze it — a shape that cannot be
+    # derived is `whole_file` — which is `_context_overflow`'s own move at loop.py:536 for an
+    # unresolvable ceiling. Go runs stay byte-identical to today.
+    #
+    # Rule 1 still applies when Go's arrives: this signature is an ACCIDENT, not a spec.
+    # `go/parser` attaches `decl.Doc` where `ast` attaches decorators, and Go has no
+    # module-level docstring at all. Predicted: the member survives, the signature moves.
+    unit_renderer: Optional[_UnitRenderFn] = None
 
 
 PYTHON = LanguagePack(
@@ -334,6 +358,7 @@ PYTHON = LanguagePack(
     test_stage=_python_test,
     system_prompt="You are a precise Python engineer. Implement the objective so every provided test passes.",
     coder_model="my-python-q25c14-16k",
+    unit_renderer=render_unit_replacement,
 )
 
 GO = LanguagePack(
