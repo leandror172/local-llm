@@ -1546,7 +1546,7 @@ building `insert_top_level`/`insert_unit` first means building them twice.
 | # | Step | Depends on | Verified by |
 |---|---|---|---|
 | 0 | **P3-D10 frozen** | — (done, s141) | — |
-| 1 | **Graduate the locator** → `oficina/units.py`; `LanguagePack` member #5 | 0 | `make test` |
+| 1 | **Graduate the locator** → `oficina/units.py`; `LanguagePack` member #5 | 0 | **DONE s141** — suite 1009→1030, `make accept-p4` green |
 | 2 | **`_resolve_output_shape(assembly)`** + ledger event — **after the hoisted ceiling**, see D10's s141 amendment | 1 | `make test` **+ the discriminating test** (D10) |
 | 3 | **Render the operation schema from `KINDS`** into the prompt | 1 | **`make accept-p4`** — the suite fakes `chat` |
 | 4 | **Parse + apply**, with the two budgets separated | 2, 3 | **`make accept-p4`** + `make test` |
@@ -1569,6 +1569,41 @@ and it gives `insert_top_level`/`insert_unit` a **progress metric** (the fallbac
 an assertion. **Step 3 renders from `KINDS`, never restates it**: s140 measured that exact trap,
 where a prompt hardcoding `"Function", "Method" or "Class"` made a shipped capability unreachable
 by the model and would have published a clean zero for a case never offered.
+
+### RESULTS — step 1 built, and one measurement the design needed (s141)
+
+**`patch_file`'s uniqueness check is on TEXT; resolution guarantees a unique SPAN.** These are
+not the same claim, and the rider leaned on the first while the resolver provides the second. Two
+classes declaring a byte-identical one-line constant resolve unambiguously by path while their
+span text occurs twice — so `patch_file` refuses, with `old_string found 2 times`, an edit that is
+**perfectly addressable**.
+
+**Measured before building, not estimated:** 899 uniquely-resolved units across 48 files
+(`mcp-server/src` + `benchmarks/lib`). **5 collide — 0.56%** — and **all five are `model_config`
+lines in `intake.py`**. Magnitude tiny, **reachability exact**: `intake.py` is in T-122's blocked
+set and one of the two files criterion 3 names as its target, so the case lands precisely where
+the first real run does. One or two preceding lines made every one of them unique;
+`render_unit_replacement` widens `old_string` until it is.
+
+**The widening has no "still not unique" branch, deliberately.** For a window anchored at line 1
+to recur, the file would have to contain its own prefix twice — which would duplicate the
+addressed unit and make the path a `multi_match` before reaching here. The branch was written and
+then **deleted**: the same shape as s140's `_UNIT_NODES`, unreachable code asserting an
+unreachable state, with `patch_file`'s own count check as the single enforcement point if the
+argument is ever wrong.
+
+**Six mutations run, six caught** — widening removed · re-indentation removed · dedent removed ·
+reason collapsed to `None` · kind check downgraded to a selector · shared binding no longer
+refusing. Stated because the green run on its own proved nothing: this register's standing finding
+is that **every defect came from a mutation or a reproduction check, none from a green run.**
+
+**Duplicated, not moved.** `benchmarks/lib` and `mcp-server` are independent suites — benchmarks
+references `mcp-server` only as path *strings* in census cuts, never as an import — so moving the
+resolver would create the first import edge between them, through the module that produced the
+published arm-A numbers **T-140** already flags as measured under a superseded prompt. Benchmarks
+held at 170 tests across the change, which is the evidence the duplication was clean.
+
+---
 
 ### What graduates, and what does not — DECIDED s141
 
