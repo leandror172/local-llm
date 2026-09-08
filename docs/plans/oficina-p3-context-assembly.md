@@ -148,7 +148,7 @@ spine*") is the honest cost; the vision framing is that Claude was always the ga
 ---
 
 <!-- ref:delegate-p3-decisions -->
-## Decision register (P3-D) — **D1 FROZEN (s140)** · D6 FROZEN AND BUILT · D2–D5, D7–D10 OPEN
+## Decision register (P3-D) — **D1 FROZEN (s140)** · **D10 FROZEN (s141)** · D6 FROZEN AND BUILT · D2–D5, D7–D9 OPEN
 
 House rule: each entry states the fork, the constraints that bound it, and a recommendation.
 Freeze on review with the user; reverse only with new evidence once frozen.
@@ -893,7 +893,39 @@ P5's `blocked` union by the line P4 drew for S14 — one deterministic pause at 
 Mechanizes `benchmarks/lib/decomposed-run.py` and the Layer-0 3-stage finding.
 **Carries P4's rejection forward explicitly:** `steps:` is **not** a T-122 remedy and must not be
 planned as one — each step still emits a whole file unless P3-D1 says otherwise.
-### P3-D10 — WHO CHOOSES the response shape — **OPEN, re-argued, recommendation standing**
+### P3-D10 — WHO CHOOSES the response shape — **FROZEN 2026-09-07 (s141) — derive with override**
+
+**DECISION — `_resolve_output_shape(assembly)`, derive-with-override.** Third in the resolver
+sequence at `loop.py:550-552`, following E-D9's shape exactly: an explicit
+`deliverable.output_shape` wins if present; otherwise the shape is derived from the same numbers
+`_context_overflow` already compares; **`"whole_file"` whenever the ceiling is unknown.** The
+chosen shape is emitted as a ledger event (first principle 5), so a completed run's encoding is
+recoverable without making the field required.
+
+**Frozen on the standing recommendation, unchanged.** The re-argument was completed in s136, the
+material below *is* it, and s140 lifted it here verbatim. Nothing new was argued at the freeze.
+This block records that the freeze happened and what it settled — which is precisely the state
+s136's *"Re-argue it before freezing"* has already been misread as denying once.
+
+**Absence generalised, and it decides the Go question (s141).** The recommendation's
+*"`whole_file` when the ceiling is unknown"* is one instance of a rule with **two** triggers:
+**a shape that cannot be derived is `whole_file`.** The second trigger is a language with no
+locator. `LanguagePack` gains its fifth member as `Optional` — `PYTHON` supplies a locator, `GO`
+supplies `None` — and `_resolve_output_shape` reads a missing locator exactly as it reads a
+missing ceiling: it declines to act and returns today's behaviour, so **Go runs stay
+byte-identical to today.** This is `_context_overflow`'s own move at `loop.py:536` (*"an
+unresolvable ceiling disables the guard; the caller was already told once, at resolve time"*),
+which the entry below already identifies as **the template for handling absence** — so the Go
+case needed no new argument, only the recognition that it is the same case.
+
+**The residual reproducibility question stays DEFERRED, and its trigger is CORRECTED.** The final
+bullet below reads *"Decide with the probe's results, not before."* **s140 reclassified criterion 3
+from probe to BUILD, and that build requires this entry frozen** — so read literally, the trigger
+now sits after the thing it was written to precede. It does not block: the ledger event is
+sufficient to build against, and only *forward* reproducibility — a re-run on a different persona
+deriving a different ceiling, hence possibly a different encoding — would need a spec field.
+**Trigger restated: decide it on criterion 3's results.** Same shape as criterion 3's own
+reclassification: *a condition cannot gate what it depends on.*
 
 **Why this is its own entry (s140).** P3-D1 froze on measurement: criteria 1/2/4 and 5a/5b
 settled what the model **emits**. None of them touch who **selects** whole-file versus
@@ -1448,5 +1480,65 @@ condition — has not run.
 
 ## Build steps
 
-**Not yet ordered.** P3-T0 runs first and gates P3-D1; build steps are authored after the
-register freezes. P3-D6 (`context.callers`) is independent of the probe and could lead.
+**Ordered s141, now that P3-D1 (s140) and P3-D10 (s141) are frozen.** The order is forced by
+**seams, not preference**: each step's production seam is created by the step above it, so
+building `insert_top_level`/`insert_unit` first means building them twice.
+
+| # | Step | Depends on |
+|---|---|---|
+| 0 | **P3-D10 frozen** | — (done, s141) |
+| 1 | **Graduate the locator** → `oficina/units.py`; `LanguagePack` member #5 | 0 |
+| 2 | **`_resolve_output_shape(assembly)`** at `loop.py:550-552` + ledger event | 1 |
+| 3 | **Render the operation schema from `KINDS`** into the prompt | 1 |
+| 4 | **Parse + apply**, with the two budgets separated | 2, 3 |
+| 5 | **Harness-side detection** + whole-file fallback | 4 |
+| 6 | **Criterion 3 live** — `parser.py`/`intake.py`, N attempts, distribution | 5 |
+| 7 | **T-122 sweep re-run** — report N/27 against today's 21/27 | 6 |
+
+**`replace_unit`-only is the first increment**, legitimate precisely because step 5 makes it safe —
+and it gives `insert_top_level`/`insert_unit` a **progress metric** (the fallback rate) instead of
+an assertion. **Step 3 renders from `KINDS`, never restates it**: s140 measured that exact trap,
+where a prompt hardcoding `"Function", "Method" or "Class"` made a shipped capability unreachable
+by the model and would have published a clean zero for a case never offered.
+
+### What graduates, and what does not — DECIDED s141
+
+**Rider (a) is correct in intent and one function too coarse as written.** It says *"the locator
+graduates, the benchmark's applier does NOT — production applies through `patch_file` for its
+atomic tmp+rename and uniqueness check."* But `patch_file` (`server.py:1415`) is an **exact-string
+replace**: it counts occurrences of `old_string`, refuses on 0 or >1, then does
+`content.replace(old, new, 1)`. **It does not re-indent.** The harness-owns-indentation contract —
+s137's own finding — lives in `apply_unit`, which dedents the model's body to column 0 and
+re-indents it to the span actually resolved. Graduating only `find_units`/`resolve_unit` would
+**satisfy the rider while losing the finding it was written beside**, and splice a method body at
+column 0.
+
+**Resolution: the span→bytes step graduates too, as a function feeding `patch_file`.** Production
+resolves the span, then builds an exact `(old_string, new_string)` pair — `old_string` read from
+the resolved span, `new_string` the model's body dedented and re-indented to that span — and hands
+it to `patch_file`, which keeps its uniqueness check and its atomic tmp+rename. One splice, both
+properties. `apply_whole_file` and `apply_search_replace` are benchmark-arm machinery and do
+**not** graduate; `apply_unit` is half arm-machinery and half contract, and only the contract does.
+
+*Rejected, recorded so the rejection is a decision and not an omission:* requiring the model to
+emit correctly-indented text. `apply_unit`'s own docstring names it — *"anchor burden under
+another name"* — and first principle 1 puts mechanics in harness code.
+
+### What detection DOES when it fires — DECIDED s141
+
+**Fall back to whole-file within the same run, and emit the event.** The symbol-addressed attempt
+is discarded, the iteration re-generates in whole-file shape, and the fallback is **recorded rather
+than inferred**.
+
+**Why not fail loud.** 5b measured the unaddressable case at **23–48% of real edits**, so a
+terminal failure on the first unaddressable import delivers nothing on up to half of real work.
+The freeze's *"loud whole-file fallback for the rest"* is the designed behaviour, not a concession.
+
+**Why not land it and flag it.** 14 of 24 emitted a function-local import and **10 of those 14 pass
+all tests** — landing it normalises exactly the silent defect criterion 5a exists to catch, and a
+check whose only consequence is a note in a report is close to the *"check that can only pass"*
+shape this register keeps finding.
+
+**The cost is one generation per firing, and that cost IS the metric.** The fallback rate is what
+tells `insert_top_level`/`insert_unit` when they are worth building, so it belongs on the ledger as
+an event, not in a log line.
