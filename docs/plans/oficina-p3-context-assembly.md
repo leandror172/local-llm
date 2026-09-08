@@ -902,6 +902,47 @@ sequence at `loop.py:550-552`, following E-D9's shape exactly: an explicit
 chosen shape is emitted as a ledger event (first principle 5), so a completed run's encoding is
 recoverable without making the field required.
 
+**AMENDMENT s141 — the coordinate is WRONG, and the absence rule would have fired on EVERY run.**
+Checked before writing the code, not after. `self._context_limit` is `None` from `__init__`
+(`loop.py:234`) and is resolved by `self.context_limit_for(self.model)` at **`loop.py:576`** —
+inside `run()`, **twenty-four lines AFTER** the 550-552 slot this decision pinned. A
+`_resolve_output_shape` placed third in that sequence therefore reads `None` on **every run**,
+returns `"whole_file"` by the absence rule above, and **the feature is dead on arrival with a
+green suite**: no test can distinguish *"the resolver never had a ceiling"* from *"this run
+legitimately chose whole-file."*
+
+**Why the recommendation did not catch it.** `_resolve_num_predict` and `_resolve_max_iterations`
+derive from `assembly` (mode, current-file chars) plus an explicit override — both bodies read to
+confirm it; neither touches the ceiling. **The third resolver derives from the MODEL.** The slot
+was chosen by analogy to two resolvers that do not need what this one needs, and **the analogy
+carried the position without the dependency.**
+
+**This entry's own `None` argument is right about the value and wrong about the variable.** It
+records the branch as *"close to hypothetical … it arises only when `/api/show` itself fails."*
+That is true of `_context_limit` **after** line 576. At the pinned slot it is the `__init__`
+value, on every run, always. **s136 closed a fork on a branch that never executes; s141 nearly
+froze a coordinate where that branch executes always** — the same root error inverted: reasoning
+about a variable's value without checking **when it is read**.
+
+**Correction: hoist the ceiling, keep the sequence.** The T-112 block (`loop.py:574-578`) moves
+above the resolver sequence so all three resolvers see a resolved ceiling. **Verified safe:**
+nothing between 548 and 576 reads `_context_limit` (only its own assignment), and
+`context_limit_for(self.model)` depends on nothing from `assembly` — the model is known at
+construction. T-112's invariant survives verbatim (*"resolve the window ONCE per run … the guard's
+absence is on the record exactly one time"*); only its position inside `run()` changes. **The
+DECISION is unchanged** — derive-with-override, third in the resolver triple, `"whole_file"` on
+absence. A line coordinate and one prerequisite move; nothing argued moves.
+
+**The negative control this implies is MANDATORY (first principle 6).** A test asserting that
+`_resolve_output_shape` returns `"whole_file"` when the ceiling is `None` **passes both before and
+after the hoist** — it is the *"check that can only pass"* shape, and it is the obvious test to
+write. The discriminating test asserts that a run with a **resolvable** ceiling and an edit-mode
+assembly resolves to the symbol-addressed shape: it fails today, and it fails again the moment the
+hoist is reverted.
+
+**The build contract for this decision is `ref:delegate-p3-build`** (§ "Build steps"), which
+carries the ordering and the two build decisions made at this freeze.
+
 **Frozen on the standing recommendation, unchanged.** The re-argument was completed in s136, the
 material below *is* it, and s140 lifted it here verbatim. Nothing new was argued at the freeze.
 This block records that the freeze happened and what it settled — which is precisely the state
@@ -1465,35 +1506,63 @@ condition — has not run.
 
 **To be written once P3-D1 freezes.** Recorded now so the shape is not forgotten:
 
+> **TRIGGER FIRED s140 — STILL UNWRITTEN, and this is the session's SECOND stale deferral (s141).**
+> P3-D1 froze in s140 and this section was carried unchanged. Found while correcting the same
+> class of miss one screen up in P3-D10, which is the point: **a deferral whose trigger has
+> already fired is indistinguishable, on the page, from one still waiting.** Recorded rather than
+> silently carried again. It is now scheduled against `ref:delegate-p3-build`, whose table carries
+> the `make accept-p4` obligation for the two steps that change the prompt.
+>
+> **And bullet 2 below is STALE — verified, not assumed.** It says `context.callers` *"is
+> currently accepted and ignored"*. **P3-D6 was FROZEN AND BUILT in s136** (T-133): `callers` is
+> validated at intake (`intake.py:416-425`) and rendered as its own prompt segment
+> (`prompt.py:45-48`). Anyone writing acceptance from this bullet would go hunting a bug fixed two
+> sessions ago — **T-137's premise failure exactly**, in a document rather than a task. The bullet
+> is struck below rather than deleted, because what it asked for (*a test that fails today*) is
+> still the right standard for whatever replaces it.
+
 - Assertions must be **capable of failing for the reason they exist** (first principle 6; s133's
   A5). An assertion that a prompt "contains the objective" passes on any layout and teaches
   nothing; the property under test is **order and prefix stability**, in
   `prompt_eval_duration_ms`.
-- **`context.callers` needs a test that fails today** — the field is currently accepted and
+- ~~**`context.callers` needs a test that fails today** — the field is currently accepted and
   ignored, so any test written against present behaviour would encode the bug
-  (`feedback_review_rederive_invariants`).
+  (`feedback_review_rederive_invariants`).~~ **STRUCK s141 — built in s136 (P3-D6/T-133).** The
+  *standard* stands and generalises: any acceptance assertion written here must be one that
+  **fails against present behaviour**, or it encodes the bug.
 - The suite fakes `chat` and is structurally blind to what a model is *asked*. Anything P3
   changes about the judge's payload re-runs **`make accept-p4`** (~35 s, real Ollama).
 - Expect the first failure of any newly-tightened check to be **in the fixture** (s133, A5).
 
 ---
 
+<!-- ref:delegate-p3-build -->
 ## Build steps
 
 **Ordered s141, now that P3-D1 (s140) and P3-D10 (s141) are frozen.** The order is forced by
 **seams, not preference**: each step's production seam is created by the step above it, so
 building `insert_top_level`/`insert_unit` first means building them twice.
 
-| # | Step | Depends on |
-|---|---|---|
-| 0 | **P3-D10 frozen** | — (done, s141) |
-| 1 | **Graduate the locator** → `oficina/units.py`; `LanguagePack` member #5 | 0 |
-| 2 | **`_resolve_output_shape(assembly)`** at `loop.py:550-552` + ledger event | 1 |
-| 3 | **Render the operation schema from `KINDS`** into the prompt | 1 |
-| 4 | **Parse + apply**, with the two budgets separated | 2, 3 |
-| 5 | **Harness-side detection** + whole-file fallback | 4 |
-| 6 | **Criterion 3 live** — `parser.py`/`intake.py`, N attempts, distribution | 5 |
-| 7 | **T-122 sweep re-run** — report N/27 against today's 21/27 | 6 |
+| # | Step | Depends on | Verified by |
+|---|---|---|---|
+| 0 | **P3-D10 frozen** | — (done, s141) | — |
+| 1 | **Graduate the locator** → `oficina/units.py`; `LanguagePack` member #5 | 0 | `make test` |
+| 2 | **`_resolve_output_shape(assembly)`** + ledger event — **after the hoisted ceiling**, see D10's s141 amendment | 1 | `make test` **+ the discriminating test** (D10) |
+| 3 | **Render the operation schema from `KINDS`** into the prompt | 1 | **`make accept-p4`** — the suite fakes `chat` |
+| 4 | **Parse + apply**, with the two budgets separated | 2, 3 | **`make accept-p4`** + `make test` |
+| 5 | **Harness-side detection** + whole-file fallback | 4 | `make test` (negative control first) |
+| 6 | **Criterion 3 live** — `parser.py`/`intake.py`, N attempts, distribution | 5 | the run itself; fold in T-139 |
+| 7 | **T-122 sweep re-run** — report N/27 against today's 21/27 | 6 | the sweep |
+
+**The `Verified by` column exists because `make test` cannot see steps 3 and 4.** The suite fakes
+`chat`, so it is structurally blind to what a model is **asked** — a green run after a prompt
+change proves nothing about the change. `make accept-p4` (~35 s, real Ollama) is the only check
+that looks at the payload, and it is the standing rule for any P3 work that touches prompt layout.
+
+**Step 2 carries a prerequisite, not just a position.** D10's coordinate `loop.py:550-552` was
+amended at s141: the ceiling resolves at 576, so it must be hoisted above the resolver sequence or
+the resolver reads `None` on every run and silently disables the feature. See the amendment for
+the discriminating test.
 
 **`replace_unit`-only is the first increment**, legitimate precisely because step 5 makes it safe —
 and it gives `insert_top_level`/`insert_unit` a **progress metric** (the fallback rate) instead of
@@ -1542,3 +1611,5 @@ shape this register keeps finding.
 **The cost is one generation per firing, and that cost IS the metric.** The fallback rate is what
 tells `insert_top_level`/`insert_unit` when they are worth building, so it belongs on the ledger as
 an event, not in a log line.
+
+<!-- /ref:delegate-p3-build -->
