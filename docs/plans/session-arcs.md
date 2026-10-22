@@ -2,7 +2,7 @@
 
 **Created:** 2026-10-08 — designed in a Claude Code session on `feat/session-arcs`; no session number assigned (see § "The live case")
 **Branch:** `feat/session-arcs` (from master `71c1fa0`)
-**Status:** PLAN — decisions ARC-D1…ARC-D15. **ARC-D1–D5 decided by the user**; ARC-D6's direction decided, its mapping open; the rest open with leans. **No code written.**
+**Status:** PLAN — decisions ARC-D1…ARC-D15. **ARC-D1–D5 decided by the user**; ARC-D6's direction decided, its mapping open; the rest open with leans. **Codex behaviour verified from source** (2026-10-08) **and live** (2026-10-10, codex-cli 0.162.1) — § "Codex facts". **No code written.**
 **Extends:** `docs/plans/session-handoff-pipeline-design.md` (`ref:handoff-pipeline-design`), `docs/plans/resume-config-steps.md` (R-D1…R-D9).
 **Touches:** `overlays/session-tracking/` (package + overlay); `overlays/session-tracking/KNOWN-ISSUES.md` #1 (ARC-D7 is its plural form).
 **Not to be confused with:** `ref:multi-session-contention` and its siblings — those are T-102, concurrent sessions contending for the **GPU**, not for tracking state.
@@ -47,7 +47,7 @@ Two requirements, stated across one design discussion (2026-10-08):
   paths are already config.
 - **The rules file:** session rules are merged into `CLAUDE.md`; Codex reads `AGENTS.md`. "Run resume
   on session start" never reaches a Codex session.
-- **Skill and hook install locations** differ per harness (§ "Unverified").
+- **Skill and hook install locations** differ per harness (§ "Codex facts").
 - **`agent_targets:` is declared in all three overlay manifests and consumed by nothing** —
   `install-overlay.py` never reads it. The multi-harness seam exists as dead config: the
   `ref:declared-unconsumed-spec-fields` shape.
@@ -156,8 +156,8 @@ overlay, and Codex can run scripts from any path, so their location is not a Cod
 |---|---|---|
 | Tracking data | `.tracking/`, committed | external root (OneDrive), named by user-level config |
 | Rules | repo `AGENTS.md` (+ `CLAUDE.md` import, ARC-D15) | user-level: `~/.codex/AGENTS.md`, `~/.claude/CLAUDE.md` |
-| Skill | per harness, user- or project-level | user-level only, per harness |
-| SessionStart hook | optional | user-level; **silent in repos with no tracking configured** (the current shim's exit-0 guard) |
+| Skill | one source, installed per harness: `.claude/skills/` + `.agents/skills/` | one source, installed per harness: `~/.claude/skills/` + `~/.agents/skills/` |
+| SessionStart hook | optional. Codex takes project hooks from the **main checkout's** `.codex/`, so one definition serves every arc worktree | user-level (`~/.claude/settings.json`, `~/.codex/hooks.json`); **silent in repos with no tracking configured** (the current shim's exit-0 guard) |
 | Worktrees | anywhere | **outside the repo** (a sibling `../<repo>.arcs/<arc>/`), so the repo shows no untracked dirs |
 | Local-only ignores | `.gitignore` | `.git/info/exclude` — never the shared `.gitignore` |
 
@@ -296,6 +296,27 @@ already names `tools_dir` and `rules_file` for `claude-code` in three manifests 
 nothing. Make it live (add `codex`) or delete it — leaving it declared is the
 `ref:declared-unconsumed-spec-fields` shape.
 
+Verified install targets (§ "Codex facts"): skills → `.agents/skills/` (repo; not trust-gated) or
+`~/.agents/skills/` (user); hooks → `.codex/hooks.json` (project; trust-gated, and worktrees read the
+main checkout's) or `~/.codex/hooks.json` (user); rules → `AGENTS.md` or `~/.codex/AGENTS.md`.
+**Do not use Codex's built-in Claude importer as the mechanism:** it copies once (skills →
+`.agents/skills/`, `CLAUDE.md` → `AGENTS.md`), so the two copies drift from the first edit — the
+installer should generate both harnesses' files from one source instead. The handoff skill's
+frontmatter already parses in Codex; its **body** does not port as-is — `$ARGUMENTS` is a Claude Code
+substitution, and the body cites `.claude/tools/` paths.
+
+**What the live check adds (2026-10-10):**
+
+1. **The skill's `description` is the trigger text** Codex shows the model, so it must be
+   harness-neutral — today's says "across Claude Code sessions".
+2. **An untrusted or *modified* hook is skipped silently** in `codex exec`. So the hook's command
+   string must stay **byte-stable across engine upgrades** — a fixed command such as
+   `st-resume --hook`, with all behaviour inside the engine — or every upgrade silently disables
+   auto-resume until the user re-approves it. The install step must tell the user to approve it once
+   via `/hooks`.
+3. **Prefer `.agents/skills/`** even though `.codex/skills/` also loads ungated: it is the documented
+   location and is walked from the project root down to cwd.
+
 ### ARC-D15 — Rules-file layout, in-repo profile *(open — lean: `AGENTS.md` canonical)*
 
 `AGENTS.md` carries the session rules; `CLAUDE.md` imports it with `@AGENTS.md`. The `@` import is
@@ -303,20 +324,66 @@ already proven on this machine — the user's global `CLAUDE.md` imports `@RTK.m
 Codex's `project_doc_fallback_filenames` is the alternative, but it is user-level Codex config, so it
 does not answer the repo-level question.
 
-<!-- ref:session-arcs-unverified -->
-## Unverified — test before freezing
+Two constraints from the source (§ "Codex facts"): Codex's loader has **no `@`-import handling**, so
+`AGENTS.md` must be self-contained — the import can only point one way, `CLAUDE.md` → `AGENTS.md`.
+And Codex caps the combined project docs at **32 KiB** (`project_doc_max_bytes`); this repo's
+`CLAUDE.md` is 16,001 bytes today.
 
-Nothing below may be encoded as a path or a behaviour until it is checked.
+<!-- ref:session-arcs-codex-facts -->
+## Codex facts — verified from source
 
-| Claim | Source | Check |
+Read from `github.com/openai/codex` at `780d7ab` (2026-10-08; Apache-2.0). Paths are under
+`codex-rs/`. This replaces the doc pages and third-party guides, which contradicted each other.
+
+| Topic | Fact | Evidence |
 |---|---|---|
-| Codex repo skills live in `.agents/skills/` (walked from cwd up to the repo root); user skills in `~/.agents/skills/` | official skills page — but the official create-skill page uses `.codex/skills/` | read the Codex source: `github.com/openai/codex`, Apache-2.0, public (verified 2026-10-08) |
-| Codex SKILL.md: `name` ≤100 and `description` ≤500 chars, single line; extra frontmatter keys ignored | official skills page | source |
-| Codex has SessionStart/Stop hooks, configured in `.codex/hooks.json` **or** a `[hooks]` table in `config.toml` | third-party only, mutually contradictory | source |
-| Codex reads `AGENTS.md` from root to cwd; `project_doc_fallback_filenames` exists | official AGENTS.md guide | low risk; confirm on install |
-| `codex --oss` runs against local Ollama with **no login** | Ollama docs + third parties | install and run. **Verified here:** `/v1/models` answers HTTP 200 on both `:11434` and `:11435`. Codex recommends ≥32K ctx while the 14B personas run 16K — enough to check skill discovery, `AGENTS.md` loading and hook firing, not for real work |
-| Claude Code does not read `.agents/skills/` | assumption | if false, one skill copy could serve both harnesses |
-| `merge=union` on the shared tasks file keeps both sides' appended lines and leaves ref-block markers intact | git docs, recalled from memory | a **two-branch merge fixture**: (1) both branches append different tasks → both present, marker count unchanged (the handoff verifier enforces a ref-marker-count invariant); (2) both check off the same task → expect a duplicated line and a loud refusal at the next checkoff (`locator.py:150`); (3) one appends while the other checks off → clean |
+| Repo skills | `.agents/skills/` in **every directory from the project root down to cwd**. Not trust-gated | `ext/skills/src/host_roots.rs:137-175` |
+| Project skills | `<project>/.codex/skills/`, from the project config layer. The trust gate covers that layer's config, hooks and exec policies — **but the live check listed this skill root in an untrusted project**, so reading the source as "skills gated too" was wrong | `host_roots.rs:83-91`; `config/src/loader/mod.rs:1113-1131`; live check below |
+| User skills | `~/.agents/skills/`, and `~/.codex/skills/` ("deprecated … kept for backward compatibility") | `host_roots.rs:93-106` |
+| The two official doc pages | **Both right.** `.agents/skills` and `.codex/skills` are different layers, not a contradiction | as above |
+| SKILL.md | YAML frontmatter required. `name` optional (defaults to the folder name), **≤64 chars** — not the 100 the docs state. `description` required and non-empty; the parser caps nothing else. Both collapsed to one line. Unknown keys are ignored, and prose such as `argument-hint: <…: …>` is repaired rather than rejected | `skills/src/parser.rs:4,44-85` |
+| Claude Code's skills | `.claude/skills/` is **not read** at runtime. Codex ships a **one-shot importer** from Claude Code: `.claude/` skills → `.agents/skills/`, `CLAUDE.md` → `AGENTS.md` (the filename rewritten inside the content), plus hooks and MCP servers from `.claude.json` | `external-agent-migration/src/source/cla.rs:20-21`, `service.rs:692,712,761`, `rewrite.rs:41`, `hooks_cla.rs`, `mcp.rs:11` |
+| Hook events | 12, Claude-style: PreToolUse, PermissionRequest, PostToolUse, PreCompact, PostCompact, SessionStart, SessionEnd, UserPromptSubmit, SubagentStart, SubagentStop, Stop, Interrupt | `hooks/src/lib.rs:24-37` |
+| Hooks feature | key `hooks` (legacy alias `codex_hooks`): **Stable, enabled by default** | `features/src/lib.rs:1320-1323` |
+| Hook config | **Both** a `hooks.json` in a config folder and a `hooks` table in config TOML — the third-party "contradiction" was two supported forms | `hooks/src/engine/discovery.rs:343,387` |
+| SessionStart | matcher sources `startup` / `resume` / `clear` / `compact`; **plain stdout becomes model context**; JSON output may add `additional_context`; only SessionStart honours `continue:false` | `hooks/src/events/session_start.rs:24-38,221-223` |
+| Hook trust | each hook is trusted by content hash — a new or changed hook needs approval | `discovery.rs:679-718` |
+| Hooks in worktrees | in a **linked worktree**, project hooks come from the **main checkout's** `.codex/`; the worktree's own `hooks` table is dropped | `config/src/loader/mod.rs:1133-1143`; `local.rs:225-246` |
+| AGENTS.md | per directory from project root to cwd; candidates in order `AGENTS.override.md`, `AGENTS.md`, then `project_doc_fallback_filenames`; combined cap `project_doc_max_bytes` = **32 KiB**; no `@`-import handling found in the loader | `core/src/agents_md.rs:43,45,272-290`; `config/src/config_toml.rs:75` |
+| `--oss` | provider `ollama`, port 11434, `requires_openai_auth: false` — **no login**. It speaks the **Responses** API: local Ollama 0.17.5 answers `POST /v1/responses` with 400 on an empty body (the endpoint exists; absent would be 404) | `model-provider-info/src/lib.rs:654-682,736-774` |
+| `--oss` gotcha | it **pulls the model if missing** — the default is `gpt-oss:20b`. Always pass `-m <an already-pulled model>`. In 0.162.1 it also needs `--local-provider ollama` (or `oss_provider` in config) — `--oss` alone fails with "No default OSS provider configured" | `ollama/src/lib.rs` (`ensure_oss_ready`); live check |
+
+**Live check — 2026-10-10, codex-cli 0.162.1.** Isolated `CODEX_HOME`, a scratch git repo, model
+`qwen3.5:0.8b`. Every probe was a sentinel string required either present or absent, so each could
+fail. The skill and `AGENTS.md` probes used `codex debug prompt-input`, which renders the
+model-visible prompt **without calling a model**; the hook probes needed a real `codex exec` session.
+
+| Probe | Expected | Observed |
+|---|---|---|
+| `AGENTS.md` | loaded | loaded — injected verbatim inside `<INSTRUCTIONS>` |
+| an `@IMPORTED.md` line inside `AGENTS.md` | not expanded | **passed through as literal text**; the imported file's sentinel absent |
+| `CLAUDE.md` | not read | absent |
+| skill in `.agents/skills/` | listed | listed, as `- name: description (file: …)` |
+| skill in `.codex/skills/`, untrusted project | gated (inferred) | **listed** — the inference was wrong |
+| skill in `.claude/skills/` | not listed | absent |
+| skill `name` of 64 / 65 chars | accepted / rejected | accepted / rejected |
+| the real `session-handoff` SKILL.md | parses | listed — and its `description` ("…across **Claude Code** sessions…") is sent verbatim as the trigger text |
+| user-level SessionStart hook, untrusted | skipped | skipped — **silently**: no notice on stderr in `codex exec` |
+| same hook with `--dangerously-bypass-hook-trust` | runs | runs; its stdout lands as a `developer` message tagged `hooks.additional_context` |
+
+Trust is persisted per hook as `[hooks.state."<key>"] trusted_hash = "<hash>"` in `config.toml`,
+written when the user approves it in the TUI's `/hooks` view (`config/src/hook_config.rs:28-32`,
+`tui/src/hooks_rpc.rs:58-70`). A changed hook reports `Modified` and is untrusted again.
+<!-- /ref:session-arcs-codex-facts -->
+
+<!-- ref:session-arcs-unverified -->
+## Still unverified — test before freezing
+
+| Claim | Check |
+|---|---|
+| Claude Code does not read `.agents/skills/` | Claude Code docs, or a probe skill. If false, one install could serve both harnesses |
+| The interactive TUI prompts for an untrusted hook rather than skipping it silently as `codex exec` does | one interactive `codex` start in a repo with an unapproved hook |
+| `merge=union` on the shared tasks file keeps both sides' appended lines and leaves ref-block markers intact | a **two-branch merge fixture**: (1) both branches append different tasks → both present, marker count unchanged (the handoff verifier enforces a ref-marker-count invariant); (2) both check off the same task → expect a duplicated line and a loud refusal at the next checkoff (`locator.py:150`); (3) one appends while the other checks off → clean |
 <!-- /ref:session-arcs-unverified -->
 
 ## Migration — v11 → v12
@@ -360,4 +427,4 @@ do so as an arc, or after the first has merged.
 - Codex AGENTS.md guide — https://developers.openai.com/codex/guides/agents-md
 - Codex hooks deep dive (third-party) — https://codex.danielvaughan.com/2026/03/26/codex-cli-hooks-deep-dive
 - Ollama: Codex — https://docs.ollama.com/codex
-- Codex CLI source — https://github.com/openai/codex
+- Codex CLI source — https://github.com/openai/codex (read at `780d7ab`, 2026-10-08)
