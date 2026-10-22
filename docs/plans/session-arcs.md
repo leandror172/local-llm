@@ -2,7 +2,7 @@
 
 **Created:** 2026-10-08 — designed in a Claude Code session on `feat/session-arcs`; no session number assigned (see § "The live case")
 **Branch:** `feat/session-arcs` (from master `71c1fa0`)
-**Status:** PLAN — decisions ARC-D1…ARC-D15. **ARC-D1–D5 decided by the user**; ARC-D6's direction decided, its mapping open; the rest open with leans. **Codex behaviour verified from source** (2026-10-08) **and live** (2026-10-10, codex-cli 0.162.1) — § "Codex facts". **No code written.**
+**Status:** PLAN — decisions ARC-D1…ARC-D15. **ARC-D1–D5 decided by the user**; ARC-D6's direction decided, its mapping open; the rest open with leans. **Codex behaviour verified from source** (2026-10-08) **and live** (2026-10-10 / 2026-10-22, codex-cli 0.162.1; Claude Code 2.1.308) — § "Codex facts"; `merge=union` measured unsafe (ARC-D6). **No code written.**
 **Extends:** `docs/plans/session-handoff-pipeline-design.md` (`ref:handoff-pipeline-design`), `docs/plans/resume-config-steps.md` (R-D1…R-D9).
 **Touches:** `overlays/session-tracking/` (package + overlay); `overlays/session-tracking/KNOWN-ISSUES.md` #1 (ARC-D7 is its plural form).
 **Not to be confused with:** `ref:multi-session-contention` and its siblings — those are T-102, concurrent sessions contending for the **GPU**, not for tracking state.
@@ -220,8 +220,25 @@ single-writer files, so what stays shared changes rarely — and in in-branch mo
 surface as merge conflicts, not silent overwrites. Two residues:
 
 - **Parallel arcs appending tasks** at the same block end still conflict at merge, even with unique
-  ids. Candidate: `merge=union` on the shared tasks file (in-repo profile), safe once ids cannot
-  collide. **Unverified** — see § "Unverified".
+  ids. The candidate fix, `merge=union` on the shared tasks file, was **measured and is UNSAFE**
+  (2026-10-22: a two-branch fixture per case, judged by the real checkoff locator, not by a grep):
+
+  | Case | Merge | Result |
+  |---|---|---|
+  | both append different tasks | clean | ✓ both kept, ref markers 1/1. Without union: a conflict — the control |
+  | both check off the same task | clean | ✓ one line |
+  | **one appends after T-2 while the other checks off T-2** (adjacent lines) | **clean, exit 0** | **T-2 resurrected as an open duplicate** beside its checked copy — and checkoff later *succeeds* on the open copy, so nothing ever reports it |
+  | one checks off T-1 while the other edits its text | clean | **same resurrection** |
+  | both edit T-1's text | clean | two open T-1 lines → the next checkoff **refuses** (the only loud case) |
+
+  The checkoff locator matches only **unchecked** lines (`locator.py:146`), so a resurrection that
+  pairs a checked and an unchecked copy is invisible to it. And the adjacent case is the *common*
+  one: appends land at the block end, next to the newest — most likely to be closed — task.
+  **Remaining options:** (a) **per-arc task files** — each arc appends only to its own
+  `arcs/<name>/tasks.md` (single writer, ARC-D5's principle again), with the shared backlog a
+  generated view and legacy `T-NN` tasks staying in the shared file; (b) plain merges, accepting a
+  loud conflict whenever two arcs both file tasks. **Lean: (a)** — but an arc's still-open tasks must
+  then outlive the arc, which ties this to ARC-D8.
 - **Register schema:** each role gains `scope: shared | arc`, and arc-scoped paths are templated
   (`arcs/{arc}/context.md`) → register `version: 2`.
 
@@ -317,6 +334,22 @@ substitution, and the body cites `.claude/tools/` paths.
 3. **Prefer `.agents/skills/`** even though `.codex/skills/` also loads ungated: it is the documented
    location and is walked from the project root down to cwd.
 
+**And from 2026-10-22:**
+
+4. **The installer must be *able* to write each harness's locations; which harnesses is an
+   install-time selection** (user, 2026-10-22) — e.g. `--harness claude-code,codex`. That is what
+   making `agent_targets` live means. Claude Code does not read `.agents/skills/`, so selecting both
+   means two skill copies, generated from one source.
+5. **Approval is once, and loud:** the interactive TUI prompts for a new or changed hook, after which
+   `codex exec` runs it. The install step should say "start `codex` once interactively and trust the
+   hook" — and `exec`-only users get the silent skip.
+6. **Never shift an existing hook's position.** Trust keys are positional, so inserting our hook
+   *before* the user's own entries in a shared `hooks.json` would silently revoke **their**
+   approvals. Append, or own a separate file.
+7. **The probe is the acceptance test.** An isolated `CODEX_HOME`, sentinel skill / `AGENTS.md` /
+   hook files, and the model-free `codex debug prompt-input` check exactly what the installer's
+   Codex target produces — no model quality involved.
+
 ### ARC-D15 — Rules-file layout, in-repo profile *(open — lean: `AGENTS.md` canonical)*
 
 `AGENTS.md` carries the session rules; `CLAUDE.md` imports it with `@AGENTS.md`. The `@` import is
@@ -370,20 +403,40 @@ model-visible prompt **without calling a model**; the hook probes needed a real 
 | the real `session-handoff` SKILL.md | parses | listed — and its `description` ("…across **Claude Code** sessions…") is sent verbatim as the trigger text |
 | user-level SessionStart hook, untrusted | skipped | skipped — **silently**: no notice on stderr in `codex exec` |
 | same hook with `--dangerously-bypass-hook-trust` | runs | runs; its stdout lands as a `developer` message tagged `hooks.additional_context` |
+| *(2026-10-22)* the interactive TUI, same untrusted hook | prompts or skips? | **prompts**: "Hooks need review — 1 hook is new or changed", offering *Review hooks* / *Trust all and continue* / *Continue without trusting (hooks won't run)*. Loud in the TUI, silent only in `exec` |
+| *(2026-10-22)* after "Trust all" in the TUI, plain `codex exec` (no bypass flag) | runs | **runs** — one approval is enough |
+| *(2026-10-22)* then change the hook's command string | skipped | **skipped silently** — neither the old nor the new sentinel, nothing on stderr |
+| *(2026-10-22)* TUI with `--oss --local-provider ollama` on the command line | no sign-in | **ChatGPT sign-in screen** in 0.162.1. With `model_provider = "ollama"` in `config.toml` instead, sign-in is skipped (HEAD's `tui/src/lib.rs:2350-2357` skips it for OSS providers; the CLI-flag path evidently differs in this release) |
 
-Trust is persisted per hook as `[hooks.state."<key>"] trusted_hash = "<hash>"` in `config.toml`,
-written when the user approves it in the TUI's `/hooks` view (`config/src/hook_config.rs:28-32`,
-`tui/src/hooks_rpc.rs:58-70`). A changed hook reports `Modified` and is untrusted again.
+Trust is persisted in `config.toml` when the user approves (`config/src/hook_config.rs:28-32`,
+`tui/src/hooks_rpc.rs:58-70`). Observed shape:
+
+```toml
+[hooks.state."/abs/path/to/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:781d63e0…"
+```
+
+The key is **positional** — file path, event, matcher-group index, hook index — and the hash covers
+the hook's content. So *editing* a hook and *shifting its position* both invalidate the approval.
 <!-- /ref:session-arcs-codex-facts -->
 
 <!-- ref:session-arcs-unverified -->
 ## Still unverified — test before freezing
 
+Closed 2026-10-22: **Claude Code does not read `.agents/skills/`** (live, below); the interactive
+TUI **prompts** for an untrusted hook (§ "Codex facts"); `merge=union` is **unsafe** for the shared
+tasks file (ARC-D6).
+
+**Claude Code live check — 2026-10-22, v2.1.308.** `claude -p` in the same probe repo, with
+`--settings '{"disableAllHooks": true}'` and `--strict-mcp-config` so the user's own hooks and MCP
+servers stayed out of it, reading the `skills` list from the `stream-json` `system/init` event: the
+`.claude/skills/` probe **loaded** (the positive control), the `.agents/skills/` and `.codex/skills/`
+probes did **not**. The stream carried no hook events.
+
 | Claim | Check |
 |---|---|
-| Claude Code does not read `.agents/skills/` | Claude Code docs, or a probe skill. If false, one install could serve both harnesses |
-| The interactive TUI prompts for an untrusted hook rather than skipping it silently as `codex exec` does | one interactive `codex` start in a repo with an unapproved hook |
-| `merge=union` on the shared tasks file keeps both sides' appended lines and leaves ref-block markers intact | a **two-branch merge fixture**: (1) both branches append different tasks → both present, marker count unchanged (the handoff verifier enforces a ref-marker-count invariant); (2) both check off the same task → expect a duplicated line and a loud refusal at the next checkoff (`locator.py:150`); (3) one appends while the other checks off → clean |
+| A SessionStart hook fires in the **interactive** TUI as it does in `exec` | the TUI probe's prompt never submitted, so no session record was written. Low risk — both modes share the hook engine and `exec` fired it — but unobserved |
+| Claude Code reads `AGENTS.md` directly only when no `CLAUDE.md` exists (v2.1.277+), and expands `@AGENTS.md` inside `CLAUDE.md` | Claude Code memory docs (`code.claude.com/docs/en/memory.md`), via a docs agent's summary — not yet seen live |
 <!-- /ref:session-arcs-unverified -->
 
 ## Migration — v11 → v12
