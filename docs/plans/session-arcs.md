@@ -81,12 +81,12 @@ Names rejected (2026-10-08): `workstream` (two meanings at the user's work), `th
 | ARC-D5 | Numbering **B — per-arc keys** | **Decided** (user, after comparing A/B/C) |
 | ARC-D6 | Shared vs arc context split | **Decided** (user, 2026-10-28) |
 | ARC-D7 | Ref-key namespace for arc files | **Decided** (user, 2026-10-28): **(b′)** an `arc:` marker prefix |
-| ARC-D8 | Arc lifecycle status in v1 | **Open** — lean: required |
+| ARC-D8 | Arc lifecycle status in v1 | **Decided** (user, 2026-10-28): store `open \| closed` + the current `branch`; derive the rest from git |
 | ARC-D9 | Repo identity for the user-level config | **Open** |
 | ARC-D10 | External-mode concurrency guard | **Open** — lean: required for external mode |
-| ARC-D11 | Starting vs adopting an arc | **Open** |
-| ARC-D12 | Two sessions on the same arc at once | **Open** — lean: refuse |
-| ARC-D13 | Key uniqueness and retirement | **Open** |
+| ARC-D11 | Starting vs adopting an arc | **Decided** (user, 2026-10-28): `start` / `adopt` / `bind`, plus the handoff asks; no worktree conversion in v1 |
+| ARC-D12 | Two sessions on the same arc at once | **Decided** (user, 2026-10-28): a stale-base check in every mode + a bound-branch check (the entry-number check is dropped) |
+| ARC-D13 | Key uniqueness and retirement | **Decided** (user, 2026-10-28): three refusal checks at creation; uppercase, 2–6 chars |
 | ARC-D14 | Harness adapters via `agent_targets` | **Open** — lean: make it live |
 | ARC-D15 | Rules-file layout for the in-repo profile | **Open** — lean: `AGENTS.md` canonical |
 
@@ -171,7 +171,8 @@ numbers cannot collide, and no allocator is needed.
 
 - **Session handle:** `KEY#N` (`HR#3`) — as short in prose as `s141`.
 - **Task id:** `KEY-N` (`HR-7`).
-- **Key format:** starts with a letter; letters and digits only — **no hyphen**. Checkoff's matcher
+- **Key format:** starts with a letter; uppercase letters and digits only, 2–6 characters
+  (ARC-D13) — **no hyphen**. Checkoff's matcher
   (`locator.py:140`) treats letters, digits and `.` as id-internal but not `-`, so a hyphenated key
   could contain another id (`T-7` inside `HR-T-7`). Digits allow ticket-derived keys
   (`PLAT-1234` → `PLAT1234`); an optional `ticket:` field in `arc.yaml` is the alternative.
@@ -336,11 +337,25 @@ the live `session-log.md` as ephemeral). Files moved to `.tracking/` would silen
 — the `ref:corpus-divergence-pattern` shape. → § Migration. Zero-footprint repos keep tracking
 outside the repo, so a repo-scoped corpus cannot see it at all: **accepted** (user).
 
-### ARC-D8 — Arc lifecycle status in v1 *(open — lean: required)*
+### ARC-D8 — Arc lifecycle status in v1 *(decided)*
 
-Cleanup is deferred (user), but status is not cleanup. In in-branch mode a merged arc's folder lands on
-master; without `status: open | merged | closed` in `arc.yaml`, a resume from master lists every arc
-ever merged as open. Lean: v1 records status; deleting or archiving arc folders stays deferred.
+Cleanup is deferred (user), but status is not cleanup: in in-branch mode a merged arc's folder lands
+on master, and without a status a resume from master would list every arc ever merged as open.
+
+**Merged is not done — measured (2026-10-28).** The oficina-P3 line of work has already passed
+through four branches, each merged by its own PR — #88 `feature/oficina-p3-context-assembly`, #89
+`feature/oficina-p3-unit-addressing`, #92 `feat/p3-t0-criterion-5`, #94 `feat/p3-d1-freeze` — and
+`feat/p3-d10-freeze` is the fifth. **An arc outlives its branches.** So (user, 2026-10-28):
+
+- **Store only what git cannot tell:** `status: open | closed` (a human decision) and `branch:` (the
+  arc's *current* branch).
+- **Derive the rest at resume time:** whether that branch exists, how far it is ahead of master,
+  whether it is merged. A stored `merged` flag would go stale; git cannot.
+- **Closing is an explicit step:** the arc's open tasks move to the shared file keeping their ids
+  (ARC-D6); the user chooses which of its reading-guide and watch-list rows to promote to shared;
+  the folder stays (cleanup is deferred); the key stays reserved (ARC-D13).
+- **Resume from master** lists open arcs with their derived state — "P3 — open,
+  `feat/p3-d10-freeze`, 4 ahead of master", or "open, no current branch".
 
 ### ARC-D9 — Repo identity for the user-level config *(open)*
 
@@ -352,28 +367,67 @@ ARC-D10's two-clone note.
 ### ARC-D10 — External-mode concurrency guard *(open — lean: required for external mode)*
 
 The payload records a hash of each shared region it was based on, and the pipeline refuses if the
-region changed since — a loud refusal, the repo's standing shape. Also detect OneDrive conflict copies
+region changed since — a loud refusal, the repo's standing shape. **ARC-D12 makes this stale-base
+check apply in every mode**, so what remains specific to external mode is the rest of this entry.
+Also detect OneDrive conflict copies
 (a `*-<MACHINE>.*` file beside a tracking file) and refuse while one exists. Two clones sharing one
 external root: documented as unsupported in v1.
 
-### ARC-D11 — Starting vs adopting an arc *(open)*
+### ARC-D11 — Starting vs adopting an arc *(decided)*
 
-- **Start named:** create branch + worktree + arc folder before work begins.
-- **Adopt:** bind the current branch to a new arc at handoff. Moving it into a worktree later requires
-  freeing the branch from the main checkout — git will not check out one branch twice — which changes
-  the user's checkout, so the git-safety protocol applies (explain → backup → dry-run → execute →
-  verify). A separate, explicit step; never folded into the handoff.
+Because an arc outlives its branches (ARC-D8: P3 needed a new branch after every merge),
+**re-binding is the normal way an arc continues**, not an edge case. Decided (user, 2026-10-28) — a
+plain CLI either harness can run:
 
-### ARC-D12 — Two sessions on the same arc *(open — lean: refuse)*
+| Command | Does |
+|---|---|
+| `start <name> --key K [--worktree]` | a new branch from master + the arc folder; with `--worktree`, also a worktree at a configured location, and tells the user to start the harness there |
+| `adopt <name> --key K` | makes the **current** branch a new arc; nothing moves |
+| `bind <name>` | moves an existing arc to the current branch — the post-merge continuation, like P3's fifth branch |
+| *(at handoff, no arc bound)* | the skill asks: name an arc (`adopt`), or hand off as a no-arc `sN` session — "identified at handoff" |
 
-Per-arc numbering assumes one writer per arc; two harness sessions in one worktree break that. Lean: at
-write time, refuse if `sessions/<NNN>-*` already exists for the number about to be minted.
+**No "convert an adopted arc into a worktree" step in v1.** An arc binds a *branch*; a worktree is
+only one place to check it out. Parallel work starts the *other* arc with `--worktree` and leaves
+the main checkout on the adopted one — which removes the one side-effecting step (freeing a branch
+from the main checkout, since git will not check a branch out twice) entirely. Claude Code and
+Codex each have their own native worktree features, kept in harness-specific places; arcs depend on
+neither.
 
-### ARC-D13 — Key uniqueness and retirement *(open)*
+### ARC-D12 — Two sessions on the same arc *(decided)*
 
-A key is checked once, at arc creation: against local branches (`git ls-tree` per ref), worktrees, and
-the external root. A closed arc keeps its key reserved — a retired key must still block reuse after
-cleanup exists.
+**The earlier lean was a check that could not fire.** It refused if `sessions/<NNN>-*` already
+existed for the number about to be minted — but the pipeline mints the number when it *writes*, so
+a second session in the same checkout simply gets the next one. What is actually lost is **region
+content**: session B replaces the arc's status with text it authored before A's handoff landed —
+single-writer assumption #1 again, inside one arc. Decided (user, 2026-10-28):
+
+1. **A stale-base check, in every mode.** When a session fetches a region it will replace, it gets
+   that region's hash; the payload carries it; the pipeline refuses if the region has changed since.
+   The same mechanism as ARC-D10, so it also protects the *shared* regions from the same-checkout
+   lost update, which ARC-D6's split made rarer but did not remove.
+2. **A bound-branch check.** The handoff refuses when the current branch is not the arc's bound
+   branch. That stops one arc writing entries on two branches at once — which would merge cleanly
+   with duplicate numbers — and makes moving an arc an explicit `bind` (ARC-D11).
+
+### ARC-D13 — Key uniqueness and retirement *(decided)*
+
+**Measured (2026-10-28), `KEY-N`-shaped prefixes already in tracked markdown:** `T` (2,035), `SP`
+(52 — the LTG split plan's SP-1…SP-14), `L` (40 — mostly LTG task citations), and technical terms
+— `GPT` (32, as in "GPT-5"), `UTF`, `MCP`, `GPL`, `ISO`, `SHA`, `AES`, `BSD`. An arc keyed `GPT`
+would mint task `GPT-5`, and every existing "GPT-5" would become ambiguous. Decided (user,
+2026-10-28): at arc creation, **refuse** a key that
+
+1. another arc already uses — scan the `arc.yaml` files on local and remote branches, and the
+   external root;
+2. already occurs as a `KEY-N` prefix in the repo's tracked text — one grep;
+3. is reserved — `s` and `T` (work outside arcs), plus keys other repos mint tasks with, such as
+   LTG's `L`.
+
+**Format:** uppercase letters and digits, starting with a letter, 2–6 characters. **Retirement** is
+free in v1, because closed arcs keep their folders and so keep their keys under check 1; once cleanup
+exists, a retired-keys list must outlive the deleted folders. (This doc's own example keys `HR` and
+`PLAT` already fail check 2 — they occur only here. The live case's `P3` passes: no `P3-N` occurs
+anywhere; the plan's `P3-D1` / `P3-T0` have a letter before the number, so they cannot match.)
 
 ### ARC-D14 — Harness adapters via `agent_targets` *(open — lean: make it live)*
 
@@ -545,8 +599,9 @@ do so as an arc, or after the first has merged.
 
 1. Build arcs and migrate llm's tracking on `feat/session-arcs`; merge to master.
 2. On `feat/p3-d10-freeze`, merge master — the branch gains the engine and the new layout.
-3. Adopt it as the oficina-P3 arc (a letters-and-digits key, e.g. `P3`), bound to that branch; its
-   six arc rows of the reading guide (ARC-D6) and its watch-list items move into the arc context.
+3. `adopt` it as the oficina-P3 arc, key `P3` (passes ARC-D13), bound to that branch; its six arc
+   rows and three developing-oficina rows of the reading guide (ARC-D6) and its watch-list items
+   move into the arc context. Its *next* branch, after this one merges, is a `bind` (ARC-D11).
 4. Hand off there: the first entry `P3#1` covers the 2026-09-08 work. The next P3 session resumes
    the arc.
 
