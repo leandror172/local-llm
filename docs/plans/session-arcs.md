@@ -79,8 +79,8 @@ Names rejected (2026-10-08): `workstream` (two meanings at the user's work), `th
 | ARC-D3 | Root folder **`.tracking/`**, configurable | **Decided** (user); the back-compat default `.claude` is a lean |
 | ARC-D4 | Two install profiles: **in-repo** and **zero-footprint** | **Decided** (user) |
 | ARC-D5 | Numbering **B — per-arc keys** | **Decided** (user, after comparing A/B/C) |
-| ARC-D6 | Shared vs arc context split | Direction **decided** (user); role mapping **open** |
-| ARC-D7 | Ref-key namespace for arc files | **Open** — new constraint; lean (b) |
+| ARC-D6 | Shared vs arc context split | **Decided** (user, 2026-10-28) |
+| ARC-D7 | Ref-key namespace for arc files | **Decided** (user, 2026-10-28): **(b′)** an `arc:` marker prefix |
 | ARC-D8 | Arc lifecycle status in v1 | **Open** — lean: required |
 | ARC-D9 | Repo identity for the user-level config | **Open** |
 | ARC-D10 | External-mode concurrency guard | **Open** — lean: required for external mode |
@@ -211,7 +211,7 @@ register roles:
 | `log-entry` | `session-log.md` (newest only) | **arc**: `sessions/<NNN>-<slug>.md` | single writer |
 | `header-current-session`, `header-current-layer` | `session-log.md` header | **arc**: `arc.yaml` / arc context | a singleton per arc |
 | `current-status` | one block | **split**: arc status + Next / shared environment and cross-repo notes | today's block is mostly one line of work |
-| `reading-guide` | one table | mostly **arc**; cross-cutting rows (verdict recording, running tests) **shared** | most rows today are P3-specific |
+| `reading-guide` | one table | **split by row** — see "Decided" below | measured 2026-10-28: 6 arc-specific, 6 oficina-wide, 11 cross-cutting of 23 (an earlier "mostly P3-specific" was wrong) |
 | `active-decisions`, `user-prefs`, `quick-pointers` | `session-context.md` | **shared** | cross-cutting, low churn |
 | `tasks-append`, `tasks-checkoff` | `tasks.md` | **shared**, ids per ARC-D5 | the backlog is project-wide |
 
@@ -242,7 +242,51 @@ surface as merge conflicts, not silent overwrites. Two residues:
 - **Register schema:** each role gains `scope: shared | arc`, and arc-scoped paths are templated
   (`arcs/{arc}/context.md`) → register `version: 2`.
 
-### ARC-D7 — Ref-key namespace for arc files *(open — new constraint)*
+**Decided (user, 2026-10-28)** — each choice measured against what today's regions actually hold:
+
+1. **The session digest is GENERATED.** Today 15 of `current-status`'s 19 top-level bullets are
+   per-session summaries written by hand beside the log entry. Each session entry now carries its
+   own one-paragraph `summary:`, authored once at handoff; "recent sessions" renders the newest N
+   across arcs. **A later session may correct an earlier entry's summary in place, with a dated
+   note** — 1 of the 15 digests (s137) carries exactly such a correction by s139, and a view built
+   from immutable entries would silently re-show the claim that was retracted.
+2. **The watch list stays HAND-WRITTEN.** "Open deferred tasks" is *not* a restatement of
+   `tasks.md`, as this doc first assumed. It annotates 32 of the 76 open tasks; all 32 exist in
+   `tasks.md` and 28 of the notes mostly overlap their task line word-for-word — but the bullet
+   carries what `tasks.md` does not: **which** tasks matter now (the selection), and **live
+   progress** (T-132's "now SIX sessions behind at 217 lines" appears nowhere in `tasks.md`).
+   Generating it would drop both. It becomes a watch-list region, split arc / shared.
+3. **"Next" lives in the arc only** — today it is written twice, in `current-status` and in the
+   log entry, and resume prints both.
+4. **Header fields:** "Current Session" is dropped (it is the newest entry); "Current Layer"
+   becomes a `phase:` in each `arc.yaml` plus one shared project-status line.
+5. **Tasks:** per-arc task files. A **general** task found inside an arc may still go to the shared
+   file (user) — **but its id is still minted by the filing session's key** (`HR-9`), or two arcs
+   each minting `T-142` at once brings back the collision ARC-D5 removed. So the id no longer
+   names its file; checkoff searches every task file, which is safe because ids are unique by
+   construction. Two arcs appending to the shared file conflict loudly at merge — no `merge=union`.
+   On arc close, its open tasks move to the shared file **keeping their ids** (ARC-D8).
+6. **The reading guide splits by row.** Measured over its 23 rows:
+
+   | Home | Rows |
+   |---|---|
+   | **arc** (oficina-P3) | 1 P3-D1 frozen / criterion 3 · 3 superseded probe framing · 5 before designing the edit schema · 6 correct claim corrupted (P3 artifacts) · 12 prompt assembly · 15 T-122 feasibility band |
+   | **developing oficina ⚑** | 9 before authoring a phase plan · 11 before touching `judge.py` · 20 oficina, the built system |
+   | **shared** | 2 delegating — the brief · 4 prior art before a survey · 7 verify a task's premise · 8 a falsified claim survives · 10 before deleting a declared-unused field · 13 a check that can only pass · 14 magnitude and reachability · 16 a tool's silence as evidence · 17 delegating — what works · 18 using LTG · 19 recording a verdict · 21 running tests · 22 asserting a set is complete · 23 LTG engine / instance |
+
+   An oficina-P3 session sees all 23, exactly as today; a session in any other arc sees 14.
+   **A first pass grouped six rows as "oficina-wide" and conflated two audiences** (user,
+   2026-10-28): rows 2 and 17 are advice for *using* oficina — which is machine-global, so any
+   session delegating code needs them, like "using LTG" (18) — and row 10 is a general lesson with
+   an oficina example. Only 9, 11 and 20 are about *developing* oficina. (Row 17's one clause about
+   `intake.py` being undelegable on the 16K coder is development-specific; it rides along.)
+   **Decided (user, 2026-10-28): (ii)** — the three development rows live in the oficina-P3 arc.
+   When a second oficina arc exists, copy them into it, and only then promote them to the folder
+   memory `docs/vision/coding-delegate/.memories/` that row 20 already points to —
+   `ref:patterns-refactoring-duplicate-first`: extract once a second consumer is real. (Rejected:
+   (i) shared, which shows three development-only rows to every arc.)
+
+### ARC-D7 — Ref-key namespace for arc files *(decided: (b′))*
 
 If every `arcs/<name>/context.md` carries the same ref-block keys (`current-status`,
 `session-reading-guide`, …), those keys are duplicated repo-wide:
@@ -263,9 +307,34 @@ means. Options:
   `field` locators. Arc files are owned by session-tracking alone and need not join the ref namespace.
 - **(c) Exclude `<root>/arcs/` from ref-indexing scans.**
 
-**Lean: (b).** It keeps ref-indexing's namespace for content agents look up by key, while arc files
-are reached through the register, never by key. External mode is unaffected either way — ref-indexing
-never scans outside the repo.
+**Decided (user, 2026-10-28): (b′) — the `ref:` block syntax with an `arc:` prefix**
+(`<!-- arc:status -->` … `<!-- /arc:status -->`), refining (b): the register already *has* a span
+locator (`ref_block`), so (b′) parametrises its prefix instead of inventing a new locator type.
+Measured: all four consumers of block markers match only the literal `ref:` prefix —
+`check-ref-integrity.py:22` (`RE_OPEN`), `ref-lookup.sh:48,65`, the LTG engine's `markers.py:34-44`,
+and the handoff verifier's `_collect_markers` (`verifier.py:120`). So arc blocks are invisible to
+ref-indexing and LTG with **no change to either overlay** — and invisible to session-tracking's own
+verifier too, which is the trap:
+
+- **Requirement:** the verifier's marker-set invariant must count `arc:` markers as well. Without
+  it, a payload that duplicates or drops an arc marker passes verification silently.
+- **Rejected:** (a) per-arc `ref:` keys (the namespace grows with arcs; every arc's blocks are
+  orphan warnings); (c) scan exclusions (three tools, two overlays, plus the LTG engine's repo, in
+  every consuming repo); (d) one file per region (more files per arc, for no gain over (b′)).
+
+**What it costs LTG (user question, 2026-10-28):** little. Arc blocks stop being anchor *targets*,
+so a hit on arc text cannot hand back a key to look up. But the text is still indexed as prose, and
+`ref:KEY` mentions *inside* arc files still create edges into the anchor graph (`MENTION_RE` matches
+anywhere). Nothing cites arc blocks by key — resume reaches them through the register. And it is
+reversible: one regex in `markers.py`. Filed as **LTG `L-34`** (user): verify against the arcs
+version whether `arc:` blocks should become anchors — noting that arc keys repeat across arc files
+by design, so an arc anchor's identity would have to be (file, key).
+
+**The real LTG risk is the MOVE, not the marker.** LTG's `corpus.yaml` names
+`.claude/session-context.md`, `.claude/tasks.md` and `.claude/archive/` **by path** (and excludes
+the live `session-log.md` as ephemeral). Files moved to `.tracking/` would silently drop out of LTG
+— the `ref:corpus-divergence-pattern` shape. → § Migration. Zero-footprint repos keep tracking
+outside the repo, so a repo-scoped corpus cannot see it at all: **accepted** (user).
 
 ### ARC-D8 — Arc lifecycle status in v1 *(open — lean: required)*
 
@@ -451,6 +520,12 @@ probes did **not**. The stream carried no hook events.
 - **Code sites rewritten:** the parsers listed under ARC-D5, plus the `.claude` literals listed under
   "Harness coupling".
 - **Harvest:** `last_handoff_head` when an arc records one; the legacy subject grep otherwise.
+  Candidate: `--no-merges` — a merge that lands after a handoff is otherwise credited to the next
+  session (measured on the P3 branch, § "The live case").
+- **Every tool that names a `.claude/` tracking path follows the move — found by grep, not by
+  memory.** Known: LTG's `ltg/corpus.yaml` (`include_roots` lists `.claude/session-context.md`,
+  `.claude/tasks.md`, `.claude/archive/`); the arc equivalents are the shared `context.md`, the task
+  files, and `arcs/*/sessions/` in place of `archive/`.
 
 ## The live case
 
@@ -464,6 +539,25 @@ It is also #4 in miniature. If this design session hands off on `feat/session-ar
 scheme, and the P3 branch later hands off too, **both mint `s141`** on different branches, and nothing
 reports it until two documents cite `s141` for different sessions. Whichever hands off second should
 do so as an arc, or after the first has merged.
+
+**The plan for it (user, 2026-10-28):** the P3 session is not orphaned — it becomes the first
+**adopted** arc. Order:
+
+1. Build arcs and migrate llm's tracking on `feat/session-arcs`; merge to master.
+2. On `feat/p3-d10-freeze`, merge master — the branch gains the engine and the new layout.
+3. Adopt it as the oficina-P3 arc (a letters-and-digits key, e.g. `P3`), bound to that branch; its
+   six arc rows of the reading guide (ARC-D6) and its watch-list items move into the arc context.
+4. Hand off there: the first entry `P3#1` covers the 2026-09-08 work. The next P3 session resumes
+   the arc.
+
+Measured on that branch (2026-10-28): the harvest boundary is the s140 handoff commit `36aa48a`, and
+`36aa48a..feat/p3-d10-freeze` lists the four 2026-09-08 commits **plus `71c1fa0`**, the PR #94
+merge — s140's work, merged after s140 handed off. The seed is a skeleton the author edits, so the
+line is dropped by hand; `--no-merges` would drop it by construction (§ Migration).
+
+This design session can hand off under the legacy scheme as `s141` on `feat/session-arcs`. That is
+safe **as long as the P3 branch's next handoff happens as an arc** — it is then the only legacy
+`s141`.
 
 ## Non-goals for v1
 
